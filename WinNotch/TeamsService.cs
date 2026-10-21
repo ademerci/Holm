@@ -27,8 +27,10 @@ internal sealed class TeamsMessage
 /// Nothing is ever removed from the notification center.
 /// </summary>
 /// <remarks>
-/// Windows only sends change events to packaged apps, so for us it usually refuses them and this looks
-/// every two seconds instead: a short local call that returns ids, and only new notifications get read.
+/// Windows only sends change events to packaged apps, so for us it usually refuses them. Instead we watch
+/// the folder of the notification center's database, which Windows writes whenever a notification comes
+/// or goes, and only then read the notifications. In between this costs nothing. A slow timer is the
+/// safety net, and the fallback if the folder can't be watched.
 /// </remarks>
 internal sealed class TeamsService
 {
@@ -36,7 +38,8 @@ internal sealed class TeamsService
 
     static readonly Regex Whitespace = new(@"\s+");
 
-    readonly DispatcherTimer _poll;
+    readonly DispatcherTimer _poll, _settle;
+    FileSystemWatcher? _watcher;
     readonly Dictionary<uint, TeamsMessage?> _seen = new(); // null: a notification from another app
     readonly HashSet<uint> _read = new();
     UserNotificationListener? _listener;
@@ -56,8 +59,11 @@ internal sealed class TeamsService
 
     public TeamsService(Dispatcher ui)
     {
-        _poll = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromSeconds(2) };
+        _poll = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromSeconds(60) };
         _poll.Tick += (_, _) => _ = RefreshAsync();
+        // A notification arriving means a burst of database writes: look once, shortly after the first.
+        _settle = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromMilliseconds(700) };
+        _settle.Tick += (_, _) => { _settle.Stop(); _ = RefreshAsync(); };
     }
 
     public bool IsRunning => _listener != null;
@@ -94,17 +100,45 @@ internal sealed class TeamsService
             _listener.NotificationChanged += OnNotificationChanged;
             _evented = true;
         }
-        catch (Exception ex) { Diag.Log("Notification events unavailable, polling instead: " + ex.Message); }
-        // With events, the timer is only a safety net in case one gets lost.
-        _poll.Interval = TimeSpan.FromSeconds(_evented ? 30 : 2);
+        catch (Exception ex) { Diag.Log("Notification events unavailable: " + ex.Message); }
+        bool watching = !_evented && WatchDatabase();
+        // With events or the watcher, the timer is only a safety net in case a change gets lost.
+        _poll.Interval = TimeSpan.FromSeconds(_evented || watching ? 60 : 10);
         _poll.Start();
         await RefreshAsync();
+    }
+
+    bool WatchDatabase()
+    {
+        try
+        {
+            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Windows\Notifications");
+            if (!Directory.Exists(folder)) return false;
+            _watcher = new FileSystemWatcher(folder) { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName };
+            FileSystemEventHandler changed = (_, _) => _settle.Dispatcher.InvokeAsync(() => { if (!_settle.IsEnabled) _settle.Start(); });
+            _watcher.Changed += changed;
+            _watcher.Created += changed;
+            _watcher.Deleted += changed;
+            _watcher.EnableRaisingEvents = true;
+            Diag.Log("Watching the notification database");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Notification database can't be watched, polling every 10 s: " + ex.Message);
+            _watcher?.Dispose();
+            _watcher = null;
+            return false;
+        }
     }
 
     public void Stop()
     {
         _generation++;
         _poll.Stop();
+        _settle.Stop();
+        _watcher?.Dispose();
+        _watcher = null;
         if (_listener != null && _evented)
         {
             try { _listener.NotificationChanged -= OnNotificationChanged; } catch { }
@@ -155,6 +189,13 @@ internal sealed class TeamsService
         var listener = _listener!;
         var all = await listener.GetNotificationsAsync(NotificationKinds.Toast);
         if (listener != _listener) return; // switched off meanwhile
+        if (!_primed && Diag.Enabled)
+        {
+            // Which apps have toasts in the notification center (names and counts only, never the text).
+            var apps = all.GroupBy(n => { try { return n.AppInfo?.AppUserModelId ?? "?"; } catch { return "?"; } })
+                          .Select(g => $"{g.Key} ×{g.Count()}");
+            Diag.Log($"Notification center: {all.Count} toasts: {string.Join(", ", apps)}");
+        }
 
         var current = new List<TeamsMessage>();
         var present = new HashSet<uint>();
