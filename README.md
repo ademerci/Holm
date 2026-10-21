@@ -46,7 +46,7 @@ This gives you `publish/WinNotch.exe`, which needs the .NET 10 Desktop Runtime. 
 
 ## Vibe coded
 
-This project was vibe coded: it was built entirely by chatting with Claude (Anthropic's AI) in Claude Code, from the idea to the performance tuning. It is tested on a real machine, but expect some rough edges – issues and pull requests are welcome.
+This project was vibe coded: it was built entirely by chatting with Claude (Anthropic's AI) in Claude Code, from the idea to the performance tuning. It is tested on a real machine, but expect some rough edges – issues and pull requests are welcome. 
 
 ## License
 
