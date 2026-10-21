@@ -32,11 +32,15 @@ Native WPF on .NET 10 and event driven: it reacts when Windows reports a change 
 
 Measured on an 8-thread laptop. Turning off the equalizer animation brings playback down to idle levels.
 
-One exception to "event driven": Windows only tells packaged (Store) apps when a notification arrives, so while **Teams messages** is on, WinNotch looks into the notification center every 2 seconds. It's a small local call that only reads notifications it hasn't seen yet, but it isn't free and isn't in the numbers above. Turn it off in the right-click menu if you don't use Teams.
+**Teams messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so WinNotch watches the folder of Windows' notification database instead and reads the notifications only when it changes. In between it costs nothing; a check once a minute is the safety net.
 
 ## Teams messages
 
-WinNotch reads Teams' notifications from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, the switch is in *Settings › Privacy & security › Notifications* (choosing *Teams messages* in the right-click menu takes you there). Teams has to show its notifications through Windows, which is the default in the new Teams. WinNotch never removes or changes your notifications, and the message text is never written to its logs.
+WinNotch reads Teams' notifications from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, the switch is in *Settings › Privacy & security › Notifications* (choosing *Teams messages* in the right-click menu takes you there). 
+
+**Teams has to send its notifications to Windows.** If its pop-ups appear in Teams' own style and not in the Windows notification center, WinNotch can't see them. In the new Teams, open *Settings › Notifications and activity* and set *Notification style* to **Windows**; also check that Microsoft Teams is allowed in *Windows Settings › System › Notifications*.
+
+WinNotch never removes or changes your notifications, and the message text is never written to its logs.
 
 Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu entry says so and is greyed out.
 
