@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>WinNotch</AssemblyName>
+    <RootNamespace>WinNotch</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>WinNotch</Product>
+    <Version>1.0.0</Version>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+
+    <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="Exists('notch.ico')">
+    <ApplicationIcon>notch.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The WinRT projection is huge and we only touch a few types of it; precompiling it would bloat the exe. -->
+    <PublishReadyToRunExclude Include="Microsoft.Windows.SDK.NET.dll" />
+  </ItemGroup>
+
+</Project>

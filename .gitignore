@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+publish/
+share/
+*_wpftmp.csproj
+
+# IDE
+.vs/
+.vscode/
+*.user
