@@ -121,9 +121,9 @@
 
             <Border x:Name="Island" Background="Transparent" Width="150" Height="30" VerticalAlignment="Top"
                     MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
-                    MouseLeftButtonUp="Island_MouseLeftButtonUp">
+                    MouseLeftButtonUp="Island_MouseLeftButtonUp" ContextMenuOpening="Island_ContextMenuOpening">
                 <Border.ContextMenu>
-                    <ContextMenu Opened="Menu_Opened" Closed="Menu_Closed">
+                    <ContextMenu Closed="Menu_Closed">
                         <MenuItem x:Name="MenuAnim" Header="Animate equalizer" IsCheckable="True" Click="MenuAnim_Click"/>
                         <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                         <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>

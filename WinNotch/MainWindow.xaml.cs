@@ -242,7 +242,8 @@ public partial class MainWindow : Window
             }
             UpdateEqualizer();
         }
-        if (!fullscreen && _hwnd != IntPtr.Zero)
+        // Not while the menu is open: the notch would jump in front of it and the menu flicker.
+        if (!fullscreen && _hwnd != IntPtr.Zero && !Island.ContextMenu.IsOpen)
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
         if (_messages.Count > 0 && TeamsInFront()) _teams.MarkRead();
@@ -843,7 +844,11 @@ public partial class MainWindow : Window
             ShowPeek("\uE783", "Can't open Teams", "", null, false, null);
     }
 
-    void Menu_Opened(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Fills the menu before it opens. Filling it in Opened made it visibly jump: the AI entry turned
+    /// into a submenu and the screen entries were added while the menu was already on screen.
+    /// </summary>
+    void Island_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         MenuAnim.IsChecked = _settings.Animations;
         MenuMini.IsChecked = _settings.MiniIdle;
@@ -854,7 +859,7 @@ public partial class MainWindow : Window
         MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
         MenuTeams.Header = denied ? "Teams messages (allow access…)" : unavailable ? "Teams messages (not supported here)" : "Teams messages";
         MenuTeams.IsEnabled = !unavailable;
-        ListScreens((ContextMenu)sender);
+        ListScreens(Island.ContextMenu);
     }
 
     /// <summary>AI button › Claude, Gemini, ChatGPT, the app you picked, Choose app…, Off.</summary>
