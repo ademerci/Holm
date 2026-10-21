@@ -16,8 +16,10 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
+- **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
+- **Teams messages** – a new message pops out of the notch with who wrote and the first line, and a purple badge counts what you haven't seen yet. Opening Teams (or clicking the message in the notch) clears it.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, pick a screen, quit.
+- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), Teams messages, pick a screen, quit.
 
 ## Lightweight
 
@@ -29,6 +31,14 @@ Native WPF on .NET 10 and event driven: it reacts when Windows reports a change 
 | Music playing, equalizer animated | ~0.3–0.5 % | ~10–20 MB |
 
 Measured on an 8-thread laptop. Turning off the equalizer animation brings playback down to idle levels.
+
+One exception to "event driven": Windows only tells packaged (Store) apps when a notification arrives, so while **Teams messages** is on, WinNotch looks into the notification center every 2 seconds. It's a small local call that only reads notifications it hasn't seen yet, but it isn't free and isn't in the numbers above. Turn it off in the right-click menu if you don't use Teams.
+
+## Teams messages
+
+WinNotch reads Teams' notifications from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, the switch is in *Settings › Privacy & security › Notifications* (choosing *Teams messages* in the right-click menu takes you there). Teams has to show its notifications through Windows, which is the default in the new Teams. WinNotch never removes or changes your notifications, and the message text is never written to its logs.
+
+Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu entry says so and is greyed out.
 
 ## Requirements
 

@@ -56,6 +56,34 @@ internal static class Native
     [DllImport("user32.dll")] public static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, int flags);
     [DllImport("user32.dll")] public static extern bool UnregisterPowerSettingNotification(IntPtr handle);
 
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint processId);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", CharSet = CharSet.Unicode)]
+    static extern bool QueryFullProcessImageName(IntPtr process, int flags, char[] name, ref int size);
+
+    static uint _lastPid;
+    static string _lastExe = "";
+
+    /// <summary>File name (without .exe) of the program that owns a window; remembers the last answer.</summary>
+    public static string ProcessNameOf(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || GetWindowThreadProcessId(hwnd, out uint pid) == 0 || pid == 0) return "";
+        if (pid == _lastPid) return _lastExe;
+        string exe = "";
+        IntPtr process = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, pid);
+        if (process != IntPtr.Zero)
+        {
+            var buffer = new char[1024];
+            int size = buffer.Length;
+            if (QueryFullProcessImageName(process, 0, buffer, ref size))
+                exe = System.IO.Path.GetFileNameWithoutExtension(new string(buffer, 0, size));
+            CloseHandle(process);
+        }
+        (_lastPid, _lastExe) = (pid, exe);
+        return exe;
+    }
+
     /// <summary>Asks the shell whether a fullscreen app (game, video, presentation) is in front.</summary>
     [DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int state);
 

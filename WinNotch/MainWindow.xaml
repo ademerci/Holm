@@ -13,6 +13,7 @@
         <SolidColorBrush x:Key="Dim" Color="#A6FFFFFF"/>
         <SolidColorBrush x:Key="Faint" Color="#66FFFFFF"/>
         <SolidColorBrush x:Key="ArtFallback" Color="#FF262628"/>
+        <SolidColorBrush x:Key="TeamsPurple" Color="#FF5B5FC7"/>
 
         <Geometry x:Key="PlayGeo">M3,1 L16,9 L3,17 Z</Geometry>
         <Geometry x:Key="PauseGeo">M3,1 L7,1 L7,17 L3,17 Z M11,1 L15,1 L15,17 L11,17 Z</Geometry>
@@ -57,6 +58,50 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Unread count, like the badge on a phone's app icon -->
+        <Style x:Key="CountPill" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource TeamsPurple}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="MinWidth" Value="16"/>
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="CountText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- A whole row you can click (the Teams messages in the open notch) -->
+        <Style x:Key="RowButton" TargetType="Button">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="#14FFFFFF" CornerRadius="14" Padding="10,8,12,8">
+                            <ContentPresenter x:Name="Cp" RenderTransformOrigin="0.5,0.5"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF"/>
+                                <Setter TargetName="Cp" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -82,6 +127,10 @@
                         <MenuItem x:Name="MenuAnim" Header="Animate equalizer" IsCheckable="True" Click="MenuAnim_Click"/>
                         <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                         <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
+                        <Separator/>
+                        <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
+                        <MenuItem x:Name="MenuAi" Header="AI button"/>
+                        <MenuItem x:Name="MenuTeams" Header="Teams messages" IsCheckable="True" Click="MenuTeams_Click"/>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
                         <Separator/>
@@ -95,19 +144,45 @@
                     <Grid x:Name="CompactView" Opacity="0" IsHitTestVisible="False" Margin="9,0,12,0">
                         <Border x:Name="CompactArt" Width="20" Height="20" CornerRadius="5"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" Background="{StaticResource ArtFallback}"/>
-                        <StackPanel x:Name="EqPanel" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Height="14">
-                            <Rectangle x:Name="Bar1" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform><ScaleTransform ScaleY="0.45"/></Rectangle.RenderTransform>
-                            </Rectangle>
-                            <Rectangle x:Name="Bar2" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform><ScaleTransform ScaleY="0.85"/></Rectangle.RenderTransform>
-                            </Rectangle>
-                            <Rectangle x:Name="Bar3" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform><ScaleTransform ScaleY="0.6"/></Rectangle.RenderTransform>
-                            </Rectangle>
-                            <Rectangle x:Name="Bar4" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
-                                <Rectangle.RenderTransform><ScaleTransform ScaleY="0.75"/></Rectangle.RenderTransform>
-                            </Rectangle>
+                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Border x:Name="MediaBadge" Style="{StaticResource CountPill}" Margin="0,0,9,0" Visibility="Collapsed">
+                                <TextBlock x:Name="MediaBadgeText" Style="{StaticResource CountText}"/>
+                            </Border>
+                            <StackPanel x:Name="EqPanel" VerticalAlignment="Center" Orientation="Horizontal" Height="14">
+                                <Rectangle x:Name="Bar1" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0.45"/></Rectangle.RenderTransform>
+                                </Rectangle>
+                                <Rectangle x:Name="Bar2" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0.85"/></Rectangle.RenderTransform>
+                                </Rectangle>
+                                <Rectangle x:Name="Bar3" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0.6"/></Rectangle.RenderTransform>
+                                </Rectangle>
+                                <Rectangle x:Name="Bar4" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0.75"/></Rectangle.RenderTransform>
+                                </Rectangle>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Badge: nothing playing, unread Teams messages -->
+                    <Grid x:Name="BadgeView" Opacity="0" IsHitTestVisible="False" Margin="10,0">
+                        <Border x:Name="BadgeLogoHost" Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource CountPill}" HorizontalAlignment="Right">
+                            <TextBlock x:Name="BadgeText" Style="{StaticResource CountText}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Message: a Teams message just came in -->
+                    <Grid x:Name="MessageView" Opacity="0" IsHitTestVisible="False" Margin="14,0,18,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="MessageLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="MessageTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="MessageText" FontSize="12" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
                         </StackPanel>
                     </Grid>
 
@@ -182,6 +257,25 @@
                                 <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
                             </StackPanel>
 
+                            <Button x:Name="MessageRow" Style="{StaticResource RowButton}" Margin="0,14,0,0" Visibility="Collapsed"
+                                    Click="MessageRow_Click" ToolTip="Open Teams">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="RowLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="RowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="RowText" FontSize="12" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Style="{StaticResource CountPill}">
+                                        <TextBlock x:Name="RowCount" Style="{StaticResource CountText}"/>
+                                    </Border>
+                                </Grid>
+                            </Button>
+
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>
 
                             <Grid>
@@ -196,6 +290,11 @@
                                                    Foreground="{StaticResource Dim}" Text="&#xE995;"/>
                                     </Button>
                                     <Border x:Name="VolumeHost" Width="84" Margin="2,0,0,0" VerticalAlignment="Center"/>
+                                    <!-- Opens Claude, Gemini, ChatGPT or your own pick (right-click › AI button) -->
+                                    <Button x:Name="AiBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="6,0,0,0"
+                                            Visibility="Collapsed" Click="Ai_Click">
+                                        <Border x:Name="AiIconHost" Width="18" Height="18"/>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
 

@@ -11,6 +11,11 @@ internal sealed class AppSettings
     public bool MiniIdle { get; set; }
     /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
     public string? Monitor { get; set; }
+    /// <summary>What the AI button opens: "claude", "gemini", "chatgpt", "custom" (<see cref="AiPath"/>) or null for no button.</summary>
+    public string? Ai { get; set; } = "claude";
+    /// <summary>Program or shortcut picked with "Choose app…".</summary>
+    public string? AiPath { get; set; }
+    public bool TeamsMessages { get; set; } = true;
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 

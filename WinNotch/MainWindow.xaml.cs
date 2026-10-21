@@ -17,12 +17,13 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Media, Peek, Expanded }
+    enum NotchState { None, Idle, Badge, Media, Peek, Message, Expanded }
 
     const double ExpandedWidth = 440;
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
     static readonly Brush GreenBrush = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
     static readonly Brush RedBrush = Frozen(Color.FromRgb(0xFF, 0x45, 0x3A));
+    static readonly Brush TeamsBrush = Frozen(Color.FromRgb(0x5B, 0x5F, 0xC7));
     static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
     static readonly double[] BarRest = { 0.45, 0.85, 0.6, 0.75 }, BarLow = { 0.3, 0.4, 0.25, 0.35 }, BarSeconds = { 0.42, 0.55, 0.37, 0.49 };
 
@@ -42,6 +43,7 @@ public partial class MainWindow : Window
 
     readonly AppSettings _settings = AppSettings.Load();
     readonly MediaService _media;
+    readonly TeamsService _teams;
     readonly VolumeService _volume = new();
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer;
     readonly ScaleTransform[] _bars;
@@ -52,13 +54,17 @@ public partial class MainWindow : Window
     IntPtr _hwnd, _powerNotifyA, _powerNotifyB, _monitor;
     NotchState _state = NotchState.None;
     double _shapeW = -1, _shapeH = -1, _shapeR = -1;
-    bool _expanded, _peekActive, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
+    bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
     MediaInfo? _info;
     ImageSource? _shownArt, _shownBackdrop;
     Border _artFront, _artBack;
     PowerInfo _power;
     bool _powerKnown, _btKnown;
     List<BtDevice> _bt = new();
+    IReadOnlyList<TeamsMessage> _messages = Array.Empty<TeamsMessage>();
+    AiTarget? _ai; // what the AI button opens, once the app list has been searched
+    Task<AiTarget?>? _aiLookup;
+    DateTime _aiResolvedAt;
 
     public MainWindow()
     {
@@ -71,6 +77,8 @@ public partial class MainWindow : Window
 
         _media = new MediaService(Dispatcher);
         _media.Changed += OnMediaChanged;
+        _teams = new TeamsService(Dispatcher);
+        _teams.Changed += OnMessagesChanged;
 
         // Every timer below is either short-lived or only runs while the notch is open.
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver) SetExpanded(true); }, oneShot: true);
@@ -152,7 +160,10 @@ public partial class MainWindow : Window
         _watchTimer.Start();
         _btPoll.Start();
         _trimTimer.Start();
+        UpdateAiButton();
+        Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
+        if (_settings.TeamsMessages) _ = _teams.StartAsync(ask: true);
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -160,6 +171,7 @@ public partial class MainWindow : Window
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         _volume.Release();
+        _teams.Stop();
     }
 
     IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -233,7 +245,11 @@ public partial class MainWindow : Window
         if (!fullscreen && _hwnd != IntPtr.Zero)
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
+        if (_messages.Count > 0 && TeamsInFront()) _teams.MarkRead();
     }
+
+    static bool TeamsInFront()
+        => Native.ProcessNameOf(Native.GetForegroundWindow()).Contains("teams", StringComparison.OrdinalIgnoreCase);
 
     // ───────────────────────── states & animation ─────────────────────────
 
@@ -250,6 +266,10 @@ public partial class MainWindow : Window
             _volume.Bind();
             RefreshMediaUi();
             RefreshDevices();
+            ResolveAi(force: false);
+            // Access may have been granted in Settings since we last asked.
+            if (_settings.TeamsMessages && !_teams.IsRunning && _teams.Access != TeamsService.AccessState.Unavailable)
+                _ = _teams.StartAsync(ask: false);
             _liveTimer.Start();
         }
         else
@@ -265,8 +285,9 @@ public partial class MainWindow : Window
     void ApplyState(bool animate = true)
     {
         var target = _expanded ? NotchState.Expanded
-                   : _peekActive ? NotchState.Peek
+                   : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _info?.IsPlaying == true ? NotchState.Media
+                   : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
         bool mini = target == NotchState.Idle && _settings.MiniIdle;
 
@@ -279,7 +300,9 @@ public partial class MainWindow : Window
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(ExpandedView.DesiredSize.Height) + 18, 32);
                 break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
+            case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
+            case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
 
@@ -311,7 +334,9 @@ public partial class MainWindow : Window
         if (target != _state)
         {
             SetView(CompactView, target == NotchState.Media, animate);
+            SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
+            SetView(MessageView, target == NotchState.Message, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
             _state = target;
         }
@@ -474,9 +499,27 @@ public partial class MainWindow : Window
         PeekBattery.Charging = charging;
 
         _peekActive = true;
+        _peekMessage = false;
         _peekTimer.Stop();
+        _peekTimer.Interval = TimeSpan.FromSeconds(3);
         _peekTimer.Start();
         ApplyState();
+    }
+
+    /// <summary>Pops out a message that just came in. The caller applies the state.</summary>
+    void ShowMessage(TeamsMessage message)
+    {
+        if (_hiddenForFullscreen || _expanded) return;
+        MessageLogoHost.Child = TeamsLogo(28);
+        MessageTitle.Text = message.Title;
+        MessageText.Text = message.Text;
+        MessageText.Visibility = message.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        _peekActive = true;
+        _peekMessage = true;
+        _peekTimer.Stop();
+        _peekTimer.Interval = TimeSpan.FromSeconds(5); // long enough to read a line
+        _peekTimer.Start();
     }
 
     // ───────────────────────── data sources ─────────────────────────
@@ -546,6 +589,98 @@ public partial class MainWindow : Window
         if (_expanded) RefreshMediaUi();
         ApplyState();
         UpdateBackdrop();
+    }
+
+    void OnMessagesChanged(TeamsMessage? arrived)
+    {
+        // Already looking at Teams: nothing is unread. (MarkRead calls back here with the list cleared.)
+        if (_teams.Messages.Count > 0 && TeamsInFront()) { _teams.MarkRead(); return; }
+
+        _messages = _teams.Messages;
+        Diag.Log($"Teams: {_messages.Count} unread" + (arrived != null ? ", new one" : ""));
+        RefreshMessages();
+        if (arrived != null) ShowMessage(arrived);
+        ApplyState();
+    }
+
+    /// <summary>The count on the badges and the newest message in the open notch.</summary>
+    void RefreshMessages()
+    {
+        int count = _messages.Count;
+        BadgeText.Text = MediaBadgeText.Text = RowCount.Text = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
+        MediaBadge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        MessageRow.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (count == 0) return;
+
+        var latest = _messages[^1];
+        BadgeLogoHost.Child = TeamsLogo(18);
+        RowLogoHost.Child = TeamsLogo(28);
+        RowTitle.Text = latest.Title;
+        RowText.Text = latest.Text;
+        RowText.Visibility = latest.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Teams' own icon once a notification has brought it along, a purple chat bubble until then.</summary>
+    FrameworkElement TeamsLogo(double size)
+    {
+        if (_teams.Logo is { } logo)
+        {
+            var image = new Image { Source = logo, Width = size, Height = size };
+            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+            return image;
+        }
+        return new Border
+        {
+            Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = TeamsBrush,
+            Child = new TextBlock
+            {
+                Text = "\uE8BD", FontFamily = IconFont, FontSize = size * 0.5, Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+    }
+
+    // ───────────────────────── AI button ─────────────────────────
+
+    /// <summary>Shows the AI button with the best we know so far: the app's icon once the lookup is done.</summary>
+    void UpdateAiButton()
+    {
+        var target = _ai ?? AiLauncher.Quick(_settings.Ai, _settings.AiPath);
+        AiBtn.Visibility = target != null ? Visibility.Visible : Visibility.Collapsed;
+        if (target == null) return;
+        AiIconHost.Child = AiLauncher.IconFor(target, 18);
+        AiBtn.ToolTip = "Open " + target.Name;
+    }
+
+    /// <summary>Looks up the installed app in the background; again every few minutes, in case it was installed meanwhile.</summary>
+    async void ResolveAi(bool force)
+    {
+        if (!force && DateTime.UtcNow - _aiResolvedAt < TimeSpan.FromMinutes(5)) return;
+        _aiResolvedAt = DateTime.UtcNow;
+        if (force) _ai = null; // another choice: show it right away, its icon follows
+        var lookup = AiLauncher.ResolveAsync(_settings.Ai, _settings.AiPath);
+        _aiLookup = lookup;
+        UpdateAiButton();
+        AiTarget? found = null;
+        try { found = await lookup; } catch (Exception ex) { Diag.Log("AI lookup failed: " + ex.Message); }
+        if (_aiLookup != lookup) return; // the choice changed meanwhile
+        _ai = found;
+        UpdateAiButton();
+    }
+
+    void SetAi(string? key, string? path)
+    {
+        _settings.Ai = key;
+        _settings.AiPath = path;
+        _settings.Save();
+        ResolveAi(force: true);
+    }
+
+    static bool TryOpen(string? target)
+    {
+        if (target == null) return false;
+        try { Shell.Open(target); return true; }
+        catch (Exception ex) { Diag.Error(ex); return false; }
     }
 
     Brush ArtBrush(ImageSource? art)
@@ -683,12 +818,82 @@ public partial class MainWindow : Window
         ReadVolume();
     }
 
+    async void Ai_Click(object sender, RoutedEventArgs e)
+    {
+        var target = _ai;
+        // Only right after picking another AI is the lookup still running; it takes a moment at most.
+        if (target == null && _aiLookup != null)
+        {
+            try { target = await _aiLookup; } catch { }
+        }
+        target ??= AiLauncher.Quick(_settings.Ai, _settings.AiPath);
+        if (target == null) return;
+
+        // Close up, so the notch isn't in front of the app that opens.
+        SetExpanded(false);
+        if (!TryOpen(target.Launch) && !TryOpen(target.Web))
+            ShowPeek("\uE783", "Can't open " + target.Name, "", null, false, null);
+    }
+
+    void MessageRow_Click(object sender, RoutedEventArgs e)
+    {
+        _teams.MarkRead();
+        SetExpanded(false);
+        if (!TryOpen(_teams.AppId != null ? Shell.AppTarget(_teams.AppId) : "msteams:"))
+            ShowPeek("\uE783", "Can't open Teams", "", null, false, null);
+    }
+
     void Menu_Opened(object sender, RoutedEventArgs e)
     {
         MenuAnim.IsChecked = _settings.Animations;
         MenuMini.IsChecked = _settings.MiniIdle;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
+        FillAiMenu();
+        bool denied = _settings.TeamsMessages && _teams.Access == TeamsService.AccessState.Denied;
+        bool unavailable = _teams.Access == TeamsService.AccessState.Unavailable;
+        MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
+        MenuTeams.Header = denied ? "Teams messages (allow access…)" : unavailable ? "Teams messages (not supported here)" : "Teams messages";
+        MenuTeams.IsEnabled = !unavailable;
         ListScreens((ContextMenu)sender);
+    }
+
+    /// <summary>AI button › Claude, Gemini, ChatGPT, the app you picked, Choose app…, Off.</summary>
+    void FillAiMenu()
+    {
+        MenuAi.Items.Clear();
+        foreach (var (key, name) in AiLauncher.Choices)
+            MenuAi.Items.Add(AiChoice(name, key, _settings.AiPath));
+        if (!string.IsNullOrEmpty(_settings.AiPath))
+            MenuAi.Items.Add(AiChoice(AiLauncher.NameOf(_settings.AiPath).Replace("_", "__"), AiLauncher.Custom, _settings.AiPath));
+        MenuAi.Items.Add(new Separator());
+        var pick = new MenuItem { Header = "Choose app…" };
+        // After the menu has closed: a dialog from inside the click would open under the closing menu.
+        pick.Click += (_, _) => Dispatcher.InvokeAsync(PickAiApp, DispatcherPriority.Background);
+        MenuAi.Items.Add(pick);
+        MenuAi.Items.Add(AiChoice("Off", null, _settings.AiPath));
+    }
+
+    MenuItem AiChoice(string header, string? key, string? path)
+    {
+        var item = new MenuItem { Header = header, IsCheckable = true, IsChecked = _settings.Ai == key };
+        item.Click += (_, _) => SetAi(key, path);
+        return item;
+    }
+
+    void PickAiApp()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose the app the AI button opens",
+            Filter = "Apps and shortcuts|*.exe;*.lnk;*.url;*.appref-ms|All files|*.*",
+            DereferenceLinks = false, // keep a shortcut's arguments and start folder
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Programs),
+        };
+        try
+        {
+            if (dialog.ShowDialog(this) == true) SetAi(AiLauncher.Custom, dialog.FileName);
+        }
+        catch (Exception ex) { Diag.Error(ex); }
     }
 
     /// <summary>With more than one display, the menu lists them so the notch can be moved.</summary>
@@ -746,6 +951,16 @@ public partial class MainWindow : Window
         ApplyState();
     }
 
+    async void MenuTeams_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.TeamsMessages = MenuTeams.IsChecked;
+        _settings.Save();
+        if (!_settings.TeamsMessages) { _teams.Stop(); return; }
+        await _teams.StartAsync(ask: true);
+        // Once refused, Windows doesn't ask again; the switch is in Settings.
+        if (_teams.Access == TeamsService.AccessState.Denied) TryOpen("ms-settings:privacy-notifications");
+    }
+
     void MenuAutostart_Click(object sender, RoutedEventArgs e)
     {
         try { Autostart.Set(MenuAutostart.IsChecked); }
@@ -768,6 +983,7 @@ public partial class MainWindow : Window
         _settings.MiniIdle = false;
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
+        _teams.Changed -= OnMessagesChanged;
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
 
         OnMediaChanged(null, false);
@@ -788,6 +1004,24 @@ public partial class MainWindow : Window
         OnMediaChanged(null, false);
         SetExpanded(true);
         await Snap(dir, "expanded-idle", 200);
+
+        SetExpanded(false);
+        _messages = new List<TeamsMessage>
+        {
+            new() { Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
+            new() { Title = "Lena Hoffmann", Text = "Can we go through them before the 3 pm call?", Time = DateTimeOffset.Now },
+        };
+        RefreshMessages();
+        ShowMessage(_messages[^1]);
+        ApplyState();
+        await Snap(dir, "message", 70);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+        await Snap(dir, "badge", 60);
+
+        SetExpanded(true);
+        await Snap(dir, "expanded-messages", 260);
     }
 
     static MediaInfo DemoMedia()
