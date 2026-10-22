@@ -17,11 +17,9 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Media, Peek, Message, Expanded, Drop }
+    enum NotchState { None, Idle, Badge, Media, Peek, Message, Expanded }
 
     const double ExpandedWidth = 440;
-    /// <summary>Window width at normal size; <see cref="AppSettings.Scale"/> scales it along with the notch.</summary>
-    const double BaseWidth = 480;
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
     static readonly Brush GreenBrush = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
     static readonly Brush RedBrush = Frozen(Color.FromRgb(0xFF, 0x45, 0x3A));
@@ -46,9 +44,8 @@ public partial class MainWindow : Window
     readonly AppSettings _settings = AppSettings.Load();
     readonly MediaService _media;
     readonly TeamsService _teams;
-    readonly BeamService _beam;
     readonly VolumeService _volume = new();
-    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _dropLeave;
+    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer;
     readonly ScaleTransform[] _bars;
     readonly BatteryGlyph PeekBattery = new();
     readonly MiniSlider Progress = new();
@@ -57,7 +54,7 @@ public partial class MainWindow : Window
     IntPtr _hwnd, _powerNotifyA, _powerNotifyB, _monitor;
     NotchState _state = NotchState.None;
     double _shapeW = -1, _shapeH = -1, _shapeR = -1;
-    bool _expanded, _peekActive, _peekMessage, _dropActive, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
+    bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
     MediaInfo? _info;
     ImageSource? _shownArt, _shownBackdrop;
     Border _artFront, _artBack;
@@ -82,9 +79,6 @@ public partial class MainWindow : Window
         _media.Changed += OnMediaChanged;
         _teams = new TeamsService(Dispatcher);
         _teams.Changed += OnMessagesChanged;
-        _beam = new BeamService(_settings, Dispatcher);
-        _beam.Received += OnBeamReceived;
-        _beam.Refused += reason => ShowPeek("\uE7BA", reason, "", null, false, null, seconds: 4);
 
         // Every timer below is either short-lived or only runs while the notch is open.
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver) SetExpanded(true); }, oneShot: true);
@@ -102,8 +96,6 @@ public partial class MainWindow : Window
         _btPoll = MakeTimer(60_000, ScanBluetooth);
         _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
-        // Dragging across the notch's own parts also counts as leaving it, so only give up after a moment.
-        _dropLeave = MakeTimer(200, EndDrop, oneShot: true);
 
         Progress.ValueCommitted += v =>
         {
@@ -161,7 +153,7 @@ public partial class MainWindow : Window
 
     void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ApplyScale();
+        PositionWindow();
         ReadPower();
         ScanBluetooth();
         ApplyState(animate: false);
@@ -172,7 +164,6 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
         if (_settings.TeamsMessages) _ = _teams.StartAsync(ask: true);
-        _beam.Restart();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -181,7 +172,6 @@ public partial class MainWindow : Window
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         _volume.Release();
         _teams.Stop();
-        _beam.Stop();
     }
 
     IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -294,8 +284,7 @@ public partial class MainWindow : Window
 
     void ApplyState(bool animate = true)
     {
-        var target = _dropActive ? NotchState.Drop
-                   : _expanded ? NotchState.Expanded
+        var target = _expanded ? NotchState.Expanded
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _info?.IsPlaying == true ? NotchState.Media
                    : _messages.Count > 0 ? NotchState.Badge
@@ -309,11 +298,6 @@ public partial class MainWindow : Window
                 ExpandedView.Visibility = Visibility.Visible;
                 ExpandedView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(ExpandedView.DesiredSize.Height) + 18, 32);
-                break;
-            case NotchState.Drop:
-                DropView.Visibility = Visibility.Visible;
-                DropView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
-                (w, h, r) = (Math.Clamp(Math.Ceiling(DropView.DesiredSize.Width) + 48, 260, ExpandedWidth), Math.Ceiling(DropView.DesiredSize.Height) + 18, 28);
                 break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
@@ -338,7 +322,7 @@ public partial class MainWindow : Window
             if (!animate) FitWindowHeight();
             else
             {
-                double needed = Math.Ceiling(h * 1.12 * Scale) + 2; // room for the spring overshoot
+                double needed = Math.Ceiling(h * 1.12) + 2; // room for the spring overshoot
                 if (needed > Height) Height = needed;
                 _shapeAnimating = true;
                 _fitTimer.Stop();
@@ -354,25 +338,12 @@ public partial class MainWindow : Window
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
-            SetView(DropView, target == NotchState.Drop, animate);
             _state = target;
         }
         UpdateEqualizer();
     }
 
-    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * Scale) + 2;
-
-    double Scale => Math.Clamp(_settings.Scale, 0.7, 1.5);
-
-    /// <summary>The whole notch grows or shrinks as one; the window keeps its top centre on the screen.</summary>
-    void ApplyScale()
-    {
-        double scale = Scale;
-        IslandHost.LayoutTransform = scale == 1 ? Transform.Identity : new ScaleTransform(scale, scale);
-        Width = BaseWidth * scale;
-        FitWindowHeight();
-        PositionWindow();
-    }
+    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1)) + 2;
 
     void OnShapeSettled()
     {
@@ -407,11 +378,8 @@ public partial class MainWindow : Window
         {
             BeginTime = TimeSpan.FromMilliseconds(show && animate ? 110 : 0),
         };
-        // The big views leave the layout once faded out, so they can be measured again from scratch.
         if (!show && view == ExpandedView)
             fade.Completed += (_, _) => { if (_state != NotchState.Expanded) ExpandedView.Visibility = Visibility.Collapsed; };
-        if (!show && view == DropView)
-            fade.Completed += (_, _) => { if (_state != NotchState.Drop) DropView.Visibility = Visibility.Collapsed; };
         view.BeginAnimation(OpacityProperty, fade);
     }
 
@@ -516,7 +484,7 @@ public partial class MainWindow : Window
         }
     }
 
-    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3)
+    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush)
     {
         if (_hiddenForFullscreen) return;
         if (_expanded) { RefreshDevices(); return; }
@@ -524,7 +492,6 @@ public partial class MainWindow : Window
         PeekIcon.Text = glyph ?? "";
         PeekIcon.Visibility = glyph == null ? Visibility.Collapsed : Visibility.Visible;
         PeekText.Text = text;
-        PeekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170;
         PeekValue.Text = value;
         PeekValue.Foreground = valueBrush ?? Brushes.White;
         PeekBatteryHost.Visibility = battery == null ? Visibility.Collapsed : Visibility.Visible;
@@ -534,7 +501,7 @@ public partial class MainWindow : Window
         _peekActive = true;
         _peekMessage = false;
         _peekTimer.Stop();
-        _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
+        _peekTimer.Interval = TimeSpan.FromSeconds(3);
         _peekTimer.Start();
         ApplyState();
     }
@@ -882,8 +849,6 @@ public partial class MainWindow : Window
         MenuMini.IsChecked = _settings.MiniIdle;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         FillAiMenu();
-        FillBeamMenu();
-        FillSizeMenu();
         bool denied = _settings.TeamsMessages && _teams.Access == TeamsService.AccessState.Denied;
         bool unavailable = _teams.Access == TeamsService.AccessState.Unavailable;
         MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
@@ -1016,8 +981,6 @@ public partial class MainWindow : Window
         System.IO.Directory.CreateDirectory(dir);
         _settings.Animations = false; // still frames, so the bars are captured at rest
         _settings.MiniIdle = false;
-        _settings.Scale = 1;
-        ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _teams.Changed -= OnMessagesChanged;
@@ -1059,11 +1022,6 @@ public partial class MainWindow : Window
 
         SetExpanded(true);
         await Snap(dir, "expanded-messages", 260);
-
-        SetExpanded(false);
-        StartDrop(new List<BeamFriend> { new() { Name = "Lena Hoffmann" }, new() { Name = "Jonas" }, new() { Name = "Mia" } });
-        await Snap(dir, "beam", 140);
-        EndDrop();
     }
 
     static MediaInfo DemoMedia()
