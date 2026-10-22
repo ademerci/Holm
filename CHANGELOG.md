@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 – 2026-10-22
+
+### Fixed
+- **AirDrop: a file held still over a chip missed it.** Windows only reports a drag while the mouse moves, so the share view closed half a second after you stopped moving, and the file then landed on the bare notch ("Drop it on a person or on Code"). The view now stays open until the drag really leaves the notch or ends. Found by a live test that drags a real file onto the notch.
+- The chips are no longer rebuilt during a drag when no one new showed up, so the chip under a still mouse stays highlighted.
+
+### Added
+- End-to-end test for the other direction: a running notch sends (a file dropped on *Code*), the test receives it through the relay and checks name and bytes.
+- `--diag` logs drags and drops on the notch.
+
 ## 1.2.0 – 2026-10-22
 
 ### Added

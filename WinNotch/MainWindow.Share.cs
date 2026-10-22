@@ -33,9 +33,11 @@ public partial class MainWindow
 
     NearbyService? _nearby;
     DispatcherTimer _shareWatch = null!, _taskHide = null!;
-    bool _sharing, _taskVisible, _busy;
+    bool _sharing, _dragInside, _taskVisible, _busy;
     DateTime _lastDragEvent, _lastProgressUi;
     string[] _dragFiles = Array.Empty<string>();
+    ShareTarget? _hover;
+    string? _shownPeers;
     CancellationTokenSource? _taskCts;
     Action? _primaryAction, _secondaryAction;
     readonly HashSet<string> _ownCodes = new();
@@ -46,8 +48,17 @@ public partial class MainWindow
 
     void InitSharing()
     {
-        // OLE keeps calling DragOver while files hover over us; when that stops, the drag left or ended.
-        _shareWatch = MakeTimer(200, () => { if (DateTime.UtcNow - _lastDragEvent > TimeSpan.FromMilliseconds(500)) EndShare(); });
+        // Windows calls DragOver only while the mouse moves, so a still mouse over a chip is not a finished drag.
+        // The share view closes once the drag has left the notch (DragLeave without a new DragEnter), or, should
+        // that never arrive, once no mouse button is held any more.
+        _shareWatch = MakeTimer(200, () =>
+        {
+            var quiet = DateTime.UtcNow - _lastDragEvent;
+            bool over = _dragInside
+                ? quiet > TimeSpan.FromMilliseconds(500) && !Native.MouseButtonDown()
+                : quiet > TimeSpan.FromMilliseconds(250);
+            if (over) EndShare();
+        });
         _taskHide = MakeTimer(5000, HideTask, oneShot: true);
     }
 
@@ -92,6 +103,13 @@ public partial class MainWindow
     void Island_DragEnter(object sender, DragEventArgs e) => OnDrag(e);
     void Island_DragOver(object sender, DragEventArgs e) => OnDrag(e);
 
+    void Island_DragLeave(object sender, DragEventArgs e)
+    {
+        // Also raised when moving between elements inside the notch, right before their DragEnter.
+        _dragInside = false;
+        _lastDragEvent = DateTime.UtcNow;
+    }
+
     void OnDrag(DragEventArgs e)
     {
         e.Handled = true;
@@ -102,10 +120,12 @@ public partial class MainWindow
         }
         e.Effects = DragDropEffects.Copy;
         _lastDragEvent = DateTime.UtcNow;
+        _dragInside = true;
         HighlightChip(e.OriginalSource as DependencyObject);
         if (_sharing) return;
 
         _dragFiles = e.Data.GetData(DataFormats.FileDrop) as string[] ?? Array.Empty<string>();
+        Diag.Log($"Drag entered with {_dragFiles.Length} file(s)");
         _sharing = true;
         if (_taskVisible) HideTask(); // e.g. an old "Sent" message
         SetExpanded(false);
@@ -126,6 +146,7 @@ public partial class MainWindow
     {
         _shareWatch.Stop();
         if (!_sharing) return;
+        Diag.Log("Share view closed");
         _sharing = false;
         ApplyState();
     }
@@ -135,6 +156,7 @@ public partial class MainWindow
         e.Handled = true;
         var dropped = e.Data.GetData(DataFormats.FileDrop) as string[] ?? _dragFiles;
         var target = TargetOf(e.OriginalSource as DependencyObject);
+        Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {(target == null ? "nothing" : target.Peer?.Name ?? "Code")}");
         EndShare();
         if (!_settings.AirDrop || _busy) return;
 
@@ -166,6 +188,8 @@ public partial class MainWindow
     void HighlightChip(DependencyObject? over)
     {
         var target = TargetOf(over);
+        if (target != _hover) Diag.Log($"Over {(target == null ? "nothing" : target.Peer?.Name ?? "Code")} ({over?.GetType().Name})");
+        _hover = target;
         foreach (var chip in ShareTargets.Children.OfType<Button>())
             chip.Background = target != null && ReferenceEquals(chip.Tag, target) ? ShareBlue : ChipBrush;
     }
@@ -178,6 +202,12 @@ public partial class MainWindow
         ShareHint.Text = peers.Count == 0
             ? "No one with WinNotch on this network – drop it on Code to send it anywhere."
             : "Drop it on a person, or on Code to send it anywhere.";
+
+        // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
+        string shown = string.Join("|", peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}"));
+        if (shown == _shownPeers && ShareTargets.Children.Count > 0) return;
+        _shownPeers = shown;
+        Diag.Log($"Share targets: {peers.Count} nearby");
 
         ShareTargets.Children.Clear();
         foreach (var peer in peers.Take(6))

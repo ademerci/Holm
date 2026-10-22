@@ -91,6 +91,10 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);
 
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    /// <summary>Whether the left or right mouse button is held (physical buttons, so swapped buttons count too).</summary>
+    public static bool MouseButtonDown() => GetAsyncKeyState(0x01) < 0 || GetAsyncKeyState(0x02) < 0;
+
     [DllImport("secur32.dll", CharSet = CharSet.Unicode)]
     static extern bool GetUserNameEx(int format, System.Text.StringBuilder name, ref uint size);
 
