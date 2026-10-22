@@ -5,9 +5,6 @@ namespace WinNotch.Tests;
 public class MessengersTests
 {
     [Theory]
-    [InlineData("MSTeams_8wekyb3d8bbwe!MSTeams", "teams")]                       // new Teams
-    [InlineData("MicrosoftTeams_8wekyb3d8bbwe!MicrosoftTeams", "teams")]         // free Teams
-    [InlineData("com.squirrel.Teams.Teams", "teams")]                            // classic Teams
     [InlineData("5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App", "whatsapp")]
     [InlineData("com.squirrel.Discord.Discord", "discord")]
     [InlineData("Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows", "outlook")]
@@ -26,17 +23,22 @@ public class MessengersTests
     [InlineData("Windows.Defender.SecurityCenter")]
     [InlineData("Chrome")]
     [InlineData("MSEdge")]
+    // Teams is left out on purpose: new, free and classic Teams.
+    [InlineData("MSTeams_8wekyb3d8bbwe!MSTeams")]
+    [InlineData("MicrosoftTeams_8wekyb3d8bbwe!MicrosoftTeams")]
+    [InlineData("com.squirrel.Teams.Teams")]
     public void Ignores_other_apps(string appId) => Assert.Null(Messengers.ForApp(appId));
 
     [Fact]
     public void Falls_back_to_the_display_name_without_an_app_id()
     {
-        Assert.Equal("teams", Messengers.ForApp("", "Microsoft Teams")?.Key);
+        Assert.Equal("whatsapp", Messengers.ForApp("", "WhatsApp")?.Key);
+        Assert.Null(Messengers.ForApp("", "Microsoft Teams"));
         Assert.Null(Messengers.ForApp("", "Paint"));
     }
 
     [Theory]
-    [InlineData("ms-teams", "teams")]
+    [InlineData("ms-teams", null)]
     [InlineData("olk", "outlook")]
     [InlineData("OUTLOOK", "outlook")]
     [InlineData("WhatsApp", "whatsapp")]
@@ -51,9 +53,9 @@ public class MessengersTests
     public void Reads_sender_and_first_line()
     {
         var time = DateTimeOffset.Now;
-        var message = Messengers.Parse("MSTeams_8wekyb3d8bbwe!MSTeams", null,
+        var message = Messengers.Parse("5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App", null,
             new[] { "Lena Hoffmann", "  Can we\n  talk   before 3?  ", "" }, 42, time)!;
-        Assert.Equal("teams", message.App);
+        Assert.Equal("whatsapp", message.App);
         Assert.Equal("Lena Hoffmann", message.Title);
         Assert.Equal("Can we talk before 3?", message.Text);
         Assert.Equal(42u, message.Id);
@@ -78,7 +80,6 @@ public class MessengersTests
     [Theory]
     [InlineData("web.whatsapp.com", "whatsapp")]
     [InlineData("discord.com", "discord")]
-    [InlineData("teams.microsoft.com", "teams")]
     [InlineData("outlook.office.com", "outlook")]
     public void Recognises_the_web_apps_in_a_browser(string site, string key)
     {
@@ -92,6 +93,8 @@ public class MessengersTests
     public void Other_web_notifications_are_ignored()
     {
         Assert.Null(Messengers.Parse("Chrome", null, new[] { "Sale", "50% off today", "shop.example.com" }, 1, DateTimeOffset.Now));
+        Assert.Null(Messengers.Parse("Chrome", null, new[] { "Jonas", "Bist du da?", "teams.microsoft.com" }, 1, DateTimeOffset.Now));
+        Assert.Null(Messengers.Parse("MSTeams_8wekyb3d8bbwe!MSTeams", null, new[] { "Lena Hoffmann", "Hi" }, 1, DateTimeOffset.Now));
         // A message that only mentions a site somewhere doesn't make the browser a messenger.
         Assert.Null(Messengers.Parse("MSEdge", null,
             new[] { "News", "Read the whole story about the outage on discord.com and what the company said about it" }, 1, DateTimeOffset.Now));
@@ -127,7 +130,7 @@ public class BadgeCounterTests
         counter.Update(0);
         counter.Update(4);
         Assert.Equal(4, counter.Unread);
-        Assert.False(counter.Update(1)); // read three of them in Teams
+        Assert.False(counter.Update(1)); // read three of them in the app
         Assert.Equal(1, counter.Unread);
         Assert.False(counter.Update(0));
         Assert.Equal(0, counter.Unread);
@@ -154,7 +157,7 @@ public class BadgeCounterTests
         counter.Update(0);
         counter.Update(3);
         counter.MarkSeen();      // seen at 3
-        counter.Update(2);       // read one in Teams
+        counter.Update(2);       // read one in the app
         Assert.True(counter.Update(3)); // a new one: 3 again, but it is new
         Assert.Equal(1, counter.Unread);
     }

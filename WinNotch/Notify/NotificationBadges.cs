@@ -9,7 +9,7 @@ namespace WinNotch.Notify;
 
 /// <summary>
 /// The numbers on app icons in the taskbar ("badges"), read from Windows' notification database.
-/// Apps such as Teams and WhatsApp keep these up to date even when no toast reaches the notification
+/// Apps such as WhatsApp keep these up to date even when no toast reaches the notification
 /// center. Only badges are read, never notification texts.
 /// </summary>
 /// <remarks>
@@ -32,7 +32,7 @@ public static class NotificationBadges
     internal static (Dictionary<string, string> Values, Dictionary<string, string> Revisions) ReadSnapshot(string? folder = null)
     {
         folder ??= DefaultFolder;
-        string copy = Path.Combine(Path.GetTempPath(), $"WinNotch-badges-{Environment.ProcessId}-{Guid.NewGuid():N}");
+        string copy = Path.Combine(Path.GetTempPath(), $"Holm-badges-{Environment.ProcessId}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(copy);
         try
         {

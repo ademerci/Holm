@@ -25,7 +25,7 @@ public sealed class ChatMessage
     public string Title = "";
     public string Text = "";
     public DateTimeOffset Time;
-    /// <summary>The app only told us how many messages are unread (Teams in its own notification style).</summary>
+    /// <summary>The app only told us how many messages are unread, through the number on its taskbar icon.</summary>
     public bool CountOnly;
     public int Count = 1;
     /// <summary>The site, when the message came from the app running in a browser ("web.whatsapp.com").</summary>
@@ -38,9 +38,7 @@ public static class Messengers
 
     public static readonly IReadOnlyList<Messenger> All = new Messenger[]
     {
-        // New Teams (MSTeams_…), the free consumer app (MicrosoftTeams_…) and classic Teams (com.squirrel.Teams.Teams).
-        new("teams", "Teams", new[] { "teams" }, new[] { "ms-teams", "teams", "msteams" },
-            new[] { "teams.microsoft.com", "teams.live.com", "teams.cloud.microsoft" }, 0xFF5B5FC7, Chat, "msteams:"),
+        // Teams isn't one of them on purpose (since 1.5.1): its notifications stay out of the notch.
         new("whatsapp", "WhatsApp", new[] { "whatsapp" }, new[] { "whatsapp", "whatsapp.root" },
             new[] { "web.whatsapp.com" }, 0xFF25D366, Chat, "whatsapp:"),
         new("discord", "Discord", new[] { "discord" }, new[] { "discord", "discordptb", "discordcanary" },

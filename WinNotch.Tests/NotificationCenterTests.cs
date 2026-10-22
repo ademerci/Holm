@@ -43,17 +43,27 @@ public class NotificationCenterTests
         finally { ToastNotificationManager.History.Remove(tag, group, appId); }
     }
 
+    /// <summary>In new Outlook's name (installed with Windows 11), so it runs without WhatsApp or Discord.</summary>
     [Fact]
-    public async Task Reads_a_Teams_message()
+    public async Task Reads_an_Outlook_message()
     {
         if (!Enabled) return;
-        const string teams = "MSTeams_8wekyb3d8bbwe!MSTeams";
-        var (message, appId) = await RoundTripAsync(teams, "Lena Hoffmann", "Test {tag}: are you coming to the 3 pm call?");
+        const string outlook = "Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows";
+        var (message, appId) = await RoundTripAsync(outlook, "Lena Hoffmann", "Test {tag}: notes for Monday");
         Assert.NotNull(message);
-        Assert.Equal("teams", message!.App);
+        Assert.Equal("outlook", message!.App);
         Assert.Equal("Lena Hoffmann", message.Title);
         Assert.StartsWith("Test wn", message.Text);
-        Assert.Equal(teams, appId); // the notch opens Teams with it
+        Assert.Equal(outlook, appId); // the notch opens Outlook with it
+    }
+
+    [Fact]
+    public async Task Ignores_a_Teams_message()
+    {
+        if (!Enabled) return;
+        var (message, appId) = await RoundTripAsync("MSTeams_8wekyb3d8bbwe!MSTeams", "Lena Hoffmann", "Test {tag}: are you coming to the 3 pm call?");
+        Assert.Null(message);
+        Assert.Null(appId);
     }
 
     [Fact]

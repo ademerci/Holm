@@ -13,7 +13,7 @@ using WinNotch.Notify;
 namespace WinNotch;
 
 /// <summary>
-/// Messages from chat and mail apps (Teams, WhatsApp, Discord, Outlook, …), read from the Windows notification
+/// Messages from chat and mail apps (WhatsApp, Discord, Outlook, …), read from the Windows notification
 /// center: a notification counts as unread until you look at its app or click it in the notch. That needs
 /// "notification access" (Settings › Privacy › Notifications). Nothing is ever removed or changed.
 /// </summary>
@@ -28,8 +28,6 @@ internal sealed class MessagesService
 {
     public enum AccessState { Off, Allowed, Denied, Unavailable }
 
-    static readonly Messenger Teams = Messengers.Get("teams")!;
-
     readonly Func<string, bool> _shown; // is this messenger switched on?
     readonly DispatcherTimer _poll, _settle, _badgePop;
     FileSystemWatcher? _watcher;
@@ -39,7 +37,7 @@ internal sealed class MessagesService
     readonly Dictionary<string, ImageSource> _logos = new();
     readonly HashSet<string> _logoTried = new();
     UserNotificationListener? _listener;
-    bool _running, _evented, _primed, _busy, _again, _starting, _teamsToasts;
+    bool _running, _evented, _primed, _busy, _again, _starting;
     int _generation; // bumped by Stop, so a start still waiting for Windows' answer gives up
     List<ChatMessage> _toasts = new(); // unread notifications, oldest first
     List<ChatMessage> _messages = new();
@@ -52,8 +50,6 @@ internal sealed class MessagesService
     /// <summary>Unread messages of the messengers that are switched on, oldest first.</summary>
     public IReadOnlyList<ChatMessage> Messages => _messages;
     public int UnreadCount => _messages.Sum(m => m.Count);
-    /// <summary>Teams reports its count but has never sent a notification: it shows messages in its own style.</summary>
-    public bool TeamsOnlyCounts => _counts.TryGetValue(Teams.Key, out var count) && count.Count != null && !_teamsToasts;
 
     /// <summary>The list changed. The argument is the message that just arrived, or null if none did.</summary>
     public event Action<ChatMessage?>? Changed;
@@ -175,7 +171,6 @@ internal sealed class MessagesService
         _countTimes.Clear();
         _badgeRevisions.Clear();
         _pendingBadgePops.Clear();
-        _teamsToasts = false;
         if (_messages.Count > 0)
         {
             _messages = new();
@@ -299,7 +294,6 @@ internal sealed class MessagesService
                 if (message != null)
                 {
                     if (appId != null) _appIds[message.App] = appId;
-                    if (message.App == Teams.Key) _teamsToasts = true;
                     // Whatever is already there when we start is old news: count it, but don't pop out.
                     if (_primed && _shown(message.App) && (arrived == null || message.Time >= arrived.Time)) arrived = message;
                     if (_logoTried.Add(message.App)) await LoadLogoAsync(notification, message.App);
@@ -380,7 +374,7 @@ internal sealed class MessagesService
             {
                 var countOnly = new ChatMessage
                 {
-                    App = app.Key, Title = app.Key == Teams.Key ? "Microsoft Teams" : app.Name,
+                    App = app.Key, Title = app.Name,
                     CountOnly = true, Count = fromBadge - withText, Time = _countTimes[app.Key],
                     Text = fromBadge == 1 ? "1 unread message" : $"{fromBadge} unread messages",
                 };

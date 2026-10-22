@@ -8,10 +8,11 @@ namespace WinNotch.Tests;
 public class MessageBadgesTests
 {
     const string TeamsId = "MSTeams_8wekyb3d8bbwe!MSTeams";
+    const string DiscordId = "com.squirrel.Discord.Discord";
     const string WhatsAppId = "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App";
 
     [Theory]
-    [InlineData(TeamsId, "teams")]
+    [InlineData("Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows", "outlook")]
     [InlineData(WhatsAppId, "whatsapp")]
     [InlineData("com.squirrel.Discord.Discord", "discord")]
     public void Existing_numeric_badges_are_visible_without_a_popup(string appId, string app)
@@ -53,12 +54,12 @@ public class MessageBadgesTests
     {
         WithService(service =>
         {
-            Read(service, new() { [TeamsId] = "2", [WhatsAppId] = "4" });
+            Read(service, new() { [DiscordId] = "2", [WhatsAppId] = "4" });
             service.MarkRead("whatsapp");
-            Assert.Equal("teams", Assert.Single(service.Messages).App);
+            Assert.Equal("discord", Assert.Single(service.Messages).App);
             Assert.Equal(2, service.UnreadCount);
 
-            Read(service, new() { [TeamsId] = "2", [WhatsAppId] = "5" });
+            Read(service, new() { [DiscordId] = "2", [WhatsAppId] = "5" });
             Assert.Equal(3, service.UnreadCount);
             Assert.Equal(1, service.Messages.Single(m => m.App == "whatsapp").Count);
         });
@@ -93,13 +94,26 @@ public class MessageBadgesTests
     {
         WithService(service =>
         {
-            Read(service, new() { [TeamsId] = "0" });
-            var toast = new ChatMessage { Id = 9, App = "teams", Title = "Test sender", Time = DateTimeOffset.Now };
+            Read(service, new() { [DiscordId] = "0" });
+            var toast = new ChatMessage { Id = 9, App = "discord", Title = "Test sender", Time = DateTimeOffset.Now };
             Field<List<ChatMessage>>(service, "_toasts").Add(toast);
-            Read(service, new() { [TeamsId] = "0" });
+            Read(service, new() { [DiscordId] = "0" });
 
             Assert.Same(toast, Assert.Single(service.Messages));
             Assert.Equal(1, service.UnreadCount);
+        });
+    }
+
+    [Fact]
+    public void Teams_badges_are_ignored()
+    {
+        WithService(service =>
+        {
+            Read(service, new() { [TeamsId] = "0" });
+            Read(service, new() { [TeamsId] = "3" });
+            Invoke(service, "Publish", null, true);
+            Assert.Empty(service.Messages);
+            Assert.Equal(0, service.UnreadCount);
         });
     }
 

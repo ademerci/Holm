@@ -1169,8 +1169,7 @@ public partial class MainWindow : Window
         {
             MessagesService.AccessState.Denied => "Allow notification access…",
             MessagesService.AccessState.Unavailable => "Windows doesn't share notification text here – app badge counts only",
-            _ => _chat.TeamsOnlyCounts && !_settings.MutedApps.Contains("teams")
-                ? "Teams: set Settings › Notifications › Style to Windows to see who wrote" : null,
+            _ => null,
         };
         if (hint == null) return;
         MenuMessages.Items.Add(new Separator());
@@ -1236,8 +1235,8 @@ public partial class MainWindow : Window
         SetExpanded(false);
         _messages = new List<ChatMessage>
         {
-            new() { App = "teams", Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
-            new() { App = "teams", Title = "Lena Hoffmann", Text = "Can we go through them before the 3 pm call?", Time = DateTimeOffset.Now },
+            new() { App = "whatsapp", Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
+            new() { App = "whatsapp", Title = "Lena Hoffmann", Text = "Can we go through them before the 3 pm call?", Time = DateTimeOffset.Now },
         };
         RefreshMessages();
         ShowMessage(_messages[^1]);
