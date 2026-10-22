@@ -9,8 +9,8 @@ namespace WinNotch.Notify;
 
 /// <summary>
 /// The numbers on app icons in the taskbar ("badges"), read from Windows' notification database.
-/// Teams keeps its badge up to date in every notification style, also when it shows its messages
-/// in its own pop-ups that no other app can read. Only badges are read, never notification texts.
+/// Apps such as Teams and WhatsApp keep these up to date even when no toast reaches the notification
+/// center. Only badges are read, never notification texts.
 /// </summary>
 /// <remarks>
 /// The database is in use by Windows, so we read a copy (database and write-ahead log) in a private
@@ -61,7 +61,7 @@ public static class NotificationBadges
         foreach (var (appId, value) in badges)
         {
             if (Messengers.ForApp(appId)?.Key != app.Key) continue;
-            if (int.TryParse(value, out int n)) count = Math.Max(count ?? 0, n);
+            if (int.TryParse(value, out int n) && n >= 0) count = Math.Max(count ?? 0, n);
         }
         return count;
     }
@@ -94,8 +94,7 @@ public sealed class BadgeCounter
         _count = count;
         if (before == null)
         {
-            // The number the app showed when we started is old news, like the notifications already there.
-            _seen = count;
+            // Existing unread messages belong on the badge too. They aren't a new arrival, so don't pop out.
             return false;
         }
         _seen = Math.Min(_seen, count); // read some in the app: fewer are new

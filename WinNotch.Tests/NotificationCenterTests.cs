@@ -57,6 +57,19 @@ public class NotificationCenterTests
     }
 
     [Fact]
+    public async Task Reads_a_WhatsApp_message()
+    {
+        if (!Enabled) return;
+        const string whatsapp = "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App";
+        var (message, appId) = await RoundTripAsync(whatsapp, "Test sender", "Test {tag}: message delivery");
+        Assert.NotNull(message);
+        Assert.Equal("whatsapp", message!.App);
+        Assert.Equal("Test sender", message.Title);
+        Assert.StartsWith("Test wn", message.Text);
+        Assert.Equal(whatsapp, appId);
+    }
+
+    [Fact]
     public async Task Ignores_a_notification_from_another_app()
     {
         if (!Enabled) return;
