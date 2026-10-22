@@ -27,7 +27,7 @@ internal sealed class AppSettings
     public List<string> MutedApps { get; set; } = new();
     /// <summary>Downloads in the Downloads folder show in the notch.</summary>
     public bool Downloads { get; set; } = true;
-    /// <summary>Beam: drop files on the notch to send them; be visible to WinNotch users on this network; pick up copied codes.</summary>
+    /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
     /// <summary>Relay for sending over the internet, "host:port".</summary>
@@ -90,10 +90,34 @@ internal sealed class AppSettings
     }
 }
 
+/// <summary>WinNotch was renamed Holm in 1.5.1: its settings and autostart entry carry over on the first start.</summary>
+internal static class FormerName
+{
+    public const string Name = "WinNotch";
+
+    public static void Migrate()
+    {
+        try
+        {
+            // Copied, not moved, so the old version still finds its settings should someone go back.
+            string before = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Name, "settings.json");
+            string now = Path.Combine(Diag.Folder, "settings.json");
+            if (!File.Exists(now) && File.Exists(before))
+            {
+                Directory.CreateDirectory(Diag.Folder);
+                File.Copy(before, now);
+            }
+        }
+        catch (Exception ex) { Diag.Error(ex); }
+        try { Autostart.TakeOver(Name); }
+        catch (Exception ex) { Diag.Error(ex); }
+    }
+}
+
 internal static class Autostart
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "WinNotch";
+    const string ValueName = "Holm";
 
     public static bool IsEnabled
     {
@@ -111,12 +135,21 @@ internal static class Autostart
         if (enabled) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
         else key.DeleteValue(ValueName, false);
     }
+
+    /// <summary>Replaces the entry of the app's former name with ours: on if it was on, so it doesn't start twice.</summary>
+    public static void TakeOver(string formerName)
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        if (key?.GetValue(formerName) == null) return;
+        key.DeleteValue(formerName, false);
+        if (key.GetValue(ValueName) == null) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
+    }
 }
 
 internal static class Diag
 {
     public static bool Enabled;
-    public static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinNotch");
+    public static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
 
     public static void Log(string message)
     {

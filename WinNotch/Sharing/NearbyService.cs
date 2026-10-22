@@ -14,18 +14,18 @@ using System.Threading.Tasks;
 
 namespace WinNotch.Sharing;
 
-/// <summary>Another WinNotch on the same network.</summary>
+/// <summary>Another Holm on the same network.</summary>
 public sealed record NearbyPeer(Guid Id, string Name, IPEndPoint Endpoint, DateTime LastSeen);
 
 /// <summary>
-/// Finds other WinNotch apps on the local network (a small UDP broadcast) and accepts their transfers
+/// Finds other Holm apps on the local network (a small UDP broadcast) and accepts their transfers
 /// (TCP). Each connection agrees on a fresh key (ECDH P-256), so nothing crosses the network in clear text.
 /// Nothing polls: there is one announcement a minute, and others answer when someone asks.
 /// </summary>
 public sealed class NearbyService : IDisposable
 {
     public const int DefaultDiscoveryPort = 47811;
-    const string App = "WinNotch";
+    const string App = "WinNotch"; // the app's former name, kept so Holm and older versions still find each other
     static readonly TimeSpan PeerLifetime = TimeSpan.FromMinutes(3);
 
     readonly Guid _id = Guid.NewGuid();
@@ -216,7 +216,7 @@ public sealed class NearbyService : IDisposable
             if (packet.Port is <= 0 or > 65535) continue;
 
             string name = new string((packet.Name ?? "").Where(c => !char.IsControl(c)).Take(40).ToArray()).Trim();
-            var peer = new NearbyPeer(packet.Id, name.Length > 0 ? name : "WinNotch", new IPEndPoint(result.RemoteEndPoint.Address, packet.Port), DateTime.UtcNow);
+            var peer = new NearbyPeer(packet.Id, name.Length > 0 ? name : "Holm", new IPEndPoint(result.RemoteEndPoint.Address, packet.Port), DateTime.UtcNow);
             bool isNew = !_peers.ContainsKey(packet.Id);
             _peers[packet.Id] = peer;
             if (isNew) PeersChanged?.Invoke();

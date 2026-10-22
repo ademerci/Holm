@@ -100,7 +100,7 @@ internal static class Native
 
     static string? _displayName;
 
-    /// <summary>How other WinNotch users see you: your Windows display name, or the account name.</summary>
+    /// <summary>How other Holm users see you: your Windows display name, or the account name.</summary>
     public static string DisplayName()
     {
         if (_displayName != null) return _displayName;

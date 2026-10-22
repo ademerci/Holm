@@ -19,8 +19,8 @@ internal sealed record UpdateRelease(Version Version, string Tag, Uri ReleaseUrl
 /// <summary>Reads public stable releases and stages a verified standalone executable without touching the installed app.</summary>
 internal sealed class UpdateService : IDisposable
 {
-    const string RepositoryUrl = "https://github.com/ademerci/WinNotch";
-    internal const string LatestReleaseUrl = "https://api.github.com/repos/ademerci/WinNotch/releases/latest";
+    const string RepositoryUrl = "https://github.com/ademerci/Holm";
+    internal const string LatestReleaseUrl = "https://api.github.com/repos/ademerci/Holm/releases/latest";
     internal const long MaxDownloadBytes = 256L * 1024 * 1024;
     internal const long MaxExecutableBytes = 512L * 1024 * 1024;
     const int MaxMetadataBytes = 1024 * 1024;
@@ -69,7 +69,7 @@ internal sealed class UpdateService : IDisposable
         var releaseUrl = new Uri($"{RepositoryUrl}/releases/tag/{tag}");
         var downloadUrl = new Uri($"{RepositoryUrl}/releases/download/{tag}/{name}");
         if (!string.Equals(Text(asset, "browser_download_url"), downloadUrl.AbsoluteUri, StringComparison.Ordinal))
-            throw new InvalidDataException("The release download does not belong to WinNotch.");
+            throw new InvalidDataException("The release download does not belong to Holm.");
         return new UpdateRelease(version!, tag!, releaseUrl, downloadUrl, size, digest.Groups[1].Value.ToLowerInvariant());
     }
 
@@ -81,7 +81,7 @@ internal sealed class UpdateService : IDisposable
         string operationDirectory = Path.Combine(root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(operationDirectory);
         string zipPath = Path.Combine(operationDirectory, "download.zip");
-        string exePath = Path.Combine(operationDirectory, "WinNotch.exe");
+        string exePath = Path.Combine(operationDirectory, "Holm.exe");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromMinutes(15));
         var token = timeout.Token;
@@ -139,7 +139,7 @@ internal sealed class UpdateService : IDisposable
     static HttpRequestMessage Request(Uri uri)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd("WinNotch-Updater/1.0");
+        request.Headers.UserAgent.ParseAdd("Holm-Updater/1.0");
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
         request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
         return request;
@@ -151,7 +151,7 @@ internal sealed class UpdateService : IDisposable
             || release.Size <= 0 || release.Size > MaxDownloadBytes || !Sha256Digest.IsMatch("sha256:" + release.Sha256)
             || release.DownloadUrl.AbsoluteUri != $"{RepositoryUrl}/releases/download/{release.Tag}/{AssetName(release.Tag)}"
             || release.ReleaseUrl.AbsoluteUri != $"{RepositoryUrl}/releases/tag/{release.Tag}")
-            throw new InvalidDataException("The update does not describe a verified WinNotch release.");
+            throw new InvalidDataException("The update does not describe a verified Holm release.");
     }
 
     static ZipArchiveEntry FindExecutable(ZipArchive archive)
@@ -164,7 +164,7 @@ internal sealed class UpdateService : IDisposable
             if (name.Length == 0 || name.Contains('/') || name.Contains('\\') || name.Contains(':') || name is "." or ".."
                 || ((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000)
                 throw new InvalidDataException("The update archive contains an unsafe path.");
-            if (name == "WinNotch.exe")
+            if (name == "Holm.exe")
             {
                 if (executable != null || entry.Length <= 0 || entry.Length > MaxExecutableBytes)
                     throw new InvalidDataException("The update archive has an invalid executable.");
@@ -180,7 +180,7 @@ internal sealed class UpdateService : IDisposable
                     throw new InvalidDataException("This release needs more than one executable and cannot be installed automatically.");
             }
         }
-        return executable ?? throw new InvalidDataException("The update archive does not contain WinNotch.exe.");
+        return executable ?? throw new InvalidDataException("The update archive does not contain Holm.exe.");
     }
 
     internal static void ValidateExecutable(string path, Version expectedVersion)
@@ -193,8 +193,8 @@ internal sealed class UpdateService : IDisposable
             throw new InvalidDataException("The update is not a Windows x64 application.");
         var file = FileVersionInfo.GetVersionInfo(path);
         var actualVersion = new Version(file.FileMajorPart, file.FileMinorPart, file.FileBuildPart, file.FilePrivatePart);
-        if (Normalize(actualVersion) != Normalize(expectedVersion) || file.ProductName != "WinNotch")
-            throw new InvalidDataException("The executable does not match the advertised WinNotch version.");
+        if (Normalize(actualVersion) != Normalize(expectedVersion) || file.ProductName != "Holm")
+            throw new InvalidDataException("The executable does not match the advertised Holm version.");
     }
 
     static bool TryVersion(string? tag, out Version? version)
@@ -204,7 +204,7 @@ internal sealed class UpdateService : IDisposable
     }
 
     static Version Normalize(Version version) => new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
-    static string AssetName(string tag) => $"WinNotch-{tag.TrimStart('v')}-win-x64.zip";
+    static string AssetName(string tag) => $"Holm-{tag.TrimStart('v')}-win-x64.zip";
     static bool Flag(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
     static string? Text(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 

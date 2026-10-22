@@ -57,8 +57,8 @@ public class UpdateMenuTests
         => WithWindow(async window =>
         {
             var known = new UpdateRelease(new Version(99, 0, 0), "v99.0.0",
-                new Uri("https://github.com/ademerci/WinNotch/releases/tag/v99.0.0"),
-                new Uri("https://github.com/ademerci/WinNotch/releases/download/v99.0.0/WinNotch-99.0.0-win-x64.zip"), 100, new string('a', 64));
+                new Uri("https://github.com/ademerci/Holm/releases/tag/v99.0.0"),
+                new Uri("https://github.com/ademerci/Holm/releases/download/v99.0.0/Holm-99.0.0-win-x64.zip"), 100, new string('a', 64));
             Set(window, "_availableUpdate", known);
             using var http = new HttpClient(new ResponseHandler("", HttpStatusCode.ServiceUnavailable));
             Set(window, "_updates", new UpdateService(http));
@@ -83,9 +83,9 @@ public class UpdateMenuTests
     static string ReleaseJson(string version) => JsonSerializer.Serialize(new
     {
         tag_name = "v" + version, draft = false, prerelease = false,
-        assets = new[] { new { name = $"WinNotch-{version}-win-x64.zip", state = "uploaded", size = 100,
+        assets = new[] { new { name = $"Holm-{version}-win-x64.zip", state = "uploaded", size = 100,
             digest = "sha256:" + new string('a', 64),
-            browser_download_url = $"https://github.com/ademerci/WinNotch/releases/download/v{version}/WinNotch-{version}-win-x64.zip" } }
+            browser_download_url = $"https://github.com/ademerci/Holm/releases/download/v{version}/Holm-{version}-win-x64.zip" } }
     });
 
     sealed class ResponseHandler(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler

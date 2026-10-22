@@ -15,7 +15,7 @@ using WinNotch.Sharing;
 namespace WinNotch;
 
 /// <summary>
-/// Beam (WinNotch's AirDrop): drop files on the notch and pick a friend (anywhere), a person on the same
+/// Beam (Holm's AirDrop): drop files on the notch and pick a friend (anywhere), a person on the same
 /// network, or get a code that works anywhere (through the relay). The receiver's notch always asks first,
 /// and files land in Downloads.
 /// </summary>
@@ -217,7 +217,7 @@ public partial class MainWindow
         ShareHint.Text = friends.Count > 0
             ? "Drop it on a friend, on someone nearby, or on Code."
             : peers.Count == 0
-                ? "No one with WinNotch on this network – drop it on Code to send it anywhere."
+                ? "No one with Holm on this network – drop it on Code to send it anywhere."
                 : "Drop it on a person, or on Code to send it anywhere.";
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
@@ -314,7 +314,7 @@ public partial class MainWindow
         byte[] secret = ShareCode.NewSecret();
         string code = ShareCode.Format(secret);
         _ownCodes.Add(code);
-        bool copied = TrySetClipboard($"WinNotch Beam code: {code}");
+        bool copied = TrySetClipboard($"Holm Beam code: {code}");
         ShowTask("", ShareBlue, copied ? "Code copied – paste it to your friend" : "Send this code to your friend", code, null, null, ("Cancel", CancelTask));
         try
         {
@@ -357,7 +357,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
         {
-            EndTask("\uE916", RedBrush, $"{friend.Name} didn't answer", "Their WinNotch may not be running");
+            EndTask("\uE916", RedBrush, $"{friend.Name} didn't answer", "Their Holm may not be running");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
@@ -468,7 +468,7 @@ public partial class MainWindow
             if (!ShareCode.TryFind(text, out var secret, out var code)) return;
             if (_ownCodes.Contains(code) || code == _lastOfferedCode) return;
             _lastOfferedCode = code;
-            ShowTask("", ShareBlue, "WinNotch code copied", "Get the file your friend is sending?", null,
+            ShowTask("", ShareBlue, "Holm code copied", "Get the file your friend is sending?", null,
                      ("Receive", () => _ = ReceiveWithCodeAsync(secret)), ("Not now", HideTask));
             _taskHide.Interval = TimeSpan.FromSeconds(20);
             _taskHide.Start();
@@ -648,7 +648,7 @@ public partial class MainWindow
     {
         if (!ShareCode.TryFind(ReadClipboardText(), out var secret, out var code))
         {
-            ShowPeek("", "Copy your friend's WinNotch code first", "", null, false, null);
+            ShowPeek("", "Copy your friend's Holm code first", "", null, false, null);
             return;
         }
         if (_ownCodes.Contains(code))
@@ -696,7 +696,7 @@ public partial class MainWindow
     void CopyFriendCode()
     {
         var me = _friends.EnsureMe();
-        if (TrySetClipboard($"Add me as a friend in WinNotch: {me.FriendCode}"))
+        if (TrySetClipboard($"Add me as a friend in Holm: {me.FriendCode}"))
             ShowPeek("\uE8C8", "Friend code copied – send it to a friend", "", null, false, null, seconds: 4);
         else
             ShowPeek("\uE783", "Clipboard busy, try again", "", null, false, RedBrush);

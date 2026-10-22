@@ -63,7 +63,7 @@ public class FileTransferTests
 
         Assert.Equal("mine", File.ReadAllText(Path.Combine(target.Path, "notes.txt")));
         Assert.Equal(Path.Combine(target.Path, "notes (1).txt"), saved!.Single());
-        Assert.Equal("theirs", File.ReadAllText(saved.Single()));
+        Assert.Equal("theirs", File.ReadAllText(saved!.Single()));
     }
 
     // ───────────── a sender that doesn't play by the rules ─────────────

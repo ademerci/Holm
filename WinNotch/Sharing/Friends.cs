@@ -15,7 +15,7 @@ namespace WinNotch.Sharing;
 // Friends: people you beam to by name, anywhere, without passing a code around each time.
 //
 // Everyone has a key pair and an inbox (a topic on an ntfy server, https://ntfy.sh unless set otherwise).
-// A friend code carries your name, inbox and public key. To send files to a friend, WinNotch makes a fresh
+// A friend code carries your name, inbox and public key. To send files to a friend, Holm makes a fresh
 // share secret, exactly like a Beam code, and leaves it in the friend's inbox as a sealed note; both notches
 // then meet on the transit relay with it, as if the code had been copied. The inbox only ever carries these
 // small notes, never files.
@@ -151,7 +151,7 @@ public static class FriendNotes
 {
     /// <summary>Notes are text messages: this prefix, the sender's public key, and the sealed note.</summary>
     public const string Prefix = "wnf1 ";
-    static readonly byte[] KeyLabel = "WinNotch friends v1"u8.ToArray();
+    static readonly byte[] KeyLabel = "WinNotch friends v1"u8.ToArray(); // former name, kept for friends on older versions
     const int NonceSize = 12, TagSize = 16;
 
     sealed class NoteDto
@@ -237,7 +237,7 @@ public static class FriendInbox
     })
     {
         Timeout = Timeout.InfiniteTimeSpan, // our inbox is one long request; posting has its own token
-        DefaultRequestHeaders = { { "User-Agent", "WinNotch-Friends/1" } },
+        DefaultRequestHeaders = { { "User-Agent", "Holm-Friends/1" } },
     };
 
     static string InboxUrl(string? server, string topic) => $"{FriendIdentity.NormalizeServer(server)}/{Uri.EscapeDataString(topic)}";

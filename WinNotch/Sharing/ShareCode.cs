@@ -73,6 +73,7 @@ public static class ShareCode
     }
 
     /// <summary>The AES-256 key both sides encrypt with.</summary>
+    // The labels keep the app's former name: changing them would stop Holm from talking to older versions.
     public static byte[] Key(byte[] secret) => Derive(secret, "WinNotch transfer key v1");
 
     /// <summary>The channel name on the relay. Different from the key, so the relay learns nothing about it.</summary>

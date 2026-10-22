@@ -114,10 +114,10 @@ public class UpdateInstallerTests
     {
         using var files = new Fixture();
         using var parent = Process.GetCurrentProcess();
-        string downloadRoot = Path.Combine(Path.GetTempPath(), "WinNotch-update-" + Guid.NewGuid().ToString("N"));
+        string downloadRoot = Path.Combine(Path.GetTempPath(), "Holm-update-" + Guid.NewGuid().ToString("N"));
         string downloadDirectory = Path.Combine(downloadRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(downloadDirectory);
-        string downloadedExe = Path.Combine(downloadDirectory, "WinNotch.exe");
+        string downloadedExe = Path.Combine(downloadDirectory, "Holm.exe");
         File.Copy(files.Source, downloadedExe);
         try
         {
@@ -162,14 +162,14 @@ public class UpdateInstallerTests
     public async Task A_valid_update_replaces_restarts_and_cleans_its_download()
     {
         using var files = new Fixture();
-        string downloadRoot = Path.Combine(Path.GetTempPath(), "WinNotch-update-" + Guid.NewGuid().ToString("N"));
+        string downloadRoot = Path.Combine(Path.GetTempPath(), "Holm-update-" + Guid.NewGuid().ToString("N"));
         string downloadDirectory = Path.Combine(downloadRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(downloadDirectory);
-        string downloadedExe = Path.Combine(downloadDirectory, "WinNotch.exe");
+        string downloadedExe = Path.Combine(downloadDirectory, "Holm.exe");
         try
         {
             // Use Microsoft's signed PowerShell host as a hidden, long-running replacement.
-            // Application Control may block unsigned test executables even though it permits WinNotch.
+            // Application Control may block unsigned test executables even though it permits Holm.
             string windowsPowerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
             File.Copy(windowsPowerShell, downloadedExe);
 
@@ -188,7 +188,7 @@ public class UpdateInstallerTests
             Assert.False(File.Exists(plan.PendingPath));
             if (Directory.Exists(downloadRoot))
                 Assert.Fail("The helper left: " + string.Join(", ", Directory.GetFileSystemEntries(downloadRoot).Select(Path.GetFileName)));
-            var restarted = Process.GetProcessesByName("WinNotch").FirstOrDefault(process =>
+            var restarted = Process.GetProcessesByName("Holm").FirstOrDefault(process =>
             {
                 try { return string.Equals(Path.GetFullPath(process.MainModule!.FileName!), files.Target, StringComparison.OrdinalIgnoreCase); }
                 catch { return false; }
@@ -215,8 +215,8 @@ public class UpdateInstallerTests
     {
         using var files = new Fixture();
         Assert.Null(UpdateInstaller.DownloadCleanupRoot(files.Source));
-        Assert.Null(UpdateInstaller.DownloadCleanupRoot(Path.Combine(Path.GetTempPath(), "WinNotch-update-important", Guid.NewGuid().ToString("N"), "WinNotch.exe")));
-        Assert.Null(UpdateInstaller.DownloadCleanupRoot(Path.Combine(Path.GetTempPath(), "WinNotch-update-" + Guid.NewGuid().ToString("N"), "user files", "WinNotch.exe")));
+        Assert.Null(UpdateInstaller.DownloadCleanupRoot(Path.Combine(Path.GetTempPath(), "Holm-update-important", Guid.NewGuid().ToString("N"), "Holm.exe")));
+        Assert.Null(UpdateInstaller.DownloadCleanupRoot(Path.Combine(Path.GetTempPath(), "Holm-update-" + Guid.NewGuid().ToString("N"), "user files", "Holm.exe")));
     }
 
     // A separate, harmless process simulates the app exiting after it receives readiness.
@@ -255,8 +255,8 @@ public class UpdateInstallerTests
             Work = Path.Combine(_folder.Path, "helper's files");
             System.IO.Directory.CreateDirectory(Work);
             string system = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            Target = Path.Combine(Directory, "WinNotch.exe");
-            Source = Path.Combine(_folder.Path, "new WinNotch.exe");
+            Target = Path.Combine(Directory, "Holm.exe");
+            Source = Path.Combine(_folder.Path, "new Holm.exe");
             File.Copy(Path.Combine(system, "find.exe"), Target);
             File.Copy(Path.Combine(system, "where.exe"), Source);
             TargetHash = UpdateInstaller.HashFile(Target);

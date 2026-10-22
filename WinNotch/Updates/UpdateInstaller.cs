@@ -26,7 +26,7 @@ internal static class UpdateInstaller
                 return "Automatic updates are available for the Windows x64 version.";
             if (Assembly.GetExecutingAssembly().Location.Length != 0 || Environment.ProcessPath is not { } path
                 || !path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                return "Run the published WinNotch executable to install updates automatically.";
+                return "Run the published Holm executable to install updates automatically.";
             if (!File.Exists(PowerShellPath))
                 return "Windows PowerShell is unavailable. Download the update from the release page.";
             return null;
@@ -42,7 +42,7 @@ internal static class UpdateInstaller
         if (Normalize(expectedVersion) <= Normalize(Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0)))
             throw new InvalidOperationException("The update must be newer than the running version.");
 
-        string work = Path.Combine(Path.GetTempPath(), "WinNotch", "Updates", Guid.NewGuid().ToString("N"));
+        string work = Path.Combine(Path.GetTempPath(), "Holm", "Updates", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
         using var parent = Process.GetCurrentProcess();
         InstallPlan plan;
@@ -102,7 +102,7 @@ internal static class UpdateInstaller
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new IOException("WinNotch cannot update this folder. Move the app to a folder you can write to, then try again.", ex);
+            throw new IOException("Holm cannot update this folder. Move the app to a folder you can write to, then try again.", ex);
         }
         finally { if (File.Exists(probe)) File.Delete(probe); }
 
@@ -151,10 +151,10 @@ internal static class UpdateInstaller
             cancellationToken.ThrowIfCancellationRequested();
             if (File.Exists(plan.ErrorPath)) throw new IOException(await File.ReadAllTextAsync(plan.ErrorPath, cancellationToken).ConfigureAwait(false));
             if (File.Exists(plan.ReadyPath)) return;
-            if (helper.HasExited) throw new IOException("The update helper stopped before it was ready. WinNotch is still running.");
+            if (helper.HasExited) throw new IOException("The update helper stopped before it was ready. Holm is still running.");
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
-        throw new IOException("The update helper did not become ready in time. WinNotch is still running.");
+        throw new IOException("The update helper did not become ready in time. Holm is still running.");
     }
 
     internal static Version ExecutableVersion(string path)
@@ -169,10 +169,10 @@ internal static class UpdateInstaller
     {
         var directory = new FileInfo(Path.GetFullPath(source)).Directory;
         var root = directory?.Parent;
-        if (!string.Equals(Path.GetFileName(source), "WinNotch.exe", StringComparison.OrdinalIgnoreCase)
+        if (!string.Equals(Path.GetFileName(source), "Holm.exe", StringComparison.OrdinalIgnoreCase)
             || directory == null || !Guid.TryParseExact(directory.Name, "N", out _)
-            || root == null || !root.Name.StartsWith("WinNotch-update-", StringComparison.Ordinal)
-            || !Guid.TryParseExact(root.Name.Substring("WinNotch-update-".Length), "N", out _)
+            || root == null || !root.Name.StartsWith("Holm-update-", StringComparison.Ordinal)
+            || !Guid.TryParseExact(root.Name.Substring("Holm-update-".Length), "N", out _)
             || !string.Equals(root.Parent?.FullName.TrimEnd(Path.DirectorySeparatorChar),
                 Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase)) return null;
         return root.FullName;
@@ -251,7 +251,7 @@ internal static class UpdateInstaller
                     throw 'The update paths are not safe to use.'
                 }
             }
-            if (-not (Parent-IsRunning)) { throw 'WinNotch closed before the update was ready.' }
+            if (-not (Parent-IsRunning)) { throw 'Holm closed before the update was ready.' }
             Check-Cancel
             Assert-FileHash $plan.TargetPath $plan.TargetHash
             Assert-FileHash $plan.SourcePath $plan.SourceHash
@@ -277,7 +277,7 @@ internal static class UpdateInstaller
             $wait = [Diagnostics.Stopwatch]::StartNew()
             while (Parent-IsRunning) {
                 Check-Cancel
-                if ($wait.Elapsed.TotalSeconds -ge $plan.ExitTimeoutSeconds) { throw 'WinNotch did not close in time. The original app was kept.' }
+                if ($wait.Elapsed.TotalSeconds -ge $plan.ExitTimeoutSeconds) { throw 'Holm did not close in time. The original app was kept.' }
                 Start-Sleep -Milliseconds 100
             }
             Check-Cancel
@@ -313,7 +313,7 @@ internal static class UpdateInstaller
                     try {
                         $oldApp = Start-App
                         if ($null -ne $oldApp) { $oldApp.Dispose() }
-                    } catch { $message += ' Please start WinNotch again from its usual location.' }
+                    } catch { $message += ' Please start Holm again from its usual location.' }
                     try { [IO.File]::Delete($plan.FailedPath) } catch { }
                 } catch {
                     $message += ' The previous version is available at: ' + $plan.BackupPath
@@ -329,7 +329,7 @@ internal static class UpdateInstaller
             if ($plan.ShowErrors -and $ready -and -not (Parent-IsRunning)) {
                 try {
                     Add-Type -AssemblyName PresentationFramework
-                    [void][Windows.MessageBox]::Show($message, 'WinNotch update', 'OK', 'Error')
+                    [void][Windows.MessageBox]::Show($message, 'Holm update', 'OK', 'Error')
                 } catch { }
             }
         } finally {
@@ -345,9 +345,9 @@ internal static class UpdateInstaller
                     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)
                     if ([IO.Path]::GetDirectoryName($sourceDirectory) -eq $cleanupRoot -and
                         [IO.Path]::GetDirectoryName($cleanupRoot) -eq $tempRoot -and
-                        [IO.Path]::GetFileName($cleanupRoot) -cmatch '^WinNotch-update-[0-9a-f]{32}$' -and
+                        [IO.Path]::GetFileName($cleanupRoot) -cmatch '^Holm-update-[0-9a-f]{32}$' -and
                         [IO.Path]::GetFileName($sourceDirectory) -cmatch '^[0-9a-f]{32}$' -and
-                        [IO.Path]::GetFileName($plan.SourcePath) -eq 'WinNotch.exe') {
+                        [IO.Path]::GetFileName($plan.SourcePath) -eq 'Holm.exe') {
                         Assert-FileHash $plan.SourcePath $plan.SourceHash
                         [IO.File]::Delete($plan.SourcePath)
                         try { [IO.Directory]::Delete($sourceDirectory, $false) } catch { }

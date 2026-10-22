@@ -232,7 +232,7 @@ internal static class Shell
         {
             try { done.SetResult(work()); }
             catch (Exception ex) { done.SetException(ex); }
-        }) { IsBackground = true, Name = "WinNotch shell" };
+        }) { IsBackground = true, Name = "Holm shell" };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         return done.Task;

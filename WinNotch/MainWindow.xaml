@@ -1,7 +1,7 @@
 ﻿<Window x:Class="WinNotch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WinNotch" Width="480" Height="250" Left="0" Top="0"
+        Title="Holm" Width="480" Height="250" Left="0" Top="0"
         WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
         ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
         WindowStartupLocation="Manual" UseLayoutRounding="True"
@@ -13,7 +13,7 @@
         <SolidColorBrush x:Key="Dim" Color="#A6FFFFFF"/>
         <SolidColorBrush x:Key="Faint" Color="#66FFFFFF"/>
         <SolidColorBrush x:Key="ArtFallback" Color="#FF262628"/>
-        <SolidColorBrush x:Key="TeamsPurple" Color="#FF5B5FC7"/>
+        <SolidColorBrush x:Key="BadgeFallback" Color="#FF5B5FC7"/>
 
         <Geometry x:Key="PlayGeo">M3,1 L16,9 L3,17 Z</Geometry>
         <Geometry x:Key="PauseGeo">M3,1 L7,1 L7,17 L3,17 Z M11,1 L15,1 L15,17 L11,17 Z</Geometry>
@@ -61,7 +61,7 @@
 
         <!-- Unread count, like the badge on a phone's app icon -->
         <Style x:Key="CountPill" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource TeamsPurple}"/>
+            <Setter Property="Background" Value="{StaticResource BadgeFallback}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Height" Value="16"/>
             <Setter Property="MinWidth" Value="16"/>
@@ -123,7 +123,7 @@
             </Setter>
         </Style>
 
-        <!-- A whole row you can click (the Teams messages in the open notch) -->
+        <!-- A whole row you can click (the messages in the open notch) -->
         <Style x:Key="RowButton" TargetType="Button">
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Foreground" Value="White"/>
@@ -240,7 +240,7 @@
                         </Border>
                     </Grid>
 
-                    <!-- Message: a message just came in (Teams, WhatsApp, Discord, Outlook, ...) -->
+                    <!-- Message: a message just came in (WhatsApp, Discord, Outlook, ...) -->
                     <Grid x:Name="MessageView" Opacity="0" IsHitTestVisible="False" Margin="14,0,18,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

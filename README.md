@@ -1,8 +1,10 @@
-<img src="docs/icon.png" width="72" align="left" alt="WinNotch icon">
+<img src="docs/icon.png" width="72" align="left" alt="Holm icon">
 
-# WinNotch
+# Holm
 
 A Dynamic Island–style notch for Windows. It sits at the top of your screen, shows what's playing with full controls, tints itself in the colours of the album cover, pops out your messages and downloads, sends files to your friends AirDrop-style and keeps an eye on your laptop and Bluetooth headphone battery – while using almost no resources.
+
+*Holm was called WinNotch up to version 1.5.0. Your settings carry over when you switch.*
 
 <p align="center">
   <img src="docs/expanded.png" width="480" alt="Expanded notch with media controls, shuffle and repeat, battery levels">
@@ -18,13 +20,13 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Media controls** for anything that talks to Windows' media controls – Spotify, YouTube in Chrome or Edge, VLC, … Cover, title, album, seek bar, play/pause, skip, **shuffle and repeat**, volume. Click the cover to bring the player to the front.
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
-- **Beam** (WinNotch's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
+- **Beam** (Holm's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
 - **Updates in the app** – checks for stable releases shortly after startup and every six hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
-- **Messages** from Teams, WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
+- **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
@@ -39,7 +41,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 Drag files onto the notch. It opens and shows:
 
 - **Friends** – people you added once (see below). Works anywhere: at home, at school, on a hotspot, on different networks. Drop the files on a friend and their notch asks *Accept* or *Decline*; no code to pass around.
-- **People nearby** – everyone running WinNotch on the same network. Drop the files on a person and their notch asks *Accept* or *Decline*.
+- **People nearby** – everyone running Holm (or WinNotch, as it was called before) on the same network. Drop the files on a person and their notch asks *Accept* or *Decline*.
 - **Code** – works anywhere, also on networks that don't let devices talk to each other (school, office, hotspots). Drop the files on *Code* and a code like `WN-K7Q2A-…` is copied for you. Paste it to your friend in any chat; as soon as they copy it, their notch offers to receive the file. Right-click › *Receive with copied code* does the same.
 
 Received files land in your **Downloads** folder.
@@ -52,7 +54,7 @@ Received files land in your **Downloads** folder.
 
 Both notches have to be running when you send, as with the other ways. If your friend's notch doesn't answer within 10 minutes, nothing is sent.
 
-How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, WinNotch leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
+How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
 
 How it stays safe:
 
@@ -62,7 +64,7 @@ How it stays safe:
 - **Through the relay, only scrambled bytes.** Code transfers go through the public *transit relay* of the open-source [magic-wormhole](https://github.com/magic-wormhole/magic-wormhole) project. It only pairs the two sides and passes encrypted data along – it never sees the code, the key, file names or content. A code works once and expires after 15 minutes.
 - **Files stay where they belong.** File names are cleaned up, so nothing can be written outside Downloads and no invisible text-direction marks can disguise `holiday‮gpj.exe` as a picture; existing files are never overwritten (you get `photo (1).jpg`); a cancelled transfer leaves no half file behind.
 - **Marked as downloaded.** Received files get Windows' "from the internet" mark, so Windows warns before running a received program, just like with a browser download.
-- To be found on the network, WinNotch listens on UDP port 47811 and a TCP port, so Windows Firewall may ask once. Turn Beam off in the right-click menu if you don't want any of it (that also closes the friends inbox).
+- To be found on the network, Holm listens on UDP port 47811 and a TCP port, so Windows Firewall may ask once. Turn Beam off in the right-click menu if you don't want any of it (that also closes the friends inbox).
 
 ## Lightweight
 
@@ -75,19 +77,19 @@ Native WPF on .NET 10 and event driven: it reacts when Windows reports a change 
 
 Measured on an 8-thread laptop. Turning off the equalizer animation brings playback down to idle levels.
 
-**Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so WinNotch watches the folder of Windows' notification database instead and looks only when it changes. In between it costs nothing; a check once a minute is the safety net. **Downloads** work the same way: WinNotch is told when a file appears in Downloads and only measures sizes while a download is running.
+**Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so Holm watches the folder of Windows' notification database instead and looks only when it changes. In between it costs nothing; a check once a minute is the safety net. **Downloads** work the same way: Holm is told when a file appears in Downloads and only measures sizes while a download is running.
 
 ## Messages
 
-WinNotch reads the notifications of Teams, WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, right-click › *Messages* › *Allow notification access…* takes you to the switch (*Settings › Privacy & security › Notifications*). The same apps in Chrome, Edge or Firefox count too (WhatsApp Web, Discord, Teams and Outlook on the web, Telegram Web, Slack). Right-click › *Messages* switches single apps off.
+Holm reads the notifications of WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, right-click › *Messages* › *Allow notification access…* takes you to the switch (*Settings › Privacy & security › Notifications*). The same apps in Chrome, Edge or Firefox count too (WhatsApp Web, Discord, Outlook on the web, Telegram Web, Slack). Right-click › *Messages* switches single apps off. Teams is left out on purpose: its messages never show up in the notch.
 
-**When an app only sends a badge.** Teams, WhatsApp and the other supported messengers may update their taskbar number without leaving a Windows notification. WinNotch also reads these numeric badges: existing unread counts appear at startup, and an increase pops out the app name and count, such as *WhatsApp · 2 unread messages*. This fallback works even when notification access is unavailable. Opening an app clears its count in the notch without clearing the other apps.
+**When an app only sends a badge.** WhatsApp and the other supported messengers may update their taskbar number without leaving a Windows notification. Holm also reads these numeric badges: existing unread counts appear at startup, and an increase pops out the app name and count, such as *WhatsApp · 2 unread messages*. This fallback works even when notification access is unavailable. Opening an app clears its count in the notch without clearing the other apps.
 
-Names and message text need a notification in Windows' notification center. If your version of Teams offers *Settings › Notifications and activity › Notification style*, choose **Windows**. With badge-only updates, WinNotch shows the count and also notices when Windows receives a fresh badge with the same number. If the app sends neither a notification nor a badge update, WinNotch has no new event to display.
+Names and message text need a notification in Windows' notification center. With badge-only updates, Holm shows the count and also notices when Windows receives a fresh badge with the same number. If the app sends neither a notification nor a badge update, Holm has no new event to display.
 
-To read the badge, WinNotch copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
+To read the badge, Holm copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
 
-WinNotch never removes or changes your notifications, and message text is never written to its logs.
+Holm never removes or changes your notifications, and message text is never written to its logs.
 
 Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu says so, and available numeric app badges still work.
 
@@ -99,7 +101,7 @@ Windows 10 (2004 or newer) or Windows 11, x64.
 
 Right-click the notch › **Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
 
-Updates work with the published Windows x64 app in a folder your account can write to. WinNotch waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
+Updates work with the published Windows x64 app in a folder your account can write to. Holm waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
 
 ## Build
 
@@ -109,7 +111,7 @@ You need the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 dotnet publish WinNotch -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 ```
 
-This gives you `publish/WinNotch.exe`, which needs the .NET 10 Desktop Runtime. For a single exe that runs anywhere without installing .NET, use `--self-contained true -p:IncludeNativeLibrariesForSelfExtract=true` instead.
+The source still uses the code name WinNotch for its folders and namespaces, and Beam's protocol labels keep it so Holm can still exchange files with older versions. This gives you `publish/Holm.exe`, which needs the .NET 10 Desktop Runtime. For a single exe that runs anywhere without installing .NET, use `--self-contained true -p:IncludeNativeLibrariesForSelfExtract=true` instead.
 
 ## Tests
 
@@ -117,9 +119,9 @@ This gives you `publish/WinNotch.exe`, which needs the .NET 10 Desktop Runtime. 
 dotnet test WinNotch.Tests
 ```
 
-Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, additional tests leave silent Teams and unrelated notifications (no pop-up) in the notification center, read them back the way the notch does and remove them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
+Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, additional tests leave silent notifications (no pop-up) from Outlook, Teams and an unrelated app in the notification center, read them back the way the notch does – only Outlook's may count – and remove them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
 
-Update tests cover release selection, download integrity, unsafe archives, menu states, replacement, restart and recovery using temporary executables. They never replace your installed WinNotch.
+Update tests cover release selection, download integrity, unsafe archives, menu states, replacement, restart and recovery using temporary executables. They never replace your installed Holm.
 
 ## Vibe coded
 

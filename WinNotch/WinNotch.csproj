@@ -7,11 +7,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>WinNotch</AssemblyName>
+    <AssemblyName>Holm</AssemblyName>
     <RootNamespace>WinNotch</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Product>WinNotch</Product>
-    <Version>1.5.0</Version>
+    <Product>Holm</Product>
+    <Version>1.5.1</Version>
     <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
 
     <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.1 – 2026-10-22
+
+### Changed
+- **WinNotch is now called Holm** – a holm is a small island, and many other projects already use the name WinNotch. The app, its window, the menus, the release files (`Holm-…-win-x64.zip`) and the repository (github.com/ademerci/Holm) carry the new name.
+  - Your settings carry over: on its first start Holm copies them from `%AppData%\WinNotch` to `%AppData%\Holm` and moves the *Start with Windows* entry over, so the old app no longer starts as well.
+  - Beam keeps working with friends who still run WinNotch: codes, friend codes and the encryption labels are unchanged.
+  - WinNotch 1.5.0 can't update itself to Holm (the release has a new name); download it once from the release page.
+- **New icon:** a small island with a palm under the notch, on a sea-coloured tile.
+- **Teams is no longer part of messages.** Its notifications and its taskbar number stay out of the notch; WhatsApp, Discord, Outlook, Telegram, Signal and Slack remain.
+
 ## 1.5.0 – 2026-10-22
 
 ### Fixed

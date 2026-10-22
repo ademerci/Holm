@@ -32,10 +32,11 @@ public partial class App : Application
         }
 #endif
 
-        _singleInstance = new Mutex(true, @"Local\WinNotch.SingleInstance", out bool first);
+        _singleInstance = new Mutex(true, @"Local\Holm.SingleInstance", out bool first);
         if (!first) { Shutdown(); return; }
 
         Diag.Enabled = e.Args.Contains("--diag");
+        FormerName.Migrate(); // before the window reads the settings
         new MainWindow().Show();
     }
 

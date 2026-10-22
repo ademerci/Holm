@@ -16,7 +16,7 @@ namespace WinNotch;
 /// </summary>
 internal sealed class FriendsService
 {
-    static readonly byte[] KeyEntropy = "WinNotch friends key"u8.ToArray();
+    static readonly byte[] KeyEntropy = "WinNotch friends key"u8.ToArray(); // former name: keys saved before the rename must still open
 
     /// <summary>How long the sender waits on the relay; an older invitation is stale.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromMinutes(10);
@@ -78,7 +78,7 @@ internal sealed class FriendsService
         _settings.FriendsKey = Convert.ToBase64String(ProtectedData.Protect(pkcs8, KeyEntropy, DataProtectionScope.CurrentUser));
         CryptographicOperations.ZeroMemory(pkcs8);
         _settings.FriendsTopic = me.Topic;
-        // Catch up from now on: a friend may write while WinNotch isn't running.
+        // Catch up from now on: a friend may write while Holm isn't running.
         _settings.FriendsSince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         _settings.FriendsSeen.Clear();
         _settings.Save();
@@ -170,7 +170,7 @@ internal sealed class FriendsService
                 Diag.Log("Friends: someone who isn't a friend wanted to send files");
                 break;
             case FriendNoteKind.Files when age > Patience.TotalSeconds:
-                Diag.Log($"Friends: {friend.Name} wanted to send files while WinNotch wasn't running");
+                Diag.Log($"Friends: {friend.Name} wanted to send files while Holm wasn't running");
                 break;
             case FriendNoteKind.Files:
                 FilesOffered?.Invoke(friend, note.Secret!);

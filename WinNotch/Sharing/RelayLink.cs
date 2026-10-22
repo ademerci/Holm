@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace WinNotch.Sharing;
 
 /// <summary>
-/// Pairs two WinNotch apps over the internet through a "transit relay" (the public one run by the
+/// Pairs two Holm apps over the internet through a "transit relay" (the public one run by the
 /// magic-wormhole project). Both sides connect, name the same channel, and the relay pipes bytes between
 /// them. The channel name is derived from the share code and everything sent is encrypted with a key
 /// derived from it too, so the relay only ever sees encrypted data.

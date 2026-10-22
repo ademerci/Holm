@@ -59,7 +59,7 @@ public partial class MainWindow
         string? unavailable = UpdateInstaller.UnavailableReason;
         bool activity = _busy || _sharing || TaskShowing;
         MenuInstallUpdate.IsEnabled = !_checkingUpdates && !_installingUpdate && !activity && unavailable == null;
-        MenuInstallUpdate.ToolTip = unavailable ?? (activity ? "Finish or dismiss the current activity before restarting." : "Downloads the update and restarts WinNotch. Your settings stay.");
+        MenuInstallUpdate.ToolTip = unavailable ?? (activity ? "Finish or dismiss the current activity before restarting." : "Downloads the update and restarts Holm. Your settings stay.");
     }
 
     void MenuAutoUpdates_Click(object sender, RoutedEventArgs e)
@@ -126,7 +126,7 @@ public partial class MainWindow
         RefreshUpdateMenu();
         // A running transfer was ruled out above; don't accept another while preparing to restart.
         StopSharing();
-        string staging = Path.Combine(Path.GetTempPath(), "WinNotch-update-" + Guid.NewGuid().ToString("N"));
+        string staging = Path.Combine(Path.GetTempPath(), "Holm-update-" + Guid.NewGuid().ToString("N"));
         bool handedOff = false;
         try
         {

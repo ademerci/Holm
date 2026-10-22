@@ -10,7 +10,7 @@ namespace WinNotch.Tests;
 
 public class UpdateServiceTests
 {
-    const string Repository = "https://github.com/ademerci/WinNotch";
+    const string Repository = "https://github.com/ademerci/Holm";
     static readonly Version Current = typeof(UpdateService).Assembly.GetName().Version!;
 
     [Fact]
@@ -31,7 +31,7 @@ public class UpdateServiceTests
         Assert.NotNull(update);
         Assert.Equal(new Version(1, 10, 0), update.Version);
         Assert.Equal($"{Repository}/releases/tag/v1.10.0", update.ReleaseUrl.AbsoluteUri);
-        Assert.Equal($"{Repository}/releases/download/v1.10.0/WinNotch-1.10.0-win-x64.zip", update.DownloadUrl.AbsoluteUri);
+        Assert.Equal($"{Repository}/releases/download/v1.10.0/Holm-1.10.0-win-x64.zip", update.DownloadUrl.AbsoluteUri);
     }
 
     [Theory]
@@ -95,11 +95,11 @@ public class UpdateServiceTests
     }
 
     [Theory]
-    [InlineData("http://github.com/ademerci/WinNotch/releases/download/v9.0.0/WinNotch-9.0.0-win-x64.zip")]
-    [InlineData("https://github.com.evil.test/ademerci/WinNotch/releases/download/v9.0.0/WinNotch-9.0.0-win-x64.zip")]
-    [InlineData("https://github.com/someone/WinNotch/releases/download/v9.0.0/WinNotch-9.0.0-win-x64.zip")]
-    [InlineData("https://github.com/ademerci/WinNotch/releases/download/v8.0.0/WinNotch-9.0.0-win-x64.zip")]
-    [InlineData("https://github.com/ademerci/WinNotch/releases/download/v9.0.0/WinNotch-9.0.0-win-x64.zip?redirect=elsewhere")]
+    [InlineData("http://github.com/ademerci/Holm/releases/download/v9.0.0/Holm-9.0.0-win-x64.zip")]
+    [InlineData("https://github.com.evil.test/ademerci/Holm/releases/download/v9.0.0/Holm-9.0.0-win-x64.zip")]
+    [InlineData("https://github.com/someone/Holm/releases/download/v9.0.0/Holm-9.0.0-win-x64.zip")]
+    [InlineData("https://github.com/ademerci/Holm/releases/download/v8.0.0/Holm-9.0.0-win-x64.zip")]
+    [InlineData("https://github.com/ademerci/Holm/releases/download/v9.0.0/Holm-9.0.0-win-x64.zip?redirect=elsewhere")]
     public async Task Refuses_asset_URLs_outside_the_exact_repository_release(string url)
     {
         using var client = Client(_ => Json(ReleaseJson("v9.0.0", url: url)));
@@ -121,7 +121,7 @@ public class UpdateServiceTests
     [Fact]
     public async Task Refuses_framework_dependent_or_wrong_architecture_assets()
     {
-        string json = ReleaseJson("v9.0.0").Replace("WinNotch-9.0.0-win-x64.zip", "WinNotch-9.0.0-win-arm64.zip");
+        string json = ReleaseJson("v9.0.0").Replace("Holm-9.0.0-win-x64.zip", "Holm-9.0.0-win-arm64.zip");
         using var client = Client(_ => Json(json));
         using var service = new UpdateService(client);
         await Assert.ThrowsAsync<InvalidDataException>(() => service.CheckAsync(Current));
@@ -139,7 +139,7 @@ public class UpdateServiceTests
     public async Task Stages_only_the_verified_executable_and_leaves_existing_files_untouched()
     {
         byte[] executable = CurrentExecutable();
-        byte[] archive = Zip(("WinNotch.exe", executable), ("README.txt", Encoding.UTF8.GetBytes("Release notes")));
+        byte[] archive = Zip(("Holm.exe", executable), ("README.txt", Encoding.UTF8.GetBytes("Release notes")));
         using var folder = new TempFolder();
         string existing = folder.File("settings.json", "user settings"u8.ToArray());
         var progress = new RecordingProgress();
@@ -150,7 +150,7 @@ public class UpdateServiceTests
 
         Assert.Equal(executable, await File.ReadAllBytesAsync(staged));
         Assert.Equal("user settings", await File.ReadAllTextAsync(existing));
-        Assert.Equal("WinNotch.exe", Path.GetFileName(staged));
+        Assert.Equal("Holm.exe", Path.GetFileName(staged));
         Assert.NotEqual(folder.Path, Path.GetDirectoryName(staged));
         Assert.Single(Directory.GetFiles(Path.GetDirectoryName(staged)!));
         Assert.Equal(0, progress.Values.First());
@@ -161,7 +161,7 @@ public class UpdateServiceTests
     [Fact]
     public async Task Tampering_fails_checksum_validation_and_removes_partial_download()
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()));
         var release = Release(archive);
         archive[^1] ^= 1;
         using var folder = new TempFolder();
@@ -179,7 +179,7 @@ public class UpdateServiceTests
     [InlineData(1)]
     public async Task Truncated_and_oversized_streams_are_rejected_without_ContentLength(int difference)
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()));
         byte[] body = difference < 0 ? archive[..^1] : archive.Concat(new byte[] { 0 }).ToArray();
         using var folder = new TempFolder();
         using var client = Client(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnknownLengthContent(body) });
@@ -193,12 +193,12 @@ public class UpdateServiceTests
     [Theory]
     [InlineData("../outside.exe")]
     [InlineData("..\\outside.exe")]
-    [InlineData("subfolder/WinNotch.exe")]
+    [InlineData("subfolder/Holm.exe")]
     [InlineData("C:\\outside.exe")]
-    [InlineData("WinNotch.exe:extra")]
+    [InlineData("Holm.exe:extra")]
     public async Task Archive_paths_cannot_escape_staging(string path)
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()), (path, new byte[] { 1 }));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()), (path, new byte[] { 1 }));
         using var folder = new TempFolder();
         using var client = Client(_ => Bytes(archive));
         using var service = new UpdateService(client);
@@ -211,10 +211,10 @@ public class UpdateServiceTests
     [Theory]
     [InlineData("another.exe")]
     [InlineData("dependency.dll")]
-    [InlineData("WinNotch.runtimeconfig.json")]
+    [InlineData("Holm.runtimeconfig.json")]
     public async Task Multi_file_applications_are_not_mistaken_for_standalone_updates(string extra)
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()), (extra, new byte[] { 1 }));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()), (extra, new byte[] { 1 }));
         using var folder = new TempFolder();
         using var client = Client(_ => Bytes(archive));
         using var service = new UpdateService(client);
@@ -227,7 +227,7 @@ public class UpdateServiceTests
     public async Task Duplicate_executables_are_rejected()
     {
         byte[] exe = CurrentExecutable();
-        byte[] archive = Zip(("WinNotch.exe", exe), ("WinNotch.exe", exe));
+        byte[] archive = Zip(("Holm.exe", exe), ("Holm.exe", exe));
         using var folder = new TempFolder();
         using var client = Client(_ => Bytes(archive));
         using var service = new UpdateService(client);
@@ -239,7 +239,7 @@ public class UpdateServiceTests
     [Fact]
     public async Task Oversized_expanded_executable_is_rejected_before_extraction()
     {
-        byte[] archive = Zip(("WinNotch.exe", new byte[] { 1 }));
+        byte[] archive = Zip(("Holm.exe", new byte[] { 1 }));
         for (int offset = 0; offset < archive.Length - 28; offset++)
         {
             if (BitConverter.ToUInt32(archive, offset) != 0x02014b50) continue;
@@ -257,7 +257,7 @@ public class UpdateServiceTests
     [Fact]
     public async Task Valid_checksum_does_not_allow_a_mismatched_executable_version()
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()));
         using var folder = new TempFolder();
         using var client = Client(_ => Bytes(archive));
         using var service = new UpdateService(client);
@@ -269,7 +269,7 @@ public class UpdateServiceTests
     [Fact]
     public async Task Cancellation_leaves_no_partial_update()
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()));
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()));
         using var folder = new TempFolder();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
@@ -283,8 +283,8 @@ public class UpdateServiceTests
     [Fact]
     public async Task Untrusted_release_objects_are_rejected_before_any_request_or_disk_write()
     {
-        byte[] archive = Zip(("WinNotch.exe", CurrentExecutable()));
-        var release = Release(archive) with { DownloadUrl = new Uri("https://evil.test/WinNotch.exe") };
+        byte[] archive = Zip(("Holm.exe", CurrentExecutable()));
+        var release = Release(archive) with { DownloadUrl = new Uri("https://evil.test/Holm.exe") };
         using var folder = new TempFolder();
         using var client = Client(_ => throw new InvalidOperationException("No request should be made."));
         using var service = new UpdateService(client);
@@ -293,7 +293,7 @@ public class UpdateServiceTests
         Assert.Empty(Directory.GetFileSystemEntries(folder.Path));
     }
 
-    static byte[] CurrentExecutable() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "WinNotch.exe"));
+    static byte[] CurrentExecutable() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Holm.exe"));
 
     static UpdateRelease Release(byte[] bytes, Version? version = null)
     {
@@ -301,7 +301,7 @@ public class UpdateServiceTests
         string number = version.ToString(3);
         string tag = "v" + number;
         return new UpdateRelease(version, tag, new Uri($"{Repository}/releases/tag/{tag}"),
-            new Uri($"{Repository}/releases/download/{tag}/WinNotch-{number}-win-x64.zip"), bytes.LongLength,
+            new Uri($"{Repository}/releases/download/{tag}/Holm-{number}-win-x64.zip"), bytes.LongLength,
             Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
     }
 
@@ -309,7 +309,7 @@ public class UpdateServiceTests
                               string? digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                               string? url = null, long size = 100)
     {
-        string name = $"WinNotch-{tag.TrimStart('v')}-win-x64.zip";
+        string name = $"Holm-{tag.TrimStart('v')}-win-x64.zip";
         return JsonSerializer.Serialize(new
         {
             tag_name = tag, draft, prerelease,
