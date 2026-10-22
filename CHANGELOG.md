@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.0 – 2026-10-22
+
+### Added
+- **Friends.** Add someone once with a friend code (right-click › *Friends › Copy my friend code*, they copy it, their notch offers to add you, yours offers to add them back) and they appear in the share view whenever you drag files onto the notch. Dropping files on a friend works anywhere, also on networks that keep devices apart: WinNotch makes a one-time code as with *Code* and leaves it, sealed for that friend, in their inbox on ntfy.sh; their notch picks it up and asks *Accept* / *Decline*. Only small sealed notes go through ntfy.sh, files still go through the relay, so there's no new size limit.
+  - Notes are sealed with AES-256-GCM under a key the two friends derive from their key pairs (ECDH P-256); notes from anyone you haven't added are ignored, and nobody can write in a friend's name. The private key is stored with DPAPI.
+  - A friend who is busy or in a fullscreen game declines straight away instead of leaving you waiting.
+- **Size:** right-click › *Size* makes the whole notch smaller or bigger (85 % to 130 %).
+- Tests for friend codes, sealed notes (forged sender, other inbox, tampering) and two friends meeting through ntfy and the relay.
+
+### Changed
+- **AirDrop is now called Beam** (AirDrop is Apple's name). The setting carries over.
+
+### Fixed
+- Received file names lose invisible text-direction marks, so `holiday‮gpj.exe` can no longer pose as `holidayexe.jpg` in the question or in Explorer.
+
 ## 1.2.1 – 2026-10-22
 
 ### Fixed

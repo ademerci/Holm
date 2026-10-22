@@ -165,7 +165,8 @@ public static class FileTransfer
 
     /// <summary>
     /// A plain file name that can only land in the target folder: no folders, no "..", no characters
-    /// Windows forbids, no device names, not too long.
+    /// Windows forbids, no device names, not too long, and no text-direction marks, which could make
+    /// "photo\u202Egpj.exe" show up as "photoexe.jpg" in the question and in Explorer.
     /// </summary>
     public static string SafeFileName(string? name)
     {
@@ -173,7 +174,7 @@ public static class FileTransfer
         name = name.Replace('\\', '/');
         name = name[(name.LastIndexOf('/') + 1)..];
         var invalid = Path.GetInvalidFileNameChars();
-        name = new string(name.Select(c => char.IsControl(c) || Array.IndexOf(invalid, c) >= 0 ? '_' : c).ToArray());
+        name = new string(name.Select(c => char.IsControl(c) || IsDirectionMark(c) || Array.IndexOf(invalid, c) >= 0 ? '_' : c).ToArray());
         name = name.Trim().TrimEnd('.', ' ');
         if (name.Length == 0 || name.All(c => c == '.')) name = "file";
         string stem = Path.GetFileNameWithoutExtension(name);
@@ -186,6 +187,8 @@ public static class FileTransfer
         }
         return name;
     }
+
+    static bool IsDirectionMark(char c) => c is '\u200E' or '\u200F' or '\u061C' or (>= '\u202A' and <= '\u202E') or (>= '\u2066' and <= '\u2069');
 
     /// <summary>"photo.png", or "photo (1).png" if that is taken.</summary>
     public static string UniquePath(string folder, string name)

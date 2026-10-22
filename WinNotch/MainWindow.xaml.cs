@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     enum NotchState { None, Idle, Badge, Media, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 440;
+    /// <summary>Window width at normal size; <see cref="AppSettings.Scale"/> scales it along with the notch.</summary>
+    const double BaseWidth = 480;
+    static readonly (string Name, double Scale)[] Sizes = { ("Small", 0.85), ("Normal", 1), ("Large", 1.15), ("Extra large", 1.3) };
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
     static readonly Brush GreenBrush = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
     static readonly Brush RedBrush = Frozen(Color.FromRgb(0xFF, 0x45, 0x3A));
@@ -154,7 +157,7 @@ public partial class MainWindow : Window
         Native.SetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE, new IntPtr(ex));
 
         HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
-        Native.AddClipboardFormatListener(_hwnd); // a copied AirDrop code pops up the notch
+        Native.AddClipboardFormatListener(_hwnd); // a copied Beam or friend code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
         Native.EnableEcoQoS();
@@ -163,7 +166,7 @@ public partial class MainWindow : Window
 
     void OnLoaded(object sender, RoutedEventArgs e)
     {
-        PositionWindow();
+        ApplyScale();
         ReadPower();
         ScanBluetooth();
         ApplyState(animate: false);
@@ -353,7 +356,7 @@ public partial class MainWindow : Window
             if (!animate) FitWindowHeight();
             else
             {
-                double needed = Math.Ceiling(h * 1.12) + 2; // room for the spring overshoot
+                double needed = Math.Ceiling(h * 1.12 * Scale) + 2; // room for the spring overshoot
                 if (needed > Height) Height = needed;
                 _shapeAnimating = true;
                 _fitTimer.Stop();
@@ -377,7 +380,35 @@ public partial class MainWindow : Window
         UpdateEqualizer();
     }
 
-    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1)) + 2;
+    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * Scale) + 2;
+
+    double Scale => Math.Clamp(_settings.Scale, 0.7, 1.5);
+
+    /// <summary>The whole notch grows or shrinks as one; the window keeps its top centre on the screen.</summary>
+    void ApplyScale()
+    {
+        double scale = Scale;
+        IslandHost.LayoutTransform = scale == 1 ? Transform.Identity : new ScaleTransform(scale, scale);
+        Width = BaseWidth * scale;
+        FitWindowHeight();
+        PositionWindow();
+    }
+
+    void FillSizeMenu()
+    {
+        MenuSize.Items.Clear();
+        foreach (var (name, scale) in Sizes)
+        {
+            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = Math.Abs(Scale - scale) < 0.01 };
+            item.Click += (_, _) =>
+            {
+                _settings.Scale = scale;
+                _settings.Save();
+                ApplyScale();
+            };
+            MenuSize.Items.Add(item);
+        }
+    }
 
     void OnShapeSettled()
     {
@@ -518,7 +549,7 @@ public partial class MainWindow : Window
         }
     }
 
-    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush)
+    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3)
     {
         if (_hiddenForFullscreen) return;
         if (_expanded) { RefreshDevices(); return; }
@@ -526,6 +557,7 @@ public partial class MainWindow : Window
         PeekIcon.Text = glyph ?? "";
         PeekIcon.Visibility = glyph == null ? Visibility.Collapsed : Visibility.Visible;
         PeekText.Text = text;
+        PeekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170; // a sentence on its own may use the whole width
         PeekValue.Text = value;
         PeekValue.Foreground = valueBrush ?? Brushes.White;
         PeekBatteryHost.Visibility = battery == null ? Visibility.Collapsed : Visibility.Visible;
@@ -535,7 +567,7 @@ public partial class MainWindow : Window
         _peekActive = true;
         _peekMessage = false;
         _peekTimer.Stop();
-        _peekTimer.Interval = TimeSpan.FromSeconds(3);
+        _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
         _peekTimer.Start();
         ApplyState();
     }
@@ -954,8 +986,10 @@ public partial class MainWindow : Window
         MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
         MenuTeams.Header = denied ? "Teams messages (allow access…)" : unavailable ? "Teams messages (not supported here)" : "Teams messages";
         MenuTeams.IsEnabled = !unavailable;
-        MenuAirDrop.IsChecked = _settings.AirDrop;
-        MenuReceive.IsEnabled = _settings.AirDrop && !TaskShowing;
+        MenuBeam.IsChecked = _settings.Beam;
+        MenuReceive.IsEnabled = _settings.Beam && !TaskShowing;
+        FillFriendsMenu();
+        FillSizeMenu();
         ListScreens(Island.ContextMenu);
     }
 
@@ -1083,6 +1117,8 @@ public partial class MainWindow : Window
         System.IO.Directory.CreateDirectory(dir);
         _settings.Animations = false; // still frames, so the bars are captured at rest
         _settings.MiniIdle = false;
+        _settings.Scale = 1;
+        ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _teams.Changed -= OnMessagesChanged;
@@ -1125,7 +1161,7 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-messages", 260);
 
-        // 1.2: volume, AirDrop, shuffle/repeat
+        // 1.2: volume, Beam, shuffle/repeat
         SetExpanded(false);
         _messages = Array.Empty<TeamsMessage>();
         RefreshMessages();
@@ -1145,9 +1181,9 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-playmodes", 240);
         SetExpanded(false);
 
+        _demoFriends = new List<WinNotch.Sharing.Friend> { new() { Name = "Lena Hoffmann", Key = "demo-lena" }, new() { Name = "Jonas", Key = "demo-jonas" } };
         _demoPeers = new List<NearbyPeer>
         {
-            new(Guid.NewGuid(), "Lena Hoffmann", new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 1), DateTime.UtcNow),
             new(Guid.NewGuid(), "Tim", new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 2), DateTime.UtcNow),
         };
         _dragFiles = new[] { @"C:\Demo\Holiday photos.zip" };
@@ -1158,6 +1194,7 @@ public partial class MainWindow : Window
         await Snap(dir, "airdrop-share", 140);
         _sharing = false;
         _demoPeers = null;
+        _demoFriends = null;
 
         ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Lena Hoffmann wants to send you", "Holiday photos.zip · 48.2 MB", null,
                  ("Accept", () => { }), ("Decline", () => { }), textIcon: true);

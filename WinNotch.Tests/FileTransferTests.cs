@@ -140,6 +140,7 @@ public class FileTransferTests
     [InlineData("", "file")]
     [InlineData(null, "file")]
     [InlineData("trailing.dot.", "trailing.dot")]
+    [InlineData("holiday\u202Egpj.exe", "holiday_gpj.exe")] // would show as "holidayexe.jpg"
     public void SafeFileName_keeps_only_a_plain_name(string? name, string expected)
     {
         Assert.Equal(expected, FileTransfer.SafeFileName(name));

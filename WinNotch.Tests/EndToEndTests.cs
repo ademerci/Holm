@@ -18,7 +18,7 @@ public class EndToEndTests
         if (string.IsNullOrEmpty(codeFile)) return;
 
         using var source = new TempFolder();
-        string path = source.File("WinNotch end-to-end test.txt", Encoding.UTF8.GetBytes("Hello from the WinNotch end-to-end test – AirDrop works!"));
+        string path = source.File("WinNotch end-to-end test.txt", Encoding.UTF8.GetBytes("Hello from the WinNotch end-to-end test – Beam works!"));
         var secret = ShareCode.NewSecret();
         File.WriteAllText(codeFile, ShareCode.Format(secret));
 

@@ -15,13 +15,17 @@ using WinNotch.Sharing;
 namespace WinNotch;
 
 /// <summary>
-/// AirDrop for WinNotch: drop files on the notch and pick a person on the same network, or get a code
-/// that works anywhere (through the relay). The receiver's notch always asks first, and files land in Downloads.
+/// Beam (WinNotch's AirDrop): drop files on the notch and pick a friend (anywhere), a person on the same
+/// network, or get a code that works anywhere (through the relay). The receiver's notch always asks first,
+/// and files land in Downloads.
 /// </summary>
 public partial class MainWindow
 {
-    /// <summary>What a chip in the share view stands for: a person nearby, or "send with a code" (no peer).</summary>
-    sealed record ShareTarget(NearbyPeer? Peer);
+    /// <summary>What a chip in the share view stands for: a friend, a person nearby, or "send with a code" (neither).</summary>
+    sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null)
+    {
+        public string Name => Friend?.Name ?? Peer?.Name ?? "Code";
+    }
 
     static readonly Brush ShareBlue = Frozen(Color.FromRgb(0x0A, 0x84, 0xFF));
     static readonly Brush ChipBrush = Frozen(Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
@@ -32,6 +36,8 @@ public partial class MainWindow
     };
 
     NearbyService? _nearby;
+    FriendsService _friends = null!;
+    readonly List<Friend> _addBack = new(); // people who added us while the notch was busy
     DispatcherTimer _shareWatch = null!, _taskHide = null!;
     bool _sharing, _dragInside, _taskVisible, _busy;
     DateTime _lastDragEvent, _lastProgressUi;
@@ -41,8 +47,9 @@ public partial class MainWindow
     CancellationTokenSource? _taskCts;
     Action? _primaryAction, _secondaryAction;
     readonly HashSet<string> _ownCodes = new();
-    string? _lastOfferedCode;
+    string? _lastOfferedCode, _lastOfferedFriend;
     IReadOnlyList<NearbyPeer>? _demoPeers = null; // README screenshots only (set in Debug builds)
+    IReadOnlyList<Friend>? _demoFriends = null;
 
     bool TaskShowing => _taskVisible;
 
@@ -60,11 +67,16 @@ public partial class MainWindow
             if (over) EndShare();
         });
         _taskHide = MakeTimer(5000, HideTask, oneShot: true);
+        _friends = new FriendsService(_settings, Dispatcher);
+        _friends.FilesOffered += OnFriendFiles;
+        _friends.AddedUs += OnFriendAddedUs;
     }
 
     void StartSharing()
     {
-        if (!_settings.AirDrop || _nearby != null) return;
+        if (!_settings.Beam) return;
+        _friends.Restart();
+        if (_nearby != null) return;
         var nearby = new NearbyService(Native.DisplayName()) { Incoming = OnNearbyIncoming };
         nearby.PeersChanged += () => Dispatcher.InvokeAsync(() => { if (_sharing) { RefreshShareTargets(); ApplyState(); } });
         try
@@ -81,6 +93,7 @@ public partial class MainWindow
 
     void StopSharing()
     {
+        _friends.Stop();
         _nearby?.Dispose();
         _nearby = null;
         _taskCts?.Cancel();
@@ -113,7 +126,7 @@ public partial class MainWindow
     void OnDrag(DragEventArgs e)
     {
         e.Handled = true;
-        if (!_settings.AirDrop || _busy || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (!_settings.Beam || _busy || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             e.Effects = DragDropEffects.None;
             return;
@@ -156,9 +169,9 @@ public partial class MainWindow
         e.Handled = true;
         var dropped = e.Data.GetData(DataFormats.FileDrop) as string[] ?? _dragFiles;
         var target = TargetOf(e.OriginalSource as DependencyObject);
-        Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {(target == null ? "nothing" : target.Peer?.Name ?? "Code")}");
+        Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {target?.Name ?? "nothing"}");
         EndShare();
-        if (!_settings.AirDrop || _busy) return;
+        if (!_settings.Beam || _busy) return;
 
         var paths = dropped.Where(File.Exists).ToList();
         if (paths.Count == 0)
@@ -171,7 +184,8 @@ public partial class MainWindow
             ShowPeek("", "Drop it on a person or on “Code”", "", null, false, null);
             return;
         }
-        if (target.Peer != null) _ = SendNearbyAsync(target.Peer, paths);
+        if (target.Friend != null) _ = SendToFriendAsync(target.Friend, paths);
+        else if (target.Peer != null) _ = SendNearbyAsync(target.Peer, paths);
         else _ = SendWithCodeAsync(paths);
     }
 
@@ -188,7 +202,7 @@ public partial class MainWindow
     void HighlightChip(DependencyObject? over)
     {
         var target = TargetOf(over);
-        if (target != _hover) Diag.Log($"Over {(target == null ? "nothing" : target.Peer?.Name ?? "Code")} ({over?.GetType().Name})");
+        if (target != _hover) Diag.Log($"Over {target?.Name ?? "nothing"} ({over?.GetType().Name})");
         _hover = target;
         foreach (var chip in ShareTargets.Children.OfType<Button>())
             chip.Background = target != null && ReferenceEquals(chip.Tag, target) ? ShareBlue : ChipBrush;
@@ -199,25 +213,43 @@ public partial class MainWindow
         int files = _dragFiles.Length;
         ShareTitle.Text = files == 1 ? $"Send “{Path.GetFileName(_dragFiles[0])}”" : $"Send {files} files";
         var peers = _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>();
-        ShareHint.Text = peers.Count == 0
-            ? "No one with WinNotch on this network – drop it on Code to send it anywhere."
-            : "Drop it on a person, or on Code to send it anywhere.";
+        var friends = _demoFriends ?? _friends.Friends;
+        ShareHint.Text = friends.Count > 0
+            ? "Drop it on a friend, on someone nearby, or on Code."
+            : peers.Count == 0
+                ? "No one with WinNotch on this network – drop it on Code to send it anywhere."
+                : "Drop it on a person, or on Code to send it anywhere.";
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
-        string shown = string.Join("|", peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}"));
+        string shown = string.Join("|", friends.Take(8).Select(f => f.Key).Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && ShareTargets.Children.Count > 0) return;
         _shownPeers = shown;
-        Diag.Log($"Share targets: {peers.Count} nearby");
+        Diag.Log($"Share targets: {friends.Count} friends, {peers.Count} nearby");
 
         ShareTargets.Children.Clear();
+        foreach (var friend in friends.Take(8))
+            ShareTargets.Children.Add(Chip(Avatar(Initials(friend.Name), AvatarColor(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true));
         foreach (var peer in peers.Take(6))
             ShareTargets.Children.Add(Chip(Avatar(Initials(peer.Name), AvatarColor(peer.Name)), peer.Name, new ShareTarget(peer)));
         ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
     }
 
-    Button Chip(UIElement avatar, string name, ShareTarget target)
+    Button Chip(UIElement avatar, string name, ShareTarget target, bool isFriend = false)
     {
         var content = new StackPanel { Orientation = Orientation.Horizontal };
+        if (isFriend)
+        {
+            // A small star on the avatar tells friends (anywhere) from people who happen to be nearby.
+            var badge = new Grid();
+            badge.Children.Add(avatar);
+            badge.Children.Add(new Border
+            {
+                Width = 13, Height = 13, CornerRadius = new CornerRadius(6.5), Background = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, -2, -2),
+                Child = new TextBlock { Text = "\uE735", FontFamily = IconFont, FontSize = 8, Foreground = ShareBlue, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            });
+            avatar = badge;
+        }
         content.Children.Add(avatar);
         content.Children.Add(new TextBlock
         {
@@ -238,14 +270,16 @@ public partial class MainWindow
         },
     };
 
+    /// <summary>"LH" for Lena Hoffmann; whole letters, so an emoji or accented letter isn't cut in half.</summary>
     static string Initials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        static string First(string word) => new System.Globalization.StringInfo(word).SubstringByTextElements(0, 1);
         string initials = parts.Length switch
         {
             0 => "?",
-            1 => parts[0][..1],
-            _ => string.Concat(parts[0][..1], parts[^1][..1]),
+            1 => First(parts[0]),
+            _ => string.Concat(First(parts[0]), First(parts[^1])),
         };
         return initials.ToUpperInvariant();
     }
@@ -280,7 +314,7 @@ public partial class MainWindow
         byte[] secret = ShareCode.NewSecret();
         string code = ShareCode.Format(secret);
         _ownCodes.Add(code);
-        bool copied = TrySetClipboard($"WinNotch AirDrop code: {code}");
+        bool copied = TrySetClipboard($"WinNotch Beam code: {code}");
         ShowTask("", ShareBlue, copied ? "Code copied – paste it to your friend" : "Send this code to your friend", code, null, null, ("Cancel", CancelTask));
         try
         {
@@ -300,13 +334,110 @@ public partial class MainWindow
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
 
+    /// <summary>
+    /// Like sending with a code, except that nobody has to pass the code on: it goes into the friend's inbox,
+    /// sealed for them, and their notch comes to the relay by itself and asks them.
+    /// </summary>
+    async Task SendToFriendAsync(Friend friend, List<string> paths)
+    {
+        var cts = BeginTask();
+        ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
+        try
+        {
+            byte[] secret = ShareCode.NewSecret();
+            await _friends.InviteAsync(friend, secret, cts.Token);
+            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Waiting for {friend.Name}…", "Their notch is asking them", null, null, ("Cancel", CancelTask), textIcon: true);
+            var (host, port) = RelayEndpoint();
+            await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.Patience, cts.Token);
+            await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
+            bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
+                new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token);
+            if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
+            else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
+        }
+        catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+        {
+            EndTask("\uE916", RedBrush, $"{friend.Name} didn't answer", "Their WinNotch may not be running");
+        }
+        catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
+    }
+
     // ───────────── receiving ─────────────
+
+    /// <summary>A friend left a note: they want to send something. Their notch waits on the relay.</summary>
+    void OnFriendFiles(Friend friend, byte[] secret)
+    {
+        if (_busy || _hiddenForFullscreen || !_settings.Beam)
+        {
+            // Say no straight away, rather than leave them waiting.
+            Diag.Log($"Declining {friend.Name}: busy");
+            _ = DeclineAsync(secret);
+            return;
+        }
+        _ = ReceiveFromFriendAsync(friend, secret);
+    }
+
+    async Task ReceiveFromFriendAsync(Friend friend, byte[] secret)
+    {
+        var cts = BeginTask();
+        ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"{friend.Name} is sending you something", "Connecting…", null, null, ("Cancel", CancelTask), textIcon: true);
+        try
+        {
+            var (host, port) = RelayEndpoint();
+            await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), TimeSpan.FromMinutes(2), cts.Token);
+            await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: false);
+            // The note proved who it is, so show the name we know them by, not the one their notch sends.
+            await ReceiveIntoDownloadsAsync(channel, cts, knownSender: friend.Name);
+        }
+        catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+        {
+            EndTask("\uE916", RedBrush, $"{friend.Name} is gone", "They cancelled or went offline");
+        }
+        catch (Exception ex) { Fail(ex, cts, "Couldn't receive"); }
+    }
+
+    async Task DeclineAsync(byte[] secret)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+            var (host, port) = RelayEndpoint();
+            await using var stream = await RelayLink.ConnectAsync(host, port, ShareCode.RelayToken(secret), cts.Token);
+            await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: false);
+            await FileTransfer.ReceiveAsync(channel, _ => Task.FromResult(false), Native.DownloadsFolder(), null, cts.Token);
+        }
+        catch (Exception ex) { Diag.Log("Couldn't decline: " + ex.Message); }
+    }
+
+    /// <summary>Someone added us as a friend: offer to add them back (or keep it for the menu while busy).</summary>
+    void OnFriendAddedUs(Friend card)
+    {
+        if (_friends.Find(card.Key) != null) return;
+        _addBack.RemoveAll(f => f.Key == card.Key);
+        if (_busy || _taskVisible || _hiddenForFullscreen)
+        {
+            _addBack.Add(card);
+            ShowPeek("\uE8FA", $"{card.Name} added you", "", null, false, null);
+            return;
+        }
+        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"{card.Name} added you as a friend", "Add them back to send each other files",
+                 null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", () => { _addBack.Add(card); HideTask(); }), textIcon: true);
+        _taskHide.Interval = TimeSpan.FromSeconds(30);
+        _taskHide.Start();
+    }
+
+    async Task AddFriendAsync(Friend card, bool tellThem)
+    {
+        _addBack.RemoveAll(f => f.Key == card.Key);
+        bool told = await _friends.AddAsync(card, tellThem);
+        ShowPeek("\uE8FA", told ? $"{card.Name} is now a friend" : $"{card.Name} added – send them your code too", "", null, false, null, seconds: 4);
+    }
 
     /// <summary>Someone on the network connected (worker thread). We answer on the UI thread; busy means no.</summary>
     Task OnNearbyIncoming(SecureChannel channel, string from)
         => Dispatcher.InvokeAsync(async () =>
         {
-            if (_busy || _hiddenForFullscreen || !_settings.AirDrop)
+            if (_busy || _hiddenForFullscreen || !_settings.Beam)
             {
                 await FileTransfer.ReceiveAsync(channel, _ => Task.FromResult(false), Native.DownloadsFolder(), null, CancellationToken.None);
                 return;
@@ -322,8 +453,19 @@ public partial class MainWindow
         // Let the app that copied finish with the clipboard first.
         Dispatcher.InvokeAsync(() =>
         {
-            if (!_settings.AirDrop || _busy || _taskVisible || _hiddenForFullscreen) return;
-            if (!ShareCode.TryFind(ReadClipboardText(), out var secret, out var code)) return;
+            if (!_settings.Beam || _busy || _taskVisible || _hiddenForFullscreen) return;
+            string? text = ReadClipboardText();
+            if (FriendIdentity.ParseFriendCode(text) is { } card)
+            {
+                if (_friends.IsMe(card) || _friends.Find(card.Key) != null || card.Key == _lastOfferedFriend) return;
+                _lastOfferedFriend = card.Key;
+                ShowTask(Initials(card.Name), AvatarColor(card.Name), $"Add {card.Name} as a friend?", "Then you can beam each other files, anywhere",
+                         null, ("Add", () => { HideTask(); _ = AddFriendAsync(card, tellThem: true); }), ("Not now", HideTask), textIcon: true);
+                _taskHide.Interval = TimeSpan.FromSeconds(20);
+                _taskHide.Start();
+                return;
+            }
+            if (!ShareCode.TryFind(text, out var secret, out var code)) return;
             if (_ownCodes.Contains(code) || code == _lastOfferedCode) return;
             _lastOfferedCode = code;
             ShowTask("", ShareBlue, "WinNotch code copied", "Get the file your friend is sending?", null,
@@ -351,12 +493,17 @@ public partial class MainWindow
         catch (Exception ex) { Fail(ex, cts, "Couldn't receive"); }
     }
 
-    async Task ReceiveIntoDownloadsAsync(SecureChannel channel, CancellationTokenSource cts)
+    async Task ReceiveIntoDownloadsAsync(SecureChannel channel, CancellationTokenSource cts, string? knownSender = null)
     {
         string sender = "";
         // The transfer code continues on worker threads, so the question has to be asked on the UI thread.
         var saved = await FileTransfer.ReceiveAsync(channel,
-            offer => Dispatcher.InvokeAsync(() => { sender = offer.Sender; return AskAsync(offer, cts.Token); }).Task.Unwrap(),
+            offer => Dispatcher.InvokeAsync(() =>
+            {
+                if (knownSender != null) offer = offer with { Sender = knownSender };
+                sender = offer.Sender;
+                return AskAsync(offer, cts.Token);
+            }).Task.Unwrap(),
             Native.DownloadsFolder(),
             new Progress<double>(p => ShowProgress($"Receiving from {sender}", "Saving to Downloads", p, sending: false)), cts.Token);
 
@@ -489,11 +636,11 @@ public partial class MainWindow
 
     // ───────────── menu ─────────────
 
-    void MenuAirDrop_Click(object sender, RoutedEventArgs e)
+    void MenuBeam_Click(object sender, RoutedEventArgs e)
     {
-        _settings.AirDrop = MenuAirDrop.IsChecked;
+        _settings.Beam = MenuBeam.IsChecked;
         _settings.Save();
-        if (_settings.AirDrop) StartSharing();
+        if (_settings.Beam) StartSharing();
         else StopSharing();
     }
 
@@ -511,6 +658,63 @@ public partial class MainWindow
         }
         _lastOfferedCode = code;
         _ = ReceiveWithCodeAsync(secret);
+    }
+
+    /// <summary>Friends › Copy my friend code, Add friend from clipboard, Add back…, Remove friend ›</summary>
+    void FillFriendsMenu()
+    {
+        MenuFriends.Items.Clear();
+        MenuFriends.IsEnabled = _settings.Beam;
+        var copy = new MenuItem { Header = "Copy my friend code" };
+        copy.Click += (_, _) => CopyFriendCode();
+        MenuFriends.Items.Add(copy);
+        var add = new MenuItem { Header = "Add friend from clipboard" };
+        add.Click += (_, _) => AddFriendFromClipboard();
+        MenuFriends.Items.Add(add);
+        foreach (var card in _addBack.ToList())
+        {
+            var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
+            back.Click += (_, _) => _ = AddFriendAsync(card, tellThem: false);
+            MenuFriends.Items.Add(back);
+        }
+        if (_friends.Friends.Count == 0) return;
+        MenuFriends.Items.Add(new Separator());
+        var remove = new MenuItem { Header = "Remove friend" };
+        foreach (var friend in _friends.Friends.ToList())
+        {
+            var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
+            item.Click += (_, _) =>
+            {
+                _friends.Remove(friend);
+                ShowPeek("\uE8FA", $"{friend.Name} removed", "", null, false, null);
+            };
+            remove.Items.Add(item);
+        }
+        MenuFriends.Items.Add(remove);
+    }
+
+    void CopyFriendCode()
+    {
+        var me = _friends.EnsureMe();
+        if (TrySetClipboard($"Add me as a friend in WinNotch: {me.FriendCode}"))
+            ShowPeek("\uE8C8", "Friend code copied – send it to a friend", "", null, false, null, seconds: 4);
+        else
+            ShowPeek("\uE783", "Clipboard busy, try again", "", null, false, RedBrush);
+    }
+
+    void AddFriendFromClipboard()
+    {
+        if (FriendIdentity.ParseFriendCode(ReadClipboardText()) is not { } card)
+        {
+            ShowPeek("\uE77F", "Copy your friend's friend code first", "", null, false, null);
+            return;
+        }
+        if (_friends.IsMe(card))
+        {
+            ShowPeek("\uE77F", "That's your own code – send it to a friend", "", null, false, null);
+            return;
+        }
+        _ = AddFriendAsync(card, tellThem: true);
     }
 
     // ───────────── helpers ─────────────

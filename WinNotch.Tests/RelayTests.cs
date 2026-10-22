@@ -18,7 +18,7 @@ public class RelayTests
         // The sender makes a code; the receiver only ever learns the code (as text).
         var senderSecret = ShareCode.NewSecret();
         string code = ShareCode.Format(senderSecret);
-        Assert.True(ShareCode.TryFind($"WinNotch AirDrop code: {code}", out var receiverSecret, out _));
+        Assert.True(ShareCode.TryFind($"WinNotch Beam code: {code}", out var receiverSecret, out _));
 
         var ct = Net.Timeout(90);
         var sending = Task.Run(async () =>

@@ -180,8 +180,11 @@
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <MenuItem x:Name="MenuTeams" Header="Teams messages" IsCheckable="True" Click="MenuTeams_Click"/>
-                        <MenuItem x:Name="MenuAirDrop" Header="AirDrop (drop files on the notch)" IsCheckable="True" Click="MenuAirDrop_Click"/>
+                        <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
+                        <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
+                        <MenuItem x:Name="MenuFriends" Header="Friends"/>
+                        <MenuItem x:Name="MenuSize" Header="Size"/>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
                         <Separator/>
@@ -273,7 +276,7 @@
                         <WrapPanel x:Name="ShareTargets" Margin="0,10,0,0"/>
                     </StackPanel>
 
-                    <!-- Task: an AirDrop offer to answer, a code waiting for a friend, a transfer in progress -->
+                    <!-- Task: a Beam offer to answer, a code waiting for a friend, a transfer in progress -->
                     <Grid x:Name="TaskView" Opacity="0" IsHitTestVisible="False" Margin="12,0,12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

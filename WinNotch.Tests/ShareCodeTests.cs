@@ -24,7 +24,7 @@ public class ShareCodeTests
     {
         var secret = ShareCode.NewSecret();
         string code = ShareCode.Format(secret);
-        string message = $"hey, here's the file 👉 WinNotch AirDrop code: {code.ToLowerInvariant()} (expires soon)";
+        string message = $"hey, here's the file 👉 WinNotch Beam code: {code.ToLowerInvariant()} (expires soon)";
 
         Assert.True(ShareCode.TryFind(message, out var parsed, out var normalized));
         Assert.Equal(secret, parsed);
