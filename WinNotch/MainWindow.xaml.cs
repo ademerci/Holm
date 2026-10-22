@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     enum NotchState { None, Idle, Badge, Media, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 440;
-    /// <summary>Window width at normal size; <see cref="AppSettings.Scale"/> scales it along with the notch.</summary>
+    /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
     const double BaseWidth = 480;
     static readonly (string Name, double Scale)[] Sizes = { ("Small", 0.85), ("Normal", 1), ("Large", 1.15), ("Extra large", 1.3) };
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     readonly VolumeService _volume = new();
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
+    readonly ScaleTransform _notchScale = new();
     readonly BatteryGlyph PeekBattery = new();
     readonly MiniSlider Progress = new();
     readonly MiniSlider VolSlider = new();
@@ -60,7 +61,7 @@ public partial class MainWindow : Window
 
     IntPtr _hwnd, _powerNotifyA, _powerNotifyB, _monitor;
     NotchState _state = NotchState.None;
-    double _shapeW = -1, _shapeH = -1, _shapeR = -1;
+    double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeScale = 1;
     bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
     MediaInfo? _info;
     ImageSource? _shownArt, _shownBackdrop;
@@ -76,6 +77,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        IslandHost.LayoutTransform = _notchScale;
         PeekBatteryHost.Child = PeekBattery;
         ProgressHost.Child = Progress;
         VolumeHost.Child = VolSlider;
@@ -318,6 +320,7 @@ public partial class MainWindow : Window
                    : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
         bool mini = target == NotchState.Idle && _settings.MiniIdle;
+        double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
 
         double w, h, r;
         switch (target)
@@ -341,25 +344,33 @@ public partial class MainWindow : Window
         }
 
         // Media apps report every few seconds; only animate when the shape really changes.
-        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR)
+        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || scale != _shapeScale)
         {
-            bool grow = w * h > Island.ActualWidth * Island.ActualHeight;
-            (_shapeW, _shapeH, _shapeR) = (w, h, r);
+            double currentScale = _notchScale.ScaleX;
+            bool grow = w * h * scale * scale > Island.ActualWidth * Island.ActualHeight * currentScale * currentScale;
+            // Reserve room for both the outgoing view and the incoming scale, including spring overshoot.
+            double needed = Math.Ceiling(Math.Max(h, Island.ActualHeight) * Math.Max(scale, currentScale) * 1.12) + 2;
+            (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
             Animate(Island, WidthProperty, w, grow, animate);
             Animate(Island, HeightProperty, h, grow, animate);
             Animate(this, RadiusProperty, r, grow, animate);
             Animate(this, EarProperty, mini ? 0 : MaxEar, grow, animate);
+            Animate(_notchScale, ScaleTransform.ScaleXProperty, scale, grow, animate);
+            Animate(_notchScale, ScaleTransform.ScaleYProperty, scale, grow, animate);
 
             // The window is a layered (per-pixel alpha) window: every animation frame copies its whole
-            // surface. So it is only ever as tall as the notch. Its width and top-left never change,
-            // which keeps the notch from jumping while the window is resized.
-            if (!animate) FitWindowHeight();
+            // surface. Keep it only as tall as needed, with a fixed width for both configured sizes
+            // so expanding and collapsing never moves the window's top-left.
+            _fitTimer.Stop();
+            if (!animate)
+            {
+                _shapeAnimating = false;
+                FitWindowHeight();
+            }
             else
             {
-                double needed = Math.Ceiling(h * 1.12 * Scale) + 2; // room for the spring overshoot
                 if (needed > Height) Height = needed;
                 _shapeAnimating = true;
-                _fitTimer.Stop();
                 _fitTimer.Interval = TimeSpan.FromMilliseconds((grow ? 480 : 340) + 60);
                 _fitTimer.Start();
             }
@@ -380,33 +391,41 @@ public partial class MainWindow : Window
         UpdateEqualizer();
     }
 
-    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * Scale) + 2;
+    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
 
-    double Scale => Math.Clamp(_settings.Scale, 0.7, 1.5);
+    double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
+    double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
 
-    /// <summary>The whole notch grows or shrinks as one; the window keeps its top centre on the screen.</summary>
+    /// <summary>Apply a size preference immediately and keep both states centred on the screen.</summary>
     void ApplyScale()
     {
-        double scale = Scale;
-        IslandHost.LayoutTransform = scale == 1 ? Transform.Identity : new ScaleTransform(scale, scale);
-        Width = BaseWidth * scale;
-        FitWindowHeight();
+        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
+        ApplyState(animate: false);
         PositionWindow();
     }
 
     void FillSizeMenu()
     {
-        MenuSize.Items.Clear();
+        FillSizeMenu(MenuCollapsedSize, expanded: false);
+        FillSizeMenu(MenuExpandedSize, expanded: true);
+    }
+
+    void FillSizeMenu(MenuItem menu, bool expanded)
+    {
+        menu.Items.Clear();
+        double selected = expanded ? ExpandedScale : CollapsedScale;
         foreach (var (name, scale) in Sizes)
         {
-            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = Math.Abs(Scale - scale) < 0.01 };
+            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = Math.Abs(selected - scale) < 0.01 };
             item.Click += (_, _) =>
             {
-                _settings.Scale = scale;
+                if (expanded) _settings.ExpandedScale = scale;
+                else _settings.CollapsedScale = scale;
+                foreach (MenuItem choice in menu.Items) choice.IsChecked = choice == item;
                 _settings.Save();
                 ApplyScale();
             };
-            MenuSize.Items.Add(item);
+            menu.Items.Add(item);
         }
     }
 
@@ -1117,7 +1136,7 @@ public partial class MainWindow : Window
         System.IO.Directory.CreateDirectory(dir);
         _settings.Animations = false; // still frames, so the bars are captured at rest
         _settings.MiniIdle = false;
-        _settings.Scale = 1;
+        _settings.CollapsedScale = _settings.ExpandedScale = 1;
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;

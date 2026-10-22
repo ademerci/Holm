@@ -184,7 +184,8 @@
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
-                        <MenuItem x:Name="MenuSize" Header="Size"/>
+                        <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
+                        <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
                         <Separator/>

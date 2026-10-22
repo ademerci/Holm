@@ -24,8 +24,32 @@ internal sealed class AppSettings
     public bool Beam { get; set; } = true;
     /// <summary>Relay for sending over the internet, "host:port".</summary>
     public string? Relay { get; set; }
-    /// <summary>Size of the notch; 1 is normal.</summary>
-    public double Scale { get; set; } = 1;
+    double? _collapsedScale, _expandedScale;
+    double _legacyScale = 1;
+
+    /// <summary>Size of the notch while collapsed; 1 is normal.</summary>
+    public double CollapsedScale
+    {
+        get => _collapsedScale ?? _legacyScale;
+        set => _collapsedScale = value;
+    }
+
+    /// <summary>Size of the expanded notch; 1 is normal.</summary>
+    public double ExpandedScale
+    {
+        get => _expandedScale ?? _legacyScale;
+        set => _expandedScale = value;
+    }
+
+    // Read the old shared size as a fallback for either missing setting, regardless of JSON order.
+    // Returning null keeps it out of new saves, which always contain the two independent sizes.
+    [JsonPropertyName("Scale")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? LegacyScale
+    {
+        get => null;
+        set => _legacyScale = value ?? 1;
+    }
 
     // Friends (see Sharing/Friends.cs)
     public List<Friend> Friends { get; set; } = new();

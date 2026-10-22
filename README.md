@@ -19,13 +19,13 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
 - **Beam** (WinNotch's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
-- **Size** – make the whole notch smaller or bigger.
+- **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
 - **Teams messages** – a new message pops out of the notch with who wrote and the first line, and a purple badge counts what you haven't seen yet. Opening Teams (or clicking the message in the notch) clears it.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), Teams messages, Beam, receive with a copied code, friends, size, pick a screen, quit.
+- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), Teams messages, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
 
 ## Beam
 
@@ -109,7 +109,11 @@ Covers the Beam codes and friend codes, sealed friend notes (a forged sender, a 
 
 ## Vibe coded
 
-This project was vibe coded: it was built entirely by chatting with Claude (Anthropic's AI) in Claude Code, from the idea to the performance tuning. It is tested on a real machine, but expect some rough edges – issues and pull requests are welcome. 
+This project began by chatting with Claude (Anthropic's AI) in Claude Code, from the idea to the performance tuning. GPT-6 Astra (OpenAI), through Codex, now works on the project alongside Claude, helping with implementation, code review and testing. The human maintainers guide development and test the app on real machines. Expect some rough edges – issues and pull requests are welcome.
+
+## Contributors
+
+Alongside the human contributors recorded in the commit history, we credit Claude and GPT-6 Astra as AI development contributors. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for their contributions.
 
 ## License
 
