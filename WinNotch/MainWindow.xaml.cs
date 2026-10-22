@@ -111,6 +111,7 @@ public partial class MainWindow : Window
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
         InitDownloads();
+        InitUpdates();
 
         Progress.ValueCommitted += v =>
         {
@@ -181,6 +182,7 @@ public partial class MainWindow : Window
         _ = _media.StartAsync();
         if (_settings.Messages) _ = _chat.StartAsync(ask: true);
         StartDownloads();
+        StartUpdates();
 
         _volume.Changed += (level, muted) => Dispatcher.InvokeAsync(() => OnVolumeChanged(level, muted));
         _volume.DefaultDeviceChanged += () => Dispatcher.InvokeAsync(_volume.Bind);
@@ -190,6 +192,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
@@ -1026,9 +1029,10 @@ public partial class MainWindow : Window
         FillMessagesMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuBeam.IsChecked = _settings.Beam;
-        MenuReceive.IsEnabled = _settings.Beam && !TaskShowing;
+        MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
         FillSizeMenu();
+        RefreshUpdateMenu();
         ListScreens(Island.ContextMenu);
     }
 
@@ -1159,7 +1163,7 @@ public partial class MainWindow : Window
         string? hint = _chat.Access switch
         {
             MessagesService.AccessState.Denied => "Allow notification access…",
-            MessagesService.AccessState.Unavailable => "Windows doesn't share notifications here – only Teams' count",
+            MessagesService.AccessState.Unavailable => "Windows doesn't share notification text here – app badge counts only",
             _ => _chat.TeamsOnlyCounts && !_settings.MutedApps.Contains("teams")
                 ? "Teams: set Settings › Notifications › Style to Windows to see who wrote" : null,
         };

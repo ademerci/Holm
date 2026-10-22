@@ -74,7 +74,7 @@ public partial class MainWindow
 
     void StartSharing()
     {
-        if (!_settings.Beam) return;
+        if (!_settings.Beam || _installingUpdate) return;
         _friends.Restart();
         if (_nearby != null) return;
         var nearby = new NearbyService(Native.DisplayName()) { Incoming = OnNearbyIncoming };
@@ -126,7 +126,7 @@ public partial class MainWindow
     void OnDrag(DragEventArgs e)
     {
         e.Handled = true;
-        if (!_settings.Beam || _busy || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (!_settings.Beam || _busy || _installingUpdate || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             e.Effects = DragDropEffects.None;
             return;
@@ -171,7 +171,7 @@ public partial class MainWindow
         var target = TargetOf(e.OriginalSource as DependencyObject);
         Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {target?.Name ?? "nothing"}");
         EndShare();
-        if (!_settings.Beam || _busy) return;
+        if (!_settings.Beam || _busy || _installingUpdate) return;
 
         var paths = dropped.Where(File.Exists).ToList();
         if (paths.Count == 0)
@@ -367,7 +367,7 @@ public partial class MainWindow
     /// <summary>A friend left a note: they want to send something. Their notch waits on the relay.</summary>
     void OnFriendFiles(Friend friend, byte[] secret)
     {
-        if (_busy || _hiddenForFullscreen || !_settings.Beam)
+        if (_busy || _installingUpdate || _hiddenForFullscreen || !_settings.Beam)
         {
             // Say no straight away, rather than leave them waiting.
             Diag.Log($"Declining {friend.Name}: busy");
@@ -414,7 +414,7 @@ public partial class MainWindow
     {
         if (_friends.Find(card.Key) != null) return;
         _addBack.RemoveAll(f => f.Key == card.Key);
-        if (_busy || _taskVisible || _hiddenForFullscreen)
+        if (_busy || _installingUpdate || _taskVisible || _hiddenForFullscreen)
         {
             _addBack.Add(card);
             ShowPeek("\uE8FA", $"{card.Name} added you", "", null, false, null);
@@ -437,7 +437,7 @@ public partial class MainWindow
     Task OnNearbyIncoming(SecureChannel channel, string from)
         => Dispatcher.InvokeAsync(async () =>
         {
-            if (_busy || _hiddenForFullscreen || !_settings.Beam)
+            if (_busy || _installingUpdate || _hiddenForFullscreen || !_settings.Beam)
             {
                 await FileTransfer.ReceiveAsync(channel, _ => Task.FromResult(false), Native.DownloadsFolder(), null, CancellationToken.None);
                 return;
@@ -453,7 +453,7 @@ public partial class MainWindow
         // Let the app that copied finish with the clipboard first.
         Dispatcher.InvokeAsync(() =>
         {
-            if (!_settings.Beam || _busy || _taskVisible || _hiddenForFullscreen) return;
+            if (!_settings.Beam || _busy || _installingUpdate || _taskVisible || _hiddenForFullscreen) return;
             string? text = ReadClipboardText();
             if (FriendIdentity.ParseFriendCode(text) is { } card)
             {

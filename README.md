@@ -20,6 +20,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
 - **Beam** (WinNotch's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
+- **Updates in the app** – checks for stable releases shortly after startup and every six hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
@@ -80,17 +81,25 @@ Measured on an 8-thread laptop. Turning off the equalizer animation brings playb
 
 WinNotch reads the notifications of Teams, WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, right-click › *Messages* › *Allow notification access…* takes you to the switch (*Settings › Privacy & security › Notifications*). The same apps in Chrome, Edge or Firefox count too (WhatsApp Web, Discord, Teams and Outlook on the web, Telegram Web, Slack). Right-click › *Messages* switches single apps off.
 
-**Teams in its own notification style.** The new Teams can show messages in its own pop-ups instead of Windows' – and nothing outside Teams can read those. WinNotch still shows how many messages are unread: it reads the number on Teams' taskbar icon (the *badge*) from Windows' notification database, which Teams keeps up to date in every style. You then see *Microsoft Teams · 2 unread messages* instead of who wrote what. For names and text, open Teams › *Settings › Notifications and activity* and set *Notification style* to **Windows**; the right-click menu reminds you while Teams only sends numbers.
+**When an app only sends a badge.** Teams, WhatsApp and the other supported messengers may update their taskbar number without leaving a Windows notification. WinNotch also reads these numeric badges: existing unread counts appear at startup, and an increase pops out the app name and count, such as *WhatsApp · 2 unread messages*. This fallback works even when notification access is unavailable. Opening an app clears its count in the notch without clearing the other apps.
+
+Names and message text need a notification in Windows' notification center. If your version of Teams offers *Settings › Notifications and activity › Notification style*, choose **Windows**. With badge-only updates, WinNotch cannot show message text or detect another message when the app leaves its badge number unchanged.
 
 To read the badge, WinNotch copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
 
 WinNotch never removes or changes your notifications, and message text is never written to its logs.
 
-Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu says so, and Teams' count still works.
+Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu says so, and available numeric app badges still work.
 
 ## Requirements
 
 Windows 10 (2004 or newer) or Windows 11, x64.
+
+## Updating
+
+Right-click the notch › **Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
+
+Updates work with the published Windows x64 app in a folder your account can write to. WinNotch waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
 
 ## Build
 
@@ -108,7 +117,9 @@ This gives you `publish/WinNotch.exe`, which needs the .NET 10 Desktop Runtime. 
 dotnet test WinNotch.Tests
 ```
 
-Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, two more tests leave silent notifications (no pop-up) in the notification center, read them back the way the notch does and remove them again – quit a running notch first.
+Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, additional tests leave silent Teams and unrelated notifications (no pop-up) in the notification center, read them back the way the notch does and remove them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
+
+Update tests cover release selection, download integrity, unsafe archives, menu states, replacement, restart and recovery using temporary executables. They never replace your installed WinNotch.
 
 ## Vibe coded
 

@@ -188,6 +188,16 @@
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
                         <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
                         <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                        <MenuItem x:Name="MenuUpdates" Header="Updates">
+                            <MenuItem x:Name="MenuUpdateStatus" IsEnabled="False"/>
+                            <Separator/>
+                            <MenuItem x:Name="MenuAutoUpdates" Header="Check automatically" IsCheckable="True"
+                                      StaysOpenOnClick="True" Click="MenuAutoUpdates_Click"/>
+                            <MenuItem x:Name="MenuCheckUpdates" Header="Check for updates" StaysOpenOnClick="True"
+                                      Click="MenuCheckUpdates_Click"/>
+                            <MenuItem x:Name="MenuInstallUpdate" Header="Update and restart" Visibility="Collapsed"
+                                      Click="MenuInstallUpdate_Click"/>
+                        </MenuItem>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
                         <Separator/>

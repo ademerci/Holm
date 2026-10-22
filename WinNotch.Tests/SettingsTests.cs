@@ -5,6 +5,15 @@ namespace WinNotch.Tests;
 public class SettingsTests
 {
     [Fact]
+    public void Automatic_update_checks_default_on_and_can_be_disabled_persistently()
+    {
+        var settings = Read("{}");
+        Assert.True(settings.CheckForUpdatesAutomatically);
+        settings.CheckForUpdatesAutomatically = false;
+        Assert.False(Read(JsonSerializer.Serialize(settings)).CheckForUpdatesAutomatically);
+    }
+
+    [Fact]
     public void Missing_sizes_default_to_normal()
     {
         var settings = Read("{}");

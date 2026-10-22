@@ -12,6 +12,8 @@ internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Check GitHub for a newer stable release at startup and every six hours.</summary>
+    public bool CheckForUpdatesAutomatically { get; set; } = true;
     /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
     public string? Monitor { get; set; }
     /// <summary>What the AI button opens: "claude", "gemini", "chatgpt", "custom" (<see cref="AiPath"/>) or null for no button.</summary>
