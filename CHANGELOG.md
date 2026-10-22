@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Discord messages stay available in the expanded notch after their Windows toast expires, and Discord uses its installed app icon.
+
 ## 1.5.0 – 2026-10-22
 
 ### Fixed
