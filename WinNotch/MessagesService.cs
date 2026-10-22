@@ -18,11 +18,11 @@ namespace WinNotch;
 /// "notification access" (Settings › Privacy › Notifications). Nothing is ever removed or changed.
 /// </summary>
 /// <remarks>
-/// Teams in its own notification style shows messages in pop-ups no other app can read, so for Teams we also
-/// read the number on its taskbar icon from the notification database; that works in every style and needs
-/// no access. Windows only sends change events to packaged apps, so instead we watch the database's folder,
-/// which Windows writes whenever a notification or badge changes, and only then look. A slow timer is the
-/// safety net.
+/// Some apps show their own pop-ups or leave no toast in the notification center, so we also read each
+/// supported app's numeric taskbar badge from the notification database; this needs no listener access.
+/// Windows only sends change events to packaged apps, so instead we watch the database's folder,
+/// which Windows writes whenever a notification or badge changes, and only then look. A short timer is the
+/// safety net because Windows can omit file watcher events while updating its notification database.
 /// </remarks>
 internal sealed class MessagesService
 {
@@ -43,15 +43,17 @@ internal sealed class MessagesService
     int _generation; // bumped by Stop, so a start still waiting for Windows' answer gives up
     List<ChatMessage> _toasts = new(); // unread notifications, oldest first
     List<ChatMessage> _messages = new();
-    readonly BadgeCounter _teamsCount = new(); // the number on Teams' taskbar icon
-    DateTimeOffset _teamsCountTime;
+    readonly Dictionary<string, BadgeCounter> _counts = new();
+    readonly Dictionary<string, DateTimeOffset> _countTimes = new();
+    readonly Dictionary<string, string> _badgeRevisions = new();
+    readonly HashSet<string> _pendingBadgePops = new();
 
     public AccessState Access { get; private set; } = AccessState.Off;
     /// <summary>Unread messages of the messengers that are switched on, oldest first.</summary>
     public IReadOnlyList<ChatMessage> Messages => _messages;
     public int UnreadCount => _messages.Sum(m => m.Count);
     /// <summary>Teams reports its count but has never sent a notification: it shows messages in its own style.</summary>
-    public bool TeamsOnlyCounts => _teamsCount.Count != null && !_teamsToasts;
+    public bool TeamsOnlyCounts => _counts.TryGetValue(Teams.Key, out var count) && count.Count != null && !_teamsToasts;
 
     /// <summary>The list changed. The argument is the message that just arrived, or null if none did.</summary>
     public event Action<ChatMessage?>? Changed;
@@ -64,9 +66,9 @@ internal sealed class MessagesService
         // A notification arriving means a burst of database writes: look once, shortly after the first.
         _settle = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromMilliseconds(700) };
         _settle.Tick += (_, _) => { _settle.Stop(); _ = RefreshAsync(); };
-        // Teams' number went up: wait a moment for its notification, which says who wrote what.
+        // An app's number went up: wait a moment for its notification, which says who wrote what.
         _badgePop = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromMilliseconds(1500) };
-        _badgePop.Tick += (_, _) => { _badgePop.Stop(); Publish(null, popTeamsCount: true); };
+        _badgePop.Tick += (_, _) => { _badgePop.Stop(); Publish(null, popBadgeCount: true); };
     }
 
     public bool IsRunning => _running;
@@ -78,7 +80,7 @@ internal sealed class MessagesService
     public ImageSource? LogoOf(string app) => _logos.TryGetValue(app, out var logo) ? logo : null;
 
     /// <summary>
-    /// Starts watching. With notification access, every messenger's notifications; Teams' count works without.
+    /// Starts watching. With notification access, every messenger's notifications; numeric badges work without.
     /// <paramref name="ask"/>: request access, which may show Windows' consent prompt; otherwise only check,
     /// so hovering the notch never pops up a dialog.
     /// </summary>
@@ -92,8 +94,10 @@ internal sealed class MessagesService
             if (!_running)
             {
                 _running = true;
-                bool watching = WatchDatabase();
-                _poll.Interval = TimeSpan.FromSeconds(watching ? 60 : 10);
+                WatchDatabase();
+                // Windows sometimes updates the notification database without delivering a reliable
+                // FileSystemWatcher event. Keep a short fallback so toasts still appear promptly.
+                _poll.Interval = TimeSpan.FromSeconds(5);
                 _poll.Start();
             }
             try
@@ -167,7 +171,11 @@ internal sealed class MessagesService
         _seen.Clear();
         _read.Clear();
         _toasts = new();
-        _teamsCount.Reset();
+        _counts.Clear();
+        _countTimes.Clear();
+        _badgeRevisions.Clear();
+        _pendingBadgePops.Clear();
+        _teamsToasts = false;
         if (_messages.Count > 0)
         {
             _messages = new();
@@ -188,10 +196,10 @@ internal sealed class MessagesService
             any = true;
         }
         _toasts.RemoveAll(m => _read.Contains(m.Id));
-        if ((app == null || app == Teams.Key) && _teamsCount.Unread > 0)
+        foreach (var (key, counter) in _counts.Where(p => app == null || p.Key == app))
         {
-            _teamsCount.MarkSeen();
-            any = true;
+            if (counter.Unread > 0) { counter.MarkSeen(); any = true; }
+            _pendingBadgePops.Remove(key);
         }
         if (any) Publish(null);
     }
@@ -201,7 +209,7 @@ internal sealed class MessagesService
     {
         if (!_running) return;
         Publish(null);
-        _ = RefreshAsync(); // Teams' count is only read while Teams is on
+        _ = RefreshAsync();
     }
 
     async Task RefreshAsync()
@@ -225,16 +233,38 @@ internal sealed class MessagesService
     {
         int generation = _generation;
         ChatMessage? arrived = null;
-        if (_listener is { } listener) arrived = await ReadToastsAsync(listener);
+        if (_listener is { } listener)
+        {
+            try
+            {
+                // Access can be revoked while running. Windows may return an empty list instead of throwing.
+                if (listener.GetAccessStatus() == UserNotificationListenerAccessStatus.Allowed)
+                {
+                    Access = AccessState.Allowed;
+                    arrived = await ReadToastsAsync(listener);
+                }
+                else
+                {
+                    Access = AccessState.Denied;
+                    _toasts.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                // A broken listener must not prevent the independent numeric badge fallback from running.
+                Diag.Log("Reading notification toasts failed: " + ex.Message);
+            }
+        }
         if (generation != _generation) return;
 
-        if (_shown(Teams.Key))
+        if (Messengers.All.Any(app => _shown(app.Key)))
         {
             Dictionary<string, string>? badges = null;
-            try { badges = await Task.Run(() => NotificationBadges.Read()); }
+            Dictionary<string, string>? revisions = null;
+            try { (badges, revisions) = await Task.Run(() => NotificationBadges.ReadSnapshot()); }
             catch (Exception ex) { Diag.Log("Badges unreadable: " + ex.Message); }
             if (generation != _generation) return;
-            if (badges != null) ReadTeamsBadge(badges, arrived);
+            if (badges != null) ReadBadges(badges, arrived, revisions);
         }
         _primed = true;
         Publish(arrived);
@@ -260,9 +290,12 @@ internal sealed class MessagesService
             uint id;
             try { id = notification.Id; } catch { continue; }
             present.Add(id);
-            if (!_seen.TryGetValue(id, out var message))
+            var latest = Read(notification, out string? appId);
+            if (!_seen.TryGetValue(id, out var message) || latest?.App != message?.App
+                || latest?.Time != message?.Time || latest?.Title != message?.Title || latest?.Text != message?.Text)
             {
-                _seen[id] = message = Read(notification, out string? appId);
+                _seen[id] = message = latest;
+                _read.Remove(id); // Windows can replace an existing toast using the same id.
                 if (message != null)
                 {
                     if (appId != null) _appIds[message.App] = appId;
@@ -283,65 +316,88 @@ internal sealed class MessagesService
         return arrived;
     }
 
-    void ReadTeamsBadge(IReadOnlyDictionary<string, string> badges, ChatMessage? arrived)
+    void ReadBadges(IReadOnlyDictionary<string, string> badges, ChatMessage? arrived, IReadOnlyDictionary<string, string>? revisions = null)
     {
-        int? count = NotificationBadges.CountFor(badges, Teams);
-        if (count == null) return;
-        if (!_appIds.ContainsKey(Teams.Key))
+        foreach (var app in Messengers.All.Where(app => _shown(app.Key)))
         {
-            string? id = badges.Keys.FirstOrDefault(k => k.EndsWith("!MSTeams", StringComparison.OrdinalIgnoreCase))
-                      ?? badges.Keys.FirstOrDefault(k => Messengers.ForApp(k) == Teams);
-            if (id != null)
+            int? count = NotificationBadges.CountFor(badges, app);
+            if (count == null)
             {
-                _appIds[Teams.Key] = id;
-                if (_logoTried.Add(Teams.Key)) LoadShellLogo(Teams.Key, id);
+                // Windows may remove a badge row when an app clears its count. A glyph is different:
+                // it carries no numeric information, so keep waiting for a number in that case.
+                bool hasBadge = badges.Keys.Any(id => Messengers.ForApp(id)?.Key == app.Key);
+                if (hasBadge || !_counts.ContainsKey(app.Key)) continue;
+                count = 0;
             }
-        }
-
-        bool first = _teamsCount.Count == null;
-        bool up = _teamsCount.Update(count.Value);
-        Diag.Log($"Teams badge: {count}");
-        if (first) return;
-        if (count == 0)
-        {
-            // Everything read in Teams: its notifications are old news too.
-            foreach (var message in _toasts.Where(m => m.App == Teams.Key)) _read.Add(message.Id);
-            _toasts.RemoveAll(m => _read.Contains(m.Id));
-            _badgePop.Stop();
-        }
-        if (up)
-        {
-            _teamsCountTime = DateTimeOffset.Now;
-            // A Teams notification came along: it says who wrote what, no need for the bare number.
-            if (arrived?.App == Teams.Key) _badgePop.Stop();
-            else if (_shown(Teams.Key)) { _badgePop.Stop(); _badgePop.Start(); }
+            if (!_appIds.ContainsKey(app.Key))
+            {
+                string? id = badges.Keys.FirstOrDefault(key => Messengers.ForApp(key)?.Key == app.Key);
+                if (id != null)
+                {
+                    _appIds[app.Key] = id;
+                    if (_logoTried.Add(app.Key)) LoadShellLogo(app.Key, id);
+                }
+            }
+            if (!_counts.TryGetValue(app.Key, out var counter)) _counts[app.Key] = counter = new BadgeCounter();
+            int? before = counter.Count;
+            bool first = before == null;
+            string revision = revisions == null ? "" : string.Join("|", revisions
+                .Where(pair => Messengers.ForApp(pair.Key)?.Key == app.Key)
+                .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(pair => pair.Key + ":" + pair.Value));
+            bool refreshed = revision.Length > 0 && _badgeRevisions.TryGetValue(app.Key, out var previous) && previous != revision;
+            if (revision.Length > 0) _badgeRevisions[app.Key] = revision;
+            else if (count == 0) _badgeRevisions.Remove(app.Key);
+            bool up = counter.Update(count.Value, refreshed);
+            if (first || up) _countTimes[app.Key] = DateTimeOffset.Now;
+            Diag.Log($"{app.Name} badge: {count}" + (refreshed ? " (new Windows badge update)" : ""));
+            if (before > 0 && count == 0)
+            {
+                foreach (var message in _toasts.Where(m => m.App == app.Key)) _read.Add(message.Id);
+                _toasts.RemoveAll(m => _read.Contains(m.Id));
+                _pendingBadgePops.Remove(app.Key);
+            }
+            if (arrived?.App == app.Key) _pendingBadgePops.Remove(app.Key);
+            else if (up)
+            {
+                _pendingBadgePops.Add(app.Key);
+                _badgePop.Stop();
+                _badgePop.Start();
+            }
         }
     }
 
-    /// <summary>Builds the list from the unread notifications and Teams' number, and tells the window.</summary>
-    void Publish(ChatMessage? arrived, bool popTeamsCount = false)
+    /// <summary>Builds the list from unread notifications and numeric badges, and tells the window.</summary>
+    void Publish(ChatMessage? arrived, bool popBadgeCount = false)
     {
         var list = _toasts.Where(m => _shown(m.App)).ToList();
-        ChatMessage? countOnly = null;
-        if (_shown(Teams.Key))
+        var countMessages = new List<ChatMessage>();
+        foreach (var app in Messengers.All.Where(app => _shown(app.Key)))
         {
-            int fromBadge = _teamsCount.Unread;
-            int withText = list.Count(m => m.App == Teams.Key);
+            int fromBadge = _counts.TryGetValue(app.Key, out var counter) ? counter.Unread : 0;
+            int withText = list.Count(m => m.App == app.Key);
             if (fromBadge > withText)
             {
-                countOnly = new ChatMessage
+                var countOnly = new ChatMessage
                 {
-                    App = Teams.Key, Title = "Microsoft Teams", CountOnly = true, Count = fromBadge - withText, Time = _teamsCountTime,
+                    App = app.Key, Title = app.Key == Teams.Key ? "Microsoft Teams" : app.Name,
+                    CountOnly = true, Count = fromBadge - withText, Time = _countTimes[app.Key],
                     Text = fromBadge == 1 ? "1 unread message" : $"{fromBadge} unread messages",
                 };
+                countMessages.Add(countOnly);
                 list.Add(countOnly);
-                list.Sort((a, b) => a.Time.CompareTo(b.Time));
             }
         }
-        if (popTeamsCount) arrived = countOnly;
+        list.Sort((a, b) => a.Time.CompareTo(b.Time));
+        if (popBadgeCount)
+        {
+            arrived = countMessages.Where(m => _pendingBadgePops.Contains(m.App)).OrderBy(m => m.Time).LastOrDefault();
+            _pendingBadgePops.Clear();
+        }
 
         bool changed = arrived != null || list.Count != _messages.Count
-                    || !list.Zip(_messages).All(p => p.First.Id == p.Second.Id && p.First.Count == p.Second.Count && p.First.CountOnly == p.Second.CountOnly);
+                    || !list.Zip(_messages).All(p => p.First.Id == p.Second.Id && p.First.App == p.Second.App
+                        && p.First.Count == p.Second.Count && p.First.CountOnly == p.Second.CountOnly);
         _messages = list;
         if (changed) Changed?.Invoke(arrived);
     }

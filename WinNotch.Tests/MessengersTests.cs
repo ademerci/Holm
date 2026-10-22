@@ -101,12 +101,12 @@ public class MessengersTests
 public class BadgeCounterTests
 {
     [Fact]
-    public void The_number_at_start_is_old_news()
+    public void Existing_unread_messages_are_counted_without_a_new_arrival()
     {
         var counter = new BadgeCounter();
         Assert.False(counter.Update(3));
         Assert.Equal(3, counter.Count);
-        Assert.Equal(0, counter.Unread);
+        Assert.Equal(3, counter.Unread);
     }
 
     [Fact]
@@ -115,9 +115,9 @@ public class BadgeCounterTests
         var counter = new BadgeCounter();
         counter.Update(3);
         Assert.True(counter.Update(5));
-        Assert.Equal(2, counter.Unread);
+        Assert.Equal(5, counter.Unread);
         Assert.False(counter.Update(5)); // same number again: nothing new
-        Assert.Equal(2, counter.Unread);
+        Assert.Equal(5, counter.Unread);
     }
 
     [Fact]
@@ -169,6 +169,6 @@ public class BadgeCounterTests
         Assert.Null(counter.Count);
         Assert.Equal(0, counter.Unread);
         Assert.False(counter.Update(9));
-        Assert.Equal(0, counter.Unread);
+        Assert.Equal(9, counter.Unread);
     }
 }

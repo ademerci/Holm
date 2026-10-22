@@ -7,6 +7,14 @@
 - The open notch made a new cover brush for every update. The compact and the open notch now share one per cover.
 - Tests that repeated updates aren't passed on and keep their cover, backdrop and colour brushes.
 
+### Added
+- **Updates in the app:** automatic checks shortly after startup and every six hours, a manual check in the right-click menu, and an option to download a new stable release and restart in place. Settings and friends are preserved; a failed startup restores the previous executable.
+- Regression tests for release checks, verified downloads, update menu states, replacement and recovery.
+
+### Fixed
+- New messages can reappear after opening Teams or WhatsApp even when the app's unread conversation count stays unchanged. WinNotch tracks fresh Windows badge updates and refreshed notifications that reuse the same id.
+- **Missing message badges and pop-outs:** numeric badge fallback now covers WhatsApp and all supported messengers, including when reading Windows notifications fails. Existing unread counts appear at startup; new increases pop out. An unchanged zero Teams badge no longer hides a new notification, and opening one app leaves the others' unread counts alone.
+
 ## 1.4.0 – 2026-10-22
 
 ### Added

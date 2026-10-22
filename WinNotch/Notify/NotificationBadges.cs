@@ -9,8 +9,8 @@ namespace WinNotch.Notify;
 
 /// <summary>
 /// The numbers on app icons in the taskbar ("badges"), read from Windows' notification database.
-/// Teams keeps its badge up to date in every notification style, also when it shows its messages
-/// in its own pop-ups that no other app can read. Only badges are read, never notification texts.
+/// Apps such as Teams and WhatsApp keep these up to date even when no toast reaches the notification
+/// center. Only badges are read, never notification texts.
 /// </summary>
 /// <remarks>
 /// The database is in use by Windows, so we read a copy (database and write-ahead log) in a private
@@ -27,6 +27,9 @@ public static class NotificationBadges
     /// <summary>App id → badge value ("3", "activity", …) for every app that has a badge.</summary>
     /// <exception cref="IOException">The database couldn't be read.</exception>
     public static Dictionary<string, string> Read(string? folder = null)
+        => ReadSnapshot(folder).Values;
+
+    internal static (Dictionary<string, string> Values, Dictionary<string, string> Revisions) ReadSnapshot(string? folder = null)
     {
         folder ??= DefaultFolder;
         string copy = Path.Combine(Path.GetTempPath(), $"WinNotch-badges-{Environment.ProcessId}-{Guid.NewGuid():N}");
@@ -38,15 +41,20 @@ public static class NotificationBadges
                 CopyShared(Path.Combine(folder, Database + "-wal"), Path.Combine(copy, Database + "-wal"));
 
             var badges = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var revisions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             using var db = WinSqlite.Open(Path.Combine(copy, Database));
-            db.Query("select h.PrimaryId, n.Payload from Notification n join NotificationHandler h on h.RecordId = n.HandlerId where n.Type = 'badge'",
+            db.Query("select h.PrimaryId, n.Payload, n.Id, n.ArrivalTime from Notification n join NotificationHandler h on h.RecordId = n.HandlerId where n.Type = 'badge' order by n.ArrivalTime, n.Id",
                 row =>
                 {
                     string? app = row.Text(0);
                     var match = Value.Match(row.Text(1) ?? "");
-                    if (app != null && match.Success) badges[app] = match.Groups[1].Value;
+                    if (app != null && match.Success)
+                    {
+                        badges[app] = match.Groups[1].Value;
+                        revisions[app] = row.Text(2) + ":" + row.Text(3);
+                    }
                 });
-            return badges;
+            return (badges, revisions);
         }
         finally
         {
@@ -61,7 +69,7 @@ public static class NotificationBadges
         foreach (var (appId, value) in badges)
         {
             if (Messengers.ForApp(appId)?.Key != app.Key) continue;
-            if (int.TryParse(value, out int n)) count = Math.Max(count ?? 0, n);
+            if (int.TryParse(value, out int n) && n >= 0) count = Math.Max(count ?? 0, n);
         }
         return count;
     }
@@ -88,18 +96,20 @@ public sealed class BadgeCounter
     public int Unread => _count is int count ? Math.Max(0, count - _seen) : 0;
 
     /// <summary>Takes the badge's number; true if it went up (a message came in).</summary>
-    public bool Update(int count)
+    public bool Update(int count, bool refreshed = false)
     {
         int? before = _count;
         _count = count;
         if (before == null)
         {
-            // The number the app showed when we started is old news, like the notifications already there.
-            _seen = count;
+            // Existing unread messages belong on the badge too. They aren't a new arrival, so don't pop out.
             return false;
         }
+        // Apps often count conversations rather than messages. A fresh Windows badge can
+        // announce another message while its numeric value stays at one.
+        if (refreshed && count > 0) _seen = 0;
         _seen = Math.Min(_seen, count); // read some in the app: fewer are new
-        return count > before;
+        return count > before || (refreshed && count > 0);
     }
 
     /// <summary>You looked at the app.</summary>

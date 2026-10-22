@@ -59,6 +59,18 @@ public class NotificationBadgesTests
     }
 
     [Fact]
+    public void Reads_WhatsApp_numeric_badges_and_ignores_invalid_negative_counts()
+    {
+        var badges = new Dictionary<string, string>
+        {
+            ["5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App"] = "6",
+            ["MSTeams_8wekyb3d8bbwe!MSTeams"] = "-1",
+        };
+        Assert.Equal(6, NotificationBadges.CountFor(badges, Messengers.Get("whatsapp")!));
+        Assert.Null(NotificationBadges.CountFor(badges, Messengers.Get("teams")!));
+    }
+
+    [Fact]
     public void Leaves_the_original_untouched_and_no_copy_behind()
     {
         using var folder = new TempFolder();
