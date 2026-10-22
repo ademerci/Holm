@@ -84,6 +84,49 @@ internal static class Native
         return exe;
     }
 
+    public const int WM_CLIPBOARDUPDATE = 0x031D;
+    [DllImport("user32.dll")] public static extern bool AddClipboardFormatListener(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);
+
+    [DllImport("secur32.dll", CharSet = CharSet.Unicode)]
+    static extern bool GetUserNameEx(int format, System.Text.StringBuilder name, ref uint size);
+
+    static string? _displayName;
+
+    /// <summary>How other WinNotch users see you: your Windows display name, or the account name.</summary>
+    public static string DisplayName()
+    {
+        if (_displayName != null) return _displayName;
+        string name = "";
+        try
+        {
+            var buffer = new System.Text.StringBuilder(256);
+            uint size = (uint)buffer.Capacity;
+            if (GetUserNameEx(3 /* NameDisplay */, buffer, ref size)) name = buffer.ToString().Trim();
+        }
+        catch { }
+        if (name.Length == 0) name = Environment.UserName;
+        return _displayName = name.Length > 40 ? name[..40] : name;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    static extern int SHGetKnownFolderPath(ref Guid id, uint flags, IntPtr token, out IntPtr path);
+
+    /// <summary>The user's Downloads folder (wherever they moved it), or the usual place.</summary>
+    public static string DownloadsFolder()
+    {
+        var downloads = new Guid("374DE290-123F-4565-9164-39C4925E467B");
+        if (SHGetKnownFolderPath(ref downloads, 0, IntPtr.Zero, out IntPtr path) == 0)
+        {
+            try { return Marshal.PtrToStringUni(path) ?? ""; }
+            finally { Marshal.FreeCoTaskMem(path); }
+        }
+        return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    }
+
     /// <summary>Asks the shell whether a fullscreen app (game, video, presentation) is in front.</summary>
     [DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int state);
 

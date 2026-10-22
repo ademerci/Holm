@@ -174,6 +174,47 @@ internal static class Shell
         Process.Start(start)?.Dispose();
     }
 
+    /// <summary>Opens Explorer with the file selected.</summary>
+    public static void Reveal(string path)
+    {
+        AllowSetForegroundWindow(-1 /* ASFW_ANY */);
+        // Explorer wants exactly /select,"path" (quotes around the path only).
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\""))?.Dispose();
+    }
+
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int command);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+
+    /// <summary>
+    /// Brings a media player to the front by the AppUserModelID it reports: Store apps through the
+    /// app list, desktop apps by their main window. Spotify hiding in the tray is woken by its link.
+    /// </summary>
+    public static bool Activate(string appId)
+    {
+        if (string.IsNullOrWhiteSpace(appId)) return false;
+        if (appId.Contains('!')) { Open(AppTarget(appId)); return true; }
+
+        string name = Path.GetFileNameWithoutExtension(appId);
+        var processes = Process.GetProcessesByName(name);
+        try
+        {
+            foreach (var process in processes)
+            {
+                IntPtr window = process.MainWindowHandle;
+                if (window == IntPtr.Zero) continue;
+                AllowSetForegroundWindow(-1 /* ASFW_ANY */);
+                ShowWindow(window, IsIconic(window) ? 9 /* SW_RESTORE */ : 5 /* SW_SHOW */);
+                SetForegroundWindow(window);
+                return true;
+            }
+        }
+        finally { foreach (var process in processes) process.Dispose(); }
+
+        if (name.Equals("Spotify", StringComparison.OrdinalIgnoreCase)) { Open("spotify:"); return true; }
+        return false;
+    }
+
     static string WorkingDirectoryOf(string target)
     {
         try { return Path.IsPathFullyQualified(target) ? Path.GetDirectoryName(target) ?? "" : ""; }

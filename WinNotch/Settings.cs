@@ -16,6 +16,10 @@ internal sealed class AppSettings
     /// <summary>Program or shortcut picked with "Choose app…".</summary>
     public string? AiPath { get; set; }
     public bool TeamsMessages { get; set; } = true;
+    /// <summary>Drop files on the notch to send them; be visible to WinNotch users on this network; pick up copied codes.</summary>
+    public bool AirDrop { get; set; } = true;
+    /// <summary>Relay for sending over the internet, "host:port".</summary>
+    public string? Relay { get; set; }
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 

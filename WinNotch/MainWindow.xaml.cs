@@ -12,12 +12,13 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using WinNotch.Sharing;
 
 namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Media, Peek, Message, Expanded }
+    enum NotchState { None, Idle, Badge, Media, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 440;
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
@@ -45,11 +46,14 @@ public partial class MainWindow : Window
     readonly MediaService _media;
     readonly TeamsService _teams;
     readonly VolumeService _volume = new();
-    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer;
+    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
     readonly BatteryGlyph PeekBattery = new();
     readonly MiniSlider Progress = new();
     readonly MiniSlider VolSlider = new();
+    readonly MiniSlider VolPeekBar = new() { IsInteractive = false };
+    readonly MiniSlider TaskProgress = new() { IsInteractive = false };
+    bool _volumePeek;
 
     IntPtr _hwnd, _powerNotifyA, _powerNotifyB, _monitor;
     NotchState _state = NotchState.None;
@@ -72,6 +76,8 @@ public partial class MainWindow : Window
         PeekBatteryHost.Child = PeekBattery;
         ProgressHost.Child = Progress;
         VolumeHost.Child = VolSlider;
+        VolPeekHost.Child = VolPeekBar;
+        TaskProgressHost.Child = TaskProgress;
         (_artFront, _artBack) = (ArtLayerA, ArtLayerB);
         _bars = new[] { Bar1, Bar2, Bar3, Bar4 }.Select(b => (ScaleTransform)b.RenderTransform).ToArray();
 
@@ -81,7 +87,8 @@ public partial class MainWindow : Window
         _teams.Changed += OnMessagesChanged;
 
         // Every timer below is either short-lived or only runs while the notch is open.
-        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver) SetExpanded(true); }, oneShot: true);
+        // Not while a question or a transfer is shown: opening the notch would hide its buttons.
+        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
             // Dragging a slider or menu open: try again shortly.
@@ -96,6 +103,8 @@ public partial class MainWindow : Window
         _btPoll = MakeTimer(60_000, ScanBluetooth);
         _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
+        _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
+        InitSharing();
 
         Progress.ValueCommitted += v =>
         {
@@ -145,6 +154,7 @@ public partial class MainWindow : Window
         Native.SetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE, new IntPtr(ex));
 
         HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
+        Native.AddClipboardFormatListener(_hwnd); // a copied AirDrop code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
         Native.EnableEcoQoS();
@@ -164,14 +174,21 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
         if (_settings.TeamsMessages) _ = _teams.StartAsync(ask: true);
+
+        _volume.Changed += (level, muted) => Dispatcher.InvokeAsync(() => OnVolumeChanged(level, muted));
+        _volume.DefaultDeviceChanged += () => Dispatcher.InvokeAsync(_volume.Bind);
+        _volume.Bind();
+        StartSharing();
     }
 
     void OnClosed(object? sender, EventArgs e)
     {
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
-        _volume.Release();
+        if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
+        _volume.Shutdown();
         _teams.Stop();
+        StopSharing();
     }
 
     IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -193,6 +210,10 @@ public partial class MainWindow : Window
             case Native.WM_DISPLAYCHANGE:
             case Native.WM_DPICHANGED:
                 Dispatcher.InvokeAsync(PositionWindow, DispatcherPriority.Background);
+                break;
+
+            case Native.WM_CLIPBOARDUPDATE:
+                OnClipboardChanged();
                 break;
         }
         return IntPtr.Zero;
@@ -263,8 +284,9 @@ public partial class MainWindow : Window
         {
             _peekActive = false;
             _peekTimer.Stop();
+            _volumePeek = false;
+            _volumeTimer.Stop();
             _trimTimer.Stop();
-            _volume.Bind();
             RefreshMediaUi();
             RefreshDevices();
             ResolveAi(force: false);
@@ -276,7 +298,6 @@ public partial class MainWindow : Window
         else
         {
             _liveTimer.Stop();
-            _volume.Release();
             _trimTimer.Start();
         }
         ApplyState();
@@ -286,6 +307,9 @@ public partial class MainWindow : Window
     void ApplyState(bool animate = true)
     {
         var target = _expanded ? NotchState.Expanded
+                   : _sharing ? NotchState.Share
+                   : TaskShowing ? NotchState.Task
+                   : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _info?.IsPlaying == true ? NotchState.Media
                    : _messages.Count > 0 ? NotchState.Badge
@@ -300,6 +324,12 @@ public partial class MainWindow : Window
                 ExpandedView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(ExpandedView.DesiredSize.Height) + 18, 32);
                 break;
+            case NotchState.Share:
+                ShareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
+                (w, h, r) = (400, Math.Ceiling(ShareView.DesiredSize.Height) + 6, 28);
+                break;
+            case NotchState.Task: (w, h, r) = (420, 60, 26); break;
+            case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
@@ -338,6 +368,9 @@ public partial class MainWindow : Window
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
+            SetView(VolumeView, target == NotchState.Volume, animate);
+            SetView(TaskView, target == NotchState.Task, animate);
+            SetView(ShareView, target == NotchState.Share, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
             _state = target;
         }
@@ -704,8 +737,9 @@ public partial class MainWindow : Window
         TitleText.Text = info.Title;
         ArtistText.Text = info.Artist;
         ArtistText.Visibility = info.Artist.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AppText.Text = info.App;
+        AppText.Text = info.Album.Length > 0 && info.App.Length > 0 ? $"{info.Album} · {info.App}" : info.Album.Length > 0 ? info.Album : info.App;
         BigArt.Background = ArtBrush(info.Art);
+        RefreshPlayModes();
         ArtPlaceholder.Visibility = info.Art == null ? Visibility.Visible : Visibility.Collapsed;
         SetPlayIcon(info.IsPlaying);
         PlayBtn.IsEnabled = info.CanPlayPause;
@@ -714,6 +748,21 @@ public partial class MainWindow : Window
         ProgressRow.Visibility = info.Duration > TimeSpan.FromSeconds(1) ? Visibility.Visible : Visibility.Collapsed;
         Progress.IsInteractive = info.CanSeek;
         UpdateLive();
+    }
+
+    /// <summary>Shuffle and repeat, lit in the cover's colour when on; hidden when the player doesn't offer them.</summary>
+    void RefreshPlayModes()
+    {
+        var info = _info;
+        var on = Progress.Fill;
+        var off = (Brush)FindResource("Faint");
+        ShuffleBtn.Visibility = info is { CanShuffle: true, Shuffle: not null } ? Visibility.Visible : Visibility.Hidden;
+        RepeatBtn.Visibility = info is { CanRepeat: true, Repeat: not null } ? Visibility.Visible : Visibility.Hidden;
+        ShuffleIcon.Foreground = info?.Shuffle == true ? on : off;
+        RepeatIcon.Foreground = info?.Repeat is 1 or 2 ? on : off;
+        RepeatIcon.Text = info?.Repeat == 1 ? "" : ""; // repeat one / repeat all
+        RepeatBtn.ToolTip = info?.Repeat switch { 1 => "Repeat: this song", 2 => "Repeat: all", _ => "Repeat: off" };
+        ShuffleBtn.ToolTip = info?.Shuffle == true ? "Shuffle: on" : "Shuffle: off";
     }
 
     void SetPlayIcon(bool playing)
@@ -799,7 +848,7 @@ public partial class MainWindow : Window
 
     void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_expanded) return;
+        if (_expanded || TaskShowing || _sharing) return;
         _expandDelay.Stop();
         SetExpanded(true);
     }
@@ -812,6 +861,52 @@ public partial class MainWindow : Window
 
     void Prev_Click(object sender, RoutedEventArgs e) => _media.Previous();
     void Next_Click(object sender, RoutedEventArgs e) => _media.Next();
+
+    void Shuffle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_info is not { Shuffle: { } shuffle } info) return;
+        info.Shuffle = !shuffle; // feels instant; the player confirms a moment later
+        RefreshPlayModes();
+        _media.SetShuffle(!shuffle);
+    }
+
+    /// <summary>Off → all → this song → off, like the phone players.</summary>
+    void Repeat_Click(object sender, RoutedEventArgs e)
+    {
+        if (_info is not { Repeat: { } repeat } info) return;
+        int next = repeat switch { 0 => 2, 2 => 1, _ => 0 };
+        info.Repeat = next;
+        RefreshPlayModes();
+        _media.SetRepeat(next);
+    }
+
+    void Player_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (_info == null) return;
+        SetExpanded(false);
+        try
+        {
+            if (!Shell.Activate(_info.AppId)) ShowPeek("", "Can't open " + (_info.App.Length > 0 ? _info.App : "the player"), "", null, false, null);
+        }
+        catch (Exception ex) { Diag.Error(ex); }
+    }
+
+    /// <summary>Someone changed the volume (keys, the taskbar, another app): show it like the phone does.</summary>
+    void OnVolumeChanged(float level, bool muted)
+    {
+        if (_expanded) { ReadVolume(); return; }
+        if (_hiddenForFullscreen || TaskShowing || _sharing) return;
+
+        VolPeekBar.Value = muted ? 0 : level;
+        VolPeekBar.Fill = _info?.IsPlaying == true ? Progress.Fill : Brushes.White;
+        VolPeekIcon.Text = muted || level < 0.005 ? "" : level < 0.34 ? "" : level < 0.67 ? "" : "";
+        VolPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        _volumePeek = true;
+        _volumeTimer.Stop();
+        _volumeTimer.Start();
+        ApplyState();
+    }
 
     void Mute_Click(object sender, RoutedEventArgs e)
     {
@@ -859,6 +954,8 @@ public partial class MainWindow : Window
         MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
         MenuTeams.Header = denied ? "Teams messages (allow access…)" : unavailable ? "Teams messages (not supported here)" : "Teams messages";
         MenuTeams.IsEnabled = !unavailable;
+        MenuAirDrop.IsChecked = _settings.AirDrop;
+        MenuReceive.IsEnabled = _settings.AirDrop && !TaskShowing;
         ListScreens(Island.ContextMenu);
     }
 
@@ -1027,6 +1124,56 @@ public partial class MainWindow : Window
 
         SetExpanded(true);
         await Snap(dir, "expanded-messages", 260);
+
+        // 1.2: volume, AirDrop, shuffle/repeat
+        SetExpanded(false);
+        _messages = Array.Empty<TeamsMessage>();
+        RefreshMessages();
+        var demo = DemoMedia();
+        demo.Album = "After Hours";
+        demo.CanShuffle = demo.CanRepeat = true;
+        demo.Shuffle = true;
+        demo.Repeat = 2;
+        OnMediaChanged(demo, true);
+        await Task.Delay(300);
+        OnVolumeChanged(0.62f, false);
+        await Snap(dir, "volume", 60);
+        _volumePeek = false;
+        _volumeTimer.Stop();
+
+        SetExpanded(true);
+        await Snap(dir, "expanded-playmodes", 240);
+        SetExpanded(false);
+
+        _demoPeers = new List<NearbyPeer>
+        {
+            new(Guid.NewGuid(), "Lena Hoffmann", new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 1), DateTime.UtcNow),
+            new(Guid.NewGuid(), "Tim", new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 2), DateTime.UtcNow),
+        };
+        _dragFiles = new[] { @"C:\Demo\Holiday photos.zip" };
+        _sharing = true;
+        RefreshShareTargets();
+        HighlightChip(ShareTargets.Children[0]);
+        ApplyState();
+        await Snap(dir, "airdrop-share", 140);
+        _sharing = false;
+        _demoPeers = null;
+
+        ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Lena Hoffmann wants to send you", "Holiday photos.zip · 48.2 MB", null,
+                 ("Accept", () => { }), ("Decline", () => { }), textIcon: true);
+        await Snap(dir, "airdrop-ask", 70);
+
+        _busy = true;
+        ShowProgress("Sending to Lena Hoffmann", "Holiday photos.zip · 48.2 MB", 0.42, sending: true);
+        await Snap(dir, "airdrop-progress", 70);
+
+        ShowTask("\uE71B", ShareBlue, "Code copied – paste it to your friend", ShareCode.Format(ShareCode.NewSecret()), null, null, ("Cancel", () => { }));
+        await Snap(dir, "airdrop-code", 70);
+
+        _busy = false;
+        EndTask("\uE73E", GreenBrush, "Saved Holiday photos.zip", "From Lena Hoffmann · in Downloads", ("Show", () => { }));
+        await Snap(dir, "airdrop-saved", 70);
+        HideTask();
     }
 
     static MediaInfo DemoMedia()
