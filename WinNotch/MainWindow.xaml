@@ -121,7 +121,9 @@
 
             <Border x:Name="Island" Background="Transparent" Width="150" Height="30" VerticalAlignment="Top"
                     MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
-                    MouseLeftButtonUp="Island_MouseLeftButtonUp">
+                    MouseLeftButtonUp="Island_MouseLeftButtonUp" AllowDrop="True"
+                    PreviewDragEnter="Island_PreviewDragOver" PreviewDragOver="Island_PreviewDragOver"
+                    PreviewDragLeave="Island_PreviewDragLeave" DragOver="Island_DragOver" Drop="Island_Drop">
                 <Border.ContextMenu>
                     <ContextMenu Opened="Menu_Opened" Closed="Menu_Closed">
                         <MenuItem x:Name="MenuAnim" Header="Animate equalizer" IsCheckable="True" Click="MenuAnim_Click"/>
@@ -131,6 +133,9 @@
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <MenuItem x:Name="MenuTeams" Header="Teams messages" IsCheckable="True" Click="MenuTeams_Click"/>
+                        <!-- Copy my friend code / Add friend… / friends / your name, filled in when the menu opens -->
+                        <MenuItem x:Name="MenuBeam" Header="Beam"/>
+                        <MenuItem x:Name="MenuSize" Header="Size"/>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
                         <Separator/>
@@ -200,6 +205,14 @@
                             <Border x:Name="PeekBatteryHost" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
+
+                    <!-- Beam: files dragged over the notch; drop them on a friend -->
+                    <StackPanel x:Name="DropView" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
+                                HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
+                        <TextBlock x:Name="DropTitle" FontSize="12" Foreground="{StaticResource Dim}" HorizontalAlignment="Center"
+                                   TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320"/>
+                        <WrapPanel x:Name="DropTargets" HorizontalAlignment="Center" MaxWidth="400" Margin="0,10,0,0"/>
+                    </StackPanel>
 
                     <!-- Expanded: hover -->
                     <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
@@ -273,6 +286,28 @@
                                     <Border Grid.Column="2" Style="{StaticResource CountPill}">
                                         <TextBlock x:Name="RowCount" Style="{StaticResource CountText}"/>
                                     </Border>
+                                </Grid>
+                            </Button>
+
+                            <!-- The last file a friend beamed you -->
+                            <Button x:Name="BeamRow" Style="{StaticResource RowButton}" Margin="0,14,0,0" Visibility="Collapsed"
+                                    Click="BeamRow_Click" ToolTip="Show in folder">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="28" Height="28" CornerRadius="8" Background="#FF0A84FF" VerticalAlignment="Center">
+                                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="BeamRowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="BeamRowText" FontSize="12" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                               Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Button>
 

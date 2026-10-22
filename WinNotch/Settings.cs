@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -16,6 +17,21 @@ internal sealed class AppSettings
     /// <summary>Program or shortcut picked with "Choose app…".</summary>
     public string? AiPath { get; set; }
     public bool TeamsMessages { get; set; } = true;
+    /// <summary>Size of the notch; 1 is normal.</summary>
+    public double Scale { get; set; } = 1;
+
+    // Beam (see Beam.cs)
+    public string? BeamName { get; set; }
+    public string? BeamTopic { get; set; }
+    /// <summary>Our private key, encrypted for this Windows account (DPAPI).</summary>
+    public string? BeamKey { get; set; }
+    /// <summary>ntfy server for our inbox; null means ntfy.sh.</summary>
+    public string? BeamServer { get; set; }
+    /// <summary>Server time of the last message in our inbox, to catch up from after a restart.</summary>
+    public long? BeamSince { get; set; }
+    /// <summary>Ids of the last messages handled, so catching up never saves a file twice.</summary>
+    public List<string> BeamSeen { get; set; } = new();
+    public List<BeamFriend> Friends { get; set; } = new();
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 

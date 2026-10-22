@@ -174,6 +174,13 @@ internal static class Shell
         Process.Start(start)?.Dispose();
     }
 
+    /// <summary>Opens Explorer on the file's folder with the file selected.</summary>
+    public static void ShowInFolder(string path)
+    {
+        AllowSetForegroundWindow(-1 /* ASFW_ANY */);
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\""))?.Dispose(); // paths can't contain quotes
+    }
+
     static string WorkingDirectoryOf(string target)
     {
         try { return Path.IsPathFullyQualified(target) ? Path.GetDirectoryName(target) ?? "" : ""; }
