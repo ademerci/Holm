@@ -12,13 +12,14 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using WinNotch.Notify;
 using WinNotch.Sharing;
 
 namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Media, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Media, Download, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 440;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -27,7 +28,6 @@ public partial class MainWindow : Window
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
     static readonly Brush GreenBrush = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
     static readonly Brush RedBrush = Frozen(Color.FromRgb(0xFF, 0x45, 0x3A));
-    static readonly Brush TeamsBrush = Frozen(Color.FromRgb(0x5B, 0x5F, 0xC7));
     static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
     static readonly double[] BarRest = { 0.45, 0.85, 0.6, 0.75 }, BarLow = { 0.3, 0.4, 0.25, 0.35 }, BarSeconds = { 0.42, 0.55, 0.37, 0.49 };
 
@@ -47,7 +47,7 @@ public partial class MainWindow : Window
 
     readonly AppSettings _settings = AppSettings.Load();
     readonly MediaService _media;
-    readonly TeamsService _teams;
+    readonly MessagesService _chat;
     readonly VolumeService _volume = new();
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
@@ -69,7 +69,7 @@ public partial class MainWindow : Window
     PowerInfo _power;
     bool _powerKnown, _btKnown;
     List<BtDevice> _bt = new();
-    IReadOnlyList<TeamsMessage> _messages = Array.Empty<TeamsMessage>();
+    IReadOnlyList<ChatMessage> _messages = Array.Empty<ChatMessage>();
     AiTarget? _ai; // what the AI button opens, once the app list has been searched
     Task<AiTarget?>? _aiLookup;
     DateTime _aiResolvedAt;
@@ -88,8 +88,8 @@ public partial class MainWindow : Window
 
         _media = new MediaService(Dispatcher);
         _media.Changed += OnMediaChanged;
-        _teams = new TeamsService(Dispatcher);
-        _teams.Changed += OnMessagesChanged;
+        _chat = new MessagesService(Dispatcher, app => !_settings.MutedApps.Contains(app));
+        _chat.Changed += OnMessagesChanged;
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
@@ -110,6 +110,7 @@ public partial class MainWindow : Window
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
+        InitDownloads();
 
         Progress.ValueCommitted += v =>
         {
@@ -178,7 +179,8 @@ public partial class MainWindow : Window
         UpdateAiButton();
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
-        if (_settings.TeamsMessages) _ = _teams.StartAsync(ask: true);
+        if (_settings.Messages) _ = _chat.StartAsync(ask: true);
+        StartDownloads();
 
         _volume.Changed += (level, muted) => Dispatcher.InvokeAsync(() => OnVolumeChanged(level, muted));
         _volume.DefaultDeviceChanged += () => Dispatcher.InvokeAsync(_volume.Bind);
@@ -192,7 +194,8 @@ public partial class MainWindow : Window
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
         _volume.Shutdown();
-        _teams.Stop();
+        _chat.Stop();
+        StopDownloads();
         StopSharing();
     }
 
@@ -272,11 +275,11 @@ public partial class MainWindow : Window
         if (!fullscreen && _hwnd != IntPtr.Zero && !Island.ContextMenu.IsOpen)
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
-        if (_messages.Count > 0 && TeamsInFront()) _teams.MarkRead();
+        if (_messages.Count > 0 && AppInFront() is { } front && _messages.Any(m => m.App == front.Key)) _chat.MarkRead(front.Key);
     }
 
-    static bool TeamsInFront()
-        => Native.ProcessNameOf(Native.GetForegroundWindow()).Contains("teams", StringComparison.OrdinalIgnoreCase);
+    /// <summary>The messenger you're looking at, if any: its messages aren't unread.</summary>
+    static Messenger? AppInFront() => Messengers.ForProcess(Native.ProcessNameOf(Native.GetForegroundWindow()));
 
     // ───────────────────────── states & animation ─────────────────────────
 
@@ -296,8 +299,8 @@ public partial class MainWindow : Window
             RefreshDevices();
             ResolveAi(force: false);
             // Access may have been granted in Settings since we last asked.
-            if (_settings.TeamsMessages && !_teams.IsRunning && _teams.Access != TeamsService.AccessState.Unavailable)
-                _ = _teams.StartAsync(ask: false);
+            if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
+                _ = _chat.StartAsync(ask: false);
             _liveTimer.Start();
         }
         else
@@ -316,6 +319,8 @@ public partial class MainWindow : Window
                    : TaskShowing ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
+                   // A running download shows while nothing plays; over music only for a moment when it starts.
+                   : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media
                    : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
@@ -336,6 +341,7 @@ public partial class MainWindow : Window
                 break;
             case NotchState.Task: (w, h, r) = (420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
+            case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
@@ -383,6 +389,7 @@ public partial class MainWindow : Window
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(VolumeView, target == NotchState.Volume, animate);
+            SetView(DownloadView, target == NotchState.Download, animate);
             SetView(TaskView, target == NotchState.Task, animate);
             SetView(ShareView, target == NotchState.Share, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
@@ -592,10 +599,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Pops out a message that just came in. The caller applies the state.</summary>
-    void ShowMessage(TeamsMessage message)
+    void ShowMessage(ChatMessage message)
     {
         if (_hiddenForFullscreen || _expanded) return;
-        MessageLogoHost.Child = TeamsLogo(28);
+        MessageLogoHost.Child = AppLogo(message.App, 28);
         MessageTitle.Text = message.Title;
         MessageText.Text = message.Text;
         MessageText.Visibility = message.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -676,13 +683,13 @@ public partial class MainWindow : Window
         UpdateBackdrop();
     }
 
-    void OnMessagesChanged(TeamsMessage? arrived)
+    void OnMessagesChanged(ChatMessage? arrived)
     {
-        // Already looking at Teams: nothing is unread. (MarkRead calls back here with the list cleared.)
-        if (_teams.Messages.Count > 0 && TeamsInFront()) { _teams.MarkRead(); return; }
+        // Already looking at that app: its messages aren't unread. (MarkRead calls back here with them cleared.)
+        if (AppInFront() is { } front && _chat.Messages.Any(m => m.App == front.Key)) { _chat.MarkRead(front.Key); return; }
 
-        _messages = _teams.Messages;
-        Diag.Log($"Teams: {_messages.Count} unread" + (arrived != null ? ", new one" : ""));
+        _messages = _chat.Messages;
+        Diag.Log($"Messages: {_chat.UnreadCount} unread" + (arrived != null ? $", new one from {arrived.App}" : ""));
         RefreshMessages();
         if (arrived != null) ShowMessage(arrived);
         ApplyState();
@@ -691,24 +698,34 @@ public partial class MainWindow : Window
     /// <summary>The count on the badges and the newest message in the open notch.</summary>
     void RefreshMessages()
     {
-        int count = _messages.Count;
+        int count = _messages.Sum(m => m.Count);
         BadgeText.Text = MediaBadgeText.Text = RowCount.Text = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
         MediaBadge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
         MessageRow.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (count == 0) return;
 
         var latest = _messages[^1];
-        BadgeLogoHost.Child = TeamsLogo(18);
-        RowLogoHost.Child = TeamsLogo(28);
+        var app = Messengers.Get(latest.App);
+        var color = BrandBrush(latest.App);
+        MediaBadge.Background = BadgePill.Background = RowPill.Background = color;
+        BadgeLogoHost.Child = AppLogo(latest.App, 18);
+        RowLogoHost.Child = AppLogo(latest.App, 28);
+        MessageRow.ToolTip = "Open " + (app?.Name ?? "the app");
         RowTitle.Text = latest.Title;
         RowText.Text = latest.Text;
         RowText.Visibility = latest.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>Teams' own icon once a notification has brought it along, a purple chat bubble until then.</summary>
-    FrameworkElement TeamsLogo(double size)
+    static Brush BrandBrush(string app)
     {
-        if (_teams.Logo is { } logo)
+        uint argb = Messengers.Get(app)?.Color ?? 0xFF5B5FC7;
+        return Frozen(Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb));
+    }
+
+    /// <summary>The app's own icon once we have it, a chat bubble (or envelope) in its colour until then.</summary>
+    FrameworkElement AppLogo(string app, double size)
+    {
+        if (_chat.LogoOf(app) is { } logo)
         {
             var image = new Image { Source = logo, Width = size, Height = size };
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
@@ -716,10 +733,10 @@ public partial class MainWindow : Window
         }
         return new Border
         {
-            Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = TeamsBrush,
+            Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = BrandBrush(app),
             Child = new TextBlock
             {
-                Text = "\uE8BD", FontFamily = IconFont, FontSize = size * 0.5, Foreground = Brushes.White,
+                Text = Messengers.Get(app)?.Glyph ?? "\uE8BD", FontFamily = IconFont, FontSize = size * 0.5, Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             },
         };
@@ -984,10 +1001,16 @@ public partial class MainWindow : Window
 
     void MessageRow_Click(object sender, RoutedEventArgs e)
     {
-        _teams.MarkRead();
+        if (_messages.Count == 0 || Messengers.Get(_messages[^1].App) is not { } app) return;
+        var latest = _messages[^1];
+        _chat.MarkRead(app.Key);
         SetExpanded(false);
-        if (!TryOpen(_teams.AppId != null ? Shell.AppTarget(_teams.AppId) : "msteams:"))
-            ShowPeek("\uE783", "Can't open Teams", "", null, false, null);
+        // From a browser: back to the site. Otherwise the app, by the id its notifications came with.
+        string? target = latest.Site != null ? "https://" + latest.Site
+                       : _chat.AppIdOf(app.Key) is { } id ? Shell.AppTarget(id)
+                       : app.OpenUri;
+        if (!TryOpen(target))
+            ShowPeek("\uE783", "Can't open " + app.Name, "", null, false, null);
     }
 
     /// <summary>
@@ -1000,11 +1023,8 @@ public partial class MainWindow : Window
         MenuMini.IsChecked = _settings.MiniIdle;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         FillAiMenu();
-        bool denied = _settings.TeamsMessages && _teams.Access == TeamsService.AccessState.Denied;
-        bool unavailable = _teams.Access == TeamsService.AccessState.Unavailable;
-        MenuTeams.IsChecked = _settings.TeamsMessages && !denied && !unavailable;
-        MenuTeams.Header = denied ? "Teams messages (allow access…)" : unavailable ? "Teams messages (not supported here)" : "Teams messages";
-        MenuTeams.IsEnabled = !unavailable;
+        FillMessagesMenu();
+        MenuDownloads.IsChecked = _settings.Downloads;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing;
         FillFriendsMenu();
@@ -1106,14 +1126,56 @@ public partial class MainWindow : Window
         ApplyState();
     }
 
-    async void MenuTeams_Click(object sender, RoutedEventArgs e)
+    /// <summary>Messages › Show messages, one switch per app, and what's missing for full messages.</summary>
+    void FillMessagesMenu()
     {
-        _settings.TeamsMessages = MenuTeams.IsChecked;
+        MenuMessages.Items.Clear();
+        var all = new MenuItem { Header = "Show messages", IsCheckable = true, IsChecked = _settings.Messages };
+        all.Click += async (_, _) =>
+        {
+            _settings.Messages = all.IsChecked;
+            _settings.Save();
+            if (!_settings.Messages) { _chat.Stop(); return; }
+            await _chat.StartAsync(ask: true);
+            // Once refused, Windows doesn't ask again; the switch is in Settings.
+            if (_chat.Access == MessagesService.AccessState.Denied) TryOpen("ms-settings:privacy-notifications");
+        };
+        MenuMessages.Items.Add(all);
+        MenuMessages.Items.Add(new Separator());
+        foreach (var app in Messengers.All)
+        {
+            var item = new MenuItem { Header = app.Name, IsCheckable = true, IsChecked = !_settings.MutedApps.Contains(app.Key), IsEnabled = _settings.Messages };
+            item.Click += (_, _) =>
+            {
+                _settings.MutedApps.Remove(app.Key);
+                if (!item.IsChecked) _settings.MutedApps.Add(app.Key);
+                _settings.Save();
+                _chat.Refilter();
+            };
+            MenuMessages.Items.Add(item);
+        }
+
+        if (!_settings.Messages) return;
+        string? hint = _chat.Access switch
+        {
+            MessagesService.AccessState.Denied => "Allow notification access…",
+            MessagesService.AccessState.Unavailable => "Windows doesn't share notifications here – only Teams' count",
+            _ => _chat.TeamsOnlyCounts && !_settings.MutedApps.Contains("teams")
+                ? "Teams: set Settings › Notifications › Style to Windows to see who wrote" : null,
+        };
+        if (hint == null) return;
+        MenuMessages.Items.Add(new Separator());
+        var info = new MenuItem { Header = hint, IsEnabled = _chat.Access == MessagesService.AccessState.Denied };
+        info.Click += (_, _) => TryOpen("ms-settings:privacy-notifications");
+        MenuMessages.Items.Add(info);
+    }
+
+    void MenuDownloads_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.Downloads = MenuDownloads.IsChecked;
         _settings.Save();
-        if (!_settings.TeamsMessages) { _teams.Stop(); return; }
-        await _teams.StartAsync(ask: true);
-        // Once refused, Windows doesn't ask again; the switch is in Settings.
-        if (_teams.Access == TeamsService.AccessState.Denied) TryOpen("ms-settings:privacy-notifications");
+        if (_settings.Downloads) StartDownloads();
+        else StopDownloads();
     }
 
     void MenuAutostart_Click(object sender, RoutedEventArgs e)
@@ -1140,7 +1202,7 @@ public partial class MainWindow : Window
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
-        _teams.Changed -= OnMessagesChanged;
+        _chat.Changed -= OnMessagesChanged;
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
 
         OnMediaChanged(null, false);
@@ -1163,10 +1225,10 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-idle", 200);
 
         SetExpanded(false);
-        _messages = new List<TeamsMessage>
+        _messages = new List<ChatMessage>
         {
-            new() { Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
-            new() { Title = "Lena Hoffmann", Text = "Can we go through them before the 3 pm call?", Time = DateTimeOffset.Now },
+            new() { App = "teams", Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
+            new() { App = "teams", Title = "Lena Hoffmann", Text = "Can we go through them before the 3 pm call?", Time = DateTimeOffset.Now },
         };
         RefreshMessages();
         ShowMessage(_messages[^1]);
@@ -1182,7 +1244,7 @@ public partial class MainWindow : Window
 
         // 1.2: volume, Beam, shuffle/repeat
         SetExpanded(false);
-        _messages = Array.Empty<TeamsMessage>();
+        _messages = Array.Empty<ChatMessage>();
         RefreshMessages();
         var demo = DemoMedia();
         demo.Album = "After Hours";

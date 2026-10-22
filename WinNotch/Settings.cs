@@ -18,7 +18,13 @@ internal sealed class AppSettings
     public string? Ai { get; set; } = "claude";
     /// <summary>Program or shortcut picked with "Choose app…".</summary>
     public string? AiPath { get; set; }
-    public bool TeamsMessages { get; set; } = true;
+    /// <summary>Messages from chat and mail apps pop out of the notch.</summary>
+    [JsonPropertyName("TeamsMessages")] // its name before 1.4, when only Teams was shown
+    public bool Messages { get; set; } = true;
+    /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
+    public List<string> MutedApps { get; set; } = new();
+    /// <summary>Downloads in the Downloads folder show in the notch.</summary>
+    public bool Downloads { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to WinNotch users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

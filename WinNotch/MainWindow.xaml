@@ -179,7 +179,9 @@
                         <Separator/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
-                        <MenuItem x:Name="MenuTeams" Header="Teams messages" IsCheckable="True" Click="MenuTeams_Click"/>
+                        <!-- Show messages, then one switch per app; filled in when the menu opens -->
+                        <MenuItem x:Name="MenuMessages" Header="Messages"/>
+                        <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -220,15 +222,15 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Badge: nothing playing, unread Teams messages -->
+                    <!-- Badge: nothing playing, unread messages -->
                     <Grid x:Name="BadgeView" Opacity="0" IsHitTestVisible="False" Margin="10,0">
                         <Border x:Name="BadgeLogoHost" Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <Border Style="{StaticResource CountPill}" HorizontalAlignment="Right">
+                        <Border x:Name="BadgePill" Style="{StaticResource CountPill}" HorizontalAlignment="Right">
                             <TextBlock x:Name="BadgeText" Style="{StaticResource CountText}"/>
                         </Border>
                     </Grid>
 
-                    <!-- Message: a Teams message just came in -->
+                    <!-- Message: a message just came in (Teams, WhatsApp, Discord, Outlook, ...) -->
                     <Grid x:Name="MessageView" Opacity="0" IsHitTestVisible="False" Margin="14,0,18,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -267,6 +269,19 @@
                         <Border x:Name="VolPeekHost" Grid.Column="1" Margin="12,0" VerticalAlignment="Center"/>
                         <TextBlock x:Name="VolPeekText" Grid.Column="2" FontSize="12" FontWeight="SemiBold"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Download: a browser is saving a file to Downloads -->
+                    <Grid x:Name="DownloadView" Opacity="0" IsHitTestVisible="False" Margin="15,0,16,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FF0A84FF" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="DownloadName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="DownloadSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Share: files are being dragged over the notch -->
@@ -367,7 +382,7 @@
                             </StackPanel>
 
                             <Button x:Name="MessageRow" Style="{StaticResource RowButton}" Margin="0,14,0,0" Visibility="Collapsed"
-                                    Click="MessageRow_Click" ToolTip="Open Teams">
+                                    Click="MessageRow_Click" ToolTip="Open the app">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -379,11 +394,24 @@
                                         <TextBlock x:Name="RowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                         <TextBlock x:Name="RowText" FontSize="12" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Style="{StaticResource CountPill}">
+                                    <Border x:Name="RowPill" Grid.Column="2" Style="{StaticResource CountPill}">
                                         <TextBlock x:Name="RowCount" Style="{StaticResource CountText}"/>
                                     </Border>
                                 </Grid>
                             </Button>
+
+                            <!-- Downloads running right now -->
+                            <Grid x:Name="DownloadRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FF0A84FF" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DownloadRowName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                            </Grid>
 
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>
 

@@ -11,7 +11,7 @@
     <RootNamespace>WinNotch</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>WinNotch</Product>
-    <Version>1.3.1</Version>
+    <Version>1.4.0</Version>
     <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
 
     <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->
@@ -22,6 +22,11 @@
   <PropertyGroup Condition="Exists('notch.ico')">
     <ApplicationIcon>notch.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tests read notifications the same way the notch does (MessagesService.Read). -->
+    <InternalsVisibleTo Include="WinNotch.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- The WinRT projection is huge and we only touch a few types of it; precompiling it would bloat the exe. -->
