@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 – 2026-10-22
 
 ### Fixed
 - **Every ping from a paused Spotify cost a full refresh.** Spotify re-sends its timeline about every 4.5 seconds, also when nothing plays, and WinNotch answered every one with a full round trip to the player and a pass over the notch. Now a timeline on its own is only checked against the position the notch already shows, and an update only reaches the notch when something you can see changed: 1 update in 45 seconds of Spotify playing instead of 11. Paused, CPU went from about 0.05 % to 0.03 % and memory stays about 3 MB lower. Most of the climb after WinNotch trims its memory (to about 45 MB within a minute) comes from the checks it runs every minute, not from Spotify.
@@ -10,10 +10,12 @@
 ### Added
 - **Updates in the app:** automatic checks shortly after startup and every six hours, a manual check in the right-click menu, and an option to download a new stable release and restart in place. Settings and friends are preserved; a failed startup restores the previous executable.
 - Regression tests for release checks, verified downloads, update menu states, replacement and recovery.
+- New message alerts are checked every five seconds as a fallback when Windows misses a notification database change event.
 
 ### Fixed
 - New messages can reappear after opening Teams or WhatsApp even when the app's unread conversation count stays unchanged. WinNotch tracks fresh Windows badge updates and refreshed notifications that reuse the same id.
 - **Missing message badges and pop-outs:** numeric badge fallback now covers WhatsApp and all supported messengers, including when reading Windows notifications fails. Existing unread counts appear at startup; new increases pop out. An unchanged zero Teams badge no longer hides a new notification, and opening one app leaves the others' unread counts alone.
+- New messages can trigger an alert when an app reuses a Windows notification id or keeps the same unread conversation count.
 
 ## 1.4.0 – 2026-10-22
 
