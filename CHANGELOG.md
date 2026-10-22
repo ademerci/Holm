@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1 – 2026-10-22
+
+### Added
+- **Independent sizes:** right-click › *Collapsed size* and *Expanded size* each offer Small (85 %), Normal (100 %), Large (115 %) and Extra large (130 %).
+- 37 regression test cases covering saved size preferences, migration, all 16 size combinations and transitions between states.
+
+### Changed
+- The previous shared size preference carries over to both new settings. Pop-outs and Beam prompts follow the collapsed size.
+- The notch smoothly transitions between the two sizes while staying centred, with room for the outgoing view during animation.
+- The README and contributor credits acknowledge GPT-6 Astra working alongside Claude on the project.
+
 ## 1.3.0 – 2026-10-22
 
 ### Added
