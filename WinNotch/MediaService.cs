@@ -15,8 +15,16 @@ internal sealed class MediaInfo
 {
     public string Title = "";
     public string Artist = "";
+    public string Album = "";
     public string App = "";
+    /// <summary>The player's AppUserModelID ("Spotify.exe", "Chrome", "Publisher.App_hash!App").</summary>
+    public string AppId = "";
     public bool IsPlaying;
+    /// <summary>Null when the player doesn't report it.</summary>
+    public bool? Shuffle;
+    /// <summary>0 off, 1 repeat one, 2 repeat all; null when the player doesn't report it.</summary>
+    public int? Repeat;
+    public bool CanShuffle, CanRepeat;
     public ImageSource? Art;
     public Color Accent = Colors.White;
     /// <summary>Blurred cover used as the notch background, and how much black goes over it.</summary>
@@ -171,7 +179,9 @@ internal sealed class MediaService
         {
             Title = props.Title.Trim(),
             Artist = (string.IsNullOrWhiteSpace(props.Artist) ? props.AlbumArtist : props.Artist)?.Trim() ?? "",
+            Album = props.AlbumTitle?.Trim() ?? "",
             App = FriendlyAppName(chosen.SourceAppUserModelId),
+            AppId = chosen.SourceAppUserModelId ?? "",
         };
 
         try
@@ -183,6 +193,15 @@ internal sealed class MediaService
             info.CanNext = c?.IsNextEnabled ?? false;
             info.CanPrevious = c?.IsPreviousEnabled ?? false;
             info.CanSeek = c?.IsPlaybackPositionEnabled ?? false;
+            info.CanShuffle = c?.IsShuffleEnabled ?? false;
+            info.CanRepeat = c?.IsRepeatEnabled ?? false;
+            info.Shuffle = playback?.IsShuffleActive;
+            info.Repeat = playback?.AutoRepeatMode is { } repeat ? repeat switch
+            {
+                Windows.Media.MediaPlaybackAutoRepeatMode.Track => 1,
+                Windows.Media.MediaPlaybackAutoRepeatMode.List => 2,
+                _ => 0,
+            } : null;
             var rate = playback?.PlaybackRate ?? 1.0;
             info.Rate = rate > 0 ? rate : 1.0;
         }
@@ -232,6 +251,23 @@ internal sealed class MediaService
     public async void PlayPause() { try { if (_session != null) await _session.TryTogglePlayPauseAsync(); } catch { } }
     public async void Next() { try { if (_session != null) await _session.TrySkipNextAsync(); } catch { } }
     public async void Previous() { try { if (_session != null) await _session.TrySkipPreviousAsync(); } catch { } }
+
+    public async void SetShuffle(bool on)
+    {
+        try { if (_session != null) await _session.TryChangeShuffleActiveAsync(on); } catch { }
+    }
+
+    /// <summary>0 off, 1 repeat one, 2 repeat all.</summary>
+    public async void SetRepeat(int mode)
+    {
+        var value = mode switch
+        {
+            1 => Windows.Media.MediaPlaybackAutoRepeatMode.Track,
+            2 => Windows.Media.MediaPlaybackAutoRepeatMode.List,
+            _ => Windows.Media.MediaPlaybackAutoRepeatMode.None,
+        };
+        try { if (_session != null) await _session.TryChangeAutoRepeatModeAsync(value); } catch { }
+    }
 
     public async void Seek(TimeSpan position)
     {
