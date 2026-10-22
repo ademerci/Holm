@@ -7,6 +7,7 @@
 - Regression tests for release checks, verified downloads, update menu states, replacement and recovery.
 
 ### Fixed
+- New messages can reappear after opening Teams or WhatsApp even when the app's unread conversation count stays unchanged. WinNotch tracks fresh Windows badge updates and refreshed notifications that reuse the same id.
 - **Missing message badges and pop-outs:** numeric badge fallback now covers WhatsApp and all supported messengers, including when reading Windows notifications fails. Existing unread counts appear at startup; new increases pop out. An unchanged zero Teams badge no longer hides a new notification, and opening one app leaves the others' unread counts alone.
 
 ## 1.4.0 – 2026-10-22

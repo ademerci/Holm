@@ -45,6 +45,7 @@ internal sealed class MessagesService
     List<ChatMessage> _messages = new();
     readonly Dictionary<string, BadgeCounter> _counts = new();
     readonly Dictionary<string, DateTimeOffset> _countTimes = new();
+    readonly Dictionary<string, string> _badgeRevisions = new();
     readonly HashSet<string> _pendingBadgePops = new();
 
     public AccessState Access { get; private set; } = AccessState.Off;
@@ -170,6 +171,7 @@ internal sealed class MessagesService
         _toasts = new();
         _counts.Clear();
         _countTimes.Clear();
+        _badgeRevisions.Clear();
         _pendingBadgePops.Clear();
         _teamsToasts = false;
         if (_messages.Count > 0)
@@ -256,10 +258,11 @@ internal sealed class MessagesService
         if (Messengers.All.Any(app => _shown(app.Key)))
         {
             Dictionary<string, string>? badges = null;
-            try { badges = await Task.Run(() => NotificationBadges.Read()); }
+            Dictionary<string, string>? revisions = null;
+            try { (badges, revisions) = await Task.Run(() => NotificationBadges.ReadSnapshot()); }
             catch (Exception ex) { Diag.Log("Badges unreadable: " + ex.Message); }
             if (generation != _generation) return;
-            if (badges != null) ReadBadges(badges, arrived);
+            if (badges != null) ReadBadges(badges, arrived, revisions);
         }
         _primed = true;
         Publish(arrived);
@@ -285,9 +288,12 @@ internal sealed class MessagesService
             uint id;
             try { id = notification.Id; } catch { continue; }
             present.Add(id);
-            if (!_seen.TryGetValue(id, out var message))
+            var latest = Read(notification, out string? appId);
+            if (!_seen.TryGetValue(id, out var message) || latest?.App != message?.App
+                || latest?.Time != message?.Time || latest?.Title != message?.Title || latest?.Text != message?.Text)
             {
-                _seen[id] = message = Read(notification, out string? appId);
+                _seen[id] = message = latest;
+                _read.Remove(id); // Windows can replace an existing toast using the same id.
                 if (message != null)
                 {
                     if (appId != null) _appIds[message.App] = appId;
@@ -308,7 +314,7 @@ internal sealed class MessagesService
         return arrived;
     }
 
-    void ReadBadges(IReadOnlyDictionary<string, string> badges, ChatMessage? arrived)
+    void ReadBadges(IReadOnlyDictionary<string, string> badges, ChatMessage? arrived, IReadOnlyDictionary<string, string>? revisions = null)
     {
         foreach (var app in Messengers.All.Where(app => _shown(app.Key)))
         {
@@ -333,9 +339,16 @@ internal sealed class MessagesService
             if (!_counts.TryGetValue(app.Key, out var counter)) _counts[app.Key] = counter = new BadgeCounter();
             int? before = counter.Count;
             bool first = before == null;
-            bool up = counter.Update(count.Value);
+            string revision = revisions == null ? "" : string.Join("|", revisions
+                .Where(pair => Messengers.ForApp(pair.Key)?.Key == app.Key)
+                .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(pair => pair.Key + ":" + pair.Value));
+            bool refreshed = revision.Length > 0 && _badgeRevisions.TryGetValue(app.Key, out var previous) && previous != revision;
+            if (revision.Length > 0) _badgeRevisions[app.Key] = revision;
+            else if (count == 0) _badgeRevisions.Remove(app.Key);
+            bool up = counter.Update(count.Value, refreshed);
             if (first || up) _countTimes[app.Key] = DateTimeOffset.Now;
-            Diag.Log($"{app.Name} badge: {count}");
+            Diag.Log($"{app.Name} badge: {count}" + (refreshed ? " (new Windows badge update)" : ""));
             if (before > 0 && count == 0)
             {
                 foreach (var message in _toasts.Where(m => m.App == app.Key)) _read.Add(message.Id);

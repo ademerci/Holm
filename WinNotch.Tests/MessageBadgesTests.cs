@@ -118,7 +118,7 @@ public class MessageBadgesTests
 
     static void Read(MessagesService service, Dictionary<string, string> badges)
     {
-        Invoke(service, "ReadBadges", badges, null);
+        Invoke(service, "ReadBadges", badges, null, null);
         Invoke(service, "Publish", null, false);
     }
 

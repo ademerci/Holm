@@ -83,7 +83,7 @@ WinNotch reads the notifications of Teams, WhatsApp, Discord, Outlook (new, clas
 
 **When an app only sends a badge.** Teams, WhatsApp and the other supported messengers may update their taskbar number without leaving a Windows notification. WinNotch also reads these numeric badges: existing unread counts appear at startup, and an increase pops out the app name and count, such as *WhatsApp · 2 unread messages*. This fallback works even when notification access is unavailable. Opening an app clears its count in the notch without clearing the other apps.
 
-Names and message text need a notification in Windows' notification center. If your version of Teams offers *Settings › Notifications and activity › Notification style*, choose **Windows**. With badge-only updates, WinNotch cannot show message text or detect another message when the app leaves its badge number unchanged.
+Names and message text need a notification in Windows' notification center. If your version of Teams offers *Settings › Notifications and activity › Notification style*, choose **Windows**. With badge-only updates, WinNotch shows the count and also notices when Windows receives a fresh badge with the same number. If the app sends neither a notification nor a badge update, WinNotch has no new event to display.
 
 To read the badge, WinNotch copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
 
