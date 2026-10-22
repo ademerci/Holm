@@ -21,8 +21,8 @@ namespace WinNotch;
 /// Some apps show their own pop-ups or leave no toast in the notification center, so we also read each
 /// supported app's numeric taskbar badge from the notification database; this needs no listener access.
 /// Windows only sends change events to packaged apps, so instead we watch the database's folder,
-/// which Windows writes whenever a notification or badge changes, and only then look. A slow timer is the
-/// safety net.
+/// which Windows writes whenever a notification or badge changes, and only then look. A short timer is the
+/// safety net because Windows can omit file watcher events while updating its notification database.
 /// </remarks>
 internal sealed class MessagesService
 {
@@ -94,8 +94,10 @@ internal sealed class MessagesService
             if (!_running)
             {
                 _running = true;
-                bool watching = WatchDatabase();
-                _poll.Interval = TimeSpan.FromSeconds(watching ? 60 : 10);
+                WatchDatabase();
+                // Windows sometimes updates the notification database without delivering a reliable
+                // FileSystemWatcher event. Keep a short fallback so toasts still appear promptly.
+                _poll.Interval = TimeSpan.FromSeconds(5);
                 _poll.Start();
             }
             try
