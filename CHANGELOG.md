@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Memory crept back up while Spotify was paused.** Spotify re-sends its timeline about every 4.5 seconds, also when nothing plays, and WinNotch answered every one with a full round trip to the player and a pass over the notch. Each of those pulled 1–3 MB back into memory after WinNotch had trimmed it, about 10 MB a minute. Now a timeline on its own is only checked against the position the notch already shows, and an update only reaches the notch when something you can see changed: 1 update in 45 seconds of Spotify instead of 11.
+- The open notch made a new cover brush for every update. The compact and the open notch now share one per cover.
+- Tests that repeated updates aren't passed on and keep their cover, backdrop and colour brushes.
+
 ## 1.4.0 – 2026-10-22
 
 ### Added

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -49,11 +50,28 @@ internal sealed class MediaInfo
             return pos;
         }
     }
+
+    /// <summary>Same length, and the position is where this one says it is now (give or take half a second).</summary>
+    public bool SameTimeline(MediaInfo other)
+        => Duration == other.Duration && (CurrentPosition - other.CurrentPosition).Duration() < TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Whether <paramref name="other"/> would look exactly like this one in the notch. Players repeat
+    /// themselves a lot: Spotify re-sends its timeline every few seconds, also while paused.
+    /// </summary>
+    public bool SameAs(MediaInfo other)
+        => Title == other.Title && Artist == other.Artist && Album == other.Album && App == other.App && AppId == other.AppId
+        && IsPlaying == other.IsPlaying && Shuffle == other.Shuffle && Repeat == other.Repeat && Rate == other.Rate
+        && CanShuffle == other.CanShuffle && CanRepeat == other.CanRepeat && CanSeek == other.CanSeek
+        && CanPrevious == other.CanPrevious && CanNext == other.CanNext && CanPlayPause == other.CanPlayPause
+        && ReferenceEquals(Art, other.Art) && ReferenceEquals(Backdrop, other.Backdrop)
+        && Accent == other.Accent && BackdropShade == other.BackdropShade
+        && SameTimeline(other);
 }
 
 /// <summary>
 /// Follows the system media sessions (Spotify, browsers, VLC, ...). Purely event driven:
-/// nothing runs until Windows reports a change.
+/// nothing runs until Windows reports a change, and only real changes reach the notch.
 /// </summary>
 internal sealed class MediaService
 {
@@ -71,7 +89,10 @@ internal sealed class MediaService
     GlobalSystemMediaTransportControlsSessionManager? _manager;
     GlobalSystemMediaTransportControlsSession? _session;
     TimeSpan _sessionStart;
-    bool _sessionsDirty = true, _refreshing, _refreshAgain;
+    bool _sessionsDirty = true, _refreshing, _refreshAgain, _published;
+    // 1 when something besides a timeline changed since the last refresh. Set from Windows' threads.
+    int _fullRefresh = 1;
+    MediaInfo? _shown;
     string _trackKey = "";
     ImageSource? _art, _backdrop;
     Color _accent = Colors.White;
@@ -93,18 +114,22 @@ internal sealed class MediaService
         try
         {
             _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            _manager.SessionsChanged += (_, _) => { _sessionsDirty = true; Poke(); };
-            _manager.CurrentSessionChanged += (_, _) => Poke();
-            Poke();
+            _manager.SessionsChanged += (_, _) => { _sessionsDirty = true; Poke(full: true); };
+            _manager.CurrentSessionChanged += (_, _) => Poke(full: true);
+            Poke(full: true);
         }
         catch (Exception ex) { Diag.Log("Media manager unavailable: " + ex.Message); }
     }
 
-    void Poke() => _ui.InvokeAsync(() => { _debounce.Stop(); _debounce.Start(); });
+    void Poke(bool full)
+    {
+        if (full) Interlocked.Exchange(ref _fullRefresh, 1);
+        _ui.InvokeAsync(() => { _debounce.Stop(); _debounce.Start(); });
+    }
 
-    void OnProperties(GlobalSystemMediaTransportControlsSession s, MediaPropertiesChangedEventArgs e) => Poke();
-    void OnPlayback(GlobalSystemMediaTransportControlsSession s, PlaybackInfoChangedEventArgs e) => Poke();
-    void OnTimeline(GlobalSystemMediaTransportControlsSession s, TimelinePropertiesChangedEventArgs e) => Poke();
+    void OnProperties(GlobalSystemMediaTransportControlsSession s, MediaPropertiesChangedEventArgs e) => Poke(full: true);
+    void OnPlayback(GlobalSystemMediaTransportControlsSession s, PlaybackInfoChangedEventArgs e) => Poke(full: true);
+    void OnTimeline(GlobalSystemMediaTransportControlsSession s, TimelinePropertiesChangedEventArgs e) => Poke(full: false);
 
     void Hook(IReadOnlyList<GlobalSystemMediaTransportControlsSession> sessions)
     {
@@ -144,7 +169,11 @@ internal sealed class MediaService
                 await RefreshCoreAsync();
             } while (_refreshAgain);
         }
-        catch (Exception ex) { Diag.Log("Media refresh failed: " + ex.Message); }
+        catch (Exception ex)
+        {
+            Interlocked.Exchange(ref _fullRefresh, 1); // don't trust what we have
+            Diag.Log("Media refresh failed: " + ex.Message);
+        }
         finally { _refreshing = false; }
     }
 
@@ -157,6 +186,15 @@ internal sealed class MediaService
     async Task RefreshCoreAsync()
     {
         if (_manager == null) return;
+
+        // Only a timeline moved (Spotify sends one every few seconds, also while paused). When the position is
+        // where the notch already puts it, there's nothing to ask the player and nothing to redraw.
+        bool full = Interlocked.Exchange(ref _fullRefresh, 0) == 1;
+        if (!full && _shown is { } shown && _session != null)
+        {
+            var timeline = new MediaInfo { IsPlaying = shown.IsPlaying, Rate = shown.Rate };
+            if (ReadTimeline(_session, timeline) && timeline.SameTimeline(shown)) return;
+        }
 
         IReadOnlyList<GlobalSystemMediaTransportControlsSession> sessions;
         try { sessions = _manager.GetSessions(); } catch { sessions = Array.Empty<GlobalSystemMediaTransportControlsSession>(); }
@@ -207,18 +245,7 @@ internal sealed class MediaService
         }
         catch { }
 
-        try
-        {
-            var timeline = chosen.GetTimelineProperties();
-            if (timeline != null)
-            {
-                _sessionStart = timeline.StartTime;
-                info.Duration = timeline.EndTime - timeline.StartTime;
-                info.Position = timeline.Position - timeline.StartTime;
-                info.PositionStamp = timeline.LastUpdatedTime;
-            }
-        }
-        catch { }
+        ReadTimeline(chosen, info);
 
         var key = info.App + "|" + info.Title + "|" + info.Artist;
         bool trackChanged = key != _trackKey;
@@ -242,9 +269,29 @@ internal sealed class MediaService
         Publish(info, trackChanged);
     }
 
+    /// <summary>Where the session is in the track; false when it doesn't say.</summary>
+    bool ReadTimeline(GlobalSystemMediaTransportControlsSession session, MediaInfo info)
+    {
+        try
+        {
+            var timeline = session.GetTimelineProperties();
+            if (timeline == null) return false;
+            _sessionStart = timeline.StartTime;
+            info.Duration = timeline.EndTime - timeline.StartTime;
+            info.Position = timeline.Position - timeline.StartTime;
+            info.PositionStamp = timeline.LastUpdatedTime;
+            return true;
+        }
+        catch { return false; }
+    }
+
     void Publish(MediaInfo? info, bool trackChanged)
     {
         if (info == null) _trackKey = "";
+        // Nothing the notch doesn't show already: no redraw, no new brushes.
+        if (_published && !trackChanged && (info == null ? _shown == null : _shown != null && _shown.SameAs(info))) return;
+        _published = true;
+        _shown = info;
         Changed?.Invoke(info, trackChanged);
     }
 

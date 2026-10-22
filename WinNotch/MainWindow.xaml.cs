@@ -65,6 +65,7 @@ public partial class MainWindow : Window
     bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
     MediaInfo? _info;
     ImageSource? _shownArt, _shownBackdrop;
+    ImageBrush? _artBrush;
     Border _artFront, _artBack;
     PowerInfo _power;
     bool _powerKnown, _btKnown;
@@ -785,12 +786,16 @@ public partial class MainWindow : Window
         catch (Exception ex) { Diag.Error(ex); return false; }
     }
 
+    /// <summary>One brush per cover, shared by the compact and the open notch.</summary>
     Brush ArtBrush(ImageSource? art)
     {
         if (art == null) return (Brush)FindResource("ArtFallback");
-        var brush = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
-        brush.Freeze();
-        return brush;
+        if (_artBrush?.ImageSource != art)
+        {
+            _artBrush = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
+            _artBrush.Freeze();
+        }
+        return _artBrush;
     }
 
     // ───────────────────────── expanded view ─────────────────────────
