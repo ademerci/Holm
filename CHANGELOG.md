@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 – 2026-10-22
+
+### Added
+- **Messages from more apps:** WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack pop out of the notch like Teams messages – also when they run in Chrome, Edge or Firefox. The unread badge takes the colour of the app, clicking the message opens the app (or the site), and looking at the app clears its messages. Right-click › *Messages* switches single apps off.
+- **Downloads:** while a browser saves a file to Downloads (Chrome, Edge, Brave, Opera, Vivaldi, Firefox), the notch shows its name, size and speed – over music only for a moment when it starts, and as a row in the open notch. When it's done: *Open* or *Show*. Right-click › *Downloads* turns it off.
+- Tests for recognising the apps (also in the browser), reading badges from a database laid out like Windows', the unread count, the browsers' download steps (Chrome, Firefox, cancelled, copied) and – on request – real silent notifications through the notification center.
+
+### Fixed
+- **Teams messages never showed up** when Teams uses its own notification style: then it sends nothing to Windows' notification center. WinNotch now also reads the number on Teams' taskbar icon (works in every style, no notification access needed) and shows *Microsoft Teams · N unread messages*. For names and text, set Teams' notification style to Windows; the menu says so while Teams only sends numbers.
+- A Beam test failed about one run in four: it changed the last character of a sealed note, which may only carry padding bits. It now changes a character that always counts.
+
+### Changed
+- The setting *Teams messages* is now *Messages* and carries over.
+
 ## 1.3.1 – 2026-10-22
 
 ### Added

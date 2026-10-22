@@ -2,7 +2,7 @@
 
 # WinNotch
 
-A Dynamic Island–style notch for Windows. It sits at the top of your screen, shows what's playing with full controls, tints itself in the colours of the album cover, sends files to your friends AirDrop-style and keeps an eye on your laptop and Bluetooth headphone battery – while using almost no resources.
+A Dynamic Island–style notch for Windows. It sits at the top of your screen, shows what's playing with full controls, tints itself in the colours of the album cover, pops out your messages and downloads, sends files to your friends AirDrop-style and keeps an eye on your laptop and Bluetooth headphone battery – while using almost no resources.
 
 <p align="center">
   <img src="docs/expanded.png" width="480" alt="Expanded notch with media controls, shuffle and repeat, battery levels">
@@ -23,9 +23,10 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
-- **Teams messages** – a new message pops out of the notch with who wrote and the first line, and a purple badge counts what you haven't seen yet. Opening Teams (or clicking the message in the notch) clears it.
+- **Messages** from Teams, WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
+- **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), Teams messages, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
+- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
 
 ## Beam
 
@@ -73,17 +74,19 @@ Native WPF on .NET 10 and event driven: it reacts when Windows reports a change 
 
 Measured on an 8-thread laptop. Turning off the equalizer animation brings playback down to idle levels.
 
-**Teams messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so WinNotch watches the folder of Windows' notification database instead and reads the notifications only when it changes. In between it costs nothing; a check once a minute is the safety net.
+**Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so WinNotch watches the folder of Windows' notification database instead and looks only when it changes. In between it costs nothing; a check once a minute is the safety net. **Downloads** work the same way: WinNotch is told when a file appears in Downloads and only measures sizes while a download is running.
 
-## Teams messages
+## Messages
 
-WinNotch reads Teams' notifications from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, the switch is in *Settings › Privacy & security › Notifications* (choosing *Teams messages* in the right-click menu takes you there). 
+WinNotch reads the notifications of Teams, WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack from the Windows notification center, so it needs **notification access**. It asks for it on the first start; if Windows says no, right-click › *Messages* › *Allow notification access…* takes you to the switch (*Settings › Privacy & security › Notifications*). The same apps in Chrome, Edge or Firefox count too (WhatsApp Web, Discord, Teams and Outlook on the web, Telegram Web, Slack). Right-click › *Messages* switches single apps off.
 
-**Teams has to send its notifications to Windows.** If its pop-ups appear in Teams' own style and not in the Windows notification center, WinNotch can't see them. In the new Teams, open *Settings › Notifications and activity* and set *Notification style* to **Windows**; also check that Microsoft Teams is allowed in *Windows Settings › System › Notifications*.
+**Teams in its own notification style.** The new Teams can show messages in its own pop-ups instead of Windows' – and nothing outside Teams can read those. WinNotch still shows how many messages are unread: it reads the number on Teams' taskbar icon (the *badge*) from Windows' notification database, which Teams keeps up to date in every style. You then see *Microsoft Teams · 2 unread messages* instead of who wrote what. For names and text, open Teams › *Settings › Notifications and activity* and set *Notification style* to **Windows**; the right-click menu reminds you while Teams only sends numbers.
 
-WinNotch never removes or changes your notifications, and the message text is never written to its logs.
+To read the badge, WinNotch copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
 
-Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu entry says so and is greyed out.
+WinNotch never removes or changes your notifications, and message text is never written to its logs.
+
+Microsoft doesn't document reading notifications from an app that isn't installed as a package. Other unpackaged apps do it on current Windows 11 builds; where Windows refuses, the menu says so, and Teams' count still works.
 
 ## Requirements
 
@@ -105,7 +108,7 @@ This gives you `publish/WinNotch.exe`, which needs the .NET 10 Desktop Runtime. 
 dotnet test WinNotch.Tests
 ```
 
-Covers the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`).
+Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, two more tests leave silent notifications (no pop-up) in the notification center, read them back the way the notch does and remove them again – quit a running notch first.
 
 ## Vibe coded
 
