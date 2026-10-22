@@ -122,8 +122,10 @@ public class FriendNoteTests
         using var noah = FriendIdentity.Create("Noah", null);
         using var lena = FriendIdentity.Create("Lena", null);
         string text = FriendNotes.Seal(noah, lena.AsFriend(), Files(ShareCode.NewSecret()));
-        char last = text[^1];
-        string tampered = text[..^1] + (last == 'A' ? 'B' : 'A');
+        // Change a character in the middle of the sealed part: the last one may only carry padding bits,
+        // so changing it can leave the bytes exactly as they were.
+        int start = text.LastIndexOf(' ') + 1, at = start + (text.Length - start) / 2;
+        string tampered = text[..at] + (text[at] == 'A' ? 'B' : 'A') + text[(at + 1)..];
 
         Assert.Null(FriendNotes.Open(lena, tampered, out _));
         Assert.Null(FriendNotes.Open(lena, "wnf1 garbage", out _));
