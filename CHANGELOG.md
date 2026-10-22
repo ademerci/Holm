@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.0 – 2026-10-22
+
+### Added
+- **AirDrop.** Drag files onto the notch and drop them on a person nearby (other WinNotch users on the same network) or on **Code** to send them anywhere over the internet. The receiver's notch shows who sends what and asks *Accept* / *Decline*; files are saved to Downloads.
+  - Same network: discovery over UDP broadcast (port 47811), transfer over TCP, a fresh ECDH key per transfer (protects against eavesdropping; peers are not authenticated).
+  - Anywhere: a one-time code (`WN-…`, 128 bits) that is copied for you; when your friend copies it, their notch offers to receive. Data goes through the public magic-wormhole transit relay, which only sees encrypted bytes.
+  - AES-256-GCM for everything; tampered or replayed data is rejected. File names are sanitised, existing files are never overwritten, cancelled transfers leave nothing behind, received files carry Windows' "downloaded from the internet" mark.
+  - Right-click › *AirDrop* switches it all off; *Receive with copied code* starts a receive by hand.
+- **Volume pop-out:** the notch shows the system volume when it changes (keys, taskbar, other apps). Event driven, and it follows a change of output device.
+- **Shuffle and repeat** buttons in the open notch (when the player supports them), the album name next to the app, and clicking the cover or title brings the player to the front.
+- **Test project** (`dotnet test WinNotch.Tests`) with 41 tests – codes, encryption, transfer protocol, malicious senders, network discovery and real relay transfers – plus an end-to-end test that sends a file to a running notch (runs only on request).
+
+### Fixed (found by the end-to-end test before release)
+- Accepting a file sent with a code failed with a threading error: the question was shown from a worker thread.
+
+### Changed
+- New app icon: a clean blue–violet tile with the notch.
+- Version 1.2.0.
+
 ## 1.1.1 – 2026-10-21
 
 ### Changed

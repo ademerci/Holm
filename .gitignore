@@ -3,6 +3,8 @@ bin/
 obj/
 publish/
 share/
+snaps/
+TestResults/
 *_wpftmp.csproj
 
 # IDE
