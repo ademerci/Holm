@@ -24,11 +24,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The tests read notifications the same way the notch does (MessagesService.Read). -->
-    <InternalsVisibleTo Include="WinNotch.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- The WinRT projection is huge and we only touch a few types of it; precompiling it would bloat the exe. -->
     <PublishReadyToRunExclude Include="Microsoft.Windows.SDK.NET.dll" />
   </ItemGroup>
