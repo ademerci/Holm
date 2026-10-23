@@ -71,6 +71,7 @@ public partial class MainWindow
         _friends = new FriendsService(_settings, Dispatcher);
         _friends.FilesOffered += OnFriendFiles;
         _friends.AddedUs += OnFriendAddedUs;
+        _friends.RemovedUs += OnFriendRemovedUs;
     }
 
     void StartSharing()
@@ -444,6 +445,14 @@ public partial class MainWindow
         _taskHide.Start();
     }
 
+    void OnFriendRemovedUs(Friend friend)
+    {
+        _addBack.RemoveAll(f => f.Key == friend.Key);
+        FillFriendsMenu();
+        if (_sharing) { RefreshShareTargets(); ApplyState(); }
+        ShowPeek("\uE8FA", $"{friend.Name} removed you", "Removed from your friends list", null, false, null, seconds: 4);
+    }
+
     async Task AddFriendAsync(Friend card, bool tellThem)
     {
         if (_friends.Find(card.Key) != null)
@@ -718,10 +727,12 @@ public partial class MainWindow
         foreach (var friend in _friends.Friends.ToList())
         {
             var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
-            item.Click += (_, _) =>
+            item.Click += async (_, _) =>
             {
-                _friends.Remove(friend);
+                bool notified = await _friends.RemoveAsync(friend);
                 ShowPeek("\uE8FA", $"{friend.Name} removed", "", null, false, null);
+                if (!notified)
+                    ShowPeek("\uE783", $"Couldn't notify {friend.Name}", "They may still have you as a friend", null, false, RedBrush, seconds: 5);
             };
             remove.Items.Add(item);
         }

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Removing a friend now sends a sealed removal notice so their Holm removes you from its list too. If the notice cannot be delivered, Holm says so.
+- The application icon now uses the updated Holm logo.
+
 ## 1.5.2 – 2026-10-23
 
 - File sending checks that the recipient's notch is open before offering files; no answer within 15 seconds reports that they're offline or Holm is closed.

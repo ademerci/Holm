@@ -137,6 +137,7 @@ public sealed class FriendIdentity : IDisposable
 /// <summary>A note from one friend to another.</summary>
 /// <param name="Secret">For <see cref="FriendNoteKind.Files"/>: the share secret to meet on the relay with.</param>
 /// <param name="Code">For <see cref="FriendNoteKind.AddedYou"/>: the sender's friend code, so you can add them back.</param>
+/// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null);
 
 public enum FriendNoteKind
@@ -145,6 +146,8 @@ public enum FriendNoteKind
     Files,
     /// <summary>"I added you as a friend": here is my code.</summary>
     AddedYou,
+    /// <summary>"I removed you as a friend": remove my card from your list too.</summary>
+    RemovedYou,
 }
 
 public static class FriendNotes
@@ -175,7 +178,13 @@ public static class FriendNotes
     {
         var dto = new NoteDto
         {
-            K = note.Kind == FriendNoteKind.Files ? "files" : "added",
+            K = note.Kind switch
+            {
+                FriendNoteKind.Files => "files",
+                FriendNoteKind.AddedYou => "added",
+                FriendNoteKind.RemovedYou => "removed",
+                _ => throw new ArgumentOutOfRangeException(nameof(note)),
+            },
             F = note.From,
             T = note.Sent,
             S = note.Secret == null ? null : Convert.ToBase64String(note.Secret),
@@ -218,6 +227,7 @@ public static class FriendNotes
                     => new FriendNote(FriendNoteKind.Files, from, dto.T, Secret: secret),
                 "added" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0]
                     => new FriendNote(FriendNoteKind.AddedYou, from, dto.T, Code: dto.C),
+                "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
                 _ => null,
             };
             if (note != null) senderKey = parts[0];

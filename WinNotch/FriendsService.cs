@@ -31,6 +31,8 @@ internal sealed class FriendsService
     public event Action<Friend, byte[]>? FilesOffered;
     /// <summary>Someone added us as a friend; this is their card, to add them back (UI thread).</summary>
     public event Action<Friend>? AddedUs;
+    /// <summary>A friend removed us from their list (UI thread).</summary>
+    public event Action<Friend>? RemovedUs;
 
     public FriendsService(AppSettings settings, Dispatcher ui)
     {
@@ -115,10 +117,29 @@ internal sealed class FriendsService
         }
     }
 
-    public void Remove(Friend friend)
+    /// <summary>Removes a friend here and tells them to remove this relationship on their side too.</summary>
+    public async Task<bool> RemoveAsync(Friend friend)
     {
-        _settings.Friends.RemoveAll(f => f.Key == friend.Key);
+        if (_settings.Friends.RemoveAll(f => f.Key == friend.Key) == 0) return true;
         _settings.Save();
+
+        if (Me is not { } me)
+        {
+            Diag.Log($"Couldn't tell {friend.Name} that they were removed: our friend identity is unavailable");
+            return false;
+        }
+
+        try
+        {
+            var note = new FriendNote(FriendNoteKind.RemovedYou, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), CancellationToken.None);
+            return true;
+        }
+        catch (IOException ex)
+        {
+            Diag.Log($"Couldn't tell {friend.Name} that they were removed: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>Leaves a note asking the friend's notch to meet us on the relay with <paramref name="secret"/>.</summary>
@@ -183,6 +204,15 @@ internal sealed class FriendsService
                     _settings.Save();
                 }
                 else AddedUs?.Invoke(card);
+                break;
+            case FriendNoteKind.RemovedYou when friend != null:
+                _settings.Friends.RemoveAll(f => f.Key == friend.Key);
+                _settings.Save();
+                Diag.Log($"Friends: {friend.Name} removed us");
+                RemovedUs?.Invoke(friend);
+                break;
+            case FriendNoteKind.RemovedYou:
+                Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
                 break;
         }
     }
