@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.3 – 2026-10-23
 
 ### Changed
 - Removing a friend now sends a sealed removal notice so their Holm removes you from its list too. If the notice cannot be delivered, Holm says so.
