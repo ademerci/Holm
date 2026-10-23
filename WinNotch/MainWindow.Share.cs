@@ -72,7 +72,8 @@ public partial class MainWindow
                 : quiet > TimeSpan.FromMilliseconds(250);
             if (over) EndShare();
         });
-        _taskHide = MakeTimer(5000, HideTask, oneShot: true);
+        // Not while you're pointing at it, about to click.
+        _taskHide = MakeTimer(5000, () => { if (_taskVisible && Island.IsMouseOver) _taskHide.Start(); else HideTask(); }, oneShot: true);
         _friends = new FriendsService(_settings, Dispatcher);
         _friends.FilesOffered += OnFriendFiles;
         _friends.AddedUs += OnFriendAddedUs;
@@ -170,6 +171,8 @@ public partial class MainWindow
     void EndShare()
     {
         _shareWatch.Stop();
+        _pickClose.Stop();
+        _pickFiles = null;
         if (!_sharing) return;
         Diag.Log("Share view closed");
         _sharing = false;
@@ -183,6 +186,12 @@ public partial class MainWindow
         var target = TargetOf(e.OriginalSource as DependencyObject);
         Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {target?.Name ?? "nothing"}");
         EndShare();
+        SendTo(target, dropped);
+    }
+
+    /// <summary>Files dropped (or, after a screenshot, clicked) onto a chip in the share view.</summary>
+    void SendTo(ShareTarget? target, string[] dropped)
+    {
         if (_draggingOut || _busy || _installingUpdate) return;
         if (target?.Place == ShareTarget.ShelfPlace)
         {
@@ -240,7 +249,8 @@ public partial class MainWindow
         var peers = beam ? _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _demoFriends ?? _friends.Friends : Array.Empty<Friend>();
         int online = friends.Take(8).Count(_friends.IsOnline);
-        ShareHint.Text = !beam ? "Drop it on Shelf to keep it here and drag it out later."
+        ShareHint.Text = _pickFiles != null ? (beam ? "Click where it should go." : "Click Shelf to keep it here.")
+            : !beam ? "Drop it on Shelf to keep it here and drag it out later."
             : friends.Count > 0
             ? "Drop it on a friend, on someone nearby, or on Code." + (online switch { 0 => "", 1 => " One friend is online.", _ => $" {online} friends are online." })
             : peers.Count == 0
@@ -308,7 +318,18 @@ public partial class MainWindow
             Text = name, FontSize = 12, FontWeight = FontWeights.SemiBold, MaxWidth = 110, TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0),
         });
-        return new Button { Style = (Style)FindResource("ChipButton"), Content = content, Tag = target, Background = ChipBrush };
+        var button = new Button { Style = (Style)FindResource("ChipButton"), Content = content, Tag = target, Background = ChipBrush };
+        // Picking where a screenshot goes: click instead of drop.
+        button.Click += (_, _) =>
+        {
+            if (_pickFiles is not { } files) return;
+            Diag.Log($"Picked {target.Name}");
+            EndShare();
+            SendTo(target, files);
+        };
+        button.MouseEnter += (_, _) => { if (_pickFiles != null) HighlightChip(button); };
+        button.MouseLeave += (_, _) => { if (_pickFiles != null) HighlightChip(null); };
+        return button;
     }
 
     static Border Avatar(string text, Brush background, bool icon = false) => new()
@@ -729,6 +750,8 @@ public partial class MainWindow
     void ShowTask(string icon, Brush circle, string title, string subtitle, double? progress,
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
+        TaskThumb.Visibility = Visibility.Collapsed; // a screenshot puts its picture back afterwards
+        TaskIconCircle.Visibility = Visibility.Visible;
         TaskIcon.Text = icon;
         TaskIcon.FontFamily = textIcon ? new FontFamily("Segoe UI Variable Text, Segoe UI") : IconFont;
         TaskIcon.FontWeight = textIcon ? FontWeights.SemiBold : FontWeights.Normal;

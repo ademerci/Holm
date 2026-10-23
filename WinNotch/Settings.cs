@@ -35,6 +35,8 @@ internal sealed class AppSettings
     public bool Calls { get; set; } = true;
     /// <summary>Files and folders parked on the shelf, oldest first (only their paths).</summary>
     public List<string> Shelf { get; set; } = new();
+    /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>
+    public bool Screenshots { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
