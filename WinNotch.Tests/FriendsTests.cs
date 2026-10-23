@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using WinNotch;
 using WinNotch.Sharing;
 
 namespace WinNotch.Tests;
@@ -161,6 +162,32 @@ public class FriendNoteTests
     [InlineData("not json")]
     [InlineData("[1,2,3]")]
     public void Junk_in_the_inbox_is_skipped(string line) => Assert.False(FriendInbox.TryParse(line, out _, out _, out _, out _));
+}
+
+public class LegacyFriendListTests
+{
+    [Fact]
+    public void Duplicate_saved_cards_are_removed_and_the_latest_card_is_kept()
+    {
+        var friends = new List<Friend>
+        {
+            new() { Name = "Old name", Topic = "old-topic", Key = "same-key" },
+            new() { Name = "Other friend", Topic = "other-topic", Key = "other-key" },
+            new() { Name = "Current name", Topic = "current-topic", Key = "same-key" },
+        };
+
+        int removed = FriendsService.RemoveDuplicateFriendCards(friends);
+
+        Assert.Equal(1, removed);
+        Assert.Collection(friends,
+            friend => Assert.Equal("other-key", friend.Key),
+            friend =>
+            {
+                Assert.Equal("same-key", friend.Key);
+                Assert.Equal("Current name", friend.Name);
+                Assert.Equal("current-topic", friend.Topic);
+            });
+    }
 }
 
 /// <summary>

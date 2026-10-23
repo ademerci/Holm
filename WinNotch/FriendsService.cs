@@ -38,9 +38,32 @@ internal sealed class FriendsService
     {
         _settings = settings;
         _ui = ui;
+        int removed = RemoveDuplicateFriendCards(_settings.Friends);
+        if (removed > 0)
+        {
+            _settings.Save();
+            Diag.Log($"Friends: removed {removed} duplicate or invalid saved entries");
+        }
     }
 
     public IReadOnlyList<Friend> Friends => _settings.Friends;
+
+    /// <summary>Deduplicates old saved friend cards, keeping the latest card for each public key.</summary>
+    internal static int RemoveDuplicateFriendCards(List<Friend> friends)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        int removed = 0;
+        for (int i = friends.Count - 1; i >= 0; i--)
+        {
+            var friend = friends[i];
+            if (friend == null || string.IsNullOrWhiteSpace(friend.Key) || !seen.Add(friend.Key))
+            {
+                friends.RemoveAt(i);
+                removed++;
+            }
+        }
+        return removed;
+    }
 
     /// <summary>Who we are, once set up (the first time you copy your friend code or add a friend).</summary>
     public FriendIdentity? Me

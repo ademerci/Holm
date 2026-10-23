@@ -4,6 +4,7 @@
 
 ### Changed
 - Removing a friend now sends a sealed removal notice so their Holm removes you from its list too. If the notice cannot be delivered, Holm says so.
+- Holm now removes duplicate or invalid saved friend entries on startup, keeping the latest entry for each public key.
 - The application icon now uses the updated Holm logo.
 
 ## 1.5.2 – 2026-10-23
