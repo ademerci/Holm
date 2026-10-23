@@ -133,7 +133,7 @@ This project began by chatting with Claude (Anthropic's AI) in Claude Code, from
 
 ## Contributors
 
-Alongside the human contributors recorded in the commit history, we credit Claude and GPT-6 Astra as AI development contributors. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for their contributions.
+Alongside the human contributors recorded in the commit history, we credit Claude, Google Gemini and GPT-6 Astra as AI development contributors. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for their contributions.
 
 ## License
 
