@@ -428,6 +428,12 @@ public partial class MainWindow
 
     async Task AddFriendAsync(Friend card, bool tellThem)
     {
+        if (_friends.Find(card.Key) != null)
+        {
+            _addBack.RemoveAll(f => f.Key == card.Key);
+            ShowPeek("\uE77F", $"{card.Name} is already your friend", "", null, false, null, seconds: 4);
+            return;
+        }
         _addBack.RemoveAll(f => f.Key == card.Key);
         bool told = await _friends.AddAsync(card, tellThem);
         ShowPeek("\uE8FA", told ? $"{card.Name} is now a friend" : $"{card.Name} added – send them your code too", "", null, false, null, seconds: 4);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adding a friend you already have now shows that they're already in your friends list and skips adding or notifying them again.
+
 ### Fixed
 - **The 5-second check for messages read everything every time.** Since 1.5.0 Holm looks for new messages every 5 seconds in case Windows' folder events go missing, and every look asked the notification center for all its notifications (43 here) and copied the notification database for the badges. Idle, that came to about 1.2 % CPU on an 8-thread laptop – more than 20 times 1.4.0 – and 20–30 MB more working set. Now a timer compares a marker that Windows rewrites with every change to the database (a fifth of a millisecond) every 2 seconds and reads only when it moved; the notification center, the expensive part, is only asked when a notification arrived, changed or went, not for a new badge. New messages show up within 2–4 seconds, as fast as before (measured with silent test notifications).
 - **The equalizer kept running after the music stopped.** Its bars stood still, but their endless animations went on ticking in the background until .NET happened to clean up, often for minutes – as much CPU as playing (about 0.2 % instead of 0.03 % on an 8-thread laptop). They're stopped properly now. The same happened whenever the equalizer paused for a pop-out or a size change while music played.

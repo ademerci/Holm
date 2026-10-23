@@ -97,10 +97,9 @@ internal sealed class FriendsService
     /// </summary>
     public async Task<bool> AddAsync(Friend friend, bool tellThem)
     {
+        if (Find(friend.Key) != null) return true;
         var me = EnsureMe();
-        int at = _settings.Friends.FindIndex(f => f.Key == friend.Key);
-        if (at >= 0) _settings.Friends[at] = friend;
-        else _settings.Friends.Add(friend);
+        _settings.Friends.Add(friend);
         _settings.Save();
         if (!tellThem) return true;
         try
