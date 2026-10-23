@@ -159,6 +159,10 @@ public enum FriendNoteKind
     FriendRequestCancelled,
     /// <summary>"I removed you as a friend": remove my card from your list too.</summary>
     RemovedYou,
+    /// <summary>"Is your Holm running?" Asked when you're about to send files.</summary>
+    Ping,
+    /// <summary>"Yes, my Holm is running": the answer to <see cref="Ping"/>.</summary>
+    Here,
 }
 
 public static class FriendNotes
@@ -199,6 +203,8 @@ public static class FriendNotes
                 FriendNoteKind.FriendResponse => "response",
                 FriendNoteKind.FriendRequestCancelled => "cancel-request",
                 FriendNoteKind.RemovedYou => "removed",
+                FriendNoteKind.Ping => "ping",
+                FriendNoteKind.Here => "here",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -252,6 +258,8 @@ public static class FriendNotes
                 "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
                     => new FriendNote(FriendNoteKind.FriendRequestCancelled, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
+                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T),
+                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
                 _ => null,
             };
             if (note != null) senderKey = parts[0];

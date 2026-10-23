@@ -182,6 +182,7 @@
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
                         <MenuItem x:Name="MenuMessages" Header="Messages"/>
                         <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
+                        <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -231,6 +232,13 @@
                                 </Rectangle>
                             </StackPanel>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- Idle: nothing going on; a small lock while a VPN is connected -->
+                    <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="0,0,14,0">
+                        <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
+                                   Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   Visibility="Collapsed"/>
                     </Grid>
 
                     <!-- Badge: nothing playing, unread messages -->
@@ -416,6 +424,12 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel x:Name="DevicesPanel" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Where the sound goes: a list of the speakers and headphones to switch to -->
+                                    <Button x:Name="OutputBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
+                                            Visibility="Collapsed" Click="Output_Click">
+                                        <TextBlock x:Name="OutputIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                                   Foreground="{StaticResource Dim}" Text="&#xE7F5;"/>
+                                    </Button>
                                     <Button x:Name="MuteBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Mute_Click">
                                         <TextBlock x:Name="VolIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
                                                    Foreground="{StaticResource Dim}" Text="&#xE995;"/>

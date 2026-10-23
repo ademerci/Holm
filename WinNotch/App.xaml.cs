@@ -37,6 +37,9 @@ public partial class App : Application
         int snap = Array.IndexOf(e.Args, "--snap");
         if (snap >= 0 && snap + 1 < e.Args.Length)
         {
+            // Posing turns off animations and resets the sizes, and the friends inbox saves as it catches up:
+            // without this, the pose ended up in your settings.
+            AppSettings.ReadOnly = true;
             var window = new MainWindow();
             window.Loaded += async (_, _) => { await window.SnapshotAsync(e.Args[snap + 1]); Shutdown(); };
             window.Show();

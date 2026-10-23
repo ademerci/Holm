@@ -27,6 +27,8 @@ internal sealed class AppSettings
     public List<string> MutedApps { get; set; } = new();
     /// <summary>Downloads in the Downloads folder show in the notch.</summary>
     public bool Downloads { get; set; } = true;
+    /// <summary>A lock in the notch while a VPN is connected, and a note when it connects or drops.</summary>
+    public bool Vpn { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
@@ -73,6 +75,9 @@ internal sealed class AppSettings
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 
+    /// <summary>Set while posing for screenshots, which change settings that must never reach your settings file.</summary>
+    internal static bool ReadOnly;
+
     public static AppSettings Load()
     {
         try { return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new(); }
@@ -81,6 +86,7 @@ internal sealed class AppSettings
 
     public void Save()
     {
+        if (ReadOnly) return;
         try
         {
             Directory.CreateDirectory(Diag.Folder);

@@ -47,6 +47,7 @@ public partial class MainWindow
     string[] _dragFiles = Array.Empty<string>();
     ShareTarget? _hover;
     string? _shownPeers;
+    readonly Dictionary<string, FrameworkElement> _onlineDots = new(); // by friend key, on the chips shown now
     CancellationTokenSource? _taskCts;
     Action? _primaryAction, _secondaryAction;
     readonly HashSet<string> _ownCodes = new();
@@ -76,6 +77,7 @@ public partial class MainWindow
         _friends.FriendRequested += OnFriendRequested;
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
+        _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
 
     void StartSharing()
@@ -152,6 +154,7 @@ public partial class MainWindow
         ApplyState();
         _shareWatch.Start();
         _ = RefreshPeersAsync();
+        _friends.PingAll(); // green dots for friends whose Holm is running, a second or two later
     }
 
     async Task RefreshPeersAsync()
@@ -220,24 +223,39 @@ public partial class MainWindow
         ShareTitle.Text = files == 1 ? $"Send “{Path.GetFileName(_dragFiles[0])}”" : $"Send {files} files";
         var peers = _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>();
         var friends = _demoFriends ?? _friends.Friends;
+        int online = friends.Take(8).Count(_friends.IsOnline);
         ShareHint.Text = friends.Count > 0
-            ? "Drop it on a friend, on someone nearby, or on Code."
+            ? "Drop it on a friend, on someone nearby, or on Code." + (online switch { 0 => "", 1 => " One friend is online.", _ => $" {online} friends are online." })
             : peers.Count == 0
                 ? "No one with Holm on this network – drop it on Code to send it anywhere."
                 : "Drop it on a person, or on Code to send it anywhere.";
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
+        // Online dots change in place, for the same reason.
         string shown = string.Join("|", friends.Take(8).Select(f => f.Key).Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
-        if (shown == _shownPeers && ShareTargets.Children.Count > 0) return;
+        if (shown == _shownPeers && ShareTargets.Children.Count > 0)
+        {
+            ShowOnlineDots();
+            return;
+        }
         _shownPeers = shown;
-        Diag.Log($"Share targets: {friends.Count} friends, {peers.Count} nearby");
+        Diag.Log($"Share targets: {friends.Count} friends ({online} online), {peers.Count} nearby");
 
         ShareTargets.Children.Clear();
+        _onlineDots.Clear();
         foreach (var friend in friends.Take(8))
             ShareTargets.Children.Add(Chip(Avatar(Initials(friend.Name), AvatarColor(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true));
         foreach (var peer in peers.Take(6))
             ShareTargets.Children.Add(Chip(Avatar(Initials(peer.Name), AvatarColor(peer.Name)), peer.Name, new ShareTarget(peer)));
         ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
+        ShowOnlineDots();
+    }
+
+    void ShowOnlineDots()
+    {
+        foreach (var friend in _demoFriends ?? _friends.Friends)
+            if (_onlineDots.TryGetValue(friend.Key, out var dot))
+                dot.Visibility = _friends.IsOnline(friend) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     Button Chip(UIElement avatar, string name, ShareTarget target, bool isFriend = false)
@@ -254,6 +272,15 @@ public partial class MainWindow
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, -2, -2),
                 Child = new TextBlock { Text = "\uE735", FontFamily = IconFont, FontSize = 8, Foreground = ShareBlue, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             });
+            // A green dot: their Holm answered just now, so they'd see the files right away.
+            var dot = new Border
+            {
+                Width = 11, Height = 11, CornerRadius = new CornerRadius(5.5), Background = GreenBrush,
+                BorderBrush = Brushes.Black, BorderThickness = new Thickness(2), Visibility = Visibility.Collapsed,
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -2, -2, 0),
+            };
+            badge.Children.Add(dot);
+            _onlineDots[target.Friend!.Key] = dot;
             avatar = badge;
         }
         content.Children.Add(avatar);

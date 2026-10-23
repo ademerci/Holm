@@ -49,6 +49,11 @@ public partial class MainWindow : Window
     readonly MediaService _media;
     readonly MessagesService _chat;
     readonly VolumeService _volume = new();
+    ContextMenu? _outputMenu;
+    VpnWatcher? _vpn;
+    string? _demoVpn = null; // README screenshots only (set in Debug builds)
+
+    string? CurrentVpn => _demoVpn ?? _vpn?.Current;
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
     readonly AnimationClock?[] _barClocks = new AnimationClock?[4];
@@ -99,7 +104,7 @@ public partial class MainWindow : Window
         _collapseDelay = MakeTimer(300, () =>
         {
             // Dragging a slider or menu open: try again shortly.
-            if (Mouse.Captured != null || Island.ContextMenu.IsOpen) { _collapseDelay!.Start(); return; }
+            if (Mouse.Captured != null || MenuOpen) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -187,9 +192,17 @@ public partial class MainWindow : Window
         StartUpdates();
 
         _volume.Changed += (level, muted) => Dispatcher.InvokeAsync(() => OnVolumeChanged(level, muted));
-        _volume.DefaultDeviceChanged += () => Dispatcher.InvokeAsync(_volume.Bind);
+        _volume.DefaultDeviceChanged += () => Dispatcher.InvokeAsync(OnDefaultDeviceChanged);
         _volume.Bind();
         StartSharing();
+
+        try
+        {
+            _vpn = new VpnWatcher(Dispatcher);
+            _vpn.Changed += OnVpnChanged;
+            ShowVpn();
+        }
+        catch (Exception ex) { Diag.Error(ex); }
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -199,6 +212,7 @@ public partial class MainWindow : Window
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
         _volume.Shutdown();
+        _vpn?.Dispose();
         _chat.Stop();
         StopDownloads();
         StopSharing();
@@ -277,7 +291,7 @@ public partial class MainWindow : Window
             UpdateEqualizer();
         }
         // Not while the menu is open: the notch would jump in front of it and the menu flicker.
-        if (!fullscreen && _hwnd != IntPtr.Zero && !Island.ContextMenu.IsOpen)
+        if (!fullscreen && _hwnd != IntPtr.Zero && !MenuOpen)
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
         if (_messages.Count > 0 && AppInFront() is { } front && _messages.Any(m => m.App == front.Key)) _chat.MarkRead(front.Key);
@@ -302,6 +316,7 @@ public partial class MainWindow : Window
             _trimTimer.Stop();
             RefreshMediaUi();
             RefreshDevices();
+            RefreshOutput();
             ResolveAi(force: false);
             // Access may have been granted in Settings since we last asked.
             if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
@@ -389,6 +404,7 @@ public partial class MainWindow : Window
 
         if (target != _state)
         {
+            SetView(IdleView, target == NotchState.Idle && !mini, animate);
             SetView(CompactView, target == NotchState.Media, animate);
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
@@ -970,12 +986,37 @@ public partial class MainWindow : Window
     void RefreshDevices()
     {
         DevicesPanel.Children.Clear();
+        if (_settings.Vpn && CurrentVpn is { } vpn)
+            DevicesPanel.Children.Add(VpnChip(vpn));
         if (_power.HasBattery)
             DevicesPanel.Children.Add(DeviceChip("", null, _power.Percent, _power.OnAc));
         foreach (var d in _bt.Where(d => d.IsConnected))
             DevicesPanel.Children.Add(DeviceChip(d.Glyph, d.Name, d.Battery, false));
         if (DevicesPanel.Children.Count == 0)
             DevicesPanel.Children.Add(new TextBlock { Text = "No battery devices", FontSize = 12, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center });
+    }
+
+    /// <summary>Just a green lock, so the batteries keep their room; the name is in the tooltip and the pop-out.</summary>
+    static FrameworkElement VpnChip(string name) => new TextBlock
+    {
+        Text = "", FontFamily = IconFont, FontSize = 14, Foreground = GreenBrush, Background = Brushes.Transparent,
+        VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0),
+        ToolTip = name == "VPN" ? "VPN connected" : $"VPN connected: {name}",
+    };
+
+    /// <summary>The lock in the idle notch and the VPN entry when open.</summary>
+    void ShowVpn()
+    {
+        IdleLock.Visibility = _settings.Vpn && CurrentVpn != null ? Visibility.Visible : Visibility.Collapsed;
+        if (_expanded) RefreshDevices();
+    }
+
+    void OnVpnChanged(string? vpn)
+    {
+        ShowVpn();
+        if (!_settings.Vpn) return;
+        if (vpn != null) ShowPeek("", "VPN connected", vpn == "VPN" ? "" : vpn, null, false, GreenBrush);
+        else ShowPeek("", "VPN disconnected", "", null, false, null);
     }
 
     static FrameworkElement DeviceChip(string glyph, string? name, int level, bool charging)
@@ -1071,6 +1112,52 @@ public partial class MainWindow : Window
         ReadVolume();
     }
 
+    /// <summary>The right-click menu or the list of output devices is open.</summary>
+    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true;
+
+    void OnDefaultDeviceChanged()
+    {
+        _volume.Bind();
+        if (!_expanded) return;
+        ReadVolume();
+        RefreshOutput();
+    }
+
+    /// <summary>The output button shows what kind of device plays now; it's only there with another one to switch to.</summary>
+    void RefreshOutput()
+    {
+        var outputs = _volume.Outputs(out string? current);
+        var now = outputs.FirstOrDefault(o => o.Id == current);
+        OutputBtn.Visibility = outputs.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        OutputIcon.Text = now?.Glyph ?? "";
+        OutputBtn.ToolTip = now?.Name;
+    }
+
+    /// <summary>Lists the speakers and headphones that are plugged in; picking one makes it the default, like the Sound settings do.</summary>
+    void Output_Click(object sender, RoutedEventArgs e)
+    {
+        var outputs = _volume.Outputs(out string? current);
+        var menu = new ContextMenu { PlacementTarget = OutputBtn, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (var output in outputs)
+        {
+            var header = new StackPanel { Orientation = Orientation.Horizontal };
+            header.Children.Add(new TextBlock { Text = output.Glyph, FontFamily = IconFont, FontSize = 13, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            header.Children.Add(new TextBlock { Text = output.Name, MaxWidth = 260, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+            var item = new MenuItem { Header = header, IsCheckable = true, IsChecked = output.Id == current };
+            item.Click += (_, _) =>
+            {
+                if (output.Id == current) return;
+                Diag.Log("Output device picked");
+                if (!_volume.SetDefault(output.Id)) RefreshOutput();
+            };
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0) return;
+        menu.Closed += Menu_Closed;
+        _outputMenu = menu;
+        menu.IsOpen = true;
+    }
+
     async void Ai_Click(object sender, RoutedEventArgs e)
     {
         var target = _ai;
@@ -1113,6 +1200,7 @@ public partial class MainWindow : Window
         FillAiMenu();
         FillMessagesMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
+        MenuVpn.IsChecked = _settings.Vpn;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
@@ -1266,6 +1354,13 @@ public partial class MainWindow : Window
         else StopDownloads();
     }
 
+    void MenuVpn_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.Vpn = MenuVpn.IsChecked;
+        _settings.Save();
+        ShowVpn();
+    }
+
     void MenuAutostart_Click(object sender, RoutedEventArgs e)
     {
         try { Autostart.Set(MenuAutostart.IsChecked); }
@@ -1291,7 +1386,12 @@ public partial class MainWindow : Window
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _chat.Changed -= OnMessagesChanged;
+        _messages = Array.Empty<ChatMessage>(); // your real messages came in meanwhile: they must not end up in a picture
+        RefreshMessages();
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
+        _vpn?.Dispose(); // only the demo VPN below shows
+        _vpn = null;
+        ShowVpn();
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);
@@ -1358,6 +1458,8 @@ public partial class MainWindow : Window
         _dragFiles = new[] { @"C:\Demo\Holiday photos.zip" };
         _sharing = true;
         RefreshShareTargets();
+        _onlineDots["demo-lena"].Visibility = Visibility.Visible; // as if Lena's Holm had answered
+        ShareHint.Text += " One friend is online.";
         HighlightChip(ShareTargets.Children[0]);
         ApplyState();
         await Snap(dir, "airdrop-share", 140);
@@ -1380,6 +1482,22 @@ public partial class MainWindow : Window
         EndTask("\uE73E", GreenBrush, "Saved Holiday photos.zip", "From Lena Hoffmann · in Downloads", ("Show", () => { }));
         await Snap(dir, "airdrop-saved", 70);
         HideTask();
+
+        // 1.6: VPN, output devices
+        OnMediaChanged(null, false);
+        _demoVpn = "NordVPN";
+        OnVpnChanged(_demoVpn);
+        await Snap(dir, "vpn-peek", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+        await Snap(dir, "vpn-idle", 60);
+        OnMediaChanged(DemoMedia(), true);
+        SetExpanded(true);
+        await Snap(dir, "expanded-vpn", 240);
+        SetExpanded(false);
+        _demoVpn = null;
+        ShowVpn();
     }
 
     static MediaInfo DemoMedia()

@@ -13,6 +13,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
   <img src="docs/compact.png" width="480" alt="Compact notch while music plays">
   <img src="docs/volume.png" width="480" alt="Volume pop-out">
   <img src="docs/peek.png" width="480" alt="Pop-out when headphones connect">
+  <img src="docs/vpn.png" width="480" alt="Pop-out when a VPN connects">
 </p>
 
 ## Features
@@ -20,6 +21,8 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Media controls** for anything that talks to Windows' media controls – Spotify, YouTube in Chrome or Edge, VLC, … Cover, title, album, seek bar, play/pause, skip, **shuffle and repeat**, volume. Click the cover to bring the player to the front.
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
+- **Output device** – the button next to the volume lists your speakers, headphones and headsets; pick one and all sound (music, games and calls) goes there, like in Windows' Sound settings. It shows up when there's more than one to choose from.
+- **VPN** – while a VPN is connected, a small lock sits in the idle notch and a green one next to the batteries, and the notch says when it connects or drops. It knows Windows' own VPN connections and the usual apps (WireGuard, OpenVPN, NordVPN, Proton VPN, Mullvad, Cisco, GlobalProtect, FortiClient, …). Right-click › *VPN indicator* turns it off.
 - **Beam** (Holm's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
 - **Updates in the app** – checks for stable releases shortly after startup and every six hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
@@ -29,7 +32,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
+- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, VPN indicator, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
 
 ## Beam
 
@@ -50,7 +53,7 @@ Received files land in your **Downloads** folder.
 
 1. Right-click the notch › **Friends › Copy my friend code** and send it to your friend in any chat.
 2. Your friend copies your code and chooses **Add**. Their Holm waits while yours asks you to *Accept* or *Decline* the request. Neither friend list changes until you accept; acceptance adds each of you to the other's list.
-3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it.
+3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it. A **green dot** means their Holm is running right now, so they'll see your files at once.
 
 Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer a file availability check within 15 seconds, Holm reports that they're offline or their notch is closed. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
 
@@ -59,6 +62,7 @@ How it works: dropping files on a friend makes a fresh one-time code, exactly li
 How it stays safe:
 
 - **Nothing arrives without a yes.** The receiver sees who is sending what (names and sizes) and has to accept; no answer within a minute counts as no.
+- **Only friends see that you're online.** When you drag files onto the notch, it asks your friends' notches whether they're running (a sealed note, like the others), and theirs answer the same way – at most once a minute per friend, as every note counts against ntfy.sh's daily limit. Questions from anyone who isn't your friend get no answer.
 - **Only friends can knock.** A friend's note is sealed with a key only the two of you share (from your friend codes), so nobody else can open it or send one in your friend's name; notes from people you haven't added are ignored. Your private key never leaves your PC and is stored encrypted for your Windows account. ntfy.sh sees which inbox got a note and when, the IP addresses involved and a key that stands for the sender's notch – but no names, no files and not what the note says.
 - **Encrypted.** With a code, the key comes from the code itself, so only the person you gave the code to can read the file. On the network both notches agree on a fresh key for every transfer (ECDH); that stops anyone from listening in, but the notches don't verify each other, so someone on the same network could pretend to be a notch – use *Code* on networks you don't trust. Everything is sent with AES-256-GCM, so changed or replayed data is rejected.
 - **Through the relay, only scrambled bytes.** Code transfers go through the public *transit relay* of the open-source [magic-wormhole](https://github.com/magic-wormhole/magic-wormhole) project. It only pairs the two sides and passes encrypted data along – it never sees the code, the key, file names or content. A code works once and expires after 15 minutes.
