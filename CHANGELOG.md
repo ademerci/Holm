@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Changed
-- A blue circular download arrow appears beside **Updates** in the right-click menu when a new version is available.
+- A blue circular download icon appears immediately after the **Updates** text in the right-click menu when a new version is available.
 
 ## 1.5.8 – 2026-10-23
 

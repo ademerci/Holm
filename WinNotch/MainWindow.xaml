@@ -189,15 +189,17 @@
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
                         <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
                         <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
-                        <MenuItem x:Name="MenuUpdates" Header="Updates">
-                            <MenuItem.Icon>
-                                <Border x:Name="MenuUpdateIcon" Width="18" Height="18" CornerRadius="9"
-                                        Background="#FF0A84FF" Visibility="Collapsed">
-                                    <Path Data="M 9,4 L 9,11 M 5,8 L 9,12 L 13,8" Stroke="White"
-                                          StrokeThickness="1.8" StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                                </Border>
-                            </MenuItem.Icon>
+                        <MenuItem x:Name="MenuUpdates">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="MenuUpdatesLabel" Text="Updates" VerticalAlignment="Center"/>
+                                    <Border x:Name="MenuUpdateIcon" Width="19" Height="19" CornerRadius="9.5"
+                                            Background="#FF0A84FF" Margin="7,0,0,0" Visibility="Collapsed">
+                                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </MenuItem.Header>
                             <MenuItem x:Name="MenuUpdateStatus" IsEnabled="False"/>
                             <Separator/>
                             <MenuItem x:Name="MenuAutoUpdates" Header="Check automatically" IsCheckable="True"

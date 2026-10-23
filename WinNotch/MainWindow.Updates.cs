@@ -47,7 +47,7 @@ public partial class MainWindow
     void RefreshUpdateMenu()
     {
         MenuAutoUpdates.IsChecked = _settings.CheckForUpdatesAutomatically;
-        MenuUpdates.Header = _installingUpdate ? "Updating…"
+        MenuUpdatesLabel.Text = _installingUpdate ? "Updating…"
             : _availableUpdate is { } available ? $"Updates · {available.Version.ToString(3)} available" : "Updates";
         MenuUpdateIcon.Visibility = _availableUpdate != null && !_installingUpdate ? Visibility.Visible : Visibility.Collapsed;
         MenuUpdateStatus.Header = _updateStatus ?? $"Current version: {RunningVersion.ToString(3)}";
