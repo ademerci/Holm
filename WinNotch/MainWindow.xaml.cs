@@ -125,6 +125,7 @@ public partial class MainWindow : Window
         InitTimer();
         InitCall();
         InitPhone();
+        InitScreenshots();
 
         Progress.ValueCommitted += v =>
         {
@@ -212,6 +213,7 @@ public partial class MainWindow : Window
         catch (Exception ex) { Diag.Error(ex); }
         StartPrivacy();
         InitShelf();
+        StartScreenshots();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -223,6 +225,7 @@ public partial class MainWindow : Window
         _timerTick.Stop();
         _callTick.Stop();
         StopPhone();
+        StopScreenshots();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -258,6 +261,7 @@ public partial class MainWindow : Window
 
             case Native.WM_CLIPBOARDUPDATE:
                 OnClipboardChanged();
+                OnClipboardForScreenshot(); // right away: who owns the clipboard can change
                 break;
         }
         return IntPtr.Zero;
@@ -1083,12 +1087,14 @@ public partial class MainWindow : Window
     void Island_MouseEnter(object sender, MouseEventArgs e)
     {
         _collapseDelay.Stop();
+        _pickClose.Stop();
         if (!_expanded) _expandDelay.Start();
     }
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
         _expandDelay.Stop();
+        if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
         if (_expanded) _collapseDelay.Start();
     }
 
@@ -1252,6 +1258,7 @@ public partial class MainWindow : Window
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
         MenuCalls.IsChecked = _settings.Calls;
+        MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
@@ -1620,6 +1627,12 @@ public partial class MainWindow : Window
         _demoPhone = false;
         PhoneQrHost.Child = null;
         ApplyState();
+
+        // 1.6: a screenshot
+        ShowTask("\uE722", ShareBlue, "Screenshot", "Saved in Screenshots", null, ("Send", () => { }), ("Shelf", () => { }));
+        if (DemoMedia().Art is { } picture) ShowTaskPicture(picture);
+        await Snap(dir, "screenshot", 70);
+        HideTask();
     }
 
     static MediaInfo DemoMedia()

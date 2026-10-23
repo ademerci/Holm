@@ -187,6 +187,7 @@
                         <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
                         <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
                         <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
+                        <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -367,6 +368,9 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
+                        <!-- A screenshot shows itself here instead of the icon; click to open it -->
+                        <Border x:Name="TaskThumb" Width="54" Height="36" CornerRadius="6" VerticalAlignment="Center" Visibility="Collapsed"
+                                Cursor="Hand" ToolTip="Open" MouseLeftButtonUp="TaskThumb_Click"/>
                         <Border x:Name="TaskIconCircle" Width="34" Height="34" CornerRadius="17" Background="#FF0A84FF" VerticalAlignment="Center">
                             <TextBlock x:Name="TaskIcon" FontFamily="{StaticResource IconFont}" FontSize="15"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>

@@ -131,6 +131,18 @@ internal static class Native
         return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
     }
 
+    /// <summary>Where Windows saves screenshots (Win+Print Screen, and the Snipping Tool by default), or null.</summary>
+    public static string? ScreenshotsFolder()
+    {
+        var screenshots = new Guid("B7BEDE81-DF94-4682-A7D8-57A52620B86F");
+        int result = SHGetKnownFolderPath(ref screenshots, 0, IntPtr.Zero, out IntPtr path);
+        try { return result == 0 ? Marshal.PtrToStringUni(path) : null; }
+        finally { Marshal.FreeCoTaskMem(path); }
+    }
+
+    /// <summary>The window of the app that last put something on the clipboard.</summary>
+    [DllImport("user32.dll")] public static extern IntPtr GetClipboardOwner();
+
     /// <summary>Asks the shell whether a fullscreen app (game, video, presentation) is in front.</summary>
     [DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int state);
 
