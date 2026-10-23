@@ -16,7 +16,7 @@ public partial class MainWindow
     DispatcherTimer _updateTimer = null!;
     UpdateService? _updates;
     UpdateRelease? _availableUpdate;
-    bool _checkingUpdates, _installingUpdate, _updatesClosing;
+    bool _checkingUpdates, _installingUpdate, _updatesClosing, _trimmedAfterFirstCheck;
     string? _updateStatus;
 
     void InitUpdates()
@@ -99,6 +99,12 @@ public partial class MainWindow
         {
             _checkingUpdates = false;
             if (!_updatesClosing) RefreshUpdateMenu();
+            // The check 20 s after start pulls the network and TLS code back in right after the startup trim.
+            if (!manual && !_updatesClosing && !_trimmedAfterFirstCheck)
+            {
+                _trimmedAfterFirstCheck = true;
+                _trimTimer.Start();
+            }
         }
     }
 

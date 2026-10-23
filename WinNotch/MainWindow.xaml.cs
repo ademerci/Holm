@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     readonly VolumeService _volume = new();
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
+    readonly AnimationClock?[] _barClocks = new AnimationClock?[4];
     readonly ScaleTransform _notchScale = new();
     readonly BatteryGlyph PeekBattery = new();
     readonly MiniSlider Progress = new();
@@ -569,11 +570,16 @@ public partial class MainWindow : Window
                     EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
                 };
                 Timeline.SetDesiredFrameRate(bounce, 12);
-                _bars[i].BeginAnimation(ScaleTransform.ScaleYProperty, bounce);
+                _barClocks[i] = bounce.CreateClock();
+                _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, _barClocks[i]);
             }
             else
             {
-                _bars[i].BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                // Taking the animation off the bar isn't enough: its endless clock would keep ticking (and
+                // allocating) until a garbage collection, costing as much CPU as playing. Stop it.
+                _barClocks[i]?.Controller?.Stop();
+                _barClocks[i] = null;
+                _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, null);
                 _bars[i].ScaleY = BarRest[i];
             }
         }
@@ -665,6 +671,8 @@ public partial class MainWindow : Window
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
         var oldAccent = _info?.Accent;
+        // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
+        if (_info?.IsPlaying == true && info?.IsPlaying != true && !_expanded) _trimTimer.Start();
         _info = info;
         Diag.Log(info == null ? "Media: none" : $"Media: {info.App} | {info.Title} | {info.Artist} | playing={info.IsPlaying} | art={info.Art != null}");
 

@@ -154,6 +154,102 @@ public class MediaUpdateTests
         });
     }
 
+    /// <summary>
+    /// When music stops, the equalizer's endless clocks have to stop too: only taking them off the bars left them
+    /// ticking (and allocating) until a garbage collection, as expensive as playing.
+    /// </summary>
+    [Fact]
+    public void StoppingMusicStopsTheEqualizersClocks()
+    {
+        OnSta(() =>
+        {
+            var window = new MainWindow();
+            // Clocks only tick while something on this thread renders: a tiny window out of sight does.
+            var ticker = new System.Windows.Window
+            {
+                Width = 1, Height = 1, Left = -10000, Top = -10000, WindowStyle = System.Windows.WindowStyle.None,
+                ShowInTaskbar = false, ShowActivated = false,
+            };
+            ticker.Show();
+            try
+            {
+                // Never shown, so no real service starts; settings only change in memory.
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = true;
+                var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
+                var settled = typeof(MainWindow).GetMethod("OnShapeSettled", flags)!;
+                var clocks = (System.Windows.Media.Animation.AnimationClock?[])typeof(MainWindow).GetField("_barClocks", flags)!.GetValue(window)!;
+                var bars = ((ScaleTransform[])typeof(MainWindow).GetField("_bars", flags)!.GetValue(window)!);
+
+                var playing = Paused();
+                playing.IsPlaying = true;
+                changed.Invoke(window, new object?[] { playing, true });
+                settled.Invoke(window, null); // the notch grew into the music view: the bars start
+                var running = clocks.ToArray();
+                Pump(TimeSpan.FromMilliseconds(300));
+                Assert.All(running, clock => Assert.Equal(System.Windows.Media.Animation.ClockState.Active, clock!.CurrentState));
+                Assert.All(bars, bar => Assert.True(bar.HasAnimatedProperties));
+
+                changed.Invoke(window, new object?[] { Paused(), false });
+                Pump(TimeSpan.FromMilliseconds(300)); // stopping takes effect on the next tick
+
+                Assert.All(clocks, Assert.Null);
+                Assert.All(bars, bar => Assert.False(bar.HasAnimatedProperties));
+                Assert.All(running, clock => Assert.Equal(System.Windows.Media.Animation.ClockState.Stopped, clock!.CurrentState));
+            }
+            finally
+            {
+                window.Close();
+                ticker.Close();
+            }
+        });
+    }
+
+    /// <summary>Music stopping hands memory back to Windows a little later; Spotify's paused updates don't.</summary>
+    [Fact]
+    public void MusicStoppingTrimsMemorySoon()
+    {
+        OnSta(() =>
+        {
+            var window = new MainWindow();
+            try
+            {
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = false;
+                var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
+                var trim = (DispatcherTimer)typeof(MainWindow).GetField("_trimTimer", flags)!.GetValue(window)!;
+
+                changed.Invoke(window, new object?[] { Paused(), true });
+                changed.Invoke(window, new object?[] { Paused(), false });
+                Assert.False(trim.IsEnabled); // paused all along: nothing to hand back
+
+                var playing = Paused();
+                playing.IsPlaying = true;
+                changed.Invoke(window, new object?[] { playing, false });
+                Assert.False(trim.IsEnabled);
+                changed.Invoke(window, new object?[] { Paused(), false });
+                Assert.True(trim.IsEnabled);
+
+                // Open, the notch trims when it closes instead.
+                trim.Stop();
+                typeof(MainWindow).GetField("_expanded", flags)!.SetValue(window, true);
+                changed.Invoke(window, new object?[] { playing, false });
+                changed.Invoke(window, new object?[] { Paused(), false });
+                Assert.False(trim.IsEnabled);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    static void Pump(TimeSpan time)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = time };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+    }
+
     static readonly ImageSource Cover = Bitmap(), Wash = Bitmap();
 
     /// <summary>Spotify, paused at 0:42 of a 3:20 song.</summary>
