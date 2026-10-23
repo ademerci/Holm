@@ -75,6 +75,9 @@ public partial class MainWindow : Window
     Border _artFront, _artBack;
     PowerInfo _power;
     bool _powerKnown, _btKnown;
+    bool _bluetoothScanInProgress, _bluetoothStopped;
+    int _shownClockMinute = -1;
+    DateTime _shownClockDate;
     List<BtDevice> _bt = new();
     IReadOnlyList<ChatMessage> _messages = Array.Empty<ChatMessage>();
     AiTarget? _ai; // what the AI button opens, once the app list has been searched
@@ -208,6 +211,10 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        _bluetoothStopped = true;
+        _btPoll.Stop();
+        _btSoon.Stop();
+        _btLate.Stop();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -662,11 +669,15 @@ public partial class MainWindow : Window
         if (_expanded) RefreshDevices();
     }
 
-    void ScanBluetooth()
+    async void ScanBluetooth()
     {
+        if (_bluetoothStopped || _bluetoothScanInProgress) return;
+        _bluetoothScanInProgress = true;
         List<BtDevice> found;
-        try { found = BluetoothBattery.Scan(); }
+        try { found = await Task.Run(BluetoothBattery.Scan); }
         catch (Exception ex) { Diag.Log("Bluetooth scan failed: " + ex.Message); return; }
+        finally { _bluetoothScanInProgress = false; }
+        if (_bluetoothStopped) return;
 
         var previous = _bt.ToDictionary(d => d.Address, StringComparer.OrdinalIgnoreCase);
         _bt = found;
@@ -966,8 +977,17 @@ public partial class MainWindow : Window
     void UpdateClock()
     {
         var now = DateTime.Now;
-        ClockBig.Text = now.ToString("HH:mm");
-        DateText.Text = now.ToString("dddd, MMMM d", CultureInfo.GetCultureInfo("en-US"));
+        int minute = now.Hour * 60 + now.Minute;
+        if (_shownClockMinute != minute)
+        {
+            ClockBig.Text = now.ToString("HH:mm");
+            _shownClockMinute = minute;
+        }
+        if (_shownClockDate != now.Date)
+        {
+            DateText.Text = now.ToString("dddd, MMMM d", CultureInfo.GetCultureInfo("en-US"));
+            _shownClockDate = now.Date;
+        }
     }
 
     void ReadVolume()
@@ -975,15 +995,19 @@ public partial class MainWindow : Window
         if (VolSlider.IsDragging) return;
         if (_volume.TryGet(out float level, out bool muted))
         {
-            VolSlider.Value = muted ? 0 : level;
-            VolSlider.Opacity = 1;
+            double shownLevel = muted ? 0 : level;
+            if (VolSlider.Value != shownLevel) VolSlider.Value = shownLevel;
+            if (VolSlider.Opacity != 1) VolSlider.Opacity = 1;
             UpdateVolumeIcon(level, muted);
         }
-        else VolSlider.Opacity = 0.35;
+        else if (VolSlider.Opacity != 0.35) VolSlider.Opacity = 0.35;
     }
 
     void UpdateVolumeIcon(double level, bool muted)
-        => VolIcon.Text = muted || level < 0.005 ? "" : level < 0.34 ? "" : level < 0.67 ? "" : "";
+    {
+        string icon = muted || level < 0.005 ? "" : level < 0.34 ? "" : level < 0.67 ? "" : "";
+        if (VolIcon.Text != icon) VolIcon.Text = icon;
+    }
 
     void RefreshDevices()
     {

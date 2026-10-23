@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Bluetooth battery scans run away from the UI thread so device enumeration cannot stall the notch; overlapping scans are skipped.
+- The open notch updates its clock and volume visuals only when their displayed values change, reducing unnecessary redraws.
+
 ## 1.5.7 – 2026-10-23
 
 ### Changed
