@@ -573,8 +573,11 @@
             </Border>
 
             <!-- Orange while an app uses the microphone, green while one uses the camera: beside the notch, like a phone's -->
-            <Ellipse x:Name="PrivacyDot" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top"
-                     Margin="0,11,-24,0" Fill="#FFFF9F0A" IsHitTestVisible="False" Visibility="Collapsed"/>
+            <StackPanel x:Name="PrivacyDots" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,11,-28,0" IsHitTestVisible="False" Visibility="Collapsed">
+                <Ellipse x:Name="MicrophoneDot" Width="7" Height="7" Fill="#FFFF9F0A" Visibility="Collapsed"/>
+                <Ellipse x:Name="CameraDot" Width="7" Height="7" Fill="#FF30D158" Margin="4,0,0,0" Visibility="Collapsed"/>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

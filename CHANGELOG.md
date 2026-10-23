@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The microphone and camera privacy indicators show separate orange and green dots side by side when both sensors are active.
+
 ## 1.6.1 – 2026-10-23
 
 ### Changed

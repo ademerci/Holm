@@ -69,8 +69,9 @@ public partial class MainWindow
     void ShowPrivacy()
     {
         var uses = SensorsInUse;
-        PrivacyDot.Fill = uses.Any(u => u.Sensor == Sensor.Camera) ? GreenBrush : MicOrange;
-        PrivacyDot.Visibility = uses.Count > 0 && !_expanded ? Visibility.Visible : Visibility.Collapsed;
+        MicrophoneDot.Visibility = uses.Any(u => u.Sensor == Sensor.Microphone) ? Visibility.Visible : Visibility.Collapsed;
+        CameraDot.Visibility = uses.Any(u => u.Sensor == Sensor.Camera) ? Visibility.Visible : Visibility.Collapsed;
+        PrivacyDots.Visibility = uses.Count > 0 && !_expanded ? Visibility.Visible : Visibility.Collapsed;
         if (_expanded) RefreshPrivacyRows();
         ShowCall();
         // The minimized idle bar is too thin to sit beside: it grows back while the dot shows.
