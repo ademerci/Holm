@@ -20,6 +20,18 @@ public partial class App : Application
             if (MainWindow is not { IsLoaded: true }) Shutdown(1);
         };
 
+        _singleInstance = new Mutex(true, @"Local\WinNotch.SingleInstance", out bool first);
+        if (!first)
+        {
+            MessageBox.Show(
+                "WinNotch is already running. Only one instance can be open at a time.",
+                "WinNotch is already running",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
 #if DEBUG
         // Dev helper: render every notch state to PNGs and quit.
         int snap = Array.IndexOf(e.Args, "--snap");
@@ -31,9 +43,6 @@ public partial class App : Application
             return;
         }
 #endif
-
-        _singleInstance = new Mutex(true, @"Local\WinNotch.SingleInstance", out bool first);
-        if (!first) { Shutdown(); return; }
 
         Diag.Enabled = e.Args.Contains("--diag");
         new MainWindow().Show();
