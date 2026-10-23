@@ -70,14 +70,14 @@ How it stays safe:
 
 Native WPF on .NET 10 and event driven: it reacts when Windows reports a change instead of polling.
 
-| State | CPU | RAM |
-| --- | --- | --- |
-| Idle | ~0.05 % | ~10–16 MB |
-| Music playing, equalizer animated | ~0.3–0.5 % | ~10–20 MB |
+| State | CPU | RAM (Task Manager) | Working set |
+| --- | --- | --- | --- |
+| Idle | ~0.02–0.03 % | ~20–35 MB | ~55–80 MB |
+| Music playing, equalizer animated | ~0.3–0.5 % | ~45–55 MB | ~95–120 MB |
 
-Measured on an 8-thread laptop. Turning off the equalizer animation brings playback down to idle levels.
+Measured on an 8-thread laptop, a few minutes after start. Task Manager's *Memory* column is the private working set; the working set also counts the Windows libraries Holm shares with other apps. Holm hands its memory back to Windows 6 seconds after it starts and whenever the notch closes (then it's 1–5 MB for a moment) and grows back to these values as it touches things again; what it has reserved stays flat, so nothing leaks. Turning off the equalizer animation brings playback down to idle levels.
 
-**Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so Holm watches the folder of Windows' notification database instead and looks only when it changes. In between it costs nothing; a check once a minute is the safety net. **Downloads** work the same way: Holm is told when a file appears in Downloads and only measures sizes while a download is running.
+**Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so Holm watches the folder of Windows' notification database instead and looks only when it changes. Because Windows doesn't always report those changes, Holm also compares a marker every 5 seconds that Windows rewrites with every change to the database – about a millisecond – and only reads when it moved. Asking the notification center for its notifications is the expensive part, so that only happens when a notification arrived, changed or went. **Downloads** work the same way: Holm is told when a file appears in Downloads and only measures sizes while a download is running.
 
 ## Messages
 
@@ -87,7 +87,7 @@ Holm reads the notifications of WhatsApp, Discord, Outlook (new, classic and the
 
 Names and message text need a notification in Windows' notification center. With badge-only updates, Holm shows the count and also notices when Windows receives a fresh badge with the same number. If the app sends neither a notification nor a badge update, Holm has no new event to display.
 
-To read the badge, Holm copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. It uses the SQLite that ships with Windows, so there's no extra library.
+To read the badge, Holm copies the notification database (and its write-ahead log) to a private temp folder, reads the badges from the copy and deletes it again – Windows' own files are only ever read. From the same copy it takes a fingerprint of the notifications (ids, times and a hash of each, never their text), so it only asks the notification center again when they changed. It uses the SQLite that ships with Windows, so there's no extra library.
 
 Holm never removes or changes your notifications, and message text is never written to its logs.
 

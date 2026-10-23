@@ -108,6 +108,88 @@ public class NotificationBadgesTests
         Assert.ThrowsAny<IOException>(() => NotificationBadges.Read(folder.Path));
     }
 
+    [Fact]
+    public void The_stamp_stays_while_nothing_is_written()
+    {
+        using var folder = new TempFolder();
+        using var db = MakeDatabase(folder, "2");
+        string? stamp = NotificationBadges.Stamp(folder.Path);
+
+        Assert.NotNull(stamp);
+        NotificationBadges.Read(folder.Path); // reading a copy writes nothing
+        Assert.Equal(stamp, NotificationBadges.Stamp(folder.Path));
+    }
+
+    [Fact]
+    public void The_stamp_moves_with_every_commit()
+    {
+        using var folder = new TempFolder();
+        using var db = MakeDatabase(folder, "2");
+        var stamps = new List<string?> { NotificationBadges.Stamp(folder.Path) };
+
+        db.Execute("""UPDATE Notification SET Payload = CAST('<badge value="3"/>' AS BLOB) WHERE Id = 1;""");
+        stamps.Add(NotificationBadges.Stamp(folder.Path));
+        db.Execute("""UPDATE Notification SET Payload = CAST('<badge value="4"/>' AS BLOB) WHERE Id = 1;""");
+        stamps.Add(NotificationBadges.Stamp(folder.Path));
+        db.Execute("PRAGMA wal_checkpoint(TRUNCATE);"); // the log starts over, as Windows' does now and then
+        stamps.Add(NotificationBadges.Stamp(folder.Path));
+        db.Execute("""UPDATE Notification SET Payload = CAST('<badge value="5"/>' AS BLOB) WHERE Id = 1;""");
+        stamps.Add(NotificationBadges.Stamp(folder.Path));
+
+        Assert.All(stamps, Assert.NotNull);
+        Assert.Equal(stamps.Count, stamps.Distinct().Count());
+    }
+
+    [Fact]
+    public void A_missing_database_has_no_stamp()
+    {
+        using var folder = new TempFolder();
+        Assert.Null(NotificationBadges.Stamp(folder.Path));
+    }
+
+    [Fact]
+    public void The_toast_fingerprint_ignores_badges()
+    {
+        using var folder = new TempFolder();
+        using var db = MakeDatabase(folder, "2");
+        var before = NotificationBadges.ReadSnapshot(folder.Path);
+
+        db.Execute("""UPDATE Notification SET Payload = CAST('<badge value="3"/>' AS BLOB) WHERE Id = 1;""");
+        var after = NotificationBadges.ReadSnapshot(folder.Path);
+
+        Assert.NotEqual(before.Values[WhatsAppId], after.Values[WhatsAppId]);
+        Assert.Equal(before.Toasts, after.Toasts);
+    }
+
+    [Theory]
+    [InlineData("INSERT INTO Notification VALUES (5, 240, 'toast', CAST('<toast>new</toast>' AS BLOB), 7);")]
+    [InlineData("DELETE FROM Notification WHERE Id = 4;")]
+    [InlineData("UPDATE Notification SET ArrivalTime = 9 WHERE Id = 4;")]
+    // Same id, same time, same length: only the content differs (an app replacing its notification).
+    [InlineData("UPDATE Notification SET Payload = CAST('<toast><visual><binding template=\"ToastGeneric\"><text>privatE</text></binding></visual></toast>' AS BLOB) WHERE Id = 4;")]
+    public void The_toast_fingerprint_sees_every_toast_change(string change)
+    {
+        using var folder = new TempFolder();
+        using var db = MakeDatabase(folder, "2");
+        string before = NotificationBadges.ReadSnapshot(folder.Path).Toasts;
+
+        db.Execute(change);
+
+        Assert.NotEqual(before, NotificationBadges.ReadSnapshot(folder.Path).Toasts);
+    }
+
+    [Fact]
+    public void The_toast_fingerprint_holds_no_text()
+    {
+        using var folder = new TempFolder();
+        using var db = MakeDatabase(folder, "2");
+        string toasts = NotificationBadges.ReadSnapshot(folder.Path).Toasts;
+
+        Assert.NotEmpty(toasts);
+        Assert.DoesNotContain("private", toasts);
+        Assert.DoesNotContain("toast", toasts);
+    }
+
     /// <summary>The real database on this PC: readable, and the messengers' badges are numbers or glyph names.</summary>
     [Fact]
     [Trait("Category", "Local")]

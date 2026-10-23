@@ -22,11 +22,16 @@ namespace WinNotch;
 /// supported app's numeric taskbar badge from the notification database; this needs no listener access.
 /// Windows only sends change events to packaged apps, so instead we watch the database's folder,
 /// which Windows writes whenever a notification or badge changes, and only then look. A short timer is the
-/// safety net because Windows can omit file watcher events while updating its notification database.
+/// safety net because Windows can omit file watcher events while updating its notification database; it only
+/// compares the database's marker (<see cref="NotificationBadges.Stamp"/>) and reads when that moved. Asking the
+/// notification center for its toasts is the expensive part, so that only happens when the toasts changed.
 /// </remarks>
 internal sealed class MessagesService
 {
     public enum AccessState { Off, Allowed, Denied, Unavailable }
+
+    /// <summary>Without a database marker, the timer reads this often, as before the marker existed.</summary>
+    static readonly TimeSpan BlindInterval = TimeSpan.FromSeconds(60);
 
     readonly Func<string, bool> _shown; // is this messenger switched on?
     readonly DispatcherTimer _poll, _settle, _badgePop;
@@ -45,6 +50,9 @@ internal sealed class MessagesService
     readonly Dictionary<string, DateTimeOffset> _countTimes = new();
     readonly Dictionary<string, string> _badgeRevisions = new();
     readonly HashSet<string> _pendingBadgePops = new();
+    string? _stamp; // the database's marker when we last looked
+    string? _toastPrint; // the toasts' fingerprint when we last asked the notification center
+    DateTime _lastLook;
 
     public AccessState Access { get; private set; } = AccessState.Off;
     /// <summary>Unread messages of the messengers that are switched on, oldest first.</summary>
@@ -58,10 +66,10 @@ internal sealed class MessagesService
     {
         _shown = shown;
         _poll = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromSeconds(60) };
-        _poll.Tick += (_, _) => _ = RefreshAsync();
+        _poll.Tick += (_, _) => RefreshIfChanged(watcher: false);
         // A notification arriving means a burst of database writes: look once, shortly after the first.
         _settle = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromMilliseconds(700) };
-        _settle.Tick += (_, _) => { _settle.Stop(); _ = RefreshAsync(); };
+        _settle.Tick += (_, _) => { _settle.Stop(); RefreshIfChanged(watcher: true); };
         // An app's number went up: wait a moment for its notification, which says who wrote what.
         _badgePop = new DispatcherTimer(DispatcherPriority.Background, ui) { Interval = TimeSpan.FromMilliseconds(1500) };
         _badgePop.Tick += (_, _) => { _badgePop.Stop(); Publish(null, popBadgeCount: true); };
@@ -92,7 +100,7 @@ internal sealed class MessagesService
                 _running = true;
                 WatchDatabase();
                 // Windows sometimes updates the notification database without delivering a reliable
-                // FileSystemWatcher event. Keep a short fallback so toasts still appear promptly.
+                // FileSystemWatcher event. Check its marker often so toasts still appear promptly.
                 _poll.Interval = TimeSpan.FromSeconds(5);
                 _poll.Start();
             }
@@ -141,7 +149,7 @@ internal sealed class MessagesService
         }
         catch (Exception ex)
         {
-            Diag.Log("Notification database can't be watched, looking every 10 s: " + ex.Message);
+            Diag.Log("Notification database can't be watched, checking it every 5 s: " + ex.Message);
             _watcher?.Dispose();
             _watcher = null;
             return false;
@@ -171,6 +179,7 @@ internal sealed class MessagesService
         _countTimes.Clear();
         _badgeRevisions.Clear();
         _pendingBadgePops.Clear();
+        _stamp = _toastPrint = null;
         if (_messages.Count > 0)
         {
             _messages = new();
@@ -207,6 +216,17 @@ internal sealed class MessagesService
         _ = RefreshAsync();
     }
 
+    /// <summary>
+    /// Looks if Windows wrote to the notification database since the last look. Without a marker: right after
+    /// a watcher event, and otherwise once every <see cref="BlindInterval"/>.
+    /// </summary>
+    void RefreshIfChanged(bool watcher)
+    {
+        string? stamp = NotificationBadges.Stamp();
+        if (stamp != null ? stamp == _stamp : !watcher && DateTime.UtcNow - _lastLook < BlindInterval) return;
+        _ = RefreshAsync();
+    }
+
     async Task RefreshAsync()
     {
         if (!_running) return;
@@ -227,8 +247,20 @@ internal sealed class MessagesService
     async Task RefreshCoreAsync()
     {
         int generation = _generation;
+        // Taken before reading, so whatever Windows writes meanwhile makes the timer look again.
+        _stamp = NotificationBadges.Stamp();
+        _lastLook = DateTime.UtcNow;
+
+        Dictionary<string, string>? badges = null;
+        Dictionary<string, string>? revisions = null;
+        string? toastPrint = null; // unknown: ask the notification center
+        try { (badges, revisions, toastPrint) = await Task.Run(() => NotificationBadges.ReadSnapshot()); }
+        catch (Exception ex) { Diag.Log("Badges unreadable: " + ex.Message); }
+        if (generation != _generation) return;
+
         ChatMessage? arrived = null;
-        if (_listener is { } listener)
+        // Only a badge or another app's notification changed: the toasts we have are still right.
+        if (_listener is { } listener && (toastPrint == null || toastPrint != _toastPrint))
         {
             try
             {
@@ -237,11 +269,13 @@ internal sealed class MessagesService
                 {
                     Access = AccessState.Allowed;
                     arrived = await ReadToastsAsync(listener);
+                    if (listener == _listener) _toastPrint = toastPrint;
                 }
                 else
                 {
                     Access = AccessState.Denied;
                     _toasts.Clear();
+                    _toastPrint = null; // read them again once access is back
                 }
             }
             catch (Exception ex)
@@ -252,15 +286,7 @@ internal sealed class MessagesService
         }
         if (generation != _generation) return;
 
-        if (Messengers.All.Any(app => _shown(app.Key)))
-        {
-            Dictionary<string, string>? badges = null;
-            Dictionary<string, string>? revisions = null;
-            try { (badges, revisions) = await Task.Run(() => NotificationBadges.ReadSnapshot()); }
-            catch (Exception ex) { Diag.Log("Badges unreadable: " + ex.Message); }
-            if (generation != _generation) return;
-            if (badges != null) ReadBadges(badges, arrived, revisions);
-        }
+        if (badges != null && Messengers.All.Any(app => _shown(app.Key))) ReadBadges(badges, arrived, revisions);
         _primed = true;
         Publish(arrived);
     }

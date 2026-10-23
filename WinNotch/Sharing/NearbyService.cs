@@ -38,6 +38,7 @@ public sealed class NearbyService : IDisposable
     TcpListener? _tcp;
     CancellationTokenSource? _cts;
     int _tcpPort;
+    IPEndPoint[]? _targets; // where to announce; looked up again when an address changes
 
     /// <summary>The peer list changed. Raised on a worker thread.</summary>
     public event Action? PeersChanged;
@@ -84,6 +85,7 @@ public sealed class NearbyService : IDisposable
             throw;
         }
         _cts = cts;
+        NetworkChange.NetworkAddressChanged += OnAddressChanged;
         _ = ListenAsync(cts.Token);
         _ = AcceptAsync(cts.Token);
         _ = AnnounceAsync(cts.Token);
@@ -93,6 +95,8 @@ public sealed class NearbyService : IDisposable
     {
         if (_cts == null) return;
         try { Broadcast("bye"); } catch { }
+        NetworkChange.NetworkAddressChanged -= OnAddressChanged;
+        _targets = null;
         _cts.Cancel();
         _cts.Dispose();
         _cts = null;
@@ -165,8 +169,15 @@ public sealed class NearbyService : IDisposable
     byte[] Serialize(string type)
         => JsonSerializer.SerializeToUtf8Bytes(new Packet(App, 1, type, _id, _name, _tcpPort));
 
-    /// <summary>The broadcast address of every IPv4 network we're on, plus the extra targets.</summary>
-    IEnumerable<IPEndPoint> Targets()
+    void OnAddressChanged(object? sender, EventArgs e) => _targets = null;
+
+    /// <summary>
+    /// The broadcast address of every IPv4 network we're on, plus the extra targets. Listing the network adapters
+    /// is the expensive part of the announcement, so the list is kept until Windows reports a changed address.
+    /// </summary>
+    IPEndPoint[] Targets() => _targets ??= FindTargets().ToArray();
+
+    IEnumerable<IPEndPoint> FindTargets()
     {
         var seen = new HashSet<IPAddress> { IPAddress.Broadcast };
         yield return new IPEndPoint(IPAddress.Broadcast, _discoveryPort);

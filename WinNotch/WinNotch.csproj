@@ -17,6 +17,9 @@
     <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
+    <!-- Run the precompiled (ReadyToRun) code as it is instead of compiling timer code again in the background:
+         measured idle, that halves the CPU and saves the 3–5 MB steps every time a method gets recompiled. -->
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
 
   <PropertyGroup Condition="Exists('notch.ico')">

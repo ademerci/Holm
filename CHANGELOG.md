@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **The 5-second check for messages read everything every time.** Since 1.5.0 Holm looks for new messages every 5 seconds in case Windows' folder events go missing, and every look asked the notification center for all its notifications (43 here) and copied the notification database for the badges. Idle, that came to about 1.2 % CPU on an 8-thread laptop – more than 20 times 1.4.0 – and 20–30 MB more working set. Now the timer only compares a marker that Windows rewrites with every change to the database (a millisecond) and reads only when it moved; the notification center, the expensive part, is only asked when a notification arrived, changed or went, not for a new badge. New messages still show up within 5 seconds.
+
+### Changed
+- **Less work in the background.** Beam's announcement once a minute no longer lists every network adapter each time (the addresses are kept until Windows reports a change), and Holm runs its precompiled code as it is instead of compiling busy methods again in the background (.NET's tiered compilation is off; that also saves the 3–5 MB steps it caused). Idle, Holm now needs about 0.02–0.03 % CPU: half of 1.4.0 (0.055–0.095 % in the same runs) and a fortieth of 1.5.1.
+- **Honest numbers in the README.** The working set is only 10–16 MB for a moment after Holm hands its memory back to Windows (6 seconds after start and whenever the notch closes). Idle it settles at about 20–35 MB in Task Manager (55–80 MB working set), after playing music at about 45–55 MB (95–120 MB).
+- Tests for the database marker (it moves with every write, also after the log starts over) and for the toasts' fingerprint (a badge leaves it alone; a new, removed, re-timed or replaced notification changes it; no text ends up in it).
+
 ## 1.5.1 – 2026-10-22
 
 ### Changed

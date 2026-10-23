@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -10,11 +11,11 @@ namespace WinNotch.Notify;
 /// <summary>
 /// The numbers on app icons in the taskbar ("badges"), read from Windows' notification database.
 /// Apps such as WhatsApp keep these up to date even when no toast reaches the notification
-/// center. Only badges are read, never notification texts.
+/// center. Only badges are read, never notification texts (toasts are hashed to notice a change).
 /// </summary>
 /// <remarks>
 /// The database is in use by Windows, so we read a copy (database and write-ahead log) in a private
-/// temp folder. It is a few MB and only read when it changed.
+/// temp folder. It is a few MB and only read when it changed (see <see cref="Stamp"/>).
 /// </remarks>
 public static class NotificationBadges
 {
@@ -29,7 +30,42 @@ public static class NotificationBadges
     public static Dictionary<string, string> Read(string? folder = null)
         => ReadSnapshot(folder).Values;
 
-    internal static (Dictionary<string, string> Values, Dictionary<string, string> Revisions) ReadSnapshot(string? folder = null)
+    /// <summary>
+    /// A marker that changes whenever Windows writes to the notification database, or null if it can't be read.
+    /// It takes about a millisecond, so it can be checked every few seconds instead of copying the database.
+    /// </summary>
+    /// <remarks>
+    /// Besides the sizes and times of the database and its write-ahead log, it holds the header of the log's index
+    /// (the -shm file), which SQLite rewrites on every commit. Windows keeps that file mapped in memory, so its
+    /// own time never moves, and folder watchers can miss the write to the log; the header doesn't.
+    /// </remarks>
+    public static string? Stamp(string? folder = null)
+    {
+        string path = Path.Combine(folder ?? DefaultFolder, Database);
+        try
+        {
+            var db = new FileInfo(path);
+            if (!db.Exists) return null;
+            var wal = new FileInfo(path + "-wal");
+            var stamp = new StringBuilder().Append(db.Length).Append(':').Append(db.LastWriteTimeUtc.Ticks);
+            if (wal.Exists) stamp.Append('|').Append(wal.Length).Append(':').Append(wal.LastWriteTimeUtc.Ticks);
+            if (File.Exists(path + "-shm"))
+            {
+                var header = new byte[48]; // the first copy of the index header: change counter, last frame, salts, checksums
+                using var index = new FileStream(path + "-shm", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, bufferSize: 1);
+                int read = index.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+                stamp.Append('|').Append(Convert.ToHexString(header, 0, read));
+            }
+            return stamp.ToString();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>
+    /// The badges, their revisions, and a fingerprint of the toasts: it changes when a toast arrives, goes or is
+    /// replaced, so the notification center only has to be asked then. Toast contents are hashed, never decoded.
+    /// </summary>
+    internal static (Dictionary<string, string> Values, Dictionary<string, string> Revisions, string Toasts) ReadSnapshot(string? folder = null)
     {
         folder ??= DefaultFolder;
         string copy = Path.Combine(Path.GetTempPath(), $"Holm-badges-{Environment.ProcessId}-{Guid.NewGuid():N}");
@@ -54,7 +90,10 @@ public static class NotificationBadges
                         revisions[app] = row.Text(2) + ":" + row.Text(3);
                     }
                 });
-            return (badges, revisions);
+            var toasts = new StringBuilder();
+            db.Query("select rowid, Id, ArrivalTime, Payload from Notification where Type = 'toast' order by rowid",
+                row => toasts.Append(row.Text(0)).Append(':').Append(row.Text(1)).Append(':').Append(row.Text(2)).Append(':').Append(row.Hash(3)).Append(' '));
+            return (badges, revisions, toasts.ToString());
         }
         finally
         {
@@ -197,6 +236,23 @@ public sealed class WinSqlite : IDisposable
             var bytes = new byte[length];
             Marshal.Copy(data, bytes, 0, length);
             return Encoding.UTF8.GetString(bytes);
+        }
+
+        /// <summary>A hash of a column's bytes, to notice a change without decoding it. Random per process, so never store it.</summary>
+        public int Hash(int column)
+        {
+            IntPtr data = sqlite3_column_blob(_statement, column);
+            int length = sqlite3_column_bytes(_statement, column);
+            var hash = new HashCode();
+            hash.Add(length);
+            if (data != IntPtr.Zero && length > 0)
+            {
+                byte[] bytes = ArrayPool<byte>.Shared.Rent(length);
+                Marshal.Copy(data, bytes, 0, length);
+                hash.AddBytes(bytes.AsSpan(0, length));
+                ArrayPool<byte>.Shared.Return(bytes);
+            }
+            return hash.ToHashCode();
         }
     }
 
