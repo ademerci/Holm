@@ -206,6 +206,21 @@ public class FriendNoteTests
     }
 
     [Theory]
+    [InlineData(FriendNoteKind.Ping)]
+    [InlineData(FriendNoteKind.Here)]
+    public void Are_you_there_and_the_answer_carry_nothing_but_who_and_when(FriendNoteKind kind)
+    {
+        using var noah = FriendIdentity.Create("Noah", null);
+        using var lena = FriendIdentity.Create("Lena", null);
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var note = FriendNotes.Open(lena, FriendNotes.Seal(noah, lena.AsFriend(), new FriendNote(kind, "Noah", now)), out string sender);
+
+        Assert.Equal(new FriendNote(kind, "Noah", now), note);
+        Assert.Equal(noah.PublicKey, sender);
+    }
+
+    [Theory]
     [InlineData("{\"id\":\"a1\",\"time\":1700000000,\"event\":\"message\",\"topic\":\"t\",\"message\":\"wnf1 x y\"}", true, 1700000000L, "a1", "wnf1 x y")]
     [InlineData("{\"id\":\"k\",\"time\":1700000045,\"event\":\"keepalive\",\"topic\":\"t\"}", false, 1700000045L, "k", null)]
     public void Inbox_lines_are_read(string line, bool isMessage, long time, string id, string? text)
@@ -218,6 +233,52 @@ public class FriendNoteTests
     [InlineData("not json")]
     [InlineData("[1,2,3]")]
     public void Junk_in_the_inbox_is_skipped(string line) => Assert.False(FriendInbox.TryParse(line, out _, out _, out _, out _));
+}
+
+public class FriendPresenceTests
+{
+    static readonly DateTime T0 = new(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void A_friend_is_online_for_two_minutes_after_their_notch_answered()
+    {
+        var presence = new FriendPresence();
+        Assert.False(presence.IsOnline("lena", T0));
+
+        Assert.True(presence.Saw("lena", T0));
+        Assert.False(presence.Saw("lena", T0.AddSeconds(30))); // already online: no second event
+        Assert.True(presence.IsOnline("lena", T0.AddSeconds(30).AddMinutes(1.9)));
+        Assert.False(presence.IsOnline("lena", T0.AddSeconds(30).AddMinutes(2)));
+        Assert.False(presence.IsOnline("noah", T0));
+    }
+
+    [Fact]
+    public void Each_friend_is_asked_at_most_once_a_minute()
+    {
+        var presence = new FriendPresence();
+        Assert.True(presence.ShouldAsk("lena", T0));
+        Assert.False(presence.ShouldAsk("lena", T0.AddSeconds(59)));
+        Assert.True(presence.ShouldAsk("noah", T0.AddSeconds(1)));
+        Assert.True(presence.ShouldAsk("lena", T0.AddSeconds(61)));
+    }
+
+    [Fact]
+    public void Friends_known_to_be_online_are_not_asked()
+    {
+        var presence = new FriendPresence();
+        presence.Saw("lena", T0);
+        Assert.False(presence.ShouldAsk("lena", T0.AddSeconds(90)));
+        Assert.True(presence.ShouldAsk("lena", T0.AddMinutes(3)));
+    }
+
+    [Fact]
+    public void Questions_are_answered_at_most_every_ten_seconds()
+    {
+        var presence = new FriendPresence();
+        Assert.True(presence.ShouldAnswer("lena", T0));
+        Assert.False(presence.ShouldAnswer("lena", T0.AddSeconds(5)));
+        Assert.True(presence.ShouldAnswer("lena", T0.AddSeconds(11)));
+    }
 }
 
 public class LegacyFriendListTests

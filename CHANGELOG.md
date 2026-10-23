@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Output device.** A new button next to the volume in the open notch lists your speakers, headphones and headsets, with a tick at the one playing now and an icon for each kind (headphones, headset, speakers, a monitor over HDMI). Picking one makes it the default for music, games and calls alike, like choosing it in Windows' Sound settings. The button is only there when there's more than one device to pick.
+- **Friends online.** Dragging files onto the notch now asks your friends' notches whether Holm is running; those that are answer within a second or two and get a green dot on their avatar ("One friend is online."). Each friend is asked at most once a minute and answers at most every 10 seconds – every note counts against ntfy.sh's daily limit – and counts as online for two minutes. Only friends get an answer. Older versions ignore these notes.
+- **VPN indicator.** While a VPN is connected, a small lock shows in the idle notch and a green lock (with the VPN's name as tooltip) next to the batteries in the open notch; connecting and disconnecting pop out "VPN connected · NordVPN" / "VPN disconnected". It recognises Windows' own VPN connections (with the name you gave them) and the tunnel adapters of WireGuard, OpenVPN, NordVPN, Proton VPN, Mullvad, ExpressVPN, Surfshark, Cisco AnyConnect, GlobalProtect, FortiClient and others, and ignores Hyper-V, WSL, Teredo and the like. Windows reports address changes, so nothing is polled. Right-click › *VPN indicator* turns it off.
+
+### Fixed
+- Debug builds' `--snap` (the README pictures) could show real messages that had come in before it took over, and could save its pose – equalizer off, normal sizes – into your settings when the friends inbox caught up. It now clears the messages first and never saves settings.
+
 ## 1.5.4 – 2026-10-23
 
 ### Changed
@@ -7,8 +17,6 @@
 - The friend removal notice now appears as one line, so its text no longer overlaps.
 - Holm now fully exits if its old process remains alive 10 seconds after an update; normally it exits in about 2 seconds. Debug builds also expose switches for checking the shutdown behavior.
 - The README now shows the updated Holm logo and describes the current friend request flow.
-
-## Unreleased
 
 ### Fixed
 - **After an update, the old Holm could stay alive without a window.** On 23 October a quit Holm 1.5.1 was found still running 35 minutes after its update, with no notch left; the updater gave up waiting for it after 90 seconds and kept the old version (a second Holm then updated). Now, if the process still exists 10 seconds after Holm quit, it notes that in `error.log` and ends itself – normally it is gone after about 2 seconds and this never fires.

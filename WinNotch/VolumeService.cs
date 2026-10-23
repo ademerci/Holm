@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace WinNotch;
@@ -22,6 +23,20 @@ interface IMMNotificationClient
     void OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string deviceId, PROPERTYKEY key);
 }
 
+/// <summary>A playback device that is plugged in and turned on.</summary>
+/// <param name="FormFactor">EndpointFormFactor: 3 headphones, 5 headset, 9 a display (HDMI), 1 speakers, …</param>
+public sealed record OutputDevice(string Id, string Name, int FormFactor)
+{
+    /// <summary>Segoe Fluent Icons glyph for the kind of device.</summary>
+    public string Glyph => FormFactor switch
+    {
+        3 => "",     // headphones
+        5 or 6 => "", // headset, handset
+        9 => "",     // a monitor or TV over HDMI / DisplayPort
+        _ => "",     // speakers and everything else
+    };
+}
+
 /// <summary>
 /// Master volume of the default playback device (Core Audio). Windows calls us when the volume
 /// changes or another output device becomes the default, so nothing is polled.
@@ -34,7 +49,7 @@ internal sealed class VolumeService
     [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IMMDeviceEnumerator
     {
-        [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IntPtr devices);
+        [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
         [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
         [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice device);
         [PreserveSig] int RegisterEndpointNotificationCallback(IMMNotificationClient client);
@@ -45,7 +60,62 @@ internal sealed class VolumeService
     interface IMMDevice
     {
         [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object endpoint);
+        [PreserveSig] int OpenPropertyStore(int access, out IPropertyStore properties);
+        [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        [PreserveSig] int GetState(out int state);
     }
+
+    [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDeviceCollection
+    {
+        [PreserveSig] int GetCount(out int count);
+        [PreserveSig] int Item(int index, out IMMDevice device);
+    }
+
+    [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IPropertyStore
+    {
+        [PreserveSig] int GetCount(out int count);
+        [PreserveSig] int GetAt(int index, out PROPERTYKEY key);
+        [PreserveSig] int GetValue(ref PROPERTYKEY key, out PROPVARIANT value);
+    }
+
+    /// <summary>Only the parts we read: the type, and a string pointer or a number in the first field.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    struct PROPVARIANT
+    {
+        public ushort vt;
+        ushort r1, r2, r3;
+        public IntPtr value;
+        IntPtr more;
+    }
+
+    [DllImport("ole32.dll")]
+    static extern int PropVariantClear(ref PROPVARIANT value);
+
+    // Not documented, but what the Sound settings themselves use to change the default device (Windows 7 to 11).
+    [ComImport, Guid("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9")]
+    class PolicyConfigClient { }
+
+    [ComImport, Guid("F8679F50-850A-41CF-9C72-430F290290C8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IPolicyConfig
+    {
+        // Only the place in the table matters for the ones we never call.
+        [PreserveSig] int GetMixFormat();
+        [PreserveSig] int GetDeviceFormat();
+        [PreserveSig] int ResetDeviceFormat();
+        [PreserveSig] int SetDeviceFormat();
+        [PreserveSig] int GetProcessingPeriod();
+        [PreserveSig] int SetProcessingPeriod();
+        [PreserveSig] int GetShareMode();
+        [PreserveSig] int SetShareMode();
+        [PreserveSig] int GetPropertyValue();
+        [PreserveSig] int SetPropertyValue();
+        [PreserveSig] int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string id, int role);
+    }
+
+    static PROPERTYKEY FriendlyNameKey = new() { fmtid = new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"), pid = 14 };
+    static PROPERTYKEY FormFactorKey = new() { fmtid = new Guid("1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E"), pid = 0 };
 
     [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IAudioEndpointVolume
@@ -178,5 +248,97 @@ internal sealed class VolumeService
     {
         if (_endpoint == null) return;
         try { if (_endpoint.GetMute(out bool muted) == 0) _endpoint.SetMute(!muted, ref _context); } catch { }
+    }
+
+    /// <summary>The playback devices you can switch to, by name, and which one is the default now. Empty if Windows won't say.</summary>
+    public IReadOnlyList<OutputDevice> Outputs(out string? defaultId)
+    {
+        defaultId = null;
+        var list = new List<OutputDevice>();
+        if (_enumerator == null) return list;
+        IMMDeviceCollection? devices = null;
+        try
+        {
+            if (_enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out var current) == 0)
+            {
+                if (current.GetId(out string id) == 0) defaultId = id;
+                Marshal.ReleaseComObject(current);
+            }
+            if (_enumerator.EnumAudioEndpoints(0 /* eRender */, 1 /* DEVICE_STATE_ACTIVE */, out devices) != 0 || devices.GetCount(out int count) != 0)
+                return list;
+            for (int i = 0; i < count; i++)
+            {
+                if (devices.Item(i, out var device) != 0) continue;
+                try
+                {
+                    if (device.GetId(out string id) == 0)
+                    {
+                        var (name, formFactor) = Describe(device);
+                        list.Add(new OutputDevice(id, name, formFactor));
+                    }
+                }
+                finally { Marshal.ReleaseComObject(device); }
+            }
+        }
+        catch (Exception ex) { Diag.Log("Output devices unavailable: " + ex.Message); }
+        finally { if (devices != null) Marshal.ReleaseComObject(devices); }
+        list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+        return list;
+    }
+
+    /// <summary>The default playback device for a role (0 console, 1 multimedia, 2 communications), or null.</summary>
+    internal string? DefaultId(int role)
+    {
+        if (_enumerator == null || _enumerator.GetDefaultAudioEndpoint(0 /* eRender */, role, out var device) != 0) return null;
+        try { return device.GetId(out string id) == 0 ? id : null; }
+        finally { Marshal.ReleaseComObject(device); }
+    }
+
+    static (string Name, int FormFactor) Describe(IMMDevice device)
+    {
+        string name = "Unknown device";
+        int formFactor = 10; // UnknownFormFactor
+        if (device.OpenPropertyStore(0 /* STGM_READ */, out var store) != 0) return (name, formFactor);
+        try
+        {
+            if (store.GetValue(ref FriendlyNameKey, out var value) == 0)
+            {
+                if (value.vt == 31 /* VT_LPWSTR */ && value.value != IntPtr.Zero) name = Marshal.PtrToStringUni(value.value) ?? name;
+                PropVariantClear(ref value);
+            }
+            if (store.GetValue(ref FormFactorKey, out value) == 0)
+            {
+                if (value.vt == 19 /* VT_UI4 */) formFactor = unchecked((int)value.value.ToInt64());
+                PropVariantClear(ref value);
+            }
+        }
+        finally { Marshal.ReleaseComObject(store); }
+        return (name, formFactor);
+    }
+
+    /// <summary>
+    /// Makes <paramref name="id"/> the default playback device for everything (music, games and calls), like picking it
+    /// in the Sound settings. Windows then raises <see cref="DefaultDeviceChanged"/>.
+    /// </summary>
+    public bool SetDefault(string id) => SetDefault(id, 0, 1, 2); // eConsole, eMultimedia, eCommunications
+
+    internal bool SetDefault(string id, params int[] roles)
+    {
+        try
+        {
+            var policy = (IPolicyConfig)new PolicyConfigClient();
+            try
+            {
+                foreach (int role in roles)
+                    if (policy.SetDefaultEndpoint(id, role) != 0) return false;
+                return true;
+            }
+            finally { Marshal.ReleaseComObject(policy); }
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Couldn't change the output device: " + ex.Message);
+            return false;
+        }
     }
 }

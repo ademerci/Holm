@@ -23,6 +23,8 @@ internal sealed class FriendsService
 
     /// <summary>How long the sender waits for the friend's notch to answer; older invitations are stale.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+    /// <summary>An older "are you there?" or answer is history: it came in while Holm wasn't running.</summary>
+    const long FreshSeconds = 30;
 
     readonly AppSettings _settings;
     readonly Dispatcher _ui;
@@ -31,6 +33,7 @@ internal sealed class FriendsService
     CancellationTokenSource? _follow;
     readonly ConcurrentDictionary<string, TaskCompletionSource<FriendRequestResult>> _friendRequests = new(StringComparer.Ordinal);
     readonly HashSet<string> _cancelledFriendRequests = new(StringComparer.Ordinal);
+    readonly FriendPresence _presence = new();
 
     /// <summary>A friend wants to send us files; meet them on the relay with the secret (UI thread).</summary>
     public event Action<Friend, byte[]>? FilesOffered;
@@ -42,6 +45,8 @@ internal sealed class FriendsService
     public event Action<Friend, string>? FriendRequestCancelled;
     /// <summary>A friend removed us from their list (UI thread).</summary>
     public event Action<Friend>? RemovedUs;
+    /// <summary>A friend's notch answered or asked: their Holm is running now (UI thread).</summary>
+    public event Action<Friend>? FriendOnline;
 
     public FriendsService(AppSettings settings, Dispatcher ui)
     {
@@ -285,6 +290,36 @@ internal sealed class FriendsService
         _follow = null;
     }
 
+    /// <summary>Whether the friend's Holm answered or asked in the last two minutes.</summary>
+    public bool IsOnline(Friend friend) => _presence.IsOnline(friend.Key, DateTime.UtcNow);
+
+    /// <summary>
+    /// Asks the first friends (as many as the share view shows) whether their Holm is running; those that are answer
+    /// within a second or two and <see cref="FriendOnline"/> follows. Friends heard from lately or asked a minute ago
+    /// are skipped. Only friends learn that we're online, and only when they ask.
+    /// </summary>
+    public void PingAll(int max = 8)
+    {
+        if (_follow == null || Me is not { } me) return; // their answers come to our inbox, which we only follow while Beam is on
+        foreach (var friend in _settings.Friends.Take(max))
+            if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
+    }
+
+    static void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
+    {
+        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        _ = Task.Run(async () =>
+        {
+            try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
+            catch (IOException ex) { Diag.Log($"Friends: couldn't reach {to.Name}'s inbox: {ex.Message}"); }
+        });
+    }
+
+    void SawOnline(Friend friend)
+    {
+        if (_presence.Saw(friend.Key, DateTime.UtcNow)) FriendOnline?.Invoke(friend);
+    }
+
     void Handle(FriendIdentity me, string id, long age, string text)
     {
         // Catching up after a reconnect can repeat the last note.
@@ -346,6 +381,15 @@ internal sealed class FriendsService
             case FriendNoteKind.RemovedYou:
                 Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
                 break;
+            case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds:
+                break; // strangers don't learn whether we're online; old ones came while Holm wasn't running
+            case FriendNoteKind.Ping:
+                SawOnline(friend);
+                if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
+                break;
+            case FriendNoteKind.Here:
+                SawOnline(friend);
+                break;
         }
     }
 
@@ -358,5 +402,45 @@ internal sealed class FriendsService
             await FriendInbox.PostAsync(card, FriendNotes.Seal(me, card, note), CancellationToken.None);
         }
         catch (IOException ex) { Diag.Log($"Couldn't confirm {card.Name}'s friend request: {ex.Message}"); }
+    }
+}
+
+/// <summary>
+/// Which friends are online, and when to ask or answer them, by public key. Every note counts against the inbox
+/// server's daily limit, so nobody is asked or answered more than once in a while.
+/// </summary>
+internal sealed class FriendPresence
+{
+    /// <summary>A friend counts as online this long after their notch last answered or asked.</summary>
+    public static readonly TimeSpan OnlineFor = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan AskEvery = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan AnswerEvery = TimeSpan.FromSeconds(10);
+
+    readonly Dictionary<string, DateTime> _seen = new(), _asked = new(), _answered = new();
+
+    public bool IsOnline(string key, DateTime now) => _seen.TryGetValue(key, out var at) && now - at < OnlineFor;
+
+    /// <summary>Their notch answered or asked. True if they weren't online before.</summary>
+    public bool Saw(string key, DateTime now)
+    {
+        bool was = IsOnline(key, now);
+        _seen[key] = now;
+        return !was;
+    }
+
+    /// <summary>Whether to ask them now: not if we heard from them lately or asked them a minute ago.</summary>
+    public bool ShouldAsk(string key, DateTime now)
+    {
+        if (IsOnline(key, now) || _asked.TryGetValue(key, out var at) && now - at < AskEvery) return false;
+        _asked[key] = now;
+        return true;
+    }
+
+    /// <summary>Whether to answer their question now.</summary>
+    public bool ShouldAnswer(string key, DateTime now)
+    {
+        if (_answered.TryGetValue(key, out var at) && now - at < AnswerEvery) return false;
+        _answered[key] = now;
+        return true;
     }
 }
