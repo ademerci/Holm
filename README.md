@@ -24,6 +24,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Output device** – the button next to the volume lists your speakers, headphones and headsets; pick one and all sound (music, games and calls) goes there, like in Windows' Sound settings. It shows up when there's more than one to choose from.
 - **Bluetooth** – the Bluetooth button next to the volume switches Bluetooth on and off and lists your paired devices, with a tick at the connected ones. Click headphones or a speaker to connect or disconnect them, like the *Connect* button in Windows' Bluetooth settings. Mice, keyboards and phones are listed too but connect by themselves (Windows doesn't let apps do that for them). *Add a device…* and *Bluetooth settings* are one click away.
 - **VPN** – while a VPN is connected, a small lock sits in the idle notch and a green one next to the batteries, and the notch says when it connects or drops. It knows Windows' own VPN connections and the usual apps (WireGuard, OpenVPN, NordVPN, Proton VPN, Mullvad, Cisco, GlobalProtect, FortiClient, …). Right-click › *VPN indicator* turns it off.
+- **Timer** – right-click › *Timer* and pick 1 minute to 1 hour. The time left counts down in the notch (in place of the equalizer while music plays), with pause and stop when you open it; when it's up, the notch rings and offers five more minutes.
 - **Beam** (Holm's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
 - **Updates in the app** – checks for stable releases shortly after startup and every two hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
@@ -33,7 +34,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, VPN indicator, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
+- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, timer, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, VPN indicator, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
 
 ## Beam
 

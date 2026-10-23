@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Media, Download, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Media, Download, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -122,6 +122,7 @@ public partial class MainWindow : Window
         InitSharing();
         InitDownloads();
         InitUpdates();
+        InitTimer();
 
         Progress.ValueCommitted += v =>
         {
@@ -215,6 +216,7 @@ public partial class MainWindow : Window
         _btPoll.Stop();
         _btSoon.Stop();
         _btLate.Stop();
+        _timerTick.Stop();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -326,6 +328,7 @@ public partial class MainWindow : Window
             RefreshDevices();
             RefreshOutput();
             RefreshBluetooth();
+            ShowTimer();
             ResolveAi(force: false);
             // Access may have been granted in Settings since we last asked.
             if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
@@ -350,7 +353,8 @@ public partial class MainWindow : Window
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
-                   : _info?.IsPlaying == true ? NotchState.Media
+                   : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
+                   : _timer != null ? NotchState.Timer
                    : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
         bool mini = target == NotchState.Idle && _settings.MiniIdle;
@@ -375,6 +379,7 @@ public partial class MainWindow : Window
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
+            case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
 
@@ -416,6 +421,7 @@ public partial class MainWindow : Window
             SetView(IdleView, target == NotchState.Idle && !mini, animate);
             SetView(CompactView, target == NotchState.Media, animate);
             SetView(BadgeView, target == NotchState.Badge, animate);
+            SetView(TimerView, target == NotchState.Timer, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(VolumeView, target == NotchState.Volume, animate);
@@ -580,7 +586,7 @@ public partial class MainWindow : Window
     /// </summary>
     void UpdateEqualizer()
     {
-        bool run = _state == NotchState.Media && _settings.Animations && !_hiddenForFullscreen && !_shapeAnimating;
+        bool run = _state == NotchState.Media && _timer == null && _settings.Animations && !_hiddenForFullscreen && !_shapeAnimating;
         if (run == _eqRunning) return;
         _eqRunning = run;
 
@@ -1224,6 +1230,7 @@ public partial class MainWindow : Window
         MenuAnim.IsChecked = _settings.Animations;
         MenuMini.IsChecked = _settings.MiniIdle;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
+        FillTimerMenu();
         FillAiMenu();
         FillMessagesMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
@@ -1525,6 +1532,18 @@ public partial class MainWindow : Window
         SetExpanded(false);
         _demoVpn = null;
         ShowVpn();
+
+        // 1.6: timer
+        _timer = new Countdown(TimeSpan.FromMinutes(25), DateTime.UtcNow.AddSeconds(-47));
+        ShowTimer();
+        ApplyState();
+        await Snap(dir, "timer-media", 60);
+        OnMediaChanged(null, false);
+        await Snap(dir, "timer", 60);
+        SetExpanded(true);
+        await Snap(dir, "expanded-timer", 240);
+        SetExpanded(false);
+        StopTimer();
     }
 
     static MediaInfo DemoMedia()
