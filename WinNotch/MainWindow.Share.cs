@@ -40,6 +40,7 @@ public partial class MainWindow
     FriendsService _friends = null!;
     readonly List<Friend> _addBack = new(); // people who added us while the notch was busy
     readonly List<(Friend Card, string RequestId)> _friendRequests = new();
+    string? _shownFriendRequestId;
     DispatcherTimer _shareWatch = null!, _taskHide = null!;
     bool _sharing, _dragInside, _taskVisible, _busy;
     DateTime _lastDragEvent, _lastProgressUi;
@@ -73,6 +74,7 @@ public partial class MainWindow
         _friends.FilesOffered += OnFriendFiles;
         _friends.AddedUs += OnFriendAddedUs;
         _friends.FriendRequested += OnFriendRequested;
+        _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
     }
 
@@ -463,11 +465,27 @@ public partial class MainWindow
 
     void ShowFriendRequest(Friend card, string requestId)
     {
+        _shownFriendRequestId = requestId;
         ShowTask(Initials(card.Name), AvatarColor(card.Name), $"{card.Name} wants to be your friend", "Accept to add each other to your lists",
             null, ("Accept", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: true)),
             ("Decline", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: false)), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(30);
         _taskHide.Start();
+    }
+
+    void OnFriendRequestCancelled(Friend card, string requestId)
+    {
+        _friendRequests.RemoveAll(request => request.RequestId == requestId);
+        FillFriendsMenu();
+        if (_sharing) { RefreshShareTargets(); ApplyState(); }
+        if (_shownFriendRequestId == requestId)
+        {
+            _shownFriendRequestId = null;
+            HideTask();
+        }
+        ShowPeek("\uE8FA", $"{card.Name} cancelled the friend request", "", null, false, null, seconds: 4);
+        if (_friendRequests.Count > 0 && !_taskVisible && !_busy)
+            ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
     }
 
     void OnFriendRemovedUs(Friend friend)
@@ -499,7 +517,7 @@ public partial class MainWindow
 
         var cts = BeginTask();
         ShowTask(Initials(card.Name), AvatarColor(card.Name), $"Asking {card.Name}…", "Waiting for them to accept or decline",
-            null, null, null, textIcon: true);
+            null, null, ("Cancel", CancelTask), textIcon: true);
         try
         {
             var result = await _friends.RequestAddAsync(card, TimeSpan.FromMinutes(2), cts.Token);
@@ -520,17 +538,18 @@ public partial class MainWindow
     async Task AnswerFriendRequestAsync(Friend card, string requestId, bool accepted)
     {
         HideTask();
+        if (_shownFriendRequestId == requestId) _shownFriendRequestId = null;
         try
         {
             await _friends.RespondToFriendRequestAsync(card, requestId, accepted);
             _friendRequests.RemoveAll(request => request.RequestId == requestId);
             FillFriendsMenu();
-            if (accepted)
+            if (accepted && _friends.Find(card.Key) != null)
             {
                 ShowPeek("\uE8FA", $"You and {card.Name} are now friends", "", null, false, null, seconds: 4);
                 if (_sharing) { RefreshShareTargets(); ApplyState(); }
             }
-            else ShowPeek("\uE783", $"Declined {card.Name}'s request", "", null, false, null, seconds: 4);
+            else if (!accepted) ShowPeek("\uE783", $"Declined {card.Name}'s request", "", null, false, null, seconds: 4);
         }
         catch (Exception ex)
         {

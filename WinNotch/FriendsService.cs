@@ -30,6 +30,7 @@ internal sealed class FriendsService
     bool _loaded;
     CancellationTokenSource? _follow;
     readonly ConcurrentDictionary<string, TaskCompletionSource<FriendRequestResult>> _friendRequests = new(StringComparer.Ordinal);
+    readonly HashSet<string> _cancelledFriendRequests = new(StringComparer.Ordinal);
 
     /// <summary>A friend wants to send us files; meet them on the relay with the secret (UI thread).</summary>
     public event Action<Friend, byte[]>? FilesOffered;
@@ -37,6 +38,8 @@ internal sealed class FriendsService
     public event Action<Friend>? AddedUs;
     /// <summary>A friend request arrived and needs an explicit answer (UI thread).</summary>
     public event Action<Friend, string>? FriendRequested;
+    /// <summary>A pending friend request was cancelled by its sender (UI thread).</summary>
+    public event Action<Friend, string>? FriendRequestCancelled;
     /// <summary>A friend removed us from their list (UI thread).</summary>
     public event Action<Friend>? RemovedUs;
 
@@ -167,10 +170,19 @@ internal sealed class FriendsService
             try
             {
                 var result = await answer.Task.WaitAsync(timeout, ct);
-                if (result == FriendRequestResult.Accepted) AddOrUpdateFriend(friend);
+                ct.ThrowIfCancellationRequested();
+                if (result == FriendRequestResult.Accepted) AddOrUpdateFriend(friend, requestId);
                 return result;
             }
             catch (TimeoutException) { return FriendRequestResult.NoResponse; }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            RemoveFriendAddedByRequest(requestId);
+            var cancel = new FriendNote(FriendNoteKind.FriendRequestCancelled, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Code: me.FriendCode, RequestId: requestId);
+            await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, cancel), CancellationToken.None);
+            throw;
         }
         finally { _friendRequests.TryRemove(requestId, out _); }
     }
@@ -182,14 +194,15 @@ internal sealed class FriendsService
         var note = new FriendNote(FriendNoteKind.FriendResponse, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             RequestId: requestId, Accepted: accepted);
         await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
-        if (accepted) AddOrUpdateFriend(friend);
+        if (accepted && !_cancelledFriendRequests.Contains(requestId)) AddOrUpdateFriend(friend, requestId);
     }
 
-    void AddOrUpdateFriend(Friend card)
+    void AddOrUpdateFriend(Friend card, string? requestId = null)
     {
         if (Find(card.Key) is { } existing) UpdateFriendCard(existing, card);
         else
         {
+            card.AddedByRequestId = requestId;
             _settings.Friends.Add(card);
             _settings.Save();
         }
@@ -199,8 +212,14 @@ internal sealed class FriendsService
     {
         int at = _settings.Friends.IndexOf(existing);
         if (at < 0) return;
+        card.AddedByRequestId ??= existing.AddedByRequestId;
         _settings.Friends[at] = card;
         _settings.Save();
+    }
+
+    void RemoveFriendAddedByRequest(string requestId)
+    {
+        if (_settings.Friends.RemoveAll(friend => friend.AddedByRequestId == requestId) > 0) _settings.Save();
     }
 
     /// <summary>Removes a friend here and tells them to remove this relationship on their side too.</summary>
@@ -303,6 +322,11 @@ internal sealed class FriendsService
             case FriendNoteKind.FriendResponse when note.RequestId is { } responseId && note.Accepted is { } accepted:
                 if (_friendRequests.TryGetValue(responseId, out var answer))
                     answer.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
+                break;
+            case FriendNoteKind.FriendRequestCancelled when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } cancelledId:
+                _cancelledFriendRequests.Add(cancelledId);
+                RemoveFriendAddedByRequest(cancelledId);
+                FriendRequestCancelled?.Invoke(card, cancelledId);
                 break;
             case FriendNoteKind.RemovedYou when friend != null:
                 _settings.Friends.RemoveAll(f => f.Key == friend.Key);

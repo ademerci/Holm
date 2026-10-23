@@ -34,6 +34,8 @@ public sealed class Friend
     public string Key { get; set; } = "";
     /// <summary>Their inbox server; null for the default one.</summary>
     public string? Server { get; set; }
+    /// <summary>Local request id for a newly accepted friend; lets a later cancellation undo that addition.</summary>
+    public string? AddedByRequestId { get; set; }
 }
 
 /// <summary>Who we are to our friends: a name, an inbox and a key pair.</summary>
@@ -137,7 +139,7 @@ public sealed class FriendIdentity : IDisposable
 /// <summary>A note from one friend to another.</summary>
 /// <param name="Secret">For <see cref="FriendNoteKind.Files"/>: the share secret to meet on the relay with.</param>
 /// <param name="Code">For friend requests and legacy <see cref="FriendNoteKind.AddedYou"/> notes: the sender's friend code.</param>
-/// <param name="RequestId">For friend requests and their responses: the request to which the note belongs.</param>
+/// <param name="RequestId">For friend requests, responses and cancellations: the request to which the note belongs.</param>
 /// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
@@ -153,6 +155,8 @@ public enum FriendNoteKind
     FriendRequest,
     /// <summary>"I accept/decline your friend request": includes its request id.</summary>
     FriendResponse,
+    /// <summary>"I cancelled my friend request": includes the sender's code and request id.</summary>
+    FriendRequestCancelled,
     /// <summary>"I removed you as a friend": remove my card from your list too.</summary>
     RemovedYou,
 }
@@ -193,6 +197,7 @@ public static class FriendNotes
                 FriendNoteKind.AddedYou => "added",
                 FriendNoteKind.FriendRequest => "request",
                 FriendNoteKind.FriendResponse => "response",
+                FriendNoteKind.FriendRequestCancelled => "cancel-request",
                 FriendNoteKind.RemovedYou => "removed",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
@@ -244,6 +249,8 @@ public static class FriendNotes
                     => new FriendNote(FriendNoteKind.FriendRequest, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "response" when Guid.TryParseExact(dto.R, "N", out _) && dto.A.HasValue
                     => new FriendNote(FriendNoteKind.FriendResponse, from, dto.T, RequestId: dto.R, Accepted: dto.A),
+                "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
+                    => new FriendNote(FriendNoteKind.FriendRequestCancelled, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
                 _ => null,
             };
