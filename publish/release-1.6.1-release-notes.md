@@ -15,6 +15,7 @@ Requires Windows 10 (2004 or newer) or Windows 11, x64.
 
 - **A clearer update indicator.** When an update is available, a white download arrow in a blue circle appears immediately after the Updates text in the right-click menu.
 - **Incoming file notification sound.** A short chime plays alongside the accept/decline prompt. The sound is bundled with Holm, so it works independently of the Windows system sound scheme.
+- **Both privacy dots stay visible.** When the microphone and camera are active together, separate orange and green dots appear side by side.
 
 ## Tested
 
