@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -103,7 +103,7 @@ public partial class MainWindow : Window
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
-        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing) SetExpanded(true); }, oneShot: true);
+        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
             // Dragging a slider or menu open: try again shortly.
@@ -124,6 +124,7 @@ public partial class MainWindow : Window
         InitUpdates();
         InitTimer();
         InitCall();
+        InitPhone();
 
         Progress.ValueCommitted += v =>
         {
@@ -221,6 +222,7 @@ public partial class MainWindow : Window
         _btLate.Stop();
         _timerTick.Stop();
         _callTick.Stop();
+        StopPhone();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -356,6 +358,7 @@ public partial class MainWindow : Window
         var target = _expanded ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : TaskShowing ? NotchState.Task
+                   : PhoneShowing ? NotchState.Phone
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _call != null ? NotchState.Call
@@ -381,6 +384,7 @@ public partial class MainWindow : Window
                 (w, h, r) = (400, Math.Ceiling(ShareView.DesiredSize.Height) + 6, 28);
                 break;
             case NotchState.Task: (w, h, r) = (420, 60, 26); break;
+            case NotchState.Phone: (w, h, r) = (420, 160, 28); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
@@ -437,6 +441,7 @@ public partial class MainWindow : Window
             SetView(VolumeView, target == NotchState.Volume, animate);
             SetView(DownloadView, target == NotchState.Download, animate);
             SetView(TaskView, target == NotchState.Task, animate);
+            SetView(PhoneView, target == NotchState.Phone, animate);
             SetView(ShareView, target == NotchState.Share, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
             _state = target;
@@ -1089,7 +1094,7 @@ public partial class MainWindow : Window
 
     void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_expanded || TaskShowing || _sharing) return;
+        if (_expanded || TaskShowing || _sharing || PhoneShowing) return;
         _expandDelay.Stop();
         SetExpanded(true);
     }
@@ -1606,6 +1611,14 @@ public partial class MainWindow : Window
         _demoFriends = null;
         _demoShelf = null;
         ShowShelf();
+        ApplyState();
+
+        // 1.6: beam to a phone
+        _demoPhone = true;
+        ShowPhoneCode("http://192.168.1.23:52345/kQ7vXrT2mB9sLwE4yHn3Ga/", "Holiday photos.zip · 48.2 MB");
+        await Snap(dir, "phone", 180);
+        _demoPhone = false;
+        PhoneQrHost.Child = null;
         ApplyState();
     }
 

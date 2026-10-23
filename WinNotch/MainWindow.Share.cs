@@ -26,8 +26,8 @@ public partial class MainWindow
     /// <param name="Place">For the chips that aren't people: <see cref="ShelfPlace"/> (or "send with a code" when null).</param>
     sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null, string? Place = null)
     {
-        public const string ShelfPlace = "shelf";
-        public string Name => Friend?.Name ?? Peer?.Name ?? (Place == ShelfPlace ? "Shelf" : "Code");
+        public const string ShelfPlace = "shelf", PhonePlace = "phone";
+        public string Name => Friend?.Name ?? Peer?.Name ?? Place switch { ShelfPlace => "Shelf", PhonePlace => "Phone", _ => "Code" };
     }
 
     static readonly Brush ShareBlue = Frozen(Color.FromRgb(0x0A, 0x84, 0xFF));
@@ -206,7 +206,8 @@ public partial class MainWindow
             ShowPeek("", "Drop it on a person or on “Code”", "", null, false, null);
             return;
         }
-        if (target.Friend != null) _ = SendToFriendAsync(target.Friend, paths);
+        if (target.Place == ShareTarget.PhonePlace) BeamToPhone(paths);
+        else if (target.Friend != null) _ = SendToFriendAsync(target.Friend, paths);
         else if (target.Peer != null) _ = SendNearbyAsync(target.Peer, paths);
         else _ = SendWithCodeAsync(paths);
     }
@@ -263,6 +264,7 @@ public partial class MainWindow
             ShareTargets.Children.Add(Chip(Avatar(Initials(friend.Name), AvatarColor(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true));
         foreach (var peer in peers.Take(6))
             ShareTargets.Children.Add(Chip(Avatar(Initials(peer.Name), AvatarColor(peer.Name)), peer.Name, new ShareTarget(peer)));
+        if (beam) ShareTargets.Children.Add(Chip(Avatar("\uE8EA", PhoneIndigo, icon: true), "Phone", new ShareTarget(null, Place: ShareTarget.PhonePlace)));
         ShareTargets.Children.Add(Chip(Avatar("", ShelfGray, icon: true), "Shelf", new ShareTarget(null, Place: ShareTarget.ShelfPlace)));
         if (beam) ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
         ShowOnlineDots();

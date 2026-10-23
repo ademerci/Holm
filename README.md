@@ -50,6 +50,7 @@ Drag files onto the notch. It opens and shows:
 
 - **Friends** – people you added once (see below). Works anywhere: at home, at school, on a hotspot, on different networks. Drop the files on a friend and their notch asks *Accept* or *Decline*; no code to pass around.
 - **People nearby** – everyone running Holm on the same network. Drop the files on a person and their notch asks *Accept* or *Decline*.
+- **Phone** – drop the files on *Phone* and the notch shows a QR code. Point your phone's camera at it: a page with the files opens in the phone's browser, to download (or open photos, videos and PDFs right away). No app, no cable, no cloud – the files come straight from your PC over the Wi-Fi, so the phone has to be on the same network. The link carries 128 random bits, serves those files and nothing else, and stops when you click *Done*, ten minutes after it opened, or shortly after everything reached the phone.
 - **Code** – works anywhere, also on networks that don't let devices talk to each other (school, office, hotspots). Drop the files on *Code* and a code like `WN-K7Q2A-…` is copied for you. Paste it to your friend in any chat; as soon as they copy it, their notch offers to receive the file. Right-click › *Receive with copied code* does the same.
 
 Received files land in your **Downloads** folder.
