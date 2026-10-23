@@ -190,4 +190,39 @@ public class PhoneShareTests
         Assert.Equal(0, (modules - 17) % 4);
         Assert.Equal(new System.Windows.Rect(0, 0, modules, modules), geometry.Bounds);
     }
+
+    /// <summary>Draws the code at one pixel per module and compares every module with the generator's matrix.</summary>
+    [Fact]
+    public void The_drawn_code_matches_the_generated_one_module_for_module()
+    {
+        const string text = "http://192.168.1.23:52345/kQ7vXrT2mB9sLwE4yHn3Ga/";
+        using var generator = new QRCoder.QRCodeGenerator();
+        using var data = generator.CreateQrCode(text, QRCoder.QRCodeGenerator.ECCLevel.M);
+        var mismatches = new List<string>();
+        var thread = new Thread(() =>
+        {
+            var geometry = QrCode.For(text, out int modules);
+            var visual = new System.Windows.Media.DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRectangle(System.Windows.Media.Brushes.White, null, new System.Windows.Rect(0, 0, modules, modules));
+                dc.DrawGeometry(System.Windows.Media.Brushes.Black, null, geometry);
+            }
+            System.Windows.Media.RenderOptions.SetEdgeMode(visual, System.Windows.Media.EdgeMode.Aliased);
+            var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(modules, modules, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            var pixels = new byte[modules * modules * 4];
+            bitmap.CopyPixels(pixels, modules * 4, 0);
+            for (int y = 0; y < modules; y++)
+                for (int x = 0; x < modules; x++)
+                {
+                    bool dark = pixels[(y * modules + x) * 4] < 128;
+                    if (dark != data.ModuleMatrix[y + 4][x + 4]) mismatches.Add($"({x},{y})");
+                }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        Assert.Empty(mismatches);
+    }
 }
