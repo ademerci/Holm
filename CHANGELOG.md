@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.1 – 2026-10-23
 
 ### Changed
 - A blue circular download icon appears immediately after the **Updates** text in the right-click menu when a new version is available.
