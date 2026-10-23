@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (1.5.7)
+## 1.5.7 – 2026-10-23
 
 ### Changed
 - The expanded notch is wider, and device badges wrap onto another line when needed so the Bluetooth and audio controls stay visible.
