@@ -431,7 +431,8 @@ public partial class MainWindow
         if (_friends.Find(card.Key) != null)
         {
             _addBack.RemoveAll(f => f.Key == card.Key);
-            ShowPeek("\uE77F", $"{card.Name} is already your friend", "", null, false, null, seconds: 4);
+            MessageBox.Show(this, $"{card.Name} is already your friend.", "Already a friend",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         _addBack.RemoveAll(f => f.Key == card.Key);
