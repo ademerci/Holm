@@ -41,7 +41,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 Drag files onto the notch. It opens and shows:
 
 - **Friends** – people you added once (see below). Works anywhere: at home, at school, on a hotspot, on different networks. Drop the files on a friend and their notch asks *Accept* or *Decline*; no code to pass around.
-- **People nearby** – everyone running Holm (or WinNotch, as it was called before) on the same network. Drop the files on a person and their notch asks *Accept* or *Decline*.
+- **People nearby** – everyone running Holm on the same network. Drop the files on a person and their notch asks *Accept* or *Decline*.
 - **Code** – works anywhere, also on networks that don't let devices talk to each other (school, office, hotspots). Drop the files on *Code* and a code like `WN-K7Q2A-…` is copied for you. Paste it to your friend in any chat; as soon as they copy it, their notch offers to receive the file. Right-click › *Receive with copied code* does the same.
 
 Received files land in your **Downloads** folder.
@@ -49,10 +49,10 @@ Received files land in your **Downloads** folder.
 ### Friends
 
 1. Right-click the notch › **Friends › Copy my friend code** and send it to your friend in any chat.
-2. When your friend copies it, their notch asks *Add … as a friend?*. Then yours asks *… added you as a friend – Add back?*. One click each and you're friends.
-3. From then on you show up in each other's notch (with a small star) whenever you drag files onto it.
+2. Your friend copies your code and chooses **Add**. Their Holm waits while yours asks you to *Accept* or *Decline* the request. Neither friend list changes until you accept; acceptance adds each of you to the other's list.
+3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it.
 
-Both notches have to be running when you send, as with the other ways. If your friend's notch doesn't answer within 10 minutes, nothing is sent.
+Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer a file availability check within 15 seconds, Holm reports that they're offline or their notch is closed. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
 
 How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
 
@@ -107,19 +107,19 @@ Updates work with the published Windows x64 app in a folder your account can wri
 
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
-```bash
-dotnet publish WinNotch -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+```powershell
+dotnet publish (Get-ChildItem -Recurse -Filter '*.csproj' | Where-Object { $_.Name -notlike '*Tests.csproj' } | Select-Object -First 1).FullName -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 ```
 
-The source still uses the code name WinNotch for its folders and namespaces, and Beam's protocol labels keep it so Holm can still exchange files with older versions. This gives you `publish/Holm.exe`, which needs the .NET 10 Desktop Runtime. For a single exe that runs anywhere without installing .NET, use `--self-contained true -p:IncludeNativeLibrariesForSelfExtract=true` instead.
+Some source folder and protocol identifiers retain their original names so Holm can exchange files with earlier versions. This gives you `publish/Holm.exe`, which needs the .NET 10 Desktop Runtime. For a single exe that runs anywhere without installing .NET, use `--self-contained true -p:IncludeNativeLibrariesForSelfExtract=true` instead.
 
 ## Tests
 
-```bash
-dotnet test WinNotch.Tests
+```powershell
+dotnet test (Get-ChildItem -Recurse -Filter '*Tests.csproj' | Select-Object -First 1).FullName
 ```
 
-Covers recognising the messengers (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps, the Beam codes and friend codes, sealed friend notes (a forged sender, a note moved to another inbox, tampering), the encryption (tampering, wrong keys, replays), the transfer protocol (including a sender that tries `..\` paths or sends more than it offered), two notches finding each other and sending a file over the network, and real transfers through the public relay and two friends meeting through ntfy.sh (these need an internet connection; skip them with `--filter "Category!=Online"`, or point them at your own servers with `WINNOTCH_TEST_NTFY` and `WINNOTCH_TEST_RELAY`). With `WINNOTCH_E2E_TOASTS=1`, additional tests leave silent notifications (no pop-up) from Outlook, Teams and an unrelated app in the notification center, read them back the way the notch does – only Outlook's may count – and remove them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
+The suite covers recognising messengers (also in the browser), Windows notification badges, downloads, Beam codes and friend codes, sealed friend notes and request responses, encryption, transfer safety, network discovery, and end-to-end file transfers. Online tests need an internet connection; skip them with `--filter "Category!=Online"` or configure your own test servers. An optional end-to-end toast test leaves silent notifications (no pop-up) from Outlook, Teams and an unrelated app in the notification center, reads them back the way the notch does – only Outlook's may count – and removes them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
 
 Update tests cover release selection, download integrity, unsafe archives, menu states, replacement, restart and recovery using temporary executables. They never replace your installed Holm.
 

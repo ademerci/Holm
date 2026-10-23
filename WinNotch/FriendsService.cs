@@ -174,17 +174,26 @@ internal sealed class FriendsService
                 if (result == FriendRequestResult.Accepted) AddOrUpdateFriend(friend, requestId);
                 return result;
             }
-            catch (TimeoutException) { return FriendRequestResult.NoResponse; }
+            catch (TimeoutException)
+            {
+                await SendFriendRequestCancellationAsync(me, friend, requestId);
+                return FriendRequestResult.NoResponse;
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            RemoveFriendAddedByRequest(requestId);
-            var cancel = new FriendNote(FriendNoteKind.FriendRequestCancelled, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Code: me.FriendCode, RequestId: requestId);
-            await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, cancel), CancellationToken.None);
+            await SendFriendRequestCancellationAsync(me, friend, requestId);
             throw;
         }
         finally { _friendRequests.TryRemove(requestId, out _); }
+    }
+
+    async Task SendFriendRequestCancellationAsync(FriendIdentity me, Friend friend, string requestId)
+    {
+        RemoveFriendAddedByRequest(requestId);
+        var cancel = new FriendNote(FriendNoteKind.FriendRequestCancelled, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Code: me.FriendCode, RequestId: requestId);
+        await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, cancel), CancellationToken.None);
     }
 
     /// <summary>Sends the user's answer to a request; accepted cards are saved after the reply is delivered.</summary>

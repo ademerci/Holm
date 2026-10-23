@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.4 – 2026-10-23
+
+### Changed
+- Friend requests now wait for the recipient to accept or decline before either list is updated. Accepting synchronizes both lists, including when an older one-sided friend entry exists; cancelling closes the other person's pending request and undoes an addition if the accept and cancellation crossed.
+- The friend removal notice now appears as one line, so its text no longer overlaps.
+- Holm now fully exits if its old process remains alive 10 seconds after an update; normally it exits in about 2 seconds. Debug builds also expose switches for checking the shutdown behavior.
+- The README now shows the updated Holm logo and describes the current friend request flow.
+
 ## Unreleased
 
 ### Fixed
