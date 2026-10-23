@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.7 – 2026-10-23
+
+### Changed
+- The expanded notch is wider, and device badges wrap onto another line when needed so the Bluetooth and audio controls stay visible.
+- Automatic update checks run every two hours instead of every six hours.
+- Published single-file builds use compression to reduce download and disk size.
+- The Bluetooth menu no longer shows a redundant *Add a device…* entry; *Bluetooth settings* remains available for pairing new devices.
+
 ## 1.5.6 – 2026-10-23
 
 ### Added
