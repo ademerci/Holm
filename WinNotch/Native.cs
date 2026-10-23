@@ -151,6 +151,11 @@ internal static class Native
     }
 
     public static void TrimWorkingSet() => EmptyWorkingSet(GetCurrentProcess());
+
+    [DllImport("kernel32.dll")] static extern bool TerminateProcess(IntPtr process, uint exitCode);
+
+    /// <summary>Ends this process at once, without running anything else on the way out.</summary>
+    public static void EndCurrentProcess(uint exitCode) => TerminateProcess(GetCurrentProcess(), exitCode);
 }
 
 internal readonly record struct PowerInfo(bool HasBattery, int Percent, bool OnAc, bool Charging)
