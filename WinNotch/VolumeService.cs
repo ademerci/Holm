@@ -44,10 +44,10 @@ public sealed record OutputDevice(string Id, string Name, int FormFactor)
 internal sealed class VolumeService
 {
     [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-    class MMDeviceEnumerator { }
+    internal class MMDeviceEnumerator { }
 
     [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    interface IMMDeviceEnumerator
+    internal interface IMMDeviceEnumerator
     {
         [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
         [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
@@ -57,7 +57,7 @@ internal sealed class VolumeService
     }
 
     [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    interface IMMDevice
+    internal interface IMMDevice
     {
         [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object endpoint);
         [PreserveSig] int OpenPropertyStore(int access, out IPropertyStore properties);
@@ -66,14 +66,14 @@ internal sealed class VolumeService
     }
 
     [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    interface IMMDeviceCollection
+    internal interface IMMDeviceCollection
     {
         [PreserveSig] int GetCount(out int count);
         [PreserveSig] int Item(int index, out IMMDevice device);
     }
 
     [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    interface IPropertyStore
+    internal interface IPropertyStore
     {
         [PreserveSig] int GetCount(out int count);
         [PreserveSig] int GetAt(int index, out PROPERTYKEY key);
@@ -82,7 +82,7 @@ internal sealed class VolumeService
 
     /// <summary>Only the parts we read: the type, and a string pointer or a number in the first field.</summary>
     [StructLayout(LayoutKind.Sequential)]
-    struct PROPVARIANT
+    internal struct PROPVARIANT
     {
         public ushort vt;
         ushort r1, r2, r3;
@@ -91,7 +91,7 @@ internal sealed class VolumeService
     }
 
     [DllImport("ole32.dll")]
-    static extern int PropVariantClear(ref PROPVARIANT value);
+    internal static extern int PropVariantClear(ref PROPVARIANT value);
 
     // Not documented, but what the Sound settings themselves use to change the default device (Windows 7 to 11).
     [ComImport, Guid("870AF99C-171D-4F9E-AF0D-E63DF40C2BC9")]

@@ -186,6 +186,7 @@ public partial class MainWindow : Window
         _trimTimer.Start();
         UpdateAiButton();
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
+        Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
         if (_settings.Messages) _ = _chat.StartAsync(ask: true);
         StartDownloads();
@@ -317,6 +318,7 @@ public partial class MainWindow : Window
             RefreshMediaUi();
             RefreshDevices();
             RefreshOutput();
+            RefreshBluetooth();
             ResolveAi(force: false);
             // Access may have been granted in Settings since we last asked.
             if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
@@ -1112,8 +1114,8 @@ public partial class MainWindow : Window
         ReadVolume();
     }
 
-    /// <summary>The right-click menu or the list of output devices is open.</summary>
-    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true;
+    /// <summary>The right-click menu, the list of output devices or the Bluetooth list is open.</summary>
+    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true || _bluetoothMenu?.IsOpen == true;
 
     void OnDefaultDeviceChanged()
     {

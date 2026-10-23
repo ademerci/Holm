@@ -15,6 +15,10 @@ internal sealed class BtDevice
     public int Battery = -1;
     public bool? Connected;
     public uint ClassOfDevice;
+    /// <summary>Groups the device with its other parts, its sound devices among them.</summary>
+    public Guid ContainerId;
+    /// <summary>Windows has the device itself, not only one of its services (it is paired).</summary>
+    public bool Paired;
 
     public bool IsConnected => Connected ?? true;
 
@@ -40,8 +44,8 @@ internal sealed class BtDevice
 }
 
 /// <summary>
-/// Reads the battery level Windows already knows for paired Bluetooth devices (the same value the
-/// Settings app shows). This is a plain registry-style lookup, it never talks to the radio.
+/// Reads the paired Bluetooth devices and the battery level Windows already knows for them (the same
+/// values the Settings app shows). This is a plain registry-style lookup, it never talks to the radio.
 /// </summary>
 internal static class BluetoothBattery
 {
@@ -56,7 +60,7 @@ internal static class BluetoothBattery
     }
 
     const uint DIGCF_PRESENT = 0x2, DIGCF_ALLCLASSES = 0x4;
-    const uint DEVPROP_TYPE_BYTE = 0x3, DEVPROP_TYPE_UINT32 = 0x7, DEVPROP_TYPE_BOOLEAN = 0x11, DEVPROP_TYPE_STRING = 0x12;
+    const uint DEVPROP_TYPE_BYTE = 0x3, DEVPROP_TYPE_UINT32 = 0x7, DEVPROP_TYPE_GUID = 0xD, DEVPROP_TYPE_BOOLEAN = 0x11, DEVPROP_TYPE_STRING = 0x12;
 
     [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     static extern IntPtr SetupDiGetClassDevsW(IntPtr classGuid, string enumerator, IntPtr parent, uint flags);
@@ -74,13 +78,18 @@ internal static class BluetoothBattery
     static DEVPROPKEY KeyClassOfDevice = new("2BD67D8B-8BEB-48D5-87E0-6CDA3428040A", 10);
     static DEVPROPKEY KeyFriendlyName = new("A45C254E-DF1C-4EFD-8020-67D146A850E0", 14);
     static DEVPROPKEY KeyDeviceDesc = new("A45C254E-DF1C-4EFD-8020-67D146A850E0", 2);
+    static DEVPROPKEY KeyContainerId = new("8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C", 2);
     // Not in the public headers, but it is what the Bluetooth settings page uses for "Connected".
     static DEVPROPKEY KeyConnected = new("83DA6326-97A6-4088-9453-A1923F573B29", 15);
 
     static readonly Regex AddressInId = new(@"(?:DEV_|&|_)([0-9A-F]{12})(?:_|\\|$)", RegexOptions.IgnoreCase);
     static readonly string[] NoiseSuffixes = { " Hands-Free AG", " Hands-Free", " Avrcp Transport", " Stereo" };
 
-    public static List<BtDevice> Scan()
+    /// <summary>The devices that report a battery level, by name.</summary>
+    public static List<BtDevice> Scan() => ScanAll().Where(d => d.Battery >= 0).ToList();
+
+    /// <summary>Every paired device, connected or not, and any other one that reports a battery level, by name.</summary>
+    public static List<BtDevice> ScanAll()
     {
         var byAddress = new Dictionary<string, BtDevice>(StringComparer.OrdinalIgnoreCase);
         var buffer = new byte[1024];
@@ -99,7 +108,7 @@ internal static class BluetoothBattery
                         ? new string(idBuffer, 0, Math.Max(0, len - 1)) : "";
                     string? address = ReadString(set, ref data, ref KeyAddress, buffer);
                     if (address == null && AddressInId.Match(id) is { Success: true } m) address = m.Groups[1].Value;
-                    if (string.IsNullOrEmpty(address)) continue;
+                    if (string.IsNullOrEmpty(address) || address.Trim('0').Length == 0) continue; // the PC's own services
 
                     if (!byAddress.TryGetValue(address, out var dev))
                         byAddress[address] = dev = new BtDevice { Address = address.ToUpperInvariant() };
@@ -112,6 +121,8 @@ internal static class BluetoothBattery
                                 ?? ReadString(set, ref data, ref KeyDeviceDesc, buffer) ?? dev.Name;
                         if (ReadBool(set, ref data, ref KeyConnected, buffer) is bool connected) dev.Connected = connected;
                         if (ReadUInt(set, ref data, ref KeyClassOfDevice, buffer) is uint cod) dev.ClassOfDevice = cod;
+                        if (ReadGuid(set, ref data, ref KeyContainerId, buffer) is Guid container) dev.ContainerId = container;
+                        dev.Paired = true;
                     }
                     else if (dev.FallbackName == null && ReadString(set, ref data, ref KeyFriendlyName, buffer) is string n)
                     {
@@ -125,7 +136,7 @@ internal static class BluetoothBattery
             finally { SetupDiDestroyDeviceInfoList(set); }
         }
 
-        var result = byAddress.Values.Where(d => d.Battery >= 0).ToList();
+        var result = byAddress.Values.Where(d => d.Paired || d.Battery >= 0).ToList();
         foreach (var d in result)
             if (d.Name.Length == 0) d.Name = d.FallbackName ?? "Bluetooth device";
         return result.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
@@ -153,6 +164,9 @@ internal static class BluetoothBattery
 
     static bool? ReadBool(IntPtr set, ref SP_DEVINFO_DATA data, ref DEVPROPKEY key, byte[] buffer)
         => Read(set, ref data, ref key, buffer, out uint type, out int size) && type == DEVPROP_TYPE_BOOLEAN && size >= 1 ? buffer[0] != 0 : null;
+
+    static Guid? ReadGuid(IntPtr set, ref SP_DEVINFO_DATA data, ref DEVPROPKEY key, byte[] buffer)
+        => Read(set, ref data, ref key, buffer, out uint type, out int size) && type == DEVPROP_TYPE_GUID && size >= 16 ? new Guid(buffer.AsSpan(0, 16)) : null;
 
     static uint? ReadUInt(IntPtr set, ref SP_DEVINFO_DATA data, ref DEVPROPKEY key, byte[] buffer)
         => Read(set, ref data, ref key, buffer, out uint type, out int size) && type == DEVPROP_TYPE_UINT32 && size >= 4 ? BitConverter.ToUInt32(buffer, 0) : null;

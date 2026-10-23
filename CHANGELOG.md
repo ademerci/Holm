@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Bluetooth in the notch.** A Bluetooth button next to the output device button opens a list: a switch that turns Bluetooth on and off (like the one in Settings), your paired devices with a tick at the connected ones and their battery level, then *Add a device…* and *Bluetooth settings*. Picking headphones, earbuds or a speaker connects or disconnects them – music and calls alike – through the same request the Bluetooth settings page sends to the audio driver; the batteries and the "connected" pop-out follow once Windows has connected. Mice, keyboards and phones are listed but greyed out: they connect by themselves, and Windows has no way for an app to do it. The button is dimmed while Bluetooth is off and only there on a PC with Bluetooth.
+
 ## 1.5.5 – 2026-10-23
 
 ### Added

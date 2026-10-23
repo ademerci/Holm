@@ -424,6 +424,12 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel x:Name="DevicesPanel" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Bluetooth on and off, and the paired headphones and speakers to connect -->
+                                    <Button x:Name="BluetoothBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
+                                            Visibility="Collapsed" Click="Bluetooth_Click">
+                                        <TextBlock x:Name="BluetoothIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                                   Foreground="{StaticResource Dim}" Text="&#xE702;"/>
+                                    </Button>
                                     <!-- Where the sound goes: a list of the speakers and headphones to switch to -->
                                     <Button x:Name="OutputBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
                                             Visibility="Collapsed" Click="Output_Click">
