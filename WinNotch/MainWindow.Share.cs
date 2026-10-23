@@ -39,6 +39,7 @@ public partial class MainWindow
     NearbyService? _nearby;
     FriendsService _friends = null!;
     readonly List<Friend> _addBack = new(); // people who added us while the notch was busy
+    readonly List<(Friend Card, string RequestId)> _friendRequests = new();
     DispatcherTimer _shareWatch = null!, _taskHide = null!;
     bool _sharing, _dragInside, _taskVisible, _busy;
     DateTime _lastDragEvent, _lastProgressUi;
@@ -71,6 +72,7 @@ public partial class MainWindow
         _friends = new FriendsService(_settings, Dispatcher);
         _friends.FilesOffered += OnFriendFiles;
         _friends.AddedUs += OnFriendAddedUs;
+        _friends.FriendRequested += OnFriendRequested;
         _friends.RemovedUs += OnFriendRemovedUs;
     }
 
@@ -445,12 +447,35 @@ public partial class MainWindow
         _taskHide.Start();
     }
 
+    void OnFriendRequested(Friend card, string requestId)
+    {
+        if (_friends.Find(card.Key) != null) return;
+        if (_friendRequests.Any(request => request.RequestId == requestId)) return;
+        _friendRequests.Add((card, requestId));
+        FillFriendsMenu();
+        if (_busy || _installingUpdate || _taskVisible || _hiddenForFullscreen)
+        {
+            ShowPeek("\uE8FA", $"{card.Name} wants to be your friend", "", null, false, null, seconds: 4);
+            return;
+        }
+        ShowFriendRequest(card, requestId);
+    }
+
+    void ShowFriendRequest(Friend card, string requestId)
+    {
+        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"{card.Name} wants to be your friend", "Accept to add each other to your lists",
+            null, ("Accept", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: true)),
+            ("Decline", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: false)), textIcon: true);
+        _taskHide.Interval = TimeSpan.FromSeconds(30);
+        _taskHide.Start();
+    }
+
     void OnFriendRemovedUs(Friend friend)
     {
         _addBack.RemoveAll(f => f.Key == friend.Key);
         FillFriendsMenu();
         if (_sharing) { RefreshShareTargets(); ApplyState(); }
-        ShowPeek("\uE8FA", $"{friend.Name} removed you", "Removed from your friends list", null, false, null, seconds: 4);
+        ShowPeek("\uE8FA", $"{friend.Name} removed you", "", null, false, null, seconds: 4);
     }
 
     async Task AddFriendAsync(Friend card, bool tellThem)
@@ -463,8 +488,56 @@ public partial class MainWindow
             return;
         }
         _addBack.RemoveAll(f => f.Key == card.Key);
-        bool told = await _friends.AddAsync(card, tellThem);
-        ShowPeek("\uE8FA", told ? $"{card.Name} is now a friend" : $"{card.Name} added – send them your code too", "", null, false, null, seconds: 4);
+        if (!tellThem)
+        {
+            await _friends.AddAsync(card, tellThem: false);
+            ShowPeek("\uE8FA", $"{card.Name} is now a friend", "", null, false, null, seconds: 4);
+            FillFriendsMenu();
+            if (_sharing) { RefreshShareTargets(); ApplyState(); }
+            return;
+        }
+
+        var cts = BeginTask();
+        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"Asking {card.Name}…", "Waiting for them to accept or decline",
+            null, null, null, textIcon: true);
+        try
+        {
+            var result = await _friends.RequestAddAsync(card, TimeSpan.FromMinutes(2), cts.Token);
+            if (result == FriendRequestResult.Accepted)
+            {
+                EndTask("\uE8FA", ShareBlue, $"You and {card.Name} are now friends", "You can send each other files");
+                FillFriendsMenu();
+                if (_sharing) { RefreshShareTargets(); ApplyState(); }
+            }
+            else if (result == FriendRequestResult.Declined)
+                EndTask("\uE783", RedBrush, $"{card.Name} declined", "They weren't added to your friends list");
+            else
+                EndTask("\uE783", RedBrush, $"No answer from {card.Name}", "They may be offline or haven't responded yet");
+        }
+        catch (Exception ex) { Fail(ex, cts, "Couldn't add friend"); }
+    }
+
+    async Task AnswerFriendRequestAsync(Friend card, string requestId, bool accepted)
+    {
+        HideTask();
+        try
+        {
+            await _friends.RespondToFriendRequestAsync(card, requestId, accepted);
+            _friendRequests.RemoveAll(request => request.RequestId == requestId);
+            FillFriendsMenu();
+            if (accepted)
+            {
+                ShowPeek("\uE8FA", $"You and {card.Name} are now friends", "", null, false, null, seconds: 4);
+                if (_sharing) { RefreshShareTargets(); ApplyState(); }
+            }
+            else ShowPeek("\uE783", $"Declined {card.Name}'s request", "", null, false, null, seconds: 4);
+        }
+        catch (Exception ex)
+        {
+            Diag.Log($"Couldn't answer {card.Name}'s friend request: {ex.Message}");
+            ShowPeek("\uE783", "Couldn't answer friend request", ex.Message, null, false, RedBrush, seconds: 5);
+        }
+        if (_friendRequests.Count > 0 && !_taskVisible && !_busy) ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
     }
 
     /// <summary>Someone on the network connected (worker thread). We answer on the UI thread; busy means no.</summary>
@@ -720,6 +793,17 @@ public partial class MainWindow
             var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
             back.Click += (_, _) => _ = AddFriendAsync(card, tellThem: false);
             MenuFriends.Items.Add(back);
+        }
+        foreach (var request in _friendRequests.ToList())
+        {
+            var answer = new MenuItem { Header = $"Friend request from {request.Card.Name.Replace("_", "__")}" };
+            var accept = new MenuItem { Header = "Accept" };
+            accept.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: true);
+            var decline = new MenuItem { Header = "Decline" };
+            decline.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: false);
+            answer.Items.Add(accept);
+            answer.Items.Add(decline);
+            MenuFriends.Items.Add(answer);
         }
         if (_friends.Friends.Count == 0) return;
         MenuFriends.Items.Add(new Separator());

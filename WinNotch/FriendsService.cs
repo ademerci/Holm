@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -9,6 +10,8 @@ using System.Windows.Threading;
 using WinNotch.Sharing;
 
 namespace WinNotch;
+
+internal enum FriendRequestResult { Accepted, Declined, NoResponse }
 
 /// <summary>
 /// Friends on this PC: our identity (the private key is encrypted for this Windows account), the friends list,
@@ -26,11 +29,14 @@ internal sealed class FriendsService
     FriendIdentity? _me;
     bool _loaded;
     CancellationTokenSource? _follow;
+    readonly ConcurrentDictionary<string, TaskCompletionSource<FriendRequestResult>> _friendRequests = new(StringComparer.Ordinal);
 
     /// <summary>A friend wants to send us files; meet them on the relay with the secret (UI thread).</summary>
     public event Action<Friend, byte[]>? FilesOffered;
     /// <summary>Someone added us as a friend; this is their card, to add them back (UI thread).</summary>
     public event Action<Friend>? AddedUs;
+    /// <summary>A friend request arrived and needs an explicit answer (UI thread).</summary>
+    public event Action<Friend, string>? FriendRequested;
     /// <summary>A friend removed us from their list (UI thread).</summary>
     public event Action<Friend>? RemovedUs;
 
@@ -140,6 +146,63 @@ internal sealed class FriendsService
         }
     }
 
+    /// <summary>Sends a friend request and adds the card only after the other person accepts.</summary>
+    public async Task<FriendRequestResult> RequestAddAsync(Friend friend, TimeSpan timeout, CancellationToken ct)
+    {
+        if (Find(friend.Key) is { } existing)
+        {
+            UpdateFriendCard(existing, friend);
+            return FriendRequestResult.Accepted;
+        }
+
+        var me = EnsureMe(); // starts our inbox before the request is posted
+        string requestId = Guid.NewGuid().ToString("N");
+        var answer = new TaskCompletionSource<FriendRequestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_friendRequests.TryAdd(requestId, answer)) throw new InvalidOperationException("Duplicate friend request id");
+        try
+        {
+            var note = new FriendNote(FriendNoteKind.FriendRequest, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Code: me.FriendCode, RequestId: requestId);
+            await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
+            try
+            {
+                var result = await answer.Task.WaitAsync(timeout, ct);
+                if (result == FriendRequestResult.Accepted) AddOrUpdateFriend(friend);
+                return result;
+            }
+            catch (TimeoutException) { return FriendRequestResult.NoResponse; }
+        }
+        finally { _friendRequests.TryRemove(requestId, out _); }
+    }
+
+    /// <summary>Sends the user's answer to a request; accepted cards are saved after the reply is delivered.</summary>
+    public async Task RespondToFriendRequestAsync(Friend friend, string requestId, bool accepted, CancellationToken ct = default)
+    {
+        if (Me is not { } me) me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.FriendResponse, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            RequestId: requestId, Accepted: accepted);
+        await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
+        if (accepted) AddOrUpdateFriend(friend);
+    }
+
+    void AddOrUpdateFriend(Friend card)
+    {
+        if (Find(card.Key) is { } existing) UpdateFriendCard(existing, card);
+        else
+        {
+            _settings.Friends.Add(card);
+            _settings.Save();
+        }
+    }
+
+    void UpdateFriendCard(Friend existing, Friend card)
+    {
+        int at = _settings.Friends.IndexOf(existing);
+        if (at < 0) return;
+        _settings.Friends[at] = card;
+        _settings.Save();
+    }
+
     /// <summary>Removes a friend here and tells them to remove this relationship on their side too.</summary>
     public async Task<bool> RemoveAsync(Friend friend)
     {
@@ -228,6 +291,19 @@ internal sealed class FriendsService
                 }
                 else AddedUs?.Invoke(card);
                 break;
+            case FriendNoteKind.FriendRequest when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } requestId:
+                if (friend != null)
+                {
+                    // Repair an older one-sided relationship automatically when the other person requests us.
+                    UpdateFriendCard(friend, card);
+                    _ = ReplyToRequestAsync(me, card, requestId, accepted: true);
+                }
+                else FriendRequested?.Invoke(card, requestId);
+                break;
+            case FriendNoteKind.FriendResponse when note.RequestId is { } responseId && note.Accepted is { } accepted:
+                if (_friendRequests.TryGetValue(responseId, out var answer))
+                    answer.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
+                break;
             case FriendNoteKind.RemovedYou when friend != null:
                 _settings.Friends.RemoveAll(f => f.Key == friend.Key);
                 _settings.Save();
@@ -238,5 +314,16 @@ internal sealed class FriendsService
                 Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
                 break;
         }
+    }
+
+    async Task ReplyToRequestAsync(FriendIdentity me, Friend card, string requestId, bool accepted)
+    {
+        try
+        {
+            var note = new FriendNote(FriendNoteKind.FriendResponse, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                RequestId: requestId, Accepted: accepted);
+            await FriendInbox.PostAsync(card, FriendNotes.Seal(me, card, note), CancellationToken.None);
+        }
+        catch (IOException ex) { Diag.Log($"Couldn't confirm {card.Name}'s friend request: {ex.Message}"); }
     }
 }

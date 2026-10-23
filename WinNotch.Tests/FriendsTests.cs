@@ -149,6 +149,44 @@ public class FriendNoteTests
         Assert.Null(FriendNotes.Open(lena, sneaky, out _));
     }
 
+    [Fact]
+    public void Friend_requests_carry_the_requesters_code_and_a_request_id()
+    {
+        using var noah = FriendIdentity.Create("Noah", null);
+        using var lena = FriendIdentity.Create("Lena", null);
+        string requestId = Guid.NewGuid().ToString("N");
+        var request = new FriendNote(FriendNoteKind.FriendRequest, noah.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Code: noah.FriendCode, RequestId: requestId);
+
+        var opened = FriendNotes.Open(lena, FriendNotes.Seal(noah, lena.AsFriend(), request), out string sender);
+
+        Assert.NotNull(opened);
+        Assert.Equal(FriendNoteKind.FriendRequest, opened!.Kind);
+        Assert.Equal(requestId, opened.RequestId);
+        Assert.Equal(noah.PublicKey, FriendIdentity.ParseFriendCode(opened.Code)!.Key);
+        Assert.Equal(noah.PublicKey, sender);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Friend_request_responses_report_acceptance_or_decline(bool accepted)
+    {
+        using var noah = FriendIdentity.Create("Noah", null);
+        using var lena = FriendIdentity.Create("Lena", null);
+        string requestId = Guid.NewGuid().ToString("N");
+        var response = new FriendNote(FriendNoteKind.FriendResponse, lena.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            RequestId: requestId, Accepted: accepted);
+
+        var opened = FriendNotes.Open(noah, FriendNotes.Seal(lena, noah.AsFriend(), response), out string sender);
+
+        Assert.NotNull(opened);
+        Assert.Equal(FriendNoteKind.FriendResponse, opened!.Kind);
+        Assert.Equal(requestId, opened.RequestId);
+        Assert.Equal(accepted, opened.Accepted);
+        Assert.Equal(lena.PublicKey, sender);
+    }
+
     [Theory]
     [InlineData("{\"id\":\"a1\",\"time\":1700000000,\"event\":\"message\",\"topic\":\"t\",\"message\":\"wnf1 x y\"}", true, 1700000000L, "a1", "wnf1 x y")]
     [InlineData("{\"id\":\"k\",\"time\":1700000045,\"event\":\"keepalive\",\"topic\":\"t\"}", false, 1700000045L, "k", null)]

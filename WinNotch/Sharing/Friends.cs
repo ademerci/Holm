@@ -136,9 +136,12 @@ public sealed class FriendIdentity : IDisposable
 
 /// <summary>A note from one friend to another.</summary>
 /// <param name="Secret">For <see cref="FriendNoteKind.Files"/>: the share secret to meet on the relay with.</param>
-/// <param name="Code">For <see cref="FriendNoteKind.AddedYou"/>: the sender's friend code, so you can add them back.</param>
+/// <param name="Code">For friend requests and legacy <see cref="FriendNoteKind.AddedYou"/> notes: the sender's friend code.</param>
+/// <param name="RequestId">For friend requests and their responses: the request to which the note belongs.</param>
+/// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
-public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null);
+public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
+                                string? RequestId = null, bool? Accepted = null);
 
 public enum FriendNoteKind
 {
@@ -146,6 +149,10 @@ public enum FriendNoteKind
     Files,
     /// <summary>"I added you as a friend": here is my code.</summary>
     AddedYou,
+    /// <summary>"Would you like to be friends?": here is my code and a request id.</summary>
+    FriendRequest,
+    /// <summary>"I accept/decline your friend request": includes its request id.</summary>
+    FriendResponse,
     /// <summary>"I removed you as a friend": remove my card from your list too.</summary>
     RemovedYou,
 }
@@ -164,6 +171,8 @@ public static class FriendNotes
         public long T { get; set; }
         public string? S { get; set; }
         public string? C { get; set; }
+        public string? R { get; set; }
+        public bool? A { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -182,6 +191,8 @@ public static class FriendNotes
             {
                 FriendNoteKind.Files => "files",
                 FriendNoteKind.AddedYou => "added",
+                FriendNoteKind.FriendRequest => "request",
+                FriendNoteKind.FriendResponse => "response",
                 FriendNoteKind.RemovedYou => "removed",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
@@ -189,6 +200,8 @@ public static class FriendNotes
             T = note.Sent,
             S = note.Secret == null ? null : Convert.ToBase64String(note.Secret),
             C = note.Code,
+            R = note.RequestId,
+            A = note.Accepted,
         };
         byte[] plain = JsonSerializer.SerializeToUtf8Bytes(dto);
         var sealedNote = new byte[NonceSize + TagSize + plain.Length];
@@ -227,6 +240,10 @@ public static class FriendNotes
                     => new FriendNote(FriendNoteKind.Files, from, dto.T, Secret: secret),
                 "added" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0]
                     => new FriendNote(FriendNoteKind.AddedYou, from, dto.T, Code: dto.C),
+                "request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
+                    => new FriendNote(FriendNoteKind.FriendRequest, from, dto.T, Code: dto.C, RequestId: dto.R),
+                "response" when Guid.TryParseExact(dto.R, "N", out _) && dto.A.HasValue
+                    => new FriendNote(FriendNoteKind.FriendResponse, from, dto.T, RequestId: dto.R, Accepted: dto.A),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
                 _ => null,
             };
