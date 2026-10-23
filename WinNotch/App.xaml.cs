@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -47,11 +47,32 @@ public partial class App : Application
         Diag.Enabled = e.Args.Contains("--diag");
         FormerName.Migrate(); // before the window reads the settings
         new MainWindow().Show();
+
+#if DEBUG
+        // Dev helpers to check that the process really ends: quit after N seconds like the menu's Quit
+        // (--quit-after N), and with --linger leave a thread behind that would keep it alive (the watchdog's job).
+        int quit = Array.IndexOf(e.Args, "--quit-after");
+        if (quit >= 0 && quit + 1 < e.Args.Length && int.TryParse(e.Args[quit + 1], out int seconds))
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
+            timer.Tick += (_, _) => { timer.Stop(); Shutdown(); };
+            timer.Start();
+        }
+        _linger = e.Args.Contains("--linger");
+#endif
     }
+
+#if DEBUG
+    bool _linger;
+#endif
 
     protected override void OnExit(ExitEventArgs e)
     {
         _singleInstance?.Dispose();
+        ExitWatchdog.Arm(ExitWatchdog.Grace);
+#if DEBUG
+        if (_linger) new Thread(() => Thread.Sleep(Timeout.Infinite)) { Name = "Holm linger test" }.Start();
+#endif
         base.OnExit(e);
     }
 }

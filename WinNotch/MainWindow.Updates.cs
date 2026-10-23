@@ -155,6 +155,9 @@ public partial class MainWindow
             RefreshUpdateMenu();
             await UpdateInstaller.BeginInstallAsync(executable, release.Version, _updateLifetime.Token);
             handedOff = true;
+            // Shutdown() only queues the quit; this code goes on first. Mark the app as closing so the finally
+            // below doesn't start Beam and the friends inbox again right before the process is meant to end.
+            StopUpdates();
             Application.Current.Shutdown();
         }
         catch (OperationCanceledException) when (_updatesClosing) { }

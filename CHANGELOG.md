@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **After an update, the old Holm could stay alive without a window.** On 23 October a quit Holm 1.5.1 was found still running 35 minutes after its update, with no notch left; the updater gave up waiting for it after 90 seconds and kept the old version (a second Holm then updated). Now, if the process still exists 10 seconds after Holm quit, it notes that in `error.log` and ends itself – normally it is gone after about 2 seconds and this never fires.
+- Starting an update also restarted Beam and the friends inbox for a moment: `Shutdown()` only queues the quit, and the code after it switched sharing back on before the app closed. The update now marks the app as closing first.
+- Debug builds take `--quit-after N` and `--linger` to check that the process really ends.
+
 ## 1.5.2 – 2026-10-23
 
 - File sending checks that the recipient's notch is open before offering files; no answer within 15 seconds reports that they're offline or Holm is closed.
