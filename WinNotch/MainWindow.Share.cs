@@ -296,14 +296,30 @@ public partial class MainWindow
     async Task SendNearbyAsync(NearbyPeer peer, List<string> paths)
     {
         var cts = BeginTask();
-        ShowTask("", ShareBlue, $"Waiting for {peer.Name}…", Summary(paths), null, null, ("Cancel", CancelTask));
+        ShowTask("", ShareBlue, $"Checking if {peer.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask));
+        SecureChannel channel;
         try
         {
-            await using var channel = await NearbyService.ConnectAsync(peer, cts.Token);
-            bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
-                new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token);
-            if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
-            else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
+            try { channel = await NearbyService.ConnectAsync(peer, cts.Token); }
+            catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+            {
+                EndTask("\uE916", RedBrush, $"{peer.Name} isn't available", "They're offline or Holm is closed");
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or SocketException)
+            {
+                Diag.Log($"Nearby availability check for {peer.Name} failed: {ex.Message}");
+                EndTask("\uE916", RedBrush, $"{peer.Name} isn't available", "They're offline or Holm is closed");
+                return;
+            }
+            await using (channel)
+            {
+                ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
+                bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
+                    new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token);
+                if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
+                else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
+            }
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
@@ -346,10 +362,11 @@ public partial class MainWindow
         {
             byte[] secret = ShareCode.NewSecret();
             await _friends.InviteAsync(friend, secret, cts.Token);
-            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Waiting for {friend.Name}…", "Their notch is asking them", null, null, ("Cancel", CancelTask), textIcon: true);
+            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Checking if {friend.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask), textIcon: true);
             var (host, port) = RelayEndpoint();
             await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.Patience, cts.Token);
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
+            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token);
             if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
@@ -357,7 +374,7 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
         {
-            EndTask("\uE916", RedBrush, $"{friend.Name} didn't answer", "Their Holm may not be running");
+            EndTask("\uE916", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }

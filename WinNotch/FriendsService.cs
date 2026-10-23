@@ -18,8 +18,8 @@ internal sealed class FriendsService
 {
     static readonly byte[] KeyEntropy = "WinNotch friends key"u8.ToArray(); // former name: keys saved before the rename must still open
 
-    /// <summary>How long the sender waits on the relay; an older invitation is stale.</summary>
-    public static readonly TimeSpan Patience = TimeSpan.FromMinutes(10);
+    /// <summary>How long the sender waits for the friend's notch to answer; older invitations are stale.</summary>
+    public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
     readonly AppSettings _settings;
     readonly Dispatcher _ui;
