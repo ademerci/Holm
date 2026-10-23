@@ -25,6 +25,7 @@ public class UpdateMenuTests
             Assert.Equal(Visibility.Visible, Item(window, "MenuInstallUpdate").Visibility);
             Assert.Contains("99.0.0", Item(window, "MenuInstallUpdate").Header.ToString());
             Assert.Contains("available", Item(window, "MenuUpdates").Header.ToString());
+            Assert.Equal(Visibility.Visible, ((Border)Item(window, "MenuUpdates").Icon).Visibility);
             Assert.False(Item(window, "MenuAutoUpdates").IsChecked);
         });
 
@@ -39,6 +40,7 @@ public class UpdateMenuTests
             await Check(window, manual: false);
             Assert.Equal(0, handler.Requests);
             Assert.Equal(Visibility.Collapsed, Item(window, "MenuInstallUpdate").Visibility);
+            Assert.Equal(Visibility.Collapsed, ((Border)Item(window, "MenuUpdates").Icon).Visibility);
         });
 
     [Fact]
