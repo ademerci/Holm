@@ -15,7 +15,7 @@ Requires Windows 10 (2004 or newer) or Windows 11, x64.
 
 - **More room in the open notch.** The expanded notch is wider and device badges wrap when needed, keeping Bluetooth, sound, and volume controls visible.
 - **More frequent update checks.** Automatic checks run 20 seconds after startup and every two hours after that. Manual checks remain available in the Updates menu.
-- **Smaller downloads.** Single-file builds use compression. The self-contained executable measured 68.6 MB, compared with 158 MB for the same source without compression.
+- **Smaller downloads.** The self-contained single-file build uses compression. Its executable measured 68.6 MB, compared with 158 MB for the same source without compression.
 - **Simpler Bluetooth menu.** The redundant *Add a device…* entry is gone. *Bluetooth settings* remains available for pairing new devices.
 
 ## Tested

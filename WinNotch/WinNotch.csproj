@@ -13,7 +13,7 @@
     <Product>Holm</Product>
     <Version>1.5.7</Version>
     <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile Condition="'$(SelfContained)' == 'true'">true</EnableCompressionInSingleFile>
 
     <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
