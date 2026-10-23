@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0 – 2026-10-23
 
 ### Added
 - **Screenshots pop out.** After Win+Shift+S, Print Screen or Win+Print Screen the notch shows the picture small, with *Send* and *Shelf*; click the picture to open it. *Send* opens the share view to click instead of drop – a friend, someone nearby, *Phone* or *Code* – and closes again when the mouse leaves. Holm watches the Screenshots folder (Windows reports new files, nothing is polled) and, for snips that only go to the clipboard (Windows 10, or with the Snipping Tool's saving off), keeps a copy of the clipboard picture for two days – only when the Snipping Tool put it there, never for images copied elsewhere. Right-click › *Screenshots* turns it off.

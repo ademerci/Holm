@@ -14,6 +14,9 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
   <img src="docs/volume.png" width="480" alt="Volume pop-out">
   <img src="docs/peek.png" width="480" alt="Pop-out when headphones connect">
   <img src="docs/vpn.png" width="480" alt="Pop-out when a VPN connects">
+  <img src="docs/call.png" width="480" alt="A Discord call in the notch, with the microphone dot beside it">
+  <img src="docs/timer.png" width="480" alt="A timer counting down in place of the equalizer">
+  <img src="docs/screenshot.png" width="480" alt="A screenshot pops out with Send and Shelf">
 </p>
 
 ## Features
@@ -45,6 +48,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 <p align="center">
   <img src="docs/airdrop-share.png" width="480" alt="Dropping a file on the notch: pick a person or Code">
   <img src="docs/airdrop-ask.png" width="480" alt="The receiver's notch asks before anything is saved">
+  <img src="docs/phone.png" width="480" alt="A QR code for the phone's camera">
 </p>
 
 Drag files onto the notch. It opens and shows:
