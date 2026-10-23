@@ -99,9 +99,9 @@ internal sealed class MessagesService
             {
                 _running = true;
                 WatchDatabase();
-                // Windows sometimes updates the notification database without delivering a reliable
-                // FileSystemWatcher event. Check its marker often so toasts still appear promptly.
-                _poll.Interval = TimeSpan.FromSeconds(5);
+                // Windows keeps the database open, so the folder watcher often only hears of a write once someone
+                // else opens the file. Checking the marker costs a fifth of a millisecond, so check it often.
+                _poll.Interval = TimeSpan.FromSeconds(2);
                 _poll.Start();
             }
             try
@@ -149,7 +149,7 @@ internal sealed class MessagesService
         }
         catch (Exception ex)
         {
-            Diag.Log("Notification database can't be watched, checking it every 5 s: " + ex.Message);
+            Diag.Log("Notification database can't be watched, checking it every 2 s: " + ex.Message);
             _watcher?.Dispose();
             _watcher = null;
             return false;

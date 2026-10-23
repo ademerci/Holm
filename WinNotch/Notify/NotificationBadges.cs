@@ -32,7 +32,7 @@ public static class NotificationBadges
 
     /// <summary>
     /// A marker that changes whenever Windows writes to the notification database, or null if it can't be read.
-    /// It takes about a millisecond, so it can be checked every few seconds instead of copying the database.
+    /// It takes a fifth of a millisecond, so it can be checked every few seconds instead of copying the database.
     /// </summary>
     /// <remarks>
     /// Besides the sizes and times of the database and its write-ahead log, it holds the header of the log's index
