@@ -20,6 +20,13 @@
 - **New icon:** a small island with a palm under the notch, on a sea-coloured tile.
 - **Teams is no longer part of messages.** Its notifications and its taskbar number stay out of the notch; WhatsApp, Discord, Outlook, Telegram, Signal and Slack remain.
 
+### Added
+- Unread messages are grouped by app, with a separate row and badge count for each app.
+
+### Fixed
+- Discord messages stay available in the expanded notch after their Windows toast expires, and Discord uses its installed app icon.
+- Starting Holm while it is already running now displays an error and prevents a second instance from opening.
+
 ## 1.5.0 – 2026-10-22
 
 ### Fixed

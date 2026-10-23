@@ -212,6 +212,7 @@
                         <Border x:Name="CompactArt" Width="20" Height="20" CornerRadius="5"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" Background="{StaticResource ArtFallback}"/>
                         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                            <StackPanel x:Name="MediaBadgeLogos" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <Border x:Name="MediaBadge" Style="{StaticResource CountPill}" Margin="0,0,9,0" Visibility="Collapsed">
                                 <TextBlock x:Name="MediaBadgeText" Style="{StaticResource CountText}"/>
                             </Border>
@@ -234,7 +235,7 @@
 
                     <!-- Badge: nothing playing, unread messages -->
                     <Grid x:Name="BadgeView" Opacity="0" IsHitTestVisible="False" Margin="10,0">
-                        <Border x:Name="BadgeLogoHost" Width="18" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <StackPanel x:Name="BadgeLogoList" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         <Border x:Name="BadgePill" Style="{StaticResource CountPill}" HorizontalAlignment="Right">
                             <TextBlock x:Name="BadgeText" Style="{StaticResource CountText}"/>
                         </Border>
@@ -391,24 +392,7 @@
                                 <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
                             </StackPanel>
 
-                            <Button x:Name="MessageRow" Style="{StaticResource RowButton}" Margin="0,14,0,0" Visibility="Collapsed"
-                                    Click="MessageRow_Click" ToolTip="Open the app">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border x:Name="RowLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="RowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock x:Name="RowText" FontSize="12" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
-                                    </StackPanel>
-                                    <Border x:Name="RowPill" Grid.Column="2" Style="{StaticResource CountPill}">
-                                        <TextBlock x:Name="RowCount" Style="{StaticResource CountText}"/>
-                                    </Border>
-                                </Grid>
-                            </Button>
+                            <StackPanel x:Name="MessageRows" Margin="0,14,0,0"/>
 
                             <!-- Downloads running right now -->
                             <Grid x:Name="DownloadRow" Margin="2,12,2,0" Visibility="Collapsed">

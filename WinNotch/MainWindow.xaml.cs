@@ -703,21 +703,94 @@ public partial class MainWindow : Window
     void RefreshMessages()
     {
         int count = _messages.Sum(m => m.Count);
-        BadgeText.Text = MediaBadgeText.Text = RowCount.Text = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
+        string totalText = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
+        BadgeText.Text = MediaBadgeText.Text = totalText;
         MediaBadge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        MessageRow.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BadgeLogoList.Children.Clear();
+        MediaBadgeLogos.Children.Clear();
+        MessageRows.Children.Clear();
         if (count == 0) return;
 
-        var latest = _messages[^1];
-        var app = Messengers.Get(latest.App);
-        var color = BrandBrush(latest.App);
-        MediaBadge.Background = BadgePill.Background = RowPill.Background = color;
-        BadgeLogoHost.Child = AppLogo(latest.App, 18);
-        RowLogoHost.Child = AppLogo(latest.App, 28);
-        MessageRow.ToolTip = "Open " + (app?.Name ?? "the app");
-        RowTitle.Text = latest.Title;
-        RowText.Text = latest.Text;
-        RowText.Visibility = latest.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var groups = _messages
+            .GroupBy(m => m.App, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                App = g.Key,
+                Messages = g.ToList(),
+                Latest = g.OrderByDescending(m => m.Time).First(),
+                Display = g.Where(m => !m.CountOnly).OrderByDescending(m => m.Time).FirstOrDefault()
+                    ?? g.OrderByDescending(m => m.Time).First()
+            })
+            .OrderByDescending(g => g.Latest.Time)
+            .ToList();
+
+        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), 14);
+        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), 12);
+        MediaBadge.Background = BadgePill.Background = RedBrush;
+
+        foreach (var group in groups)
+        {
+            var app = Messengers.Get(group.App);
+            var message = group.Display;
+            int appCount = group.Messages.Sum(m => m.Count);
+            string title = !string.IsNullOrWhiteSpace(message.Title)
+                ? message.Title
+                : app?.Name ?? group.App;
+            string text = message.CountOnly && string.IsNullOrWhiteSpace(message.Text)
+                ? $"{appCount} unread"
+                : message.Text;
+
+            var button = new Button
+            {
+                Style = (Style)FindResource("RowButton"),
+                Margin = new Thickness(0, 0, 0, 8),
+                ToolTip = "Open " + (app?.Name ?? group.App),
+                Tag = message,
+            };
+            button.Click += MessageRow_Click;
+
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(AppLogo(group.App, 28));
+
+            var textPanel = new StackPanel { Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+            textPanel.Children.Add(new TextBlock
+            {
+                Text = title, FontSize = 13, FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            textPanel.Children.Add(new TextBlock
+            {
+                Text = text, FontSize = 12, Foreground = DimBrush,
+                TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0),
+                Visibility = string.IsNullOrWhiteSpace(text) ? Visibility.Collapsed : Visibility.Visible,
+            });
+            Grid.SetColumn(textPanel, 1);
+            row.Children.Add(textPanel);
+
+            var pill = new Border { Style = (Style)FindResource("CountPill"), Background = BrandBrush(group.App) };
+            pill.Child = new TextBlock
+            {
+                Text = appCount > 99 ? "99+" : appCount.ToString(CultureInfo.InvariantCulture),
+                Style = (Style)FindResource("CountText"),
+            };
+            Grid.SetColumn(pill, 2);
+            row.Children.Add(pill);
+            button.Content = row;
+            MessageRows.Children.Add(button);
+        }
+    }
+
+    void PopulateAppLogos(Panel host, IEnumerable<string> apps, double size)
+    {
+        foreach (string app in apps)
+        {
+            var logo = AppLogo(app, size);
+            logo.Margin = new Thickness(0, 0, 3, 0);
+            host.Children.Add(logo);
+        }
     }
 
     static Brush BrandBrush(string app)
@@ -1009,8 +1082,7 @@ public partial class MainWindow : Window
 
     void MessageRow_Click(object sender, RoutedEventArgs e)
     {
-        if (_messages.Count == 0 || Messengers.Get(_messages[^1].App) is not { } app) return;
-        var latest = _messages[^1];
+        if (sender is not Button { Tag: ChatMessage latest } || Messengers.Get(latest.App) is not { } app) return;
         _chat.MarkRead(app.Key);
         SetExpanded(false);
         // From a browser: back to the site. Otherwise the app, by the id its notifications came with.

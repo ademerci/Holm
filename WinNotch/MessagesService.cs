@@ -322,7 +322,8 @@ internal sealed class MessagesService
                     if (appId != null) _appIds[message.App] = appId;
                     // Whatever is already there when we start is old news: count it, but don't pop out.
                     if (_primed && _shown(message.App) && (arrived == null || message.Time >= arrived.Time)) arrived = message;
-                    if (_logoTried.Add(message.App)) await LoadLogoAsync(notification, message.App);
+                    if (_logoTried.Add(message.App) || (message.App == "discord" && !_logos.ContainsKey(message.App)))
+                        await LoadLogoAsync(notification, message.App);
                 }
             }
             if (message != null && !_read.Contains(id)) unread.Add(message);
@@ -330,6 +331,9 @@ internal sealed class MessagesService
         if (listener != _listener) return null; // switched off while loading a logo
         foreach (var gone in _seen.Keys.Where(id => !present.Contains(id)).ToList()) _seen.Remove(gone);
         _read.IntersectWith(present);
+        // Windows can expire a toast from the notification center while its message is still unread.
+        // Keep messages already received until the user opens that messenger or clicks the notch row.
+        unread.AddRange(_toasts.Where(m => !present.Contains(m.Id) && !_read.Contains(m.Id)));
         unread.RemoveAll(m => _read.Contains(m.Id)); // marked read while we were busy
         unread.Sort((a, b) => a.Time.CompareTo(b.Time));
         _toasts = unread;
@@ -448,6 +452,11 @@ internal sealed class MessagesService
     {
         try
         {
+            if (app == "discord" && await Shell.RunAsync(DiscordLogo) is { } discordLogo)
+            {
+                _logos[app] = discordLogo;
+                return;
+            }
             var logo = notification.AppInfo?.DisplayInfo?.GetLogo(new Windows.Foundation.Size(64, 64));
             if (logo == null) return;
             byte[] bytes;
@@ -475,13 +484,23 @@ internal sealed class MessagesService
     void LoadShellLogo(string app, string appId)
     {
         var ui = _poll.Dispatcher;
-        Task.Run(() =>
+        Shell.RunAsync(() =>
         {
-            try { return Shell.IconOf(Shell.AppTarget(appId), 64); }
+            try { return app == "discord" ? DiscordLogo() : Shell.IconOf(Shell.AppTarget(appId), 64); }
             catch { return null; }
         }).ContinueWith(t =>
         {
             if (t.Result is { } icon) ui.InvokeAsync(() => { if (_logos.TryAdd(app, icon) && _messages.Count > 0) Changed?.Invoke(null); });
         }, TaskScheduler.Default);
+    }
+
+    static ImageSource? DiscordLogo()
+    {
+        try
+        {
+            var installed = Shell.FindApp(new[] { "Discord" });
+            return installed == null ? null : Shell.IconOf(Shell.AppTarget(installed.Id), 64);
+        }
+        catch { return null; }
     }
 }
