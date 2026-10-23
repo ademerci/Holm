@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.8 – 2026-10-23
 
 ### Changed
 - Bluetooth battery scans run away from the UI thread so device enumeration cannot stall the notch; overlapping scans are skipped.

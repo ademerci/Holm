@@ -73,14 +73,14 @@ How it stays safe:
 
 ## Lightweight
 
-Native WPF on .NET 10 and event driven: it reacts when Windows reports a change instead of polling.
+Native WPF on .NET 10, with event driven updates where Windows provides them. While the notch is open, it redraws the clock only when the minute changes and the volume controls only when their displayed values change. Bluetooth battery scans run in the background so device enumeration does not pause the notch; a second scan is skipped while one is still running.
 
 | State | CPU | RAM (Task Manager) | Working set |
 | --- | --- | --- | --- |
 | Idle | ~0.02–0.03 % | ~20–35 MB | ~55–80 MB |
 | Music playing, equalizer animated | ~0.3–0.5 % | ~45–55 MB | ~95–120 MB |
 
-Measured on an 8-thread laptop, a few minutes after start. Task Manager's *Memory* column is the private working set; the working set also counts the Windows libraries Holm shares with other apps. Holm hands its memory back to Windows 6 seconds after it starts, once more after its first update check, a few seconds after music stops and whenever the notch closes (then it's 1–5 MB for a moment), and grows back to these values as it touches things again – after music to about 18 MB (48 MB working set); what it has reserved stays flat, so nothing leaks. Turning off the equalizer animation brings playback down to idle levels.
+CPU and memory figures above were measured on an 8-thread laptop before the 1.5.8 redraw changes; they have not been remeasured for this release. Task Manager's *Memory* column is the private working set; the working set also counts the Windows libraries Holm shares with other apps. Holm hands its memory back to Windows 6 seconds after it starts, once more after its first update check, a few seconds after music stops and whenever the notch closes (then it's 1–5 MB for a moment), and grows back to these values as it touches things again – after music to about 18 MB (48 MB working set); what it has reserved stays flat, so nothing leaks. Turning off the equalizer animation brings playback down to idle levels.
 
 **Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so Holm watches the folder of Windows' notification database instead and looks only when it changes. Windows keeps the database open and often only reports a change once someone else opens the file, so Holm also compares a marker every 2 seconds that Windows rewrites with every change to the database – a fifth of a millisecond – and only reads when it moved; a new message shows up within 2–4 seconds. Asking the notification center for its notifications is the expensive part, so that only happens when a notification arrived, changed or went. **Downloads** work the same way: Holm is told when a file appears in Downloads and only measures sizes while a download is running.
 
