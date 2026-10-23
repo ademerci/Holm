@@ -23,9 +23,11 @@ namespace WinNotch;
 public partial class MainWindow
 {
     /// <summary>What a chip in the share view stands for: a friend, a person nearby, or "send with a code" (neither).</summary>
-    sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null)
+    /// <param name="Place">For the chips that aren't people: <see cref="ShelfPlace"/> (or "send with a code" when null).</param>
+    sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null, string? Place = null)
     {
-        public string Name => Friend?.Name ?? Peer?.Name ?? "Code";
+        public const string ShelfPlace = "shelf";
+        public string Name => Friend?.Name ?? Peer?.Name ?? (Place == ShelfPlace ? "Shelf" : "Code");
     }
 
     static readonly Brush ShareBlue = Frozen(Color.FromRgb(0x0A, 0x84, 0xFF));
@@ -134,7 +136,8 @@ public partial class MainWindow
     void OnDrag(DragEventArgs e)
     {
         e.Handled = true;
-        if (!_settings.Beam || _busy || _installingUpdate || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
+        // Without Beam, the shelf is all there is to drop on. Not while dragging off the shelf.
+        if (_draggingOut || _busy || _installingUpdate || _hiddenForFullscreen || !e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             e.Effects = DragDropEffects.None;
             return;
@@ -180,7 +183,17 @@ public partial class MainWindow
         var target = TargetOf(e.OriginalSource as DependencyObject);
         Diag.Log($"Dropped at {e.GetPosition(Island)} on {e.OriginalSource?.GetType().Name} -> {target?.Name ?? "nothing"}");
         EndShare();
-        if (!_settings.Beam || _busy || _installingUpdate) return;
+        if (_draggingOut || _busy || _installingUpdate) return;
+        if (target?.Place == ShareTarget.ShelfPlace)
+        {
+            AddToShelf(dropped); // folders too: only the paths are kept
+            return;
+        }
+        if (!_settings.Beam)
+        {
+            ShowPeek("\uE7B8", "Drop it on “Shelf” to keep it here", "", null, false, null);
+            return;
+        }
 
         var paths = dropped.Where(File.Exists).ToList();
         if (paths.Count == 0)
@@ -220,11 +233,14 @@ public partial class MainWindow
     void RefreshShareTargets()
     {
         int files = _dragFiles.Length;
-        ShareTitle.Text = files == 1 ? $"Send “{Path.GetFileName(_dragFiles[0])}”" : $"Send {files} files";
-        var peers = _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>();
-        var friends = _demoFriends ?? _friends.Friends;
+        bool beam = _settings.Beam;
+        string what = files == 1 ? $"“{Path.GetFileName(_dragFiles[0])}”" : $"{files} files";
+        ShareTitle.Text = beam ? "Send " + what : what;
+        var peers = beam ? _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
+        var friends = beam ? _demoFriends ?? _friends.Friends : Array.Empty<Friend>();
         int online = friends.Take(8).Count(_friends.IsOnline);
-        ShareHint.Text = friends.Count > 0
+        ShareHint.Text = !beam ? "Drop it on Shelf to keep it here and drag it out later."
+            : friends.Count > 0
             ? "Drop it on a friend, on someone nearby, or on Code." + (online switch { 0 => "", 1 => " One friend is online.", _ => $" {online} friends are online." })
             : peers.Count == 0
                 ? "No one with Holm on this network – drop it on Code to send it anywhere."
@@ -232,7 +248,7 @@ public partial class MainWindow
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
         // Online dots change in place, for the same reason.
-        string shown = string.Join("|", friends.Take(8).Select(f => f.Key).Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
+        string shown = beam + "|" + string.Join("|", friends.Take(8).Select(f => f.Key).Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && ShareTargets.Children.Count > 0)
         {
             ShowOnlineDots();
@@ -247,7 +263,8 @@ public partial class MainWindow
             ShareTargets.Children.Add(Chip(Avatar(Initials(friend.Name), AvatarColor(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true));
         foreach (var peer in peers.Take(6))
             ShareTargets.Children.Add(Chip(Avatar(Initials(peer.Name), AvatarColor(peer.Name)), peer.Name, new ShareTarget(peer)));
-        ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
+        ShareTargets.Children.Add(Chip(Avatar("", ShelfGray, icon: true), "Shelf", new ShareTarget(null, Place: ShareTarget.ShelfPlace)));
+        if (beam) ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
         ShowOnlineDots();
     }
 
