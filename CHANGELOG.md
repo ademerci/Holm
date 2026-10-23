@@ -3,6 +3,7 @@
 ## Unreleased
 
 - File sending checks that the recipient's notch is open before offering files; no answer within 15 seconds reports that they're offline or Holm is closed.
+- Incoming file offers play a sound, and cancelling while the recipient's accept prompt is open now tells them the sender cancelled.
 - Adding a friend you already have now shows that they're already in your friends list and skips adding or notifying them again.
 
 ### Fixed

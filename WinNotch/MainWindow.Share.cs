@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Media;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading;
@@ -521,15 +522,24 @@ public partial class MainWindow
     {
         string sender = "";
         // The transfer code continues on worker threads, so the question has to be asked on the UI thread.
-        var saved = await FileTransfer.ReceiveAsync(channel,
-            offer => Dispatcher.InvokeAsync(() =>
-            {
-                if (knownSender != null) offer = offer with { Sender = knownSender };
-                sender = offer.Sender;
-                return AskAsync(offer, cts.Token);
-            }).Task.Unwrap(),
-            Native.DownloadsFolder(),
-            new Progress<double>(p => ShowProgress($"Receiving from {sender}", "Saving to Downloads", p, sending: false)), cts.Token);
+        IReadOnlyList<string>? saved;
+        try
+        {
+            saved = await FileTransfer.ReceiveAsync(channel,
+                (offer, decisionToken) => Dispatcher.InvokeAsync(() =>
+                {
+                    if (knownSender != null) offer = offer with { Sender = knownSender };
+                    sender = offer.Sender;
+                    return AskAsync(offer, decisionToken);
+                }).Task.Unwrap(),
+                Native.DownloadsFolder(),
+                new Progress<double>(p => ShowProgress($"Receiving from {sender}", "Saving to Downloads", p, sending: false)), cts.Token);
+        }
+        catch (FileTransfer.SenderCancelledException)
+        {
+            EndTask("\uE711", RedBrush, "Sender cancelled", "They cancelled before you responded");
+            return;
+        }
 
         if (saved == null) { EndTask("", RedBrush, "Declined", $"Nothing was saved from {sender}"); return; }
         string first = saved[0];
@@ -543,6 +553,7 @@ public partial class MainWindow
     async Task<bool> AskAsync(ShareOffer offer, CancellationToken ct)
     {
         var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        SystemSounds.Asterisk.Play();
         ShowTask(Initials(offer.Sender), AvatarColor(offer.Sender), $"{offer.Sender} wants to send you", Summary(offer), null,
                  ("Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
         using (ct.Register(() => answer.TrySetResult(false)))

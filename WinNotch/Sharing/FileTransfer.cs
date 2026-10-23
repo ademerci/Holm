@@ -23,13 +23,18 @@ public sealed record ShareOffer(string Sender, IReadOnlyList<ShareFile> Files)
 /// </summary>
 public static class FileTransfer
 {
-    const byte Offer = 1, Answer = 2, Data = 3, Done = 4, Received = 5;
+    const byte Offer = 1, Answer = 2, Data = 3, Done = 4, Received = 5, Cancelled = 6;
     const int ChunkSize = 64 * 1024;
     public const int MaxFiles = 1000;
     public const long MaxTotalBytes = 100L * 1024 * 1024 * 1024;
 
     sealed record OfferDto(string Sender, List<FileDto> Files);
     sealed record FileDto(string Name, long Size);
+
+    public sealed class SenderCancelledException : OperationCanceledException
+    {
+        public SenderCancelledException() : base("The sender cancelled the transfer before it was accepted.") { }
+    }
 
     /// <summary>Offers the files, and sends them if the receiver accepts.</summary>
     /// <returns>True when the receiver accepted and confirmed everything arrived; false when they declined.</returns>
@@ -44,7 +49,19 @@ public static class FileTransfer
         var offer = JsonSerializer.SerializeToUtf8Bytes(new OfferDto(Trim(sender, 64), files));
         await channel.SendAsync(Prefix(Offer, offer), ct).ConfigureAwait(false);
 
-        var answer = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+        byte[] answer;
+        try { answer = await channel.ReceiveAsync(ct).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The receiver may still be looking at the offer. Tell them why the connection is closing.
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await channel.SendAsync(new[] { Cancelled }, timeout.Token).ConfigureAwait(false);
+            }
+            catch { }
+            throw;
+        }
         if (answer.Length != 2 || answer[0] != Answer) throw new InvalidDataException("Unexpected answer.");
         if (answer[1] != 1) return false;
 
@@ -80,12 +97,58 @@ public static class FileTransfer
     /// <returns>The saved paths, or null when declined.</returns>
     public static async Task<IReadOnlyList<string>?> ReceiveAsync(SecureChannel channel, Func<ShareOffer, Task<bool>> decide,
                                                                   string folder, IProgress<double>? progress, CancellationToken ct)
+        => await ReceiveAsync(channel, (offer, _) => decide(offer), folder, progress, ct).ConfigureAwait(false);
+
+    public static async Task<IReadOnlyList<string>?> ReceiveAsync(SecureChannel channel,
+                                                                  Func<ShareOffer, CancellationToken, Task<bool>> decide,
+                                                                  string folder, IProgress<double>? progress, CancellationToken ct)
     {
         var first = await channel.ReceiveAsync(ct).ConfigureAwait(false);
         if (first.Length < 2 || first[0] != Offer) throw new InvalidDataException("Expected an offer.");
         var offer = ParseOffer(first.AsSpan(1));
 
-        bool accept = await decide(offer).ConfigureAwait(false);
+        using var decisionLifetime = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var waitForCancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task<bool> decision = decide(offer, decisionLifetime.Token);
+        Task<byte[]> cancelFrame = channel.ReceiveAsync(waitForCancel.Token);
+        bool accept;
+        if (await Task.WhenAny(decision, cancelFrame).ConfigureAwait(false) == cancelFrame)
+        {
+            try
+            {
+                var frame = await cancelFrame.ConfigureAwait(false);
+                if (IsCancellation(frame))
+                {
+                    decisionLifetime.Cancel();
+                    try { await decision.ConfigureAwait(false); } catch { }
+                    throw new SenderCancelledException();
+                }
+                throw new InvalidDataException("Unexpected message while waiting for a file decision.");
+            }
+            catch
+            {
+                decisionLifetime.Cancel();
+                try { await decision.ConfigureAwait(false); } catch { }
+                throw;
+            }
+        }
+
+        try { accept = await decision.ConfigureAwait(false); }
+        catch
+        {
+            waitForCancel.Cancel();
+            try { await cancelFrame.ConfigureAwait(false); } catch (OperationCanceledException) when (waitForCancel.IsCancellationRequested) { }
+            throw;
+        }
+        waitForCancel.Cancel();
+        try
+        {
+            var frame = await cancelFrame.ConfigureAwait(false);
+            if (IsCancellation(frame)) throw new SenderCancelledException();
+            throw new InvalidDataException("Unexpected message while waiting for a file decision.");
+        }
+        catch (OperationCanceledException) when (waitForCancel.IsCancellationRequested) { }
+
         if (accept && !HasRoom(folder, offer.TotalBytes))
         {
             await channel.SendAsync(new[] { Answer, (byte)0 }, ct).ConfigureAwait(false);
@@ -110,6 +173,7 @@ public static class FileTransfer
                     while (remaining > 0)
                     {
                         var frame = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+                        if (IsCancellation(frame)) throw new SenderCancelledException();
                         if (frame.Length < 2 || frame[0] != Data) throw new InvalidDataException("Expected file data.");
                         int length = frame.Length - 1;
                         if (length > remaining) throw new InvalidDataException("More data than offered.");
@@ -125,6 +189,7 @@ public static class FileTransfer
             }
 
             var done = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+            if (IsCancellation(done)) throw new SenderCancelledException();
             if (done.Length != 1 || done[0] != Done) throw new InvalidDataException("Expected the end of the transfer.");
             await channel.SendAsync(new[] { Received }, ct).ConfigureAwait(false);
             progress?.Report(1);
@@ -137,6 +202,8 @@ public static class FileTransfer
             throw;
         }
     }
+
+    static bool IsCancellation(byte[] frame) => frame.Length == 1 && frame[0] == Cancelled;
 
     static ShareOffer ParseOffer(ReadOnlySpan<byte> json)
     {
