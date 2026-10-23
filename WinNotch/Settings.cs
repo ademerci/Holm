@@ -33,6 +33,8 @@ internal sealed class AppSettings
     public bool Privacy { get; set; } = true;
     /// <summary>A call (an app like Discord, Teams or Zoom using the microphone) shows in the notch with its length.</summary>
     public bool Calls { get; set; } = true;
+    /// <summary>Files and folders parked on the shelf, oldest first (only their paths).</summary>
+    public List<string> Shelf { get; set; } = new();
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

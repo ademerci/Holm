@@ -243,6 +243,12 @@
 
                     <!-- Idle: nothing going on; a small lock while a VPN is connected -->
                     <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="0,0,14,0">
+                        <!-- Something on the shelf: how many -->
+                        <StackPanel x:Name="IdleShelf" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Margin="14,0,0,0" Visibility="Collapsed">
+                            <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="IdleShelfCount" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
                         <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
                                    Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Visibility="Collapsed"/>
@@ -479,6 +485,21 @@
                                     </Button>
                                 </StackPanel>
                             </Grid>
+
+                            <!-- The shelf: files parked here, to drag out where they should go -->
+                            <StackPanel x:Name="ShelfRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                <Grid>
+                                    <TextBlock x:Name="ShelfTitle" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"
+                                               HorizontalAlignment="Left" Background="Transparent" Cursor="SizeAll"
+                                               ToolTip="Drag to take everything off the shelf at once"
+                                               MouseLeftButtonDown="Shelf_MouseDown" MouseMove="Shelf_MouseMove"/>
+                                    <Button HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
+                                            ToolTip="Clear the shelf (the files stay where they are)" Click="ShelfClear_Click">
+                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}"/>
+                                    </Button>
+                                </Grid>
+                                <WrapPanel x:Name="ShelfItemsPanel" Margin="0,6,0,0"/>
+                            </StackPanel>
 
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>
 

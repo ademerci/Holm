@@ -210,6 +210,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { Diag.Error(ex); }
         StartPrivacy();
+        InitShelf();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -347,6 +348,7 @@ public partial class MainWindow : Window
         ApplyState();
         UpdateBackdrop();
         ShowPrivacy();
+        if (expand) ShowShelf();
     }
 
     void ApplyState(bool animate = true)
@@ -1582,6 +1584,28 @@ public partial class MainWindow : Window
         ShowPrivacy();
         _peekTimer.Stop(); // "Call ended"
         _peekActive = false;
+        ApplyState();
+
+        // 1.6: the shelf
+        _demoShelf = new[] { @"C:\Demo\Mockups.fig", @"C:\Demo\Holiday photos.zip", @"C:\Demo\Notes.docx", @"C:\Demo\Invoice 1042.pdf" };
+        OnMediaChanged(null, false);
+        ShowShelf();
+        ApplyState();
+        await Snap(dir, "shelf-idle", 60);
+        SetExpanded(true);
+        await Snap(dir, "expanded-shelf", 300);
+        SetExpanded(false);
+        _demoFriends = new List<WinNotch.Sharing.Friend> { new() { Name = "Lena Hoffmann", Key = "demo-lena" } };
+        _dragFiles = new[] { @"C:\Demo\Notes.docx" };
+        _sharing = true;
+        RefreshShareTargets();
+        HighlightChip(ShareTargets.Children.OfType<Button>().First(b => b.Tag is ShareTarget { Place: ShareTarget.ShelfPlace }));
+        ApplyState();
+        await Snap(dir, "share-shelf", 140);
+        _sharing = false;
+        _demoFriends = null;
+        _demoShelf = null;
+        ShowShelf();
         ApplyState();
     }
 
