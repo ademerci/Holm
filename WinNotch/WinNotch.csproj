@@ -11,7 +11,7 @@
     <RootNamespace>WinNotch</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Holm</Product>
-    <Version>1.5.8</Version>
+    <Version>1.6.0</Version>
     <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
     <EnableCompressionInSingleFile Condition="'$(SelfContained)' == 'true'">true</EnableCompressionInSingleFile>
 
