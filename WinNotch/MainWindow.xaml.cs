@@ -21,9 +21,9 @@ public partial class MainWindow : Window
 {
     enum NotchState { None, Idle, Badge, Media, Download, Peek, Message, Volume, Task, Share, Expanded }
 
-    const double ExpandedWidth = 440;
+    const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
-    const double BaseWidth = 480;
+    const double BaseWidth = 560;
     static readonly (string Name, double Scale)[] Sizes = { ("Small", 0.85), ("Normal", 1), ("Large", 1.15), ("Extra large", 1.3) };
     static readonly Brush DimBrush = Frozen(Color.FromArgb(0xA6, 0xFF, 0xFF, 0xFF));
     static readonly Brush GreenBrush = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
@@ -996,6 +996,7 @@ public partial class MainWindow : Window
             DevicesPanel.Children.Add(DeviceChip(d.Glyph, d.Name, d.Battery, false));
         if (DevicesPanel.Children.Count == 0)
             DevicesPanel.Children.Add(new TextBlock { Text = "No battery devices", FontSize = 12, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center });
+        if (_expanded && _state == NotchState.Expanded) ApplyState();
     }
 
     /// <summary>Just a green lock, so the batteries keep their room; the name is in the tooltip and the pop-out.</summary>

@@ -83,7 +83,7 @@ public partial class MainWindow
                 menu.Items.Add(BluetoothItem(entry));
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(SettingsItem("Add a device…", "ms-settings-connectabledevices:devicediscovery"));
+        menu.Items.Add(SettingsItem("Add a device…", "ms-settings:bluetooth"));
         menu.Items.Add(SettingsItem("Bluetooth settings", "ms-settings:bluetooth"));
         menu.Closed += Menu_Closed;
         _bluetoothMenu = menu;

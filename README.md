@@ -26,7 +26,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **VPN** – while a VPN is connected, a small lock sits in the idle notch and a green one next to the batteries, and the notch says when it connects or drops. It knows Windows' own VPN connections and the usual apps (WireGuard, OpenVPN, NordVPN, Proton VPN, Mullvad, Cisco, GlobalProtect, FortiClient, …). Right-click › *VPN indicator* turns it off.
 - **Beam** (Holm's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
-- **Updates in the app** – checks for stable releases shortly after startup and every six hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
+- **Updates in the app** – checks for stable releases shortly after startup and every two hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.

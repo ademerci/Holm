@@ -11,7 +11,7 @@ namespace WinNotch;
 public partial class MainWindow
 {
     static readonly Version RunningVersion = typeof(App).Assembly.GetName().Version ?? new Version(1, 0, 0);
-    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
+    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(2);
     readonly CancellationTokenSource _updateLifetime = new();
     DispatcherTimer _updateTimer = null!;
     UpdateService? _updates;

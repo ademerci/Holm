@@ -1,7 +1,7 @@
 ﻿<Window x:Class="WinNotch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Holm" Width="480" Height="250" Left="0" Top="0"
+        Title="Holm" Width="560" Height="250" Left="0" Top="0"
         WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
         ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
         WindowStartupLocation="Manual" UseLayoutRounding="True"
@@ -335,7 +335,7 @@
 
                     <!-- Expanded: hover -->
                     <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
-                          Width="400" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
+                          Width="480" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
                         <StackPanel>
 
                             <StackPanel x:Name="MediaPanel">
@@ -422,7 +422,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel x:Name="DevicesPanel" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"/>
+                                <WrapPanel x:Name="DevicesPanel" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <!-- Bluetooth on and off, and the paired headphones and speakers to connect -->
                                     <Button x:Name="BluetoothBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
