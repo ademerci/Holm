@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.5 – 2026-10-23
 
 ### Added
 - **Output device.** A new button next to the volume in the open notch lists your speakers, headphones and headsets, with a tick at the one playing now and an icon for each kind (headphones, headset, speakers, a monitor over HDMI). Picking one makes it the default for music, games and calls alike, like choosing it in Windows' Sound settings. The button is only there when there's more than one device to pick.
