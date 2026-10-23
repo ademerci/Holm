@@ -177,6 +177,8 @@
                         <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                         <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
                         <Separator/>
+                        <!-- 5 minutes … 1 hour, or pause / more time / stop while one runs; filled when the menu opens -->
+                        <MenuItem x:Name="MenuTimer" Header="Timer"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -217,6 +219,9 @@
                             <Border x:Name="MediaBadge" Style="{StaticResource CountPill}" Margin="0,0,9,0" Visibility="Collapsed">
                                 <TextBlock x:Name="MediaBadgeText" Style="{StaticResource CountText}"/>
                             </Border>
+                            <!-- A running timer takes the equalizer's place -->
+                            <TextBlock x:Name="CompactTimer" FontSize="13" FontWeight="SemiBold" Foreground="#FFFF9F0A"
+                                       VerticalAlignment="Center" Visibility="Collapsed"/>
                             <StackPanel x:Name="EqPanel" VerticalAlignment="Center" Orientation="Horizontal" Height="14">
                                 <Rectangle x:Name="Bar1" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
                                     <Rectangle.RenderTransform><ScaleTransform ScaleY="0.45"/></Rectangle.RenderTransform>
@@ -239,6 +244,14 @@
                         <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
                                    Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Visibility="Collapsed"/>
+                    </Grid>
+
+                    <!-- Timer: a timer runs and nothing plays -->
+                    <Grid x:Name="TimerView" Opacity="0" IsHitTestVisible="False" Margin="14,0">
+                        <TextBlock Text="&#xE916;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A"
+                                   HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TimerText" FontSize="14" FontWeight="SemiBold" Foreground="#FFFF9F0A"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Badge: nothing playing, unread messages -->
@@ -413,6 +426,28 @@
                                 <TextBlock x:Name="DownloadRowName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- A running timer: what's left, pause and stop -->
+                            <Grid x:Name="TimerRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="&#xE916;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="TimerRowText" FontSize="15" FontWeight="SemiBold" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TimerRowLength" FontSize="12" Foreground="{StaticResource Dim}" Margin="10,1,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button x:Name="TimerPauseBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="TimerPause_Click">
+                                        <TextBlock x:Name="TimerPauseIcon" Text="&#xE769;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                                    </Button>
+                                    <Button Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="2,0,0,0" ToolTip="Stop the timer" Click="TimerStop_Click">
+                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                                    </Button>
+                                </StackPanel>
                             </Grid>
 
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>

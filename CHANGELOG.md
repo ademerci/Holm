@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Timer.** Right-click › *Timer* starts one from 1 minute to 1 hour. The time left counts down in the notch – in orange, in place of the equalizer while music plays, on its own otherwise – and the open notch has pause and stop; the menu also adds a minute or five. When it's up, the notch rings (Windows' Alarm 1 sound) and offers *+5 min*. It keeps the moment it ends instead of counting ticks, so sleep or a busy PC never makes it run slow, and it only ticks once a second while one runs.
+
 ## 1.5.8 – 2026-10-23
 
 ### Changed
