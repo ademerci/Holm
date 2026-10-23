@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Timer, Media, Download, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -123,6 +123,7 @@ public partial class MainWindow : Window
         InitDownloads();
         InitUpdates();
         InitTimer();
+        InitCall();
 
         Progress.ValueCommitted += v =>
         {
@@ -218,6 +219,7 @@ public partial class MainWindow : Window
         _btSoon.Stop();
         _btLate.Stop();
         _timerTick.Stop();
+        _callTick.Stop();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -354,6 +356,7 @@ public partial class MainWindow : Window
                    : TaskShowing ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
+                   : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
@@ -381,6 +384,7 @@ public partial class MainWindow : Window
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
+            case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
@@ -425,6 +429,7 @@ public partial class MainWindow : Window
             SetView(CompactView, target == NotchState.Media, animate);
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(TimerView, target == NotchState.Timer, animate);
+            SetView(CallView, target == NotchState.Call, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(VolumeView, target == NotchState.Volume, animate);
@@ -1239,6 +1244,7 @@ public partial class MainWindow : Window
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
+        MenuCalls.IsChecked = _settings.Calls;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
@@ -1564,8 +1570,19 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-privacy", 300);
         SetExpanded(false);
+
+        // 1.6: a call
+        _demoSensors = new[] { new SensorUse(Sensor.Microphone, "Discord", "Discord", DateTime.UtcNow.AddSeconds(-754)) };
+        ShowPrivacy();
+        await Snap(dir, "call", 60);
+        SetExpanded(true);
+        await Snap(dir, "expanded-call", 300);
+        SetExpanded(false);
         _demoSensors = null;
         ShowPrivacy();
+        _peekTimer.Stop(); // "Call ended"
+        _peekActive = false;
+        ApplyState();
     }
 
     static MediaInfo DemoMedia()

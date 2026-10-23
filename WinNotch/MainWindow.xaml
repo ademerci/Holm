@@ -186,6 +186,7 @@
                         <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
                         <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
                         <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
+                        <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -245,6 +246,16 @@
                         <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
                                    Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Visibility="Collapsed"/>
+                    </Grid>
+
+                    <!-- Call: Discord, Teams, Zoom, WhatsApp or a browser uses the microphone -->
+                    <Grid x:Name="CallView" Opacity="0" IsHitTestVisible="False" Margin="9,0,14,0">
+                        <Border x:Name="CallLogoHost" Width="20" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock x:Name="CallMutedIcon" Text="&#xEC54;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                       Foreground="#FFFF453A" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed"/>
+                            <TextBlock x:Name="CallTime" FontSize="13" FontWeight="SemiBold" Foreground="#FF30D158" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Timer: a timer runs and nothing plays -->
@@ -427,6 +438,21 @@
                                 <TextBlock x:Name="DownloadRowName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- A call: the app, how long, and a button that mutes the microphone -->
+                            <Grid x:Name="CallRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="CallRowLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CallRowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="CallRowTime" FontSize="12" Foreground="#FF30D158" Margin="0,1,0,0"/>
+                                </StackPanel>
+                                <Button x:Name="CallMuteBtn" Grid.Column="2" Style="{StaticResource PillButton}" VerticalAlignment="Center" Click="CallMute_Click"/>
                             </Grid>
 
                             <!-- Apps using the microphone or the camera, and a button that mutes the microphone -->

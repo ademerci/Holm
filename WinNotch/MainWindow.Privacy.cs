@@ -21,8 +21,11 @@ public partial class MainWindow
     HashSet<(Sensor, string)> _knownSensors = new();
     IReadOnlyList<SensorUse>? _demoSensors = null; // README screenshots only (set in Debug builds)
 
-    IReadOnlyList<SensorUse> SensorsInUse
-        => _demoSensors ?? (_settings.Privacy ? _privacy?.InUse : null) ?? Array.Empty<SensorUse>();
+    /// <summary>Every app recording now, whatever the dot's switch says (calls show on their own).</summary>
+    IReadOnlyList<SensorUse> AllSensors => _demoSensors ?? _privacy?.InUse ?? Array.Empty<SensorUse>();
+
+    /// <summary>The apps the dot is for: none when it's switched off.</summary>
+    IReadOnlyList<SensorUse> SensorsInUse => _settings.Privacy ? AllSensors : Array.Empty<SensorUse>();
 
     void StartPrivacy()
     {
@@ -53,7 +56,8 @@ public partial class MainWindow
         var started = uses.Where(u => !_knownSensors.Contains((u.Sensor, u.Key))).ToList();
         _knownSensors = uses.Select(u => (u.Sensor, u.Key)).ToHashSet();
         ShowPrivacy();
-        // Say once which app started (the camera first); the dot then stays while it records.
+        // Say once which app started (the camera first); the dot then stays while it records. A call shows itself.
+        if (_call != null) started.RemoveAll(u => u.Sensor == Sensor.Microphone && u.Key == _call.Key);
         if (started.Count == 0) return;
         var first = started[0];
         ShowPeek(first.Sensor == Sensor.Camera ? "" : "", $"{first.Name} is using the {SensorWord(first.Sensor)}", "", null, false, null);
@@ -68,6 +72,7 @@ public partial class MainWindow
         PrivacyDot.Fill = uses.Any(u => u.Sensor == Sensor.Camera) ? GreenBrush : MicOrange;
         PrivacyDot.Visibility = uses.Count > 0 && !_expanded ? Visibility.Visible : Visibility.Collapsed;
         if (_expanded) RefreshPrivacyRows();
+        ShowCall();
         // The minimized idle bar is too thin to sit beside: it grows back while the dot shows.
         if (_state == NotchState.Idle && _settings.MiniIdle)
         {
@@ -79,7 +84,9 @@ public partial class MainWindow
     void RefreshPrivacyRows()
     {
         PrivacyRows.Children.Clear();
-        var uses = SensorsInUse;
+        // The call's microphone is in the call row, with its own mute button.
+        var call = _settings.Calls ? Calls.Current(AllSensors) : null;
+        var uses = SensorsInUse.Where(u => call == null || u.Sensor != Sensor.Microphone || u.Key != call.Key).ToList();
         var shown = uses.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         bool resize = PrivacyRows.Visibility != shown;
         PrivacyRows.Visibility = shown;
