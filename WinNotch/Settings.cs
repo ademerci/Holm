@@ -29,6 +29,8 @@ internal sealed class AppSettings
     public bool Downloads { get; set; } = true;
     /// <summary>A lock in the notch while a VPN is connected, and a note when it connects or drops.</summary>
     public bool Vpn { get; set; } = true;
+    /// <summary>A dot beside the notch while an app uses the microphone (orange) or the camera (green).</summary>
+    public bool Privacy { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

@@ -185,6 +185,7 @@
                         <MenuItem x:Name="MenuMessages" Header="Messages"/>
                         <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
                         <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
+                        <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -428,6 +429,9 @@
                                 <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
                             </Grid>
 
+                            <!-- Apps using the microphone or the camera, and a button that mutes the microphone -->
+                            <StackPanel x:Name="PrivacyRows" Margin="2,12,2,0" Visibility="Collapsed"/>
+
                             <!-- A running timer: what's left, pause and stop -->
                             <Grid x:Name="TimerRow" Margin="2,12,2,0" Visibility="Collapsed">
                                 <Grid.ColumnDefinitions>
@@ -488,6 +492,10 @@
                     </Grid>
                 </Grid>
             </Border>
+
+            <!-- Orange while an app uses the microphone, green while one uses the camera: beside the notch, like a phone's -->
+            <Ellipse x:Name="PrivacyDot" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top"
+                     Margin="0,11,-24,0" Fill="#FFFF9F0A" IsHitTestVisible="False" Visibility="Collapsed"/>
         </Grid>
     </Grid>
 </Window>

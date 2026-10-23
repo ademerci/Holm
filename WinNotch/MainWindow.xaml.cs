@@ -208,6 +208,7 @@ public partial class MainWindow : Window
             ShowVpn();
         }
         catch (Exception ex) { Diag.Error(ex); }
+        StartPrivacy();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -223,6 +224,7 @@ public partial class MainWindow : Window
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
         _volume.Shutdown();
         _vpn?.Dispose();
+        StopPrivacy();
         _chat.Stop();
         StopDownloads();
         StopSharing();
@@ -342,6 +344,7 @@ public partial class MainWindow : Window
         }
         ApplyState();
         UpdateBackdrop();
+        ShowPrivacy();
     }
 
     void ApplyState(bool animate = true)
@@ -357,7 +360,7 @@ public partial class MainWindow : Window
                    : _timer != null ? NotchState.Timer
                    : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
-        bool mini = target == NotchState.Idle && _settings.MiniIdle;
+        bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
 
         double w, h, r;
@@ -1235,6 +1238,7 @@ public partial class MainWindow : Window
         FillMessagesMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
+        MenuPrivacy.IsChecked = _settings.Privacy;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
@@ -1426,6 +1430,8 @@ public partial class MainWindow : Window
         _vpn?.Dispose(); // only the demo VPN below shows
         _vpn = null;
         ShowVpn();
+        StopPrivacy(); // and only demo apps use the microphone
+        ShowPrivacy();
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);
@@ -1544,6 +1550,22 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-timer", 240);
         SetExpanded(false);
         StopTimer();
+
+        // 1.6: microphone and camera
+        _demoSensors = new[]
+        {
+            new SensorUse(Sensor.Camera, "Teams", "ms-teams", DateTime.UtcNow.AddMinutes(-3)),
+            new SensorUse(Sensor.Microphone, "Teams", "ms-teams", DateTime.UtcNow.AddMinutes(-3)),
+            new SensorUse(Sensor.Microphone, "Discord", "Discord", DateTime.UtcNow.AddMinutes(-12)),
+        };
+        ShowPrivacy();
+        ApplyState();
+        await Snap(dir, "privacy-dot", 60);
+        SetExpanded(true);
+        await Snap(dir, "expanded-privacy", 300);
+        SetExpanded(false);
+        _demoSensors = null;
+        ShowPrivacy();
     }
 
     static MediaInfo DemoMedia()

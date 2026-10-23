@@ -155,7 +155,7 @@ internal sealed class VolumeService
 
         public void OnDefaultDeviceChanged(int flow, int role, string? defaultDeviceId)
         {
-            if (flow == 0 /* eRender */ && role == 1 /* eMultimedia */) _owner.DefaultDeviceChanged?.Invoke();
+            if (flow == _owner._flow && role == _owner._role) _owner.DefaultDeviceChanged?.Invoke();
         }
 
         public void OnDeviceStateChanged(string deviceId, int newState) { }
@@ -165,6 +165,7 @@ internal sealed class VolumeService
     }
 
     readonly Listener _listener;
+    readonly int _flow, _role;
     IMMDeviceEnumerator? _enumerator;
     IAudioEndpointVolume? _endpoint;
     Guid _context = Guid.NewGuid(); // marks changes we make ourselves, so they don't pop up the notch
@@ -174,7 +175,18 @@ internal sealed class VolumeService
     /// <summary>Another output device became the default. Raised on a worker thread; call <see cref="Bind"/> on the UI thread.</summary>
     public event Action? DefaultDeviceChanged;
 
-    public VolumeService() => _listener = new Listener(this);
+    /// <summary>The speakers: the default playback device for music and games.</summary>
+    public VolumeService() : this(0 /* eRender */, 1 /* eMultimedia */) { }
+
+    VolumeService(int flow, int role)
+    {
+        _flow = flow;
+        _role = role;
+        _listener = new Listener(this);
+    }
+
+    /// <summary>The microphone: the default recording device.</summary>
+    public static VolumeService Microphone() => new(1 /* eCapture */, 0 /* eConsole */);
 
     /// <summary>Starts listening to the default device's volume. Call again when the default device changes.</summary>
     public void Bind()
@@ -187,7 +199,7 @@ internal sealed class VolumeService
                 _enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
                 _enumerator.RegisterEndpointNotificationCallback(_listener);
             }
-            if (_enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out var device) != 0) return;
+            if (_enumerator.GetDefaultAudioEndpoint(_flow, _role, out var device) != 0) return;
             var iid = typeof(IAudioEndpointVolume).GUID;
             if (device.Activate(ref iid, 0x17 /* CLSCTX_ALL */, IntPtr.Zero, out var endpoint) == 0)
             {
@@ -248,6 +260,30 @@ internal sealed class VolumeService
     {
         if (_endpoint == null) return;
         try { if (_endpoint.GetMute(out bool muted) == 0) _endpoint.SetMute(!muted, ref _context); } catch { }
+    }
+
+    /// <summary>
+    /// Mutes or unmutes the device. For the microphone also the one calls use (Teams, Zoom: "communications"),
+    /// in case that's another one, so a call can't hear you either way.
+    /// </summary>
+    public void SetMute(bool mute)
+    {
+        if (_endpoint == null) return;
+        try { _endpoint.SetMute(mute, ref _context); } catch { }
+        if (_flow != 1 || _enumerator == null) return;
+        try
+        {
+            if (_enumerator.GetDefaultAudioEndpoint(_flow, 2 /* eCommunications */, out var device) != 0) return;
+            try
+            {
+                var iid = typeof(IAudioEndpointVolume).GUID;
+                if (device.Activate(ref iid, 0x17 /* CLSCTX_ALL */, IntPtr.Zero, out var endpoint) != 0) return;
+                try { ((IAudioEndpointVolume)endpoint).SetMute(mute, ref _context); }
+                finally { Marshal.ReleaseComObject(endpoint); }
+            }
+            finally { Marshal.ReleaseComObject(device); }
+        }
+        catch (Exception ex) { Diag.Log("Couldn't mute the call microphone: " + ex.Message); }
     }
 
     /// <summary>The playback devices you can switch to, by name, and which one is the default now. Empty if Windows won't say.</summary>
