@@ -22,6 +22,25 @@ namespace WinNotch;
 /// </summary>
 public partial class MainWindow
 {
+    static readonly Lazy<SoundPlayer> IncomingFileSound = new(() =>
+    {
+        var stream = typeof(MainWindow).Assembly.GetManifestResourceStream("WinNotch.Assets.incoming-file.wav")
+            ?? throw new InvalidOperationException("Incoming file sound is missing.");
+        var player = new SoundPlayer(stream);
+        player.Load();
+        return player;
+    });
+
+    static void PlayIncomingFileSound()
+    {
+        try { IncomingFileSound.Value.Play(); }
+        catch (Exception ex)
+        {
+            Diag.Log("Incoming file sound failed: " + ex.Message);
+            SystemSounds.Asterisk.Play();
+        }
+    }
+
     /// <summary>What a chip in the share view stands for: a friend, a person nearby, or "send with a code" (neither).</summary>
     sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null)
     {
@@ -681,9 +700,9 @@ public partial class MainWindow
     async Task<bool> AskAsync(ShareOffer offer, CancellationToken ct)
     {
         var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        SystemSounds.Asterisk.Play();
         ShowTask(Initials(offer.Sender), AvatarColor(offer.Sender), $"{offer.Sender} wants to send you", Summary(offer), null,
                  ("Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
+        PlayIncomingFileSound();
         using (ct.Register(() => answer.TrySetResult(false)))
         {
             var finished = await Task.WhenAny(answer.Task, Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None));

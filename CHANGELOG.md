@@ -4,6 +4,7 @@
 
 ### Changed
 - A blue circular download icon appears immediately after the **Updates** text in the right-click menu when a new version is available.
+- Incoming file offers play a short bundled chime alongside the accept/decline prompt, even when Windows system sounds are disabled.
 
 ## 1.5.8 – 2026-10-23
 
