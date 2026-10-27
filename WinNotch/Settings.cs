@@ -67,6 +67,10 @@ internal sealed class AppSettings
     public bool ColorPicker { get; set; } = true;
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
+    /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
+    public bool DiskWarning { get; set; } = true;
+    /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
+    public bool DiskWarned { get; set; }
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

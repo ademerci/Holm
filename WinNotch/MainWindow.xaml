@@ -217,6 +217,7 @@
                         <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
                         <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                         <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
+                        <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->

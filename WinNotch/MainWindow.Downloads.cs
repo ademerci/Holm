@@ -64,6 +64,7 @@ public partial class MainWindow
     {
         OnDownloadGone(download);
         Diag.Log("Download finished");
+        CheckDiskSoon(); // a big one may have filled the drive
         if (_hiddenForFullscreen) return;
         string name = Path.GetFileName(file);
         // A Beam question or transfer keeps the task view; a short note will do then.
