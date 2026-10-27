@@ -71,6 +71,8 @@ internal sealed class AppSettings
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
     public bool DiskWarned { get; set; }
+    /// <summary>A USB stick or SD card pops out with "Open" and "Eject", and shows in the open notch while plugged in.</summary>
+    public bool UsbDrives { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

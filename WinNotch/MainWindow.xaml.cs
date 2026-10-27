@@ -227,6 +227,7 @@ public partial class MainWindow : Window
         CheckReminders(); // also the ones missed while the PC was off
         StartCapsLock();
         StartDiskSpace();
+        StartUsb();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -273,6 +274,10 @@ public partial class MainWindow : Window
                     Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
                     Dispatcher.InvokeAsync(CheckDiskSoon, DispatcherPriority.Background);
                 }
+                break;
+
+            case Native.WM_DEVICECHANGE when wParam.ToInt32() != Native.DBT_DEVNODES_CHANGED:
+                OnVolumeChange(wParam, lParam); // a USB stick or SD card came or went
                 break;
 
             case Native.WM_DEVICECHANGE when wParam.ToInt32() == Native.DBT_DEVNODES_CHANGED:
@@ -1307,6 +1312,7 @@ public partial class MainWindow : Window
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuCapsLock.IsChecked = _settings.CapsLock;
         MenuDiskWarning.IsChecked = _settings.DiskWarning;
+        MenuUsbDrives.IsChecked = _settings.UsbDrives;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1497,6 +1503,8 @@ public partial class MainWindow : Window
         _settings.ClearPasswords = false; // and your clipboard stays as it is
         _settings.DiskWarning = false; // your drive's numbers stay out of the pictures
         StartDiskSpace();
+        _settings.UsbDrives = false; // nor your USB sticks
+        StartUsb();
         _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
@@ -1635,6 +1643,21 @@ public partial class MainWindow : Window
         _peekTimer.Stop();
         _peekActive = false;
         ApplyState();
+
+        // 1.7: a USB stick
+        var stick = new UsbDrive('E', "KINGSTON", 32_000_000_000L, 12_884_901_888L);
+        ShowUsb(stick);
+        await Snap(dir, "usb", 70);
+        EndTask(UsbGlyph, GreenBrush, "Safe to remove", stick.Name);
+        await Snap(dir, "usb-ejected", 70);
+        HideTask();
+        _usb = new List<UsbDrive> { stick };
+        ShowUsbRows();
+        SetExpanded(true);
+        await Snap(dir, "expanded-usb", 300);
+        SetExpanded(false);
+        _usb = new List<UsbDrive>();
+        ShowUsbRows();
 
         // 1.7: the system drive running low
         ShowDiskWarning("C:", DiskSpace.Describe((long)(8.4 * DiskSpace.Gb), 256 * DiskSpace.Gb));

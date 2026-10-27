@@ -218,6 +218,7 @@
                         <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                         <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
                         <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
+                        <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -537,6 +538,9 @@
                                     <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
                                 </Grid>
     
+                                <!-- USB sticks and SD cards plugged in: open or eject -->
+                                <StackPanel x:Name="UsbRows"/>
+
                                 <!-- A call: the app, how long, and a button that mutes the microphone -->
                                 <Grid x:Name="CallRow" Margin="2,12,2,0" Visibility="Collapsed">
                                     <Grid.ColumnDefinitions>
