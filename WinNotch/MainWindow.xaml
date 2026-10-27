@@ -202,7 +202,7 @@
                     AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver" DragLeave="Island_DragLeave" Drop="Island_Drop">
                 <Border.ContextMenu>
                     <ContextMenu Closed="Menu_Closed">
-                        <MenuItem x:Name="MenuAnim" Header="Animate equalizer" IsCheckable="True" Click="MenuAnim_Click"/>
+                        <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
                         <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                         <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
                         <Separator/>
@@ -305,18 +305,24 @@
                     </Grid>
 
                     <!-- Idle: nothing going on; a small lock while a VPN is connected -->
-                    <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="0,0,14,0">
-                        <!-- The weather where you are -->
-                        <StackPanel x:Name="IdleWeather" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Margin="14,0,0,0" Visibility="Collapsed">
+                    <!-- Idle: the time (or the weather) on the left, the one thing that matters most on the right -->
+                    <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="14,0,14,0">
+                        <TextBlock x:Name="IdleClock" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}"
+                                   HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <StackPanel x:Name="IdleWeather" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed">
                             <Border x:Name="IdleWeatherIcon" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="IdleWeatherText" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="IdleWeatherText" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <!-- The next reminder today -->
+                            <StackPanel x:Name="IdleReminder" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="IdleReminderTime" FontSize="11" FontWeight="SemiBold" Foreground="#FFFF9F0A" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <!-- Something on the shelf: how many -->
                             <StackPanel x:Name="IdleShelf" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                                 <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="IdleShelfCount" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="IdleShelfCount" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                             <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10" Margin="8,0,0,0"
                                        Foreground="{StaticResource Dim}" VerticalAlignment="Center" Visibility="Collapsed"/>
@@ -528,22 +534,36 @@
                                     </StackPanel>
                                 </StackPanel>
     
-                                <StackPanel x:Name="ClockPanel" Visibility="Collapsed" Margin="2,0,0,0">
-                                    <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
-                                               FontWeight="Light" Margin="0,-6,0,0"/>
-                                    <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
-                                    <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
-                                    <!-- The weather; a click changes the place -->
-                                    <StackPanel x:Name="WeatherLine" Margin="1,10,0,0" Background="Transparent" Cursor="Hand" Visibility="Collapsed"
-                                                ToolTip="Change the place" MouseLeftButtonUp="WeatherLine_Click">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border x:Name="WeatherIconHost" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="WeatherText" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <!-- No music: today at a glance. The time and the weather, what's next, the note, and the tools reached for most -->
+                                <StackPanel x:Name="ClockPanel" Visibility="Collapsed" Margin="2,0,2,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
+                                                       FontWeight="Light" Margin="0,-6,0,0"/>
+                                            <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
                                         </StackPanel>
-                                        <TextBlock x:Name="RainText" FontSize="11" Foreground="#FF64D2FF" Margin="24,2,0,0"/>
-                                    </StackPanel>
-                                    <TextBlock x:Name="WeatherAdd" Text="+ Add the weather for your city" FontSize="11" Foreground="{StaticResource Faint}"
-                                               Margin="1,10,0,0" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonUp="WeatherLine_Click"/>
+                                        <!-- The weather; a click changes the place -->
+                                        <StackPanel x:Name="WeatherLine" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,2,0,0"
+                                                    Background="Transparent" Cursor="Hand" Visibility="Collapsed" ToolTip="Change the place"
+                                                    MouseLeftButtonUp="WeatherLine_Click">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Border x:Name="WeatherIconHost" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="WeatherTemp" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26"
+                                                           FontWeight="Light" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="WeatherText" FontSize="11" Foreground="{StaticResource Dim}" HorizontalAlignment="Right"
+                                                       MaxWidth="230" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                            <TextBlock x:Name="RainText" FontSize="11" Foreground="#FF64D2FF" HorizontalAlignment="Right"
+                                                       MaxWidth="230" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="WeatherAdd" Grid.Column="1" Text="+ Weather" FontSize="11" Foreground="{StaticResource Faint}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,6,0,0" Cursor="Hand" Visibility="Collapsed"
+                                                   ToolTip="Show the weather for your city" MouseLeftButtonUp="WeatherLine_Click"/>
+                                    </Grid>
                                     <StackPanel x:Name="WeatherSetup" Margin="0,10,0,0" Visibility="Collapsed">
                                         <Grid>
                                             <TextBox x:Name="WeatherBox" Style="{StaticResource NotchTextBox}" MaxLength="80"
@@ -554,6 +574,69 @@
                                         <TextBlock x:Name="WeatherHint" Text="Type a city and press Enter" FontSize="11"
                                                    Foreground="{StaticResource Dim}" Margin="4,6,0,0" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
+
+                                    <!-- What's next, and the note: each opens its tool -->
+                                    <Grid x:Name="TodayCards" Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="TodayReminder" Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="TodayReminder_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                    <TextBlock x:Name="TodayReminderTitle" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock x:Name="TodayReminderWhen" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                        <Button x:Name="TodayNote" Grid.Column="2" Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="TodayNote_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFFD60A" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                    <TextBlock x:Name="TodayNoteTitle" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock x:Name="TodayNoteMore" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- The tools reached for most -->
+                                    <WrapPanel x:Name="TodayTools" Margin="0,10,0,-8">
+                                        <Button x:Name="QuickCalculator" Style="{StaticResource ChipButton}" Click="CalculatorTool_Click" ToolTip="Calculator">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Calculator" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickColor" Style="{StaticResource ChipButton}" Click="ColorPicker_Click" ToolTip="Pick a color from the screen (Esc cancels)">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Pick a color" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickClipboard" Style="{StaticResource ChipButton}" Click="ClipboardTool_Click" ToolTip="Clipboard history">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Clipboard" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickMixer" Style="{StaticResource ChipButton}" Click="MixerTool_Click" ToolTip="Volume per app">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Apps" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
                                 </StackPanel>
     
                                 <!-- Quiet hours: why messages don't pop out right now -->
