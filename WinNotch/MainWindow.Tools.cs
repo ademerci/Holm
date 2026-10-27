@@ -64,7 +64,8 @@ public partial class MainWindow
         RemindersToolBtn.Visibility = _settings.Reminders ? Visibility.Visible : Visibility.Collapsed;
         CalculatorToolBtn.Visibility = _settings.Calculator ? Visibility.Visible : Visibility.Collapsed;
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
-        bool any = false;
+        ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
+        bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())
         {
             if (button.Visibility == Visibility.Visible) any = true;

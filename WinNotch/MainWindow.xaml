@@ -215,6 +215,7 @@
                         <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
                         <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
                         <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
+                        <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -662,6 +663,10 @@
                                 </Button>
                                 <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
                                     <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <!-- Not a page: it closes the notch and picks a color from the screen -->
+                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">
+                                    <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
 
