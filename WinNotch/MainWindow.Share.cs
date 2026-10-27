@@ -464,7 +464,7 @@ public partial class MainWindow
     /// Like sending with a code, except that nobody has to pass the code on: it goes into the friend's inbox,
     /// sealed for them, and their notch comes to the relay by itself and asks them.
     /// </summary>
-    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false)
+    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null)
     {
         var cts = BeginTask();
         ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
@@ -481,10 +481,27 @@ public partial class MainWindow
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
             else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
+            if (queued != null) Unqueue(queued); // delivered, or they said no
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
         {
-            EndTask("\uE916", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
+            if (queued != null)
+            {
+                // Still not there: keep waiting, without a word.
+                _busy = false;
+                _friends.MarkOffline(friend);
+                HideTask();
+            }
+            else if (_settings.SendLater)
+            {
+                var send = Enqueue(friend, paths, text);
+                EndTask(LaterGlyph, TimerOrange, $"{friend.Name} is offline", "It goes once their Holm is back",
+                        ("Don't send", () => { HideTask(); Unqueue(send); }));
+                _taskHide.Interval = TimeSpan.FromSeconds(8);
+                _taskHide.Start();
+            }
+            else
+                EndTask("\uE916", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
