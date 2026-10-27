@@ -411,7 +411,7 @@ public partial class MainWindow : Window
                 ShareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(ShareView.DesiredSize.Height) + 6, 28);
                 break;
-            case NotchState.Task: (w, h, r) = (420, 60, 26); break;
+            case NotchState.Task: (w, h, r) = (TaskExtra.Visibility == Visibility.Visible ? 490 : 420, 60, 26); break;
             case NotchState.Phone: (w, h, r) = (420, 160, 28); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
@@ -1292,6 +1292,7 @@ public partial class MainWindow : Window
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
+        MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1749,7 +1750,14 @@ public partial class MainWindow : Window
         // 1.6: a screenshot
         ShowTask("\uE722", ShareBlue, "Screenshot", "Saved in Screenshots", null, ("Send", () => { }), ("Shelf", () => { }));
         if (DemoMedia().Art is { } picture) ShowTaskPicture(picture);
+        ShowTaskExtra("Copy text", () => { }); // 1.7
         await Snap(dir, "screenshot", 70);
+
+        // 1.7: the text read from it
+        TaskSubtitle.Text = "Text copied · 6 lines";
+        TaskExtra.Content = "Copied";
+        TaskExtra.IsEnabled = false;
+        await Snap(dir, "screenshot-text", 70);
         HideTask();
     }
 
