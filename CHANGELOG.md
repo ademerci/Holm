@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1 – 2026-10-27
+
+### Changed
+- **Settings window.** The right-click menu had grown taller than the screen. Its on/off switches now live in a window of their own (right-click › *Settings…*), grouped and with real switches; Esc closes it. The menu keeps the timer, sleep timer, Beam text, receiving, friends and updates; messages, quiet hours, weather, the AI button and the sizes are under *Customize*.
+
 ## 1.7.0 – 2026-10-27
 
 ### Added

@@ -202,50 +202,56 @@
                     AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver" DragLeave="Island_DragLeave" Drop="Island_Drop">
                 <Border.ContextMenu>
                     <ContextMenu Closed="Menu_Closed">
-                        <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
-                        <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
-                        <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
-                        <Separator/>
                         <!-- 5 minutes … 1 hour, or pause / more time / stop while one runs; filled when the menu opens -->
                         <MenuItem x:Name="MenuTimer" Header="Timer"/>
                         <!-- 15 minutes / 30 minutes / 1 hour / Off, and the moon button; filled when the menu opens -->
                         <MenuItem x:Name="MenuSleep" Header="Sleep timer"/>
-                        <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
-                        <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
-                        <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
-                        <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
-                        <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
-                        <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
-                        <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
-                        <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
-                        <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
-                        <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
-                        <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
-                        <!-- On, and the place; filled when the menu opens -->
-                        <MenuItem x:Name="MenuWeather" Header="Weather"/>
-                        <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
-                        <MenuItem x:Name="MenuAi" Header="AI button"/>
-                        <!-- Show messages, then one switch per app; filled in when the menu opens -->
-                        <MenuItem x:Name="MenuMessages" Header="Messages"/>
-                        <!-- On, from, until, and the apps and people that still pop out; filled when the menu opens -->
-                        <MenuItem x:Name="MenuQuiet" Header="Quiet hours"/>
-                        <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
-                        <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
-                        <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
-                        <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
-                        <MenuItem x:Name="MenuPauseForCalls" Header="Pause music during calls" IsCheckable="True" Click="MenuPauseForCalls_Click"/>
-                        <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
-                        <MenuItem x:Name="MenuScreenshotText" Header="Copy text from screenshots" IsCheckable="True" Click="MenuScreenshotText_Click"/>
-                        <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
-                        <MenuItem x:Name="MenuSendFolders" Header="Send folders as ZIP" IsCheckable="True" Click="MenuSendFolders_Click"/>
-                        <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
                         <!-- Beam copied text…, and whether beamed text goes to the clipboard; filled when the menu opens -->
                         <MenuItem x:Name="MenuBeamText" Header="Beam text"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
-                        <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
-                        <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                        <Separator/>
+                        <MenuItem x:Name="MenuSettings" Header="Settings…" Click="MenuSettings_Click"/>
+                        <MenuItem x:Name="MenuCustomize" Header="Customize">
+                            <!-- Show messages, then one switch per app; filled in when the menu opens -->
+                            <MenuItem x:Name="MenuMessages" Header="Messages"/>
+                            <!-- On, from, until, and the apps and people that still pop out; filled when the menu opens -->
+                            <MenuItem x:Name="MenuQuiet" Header="Quiet hours"/>
+                            <!-- On, and the place; filled when the menu opens -->
+                            <MenuItem x:Name="MenuWeather" Header="Weather"/>
+                            <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
+                            <MenuItem x:Name="MenuAi" Header="AI button"/>
+                            <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
+                            <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                        </MenuItem>
+                        <!-- The switches the settings window shows: their handlers apply each setting. Never shown here. -->
+                        <MenuItem x:Name="SettingsSwitches" Visibility="Collapsed">
+                            <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
+                            <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
+                            <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
+                            <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
+                            <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
+                            <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
+                            <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
+                            <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
+                            <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
+                            <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
+                            <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
+                            <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
+                            <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
+                            <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
+                            <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
+                            <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
+                            <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
+                            <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
+                            <MenuItem x:Name="MenuPauseForCalls" Header="Pause music during calls" IsCheckable="True" Click="MenuPauseForCalls_Click"/>
+                            <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
+                            <MenuItem x:Name="MenuScreenshotText" Header="Copy text from screenshots" IsCheckable="True" Click="MenuScreenshotText_Click"/>
+                            <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
+                            <MenuItem x:Name="MenuSendFolders" Header="Send folders as ZIP" IsCheckable="True" Click="MenuSendFolders_Click"/>
+                            <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
+                        </MenuItem>
                         <MenuItem x:Name="MenuUpdates">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">

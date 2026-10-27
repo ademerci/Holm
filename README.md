@@ -56,7 +56,10 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animations, minimize when idle, start with Windows, timer, sleep timer, a switch for each tool (notes, reminders, calculator, clipboard history, volume per app, color picker), clearing copied passwords, Caps Lock hint, low disk space warning, USB drives, internet connection, weather, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), quiet hours, downloads, VPN indicator, microphone and camera dot, calls, pausing music for calls, screenshots and copying their text, Beam, sending folders, beaming text, sending later, receive with a copied code, friends (waves too), collapsed size, expanded size, pick a screen, quit.
+- **Right-click menu** – short again: timer, sleep timer, beam text, receive with a copied code, friends (waves too), **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
+- **Settings window** – *Settings…* opens every on/off switch in a window of its own, in groups: general (animations, minimize when idle, start with Windows), pop-outs (downloads, screenshots and their text, Caps Lock, low disk space, USB drives, internet connection), the open notch's tools (notes, reminders, calculator, clipboard history, volume per app, color picker), calls and privacy (calls, pausing music for calls, microphone and camera dot, VPN, clearing copied passwords) and Beam (Beam, sending folders, sending later). Esc closes it.
+
+  ![Settings window](docs/settings.png)
 
 <p align="center">
   <img src="docs/notes.png" width="480" alt="The note in the open notch">

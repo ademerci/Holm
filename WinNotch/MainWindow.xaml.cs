@@ -1322,9 +1322,7 @@ public partial class MainWindow : Window
     /// </summary>
     void Island_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        MenuAnim.IsChecked = _settings.Animations;
-        MenuMini.IsChecked = _settings.MiniIdle;
-        try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
+        SyncSwitches();
         FillTimerMenu();
         FillSleepMenu();
         FillAiMenu();
@@ -1332,27 +1330,6 @@ public partial class MainWindow : Window
         FillQuietMenu();
         FillWeatherMenu();
         FillBeamTextMenu();
-        MenuDownloads.IsChecked = _settings.Downloads;
-        MenuVpn.IsChecked = _settings.Vpn;
-        MenuPrivacy.IsChecked = _settings.Privacy;
-        MenuCalls.IsChecked = _settings.Calls;
-        MenuPauseForCalls.IsChecked = _settings.PauseForCalls;
-        MenuNotes.IsChecked = _settings.Notes;
-        MenuReminders.IsChecked = _settings.Reminders;
-        MenuCalculator.IsChecked = _settings.Calculator;
-        MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
-        MenuAppVolume.IsChecked = _settings.AppVolume;
-        MenuSendFolders.IsChecked = _settings.SendFolders;
-        MenuSendLater.IsChecked = _settings.SendLater;
-        MenuClearPasswords.IsChecked = _settings.ClearPasswords;
-        MenuColorPicker.IsChecked = _settings.ColorPicker;
-        MenuScreenshotText.IsChecked = _settings.ScreenshotText;
-        MenuCapsLock.IsChecked = _settings.CapsLock;
-        MenuDiskWarning.IsChecked = _settings.DiskWarning;
-        MenuUsbDrives.IsChecked = _settings.UsbDrives;
-        MenuConnectivity.IsChecked = _settings.Connectivity;
-        MenuScreenshots.IsChecked = _settings.Screenshots;
-        MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
         FillSizeMenu();
@@ -1959,6 +1936,29 @@ public partial class MainWindow : Window
         TaskExtra.IsEnabled = false;
         await Snap(dir, "screenshot-text", 70);
         HideTask();
+
+        // 1.7.1: the settings window, off screen (snapshot settings, never saved)
+        var settings = MakeSettingsWindow();
+        settings.WindowStartupLocation = WindowStartupLocation.Manual;
+        settings.Left = -5000;
+        settings.ShowActivated = false;
+        settings.Show();
+        await Task.Delay(400);
+        settings.UpdateLayout();
+        if (settings.Content is FrameworkElement settingsPage)
+        {
+            var shot = new RenderTargetBitmap((int)(settingsPage.ActualWidth + 32) * 2, (int)(settingsPage.ActualHeight + 32) * 2, 192, 192, PixelFormats.Pbgra32);
+            var desk = new DrawingVisual();
+            using (var dc = desk.RenderOpen())
+                dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0x5B, 0x7F, 0xC9), Color.FromRgb(0x1D, 0x2B, 0x4F), 90), null, new Rect(0, 0, settingsPage.ActualWidth + 32, settingsPage.ActualHeight + 32));
+            shot.Render(desk);
+            shot.Render(settingsPage);
+            var png = new PngBitmapEncoder();
+            png.Frames.Add(BitmapFrame.Create(shot));
+            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, "settings.png"));
+            png.Save(file);
+        }
+        settings.Close();
     }
 
     static MediaInfo DemoMedia()
