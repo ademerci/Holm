@@ -139,3 +139,30 @@ internal static class ClipboardPrivacy
         return ClipVerdict.Keep;
     }
 }
+
+/// <summary>
+/// Wipes a copied password after <see cref="After"/>, but only if the clipboard still holds it: the clipboard's
+/// sequence number goes up with every change, so the same number means nobody copied anything since.
+/// </summary>
+internal sealed class ClipboardWipe
+{
+    public static readonly TimeSpan After = TimeSpan.FromSeconds(30);
+
+    uint? _armed;
+
+    public bool Armed => _armed != null;
+
+    /// <summary>A password was copied; <paramref name="sequence"/> is the clipboard's number for it.</summary>
+    public void Arm(uint sequence) => _armed = sequence;
+
+    /// <summary>Something else was copied: that is no business of ours.</summary>
+    public void Disarm() => _armed = null;
+
+    /// <summary>Whether to wipe now; true at most once per password.</summary>
+    public bool TakeDue(uint currentSequence)
+    {
+        bool due = _armed == currentSequence;
+        _armed = null;
+        return due;
+    }
+}

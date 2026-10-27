@@ -119,3 +119,64 @@ public class ClipboardHistoryTests
     public void The_history_is_never_saved_with_the_settings()
         => Assert.DoesNotContain("Clip", JsonSerializer.Serialize(new AppSettings()).Replace("\"ClipboardHistory\":true", ""));
 }
+
+public class ClipboardWipeTests
+{
+    [Fact]
+    public void Wipes_a_password_still_on_the_clipboard()
+    {
+        var wipe = new ClipboardWipe();
+        wipe.Arm(41);
+        Assert.True(wipe.Armed);
+        Assert.True(wipe.TakeDue(41));
+        Assert.False(wipe.Armed);
+    }
+
+    [Fact]
+    public void Leaves_alone_whatever_was_copied_since()
+    {
+        var wipe = new ClipboardWipe();
+        wipe.Arm(41);
+        Assert.False(wipe.TakeDue(42)); // you copied something else, or the password manager cleared it itself
+        Assert.False(wipe.Armed);
+    }
+
+    [Fact]
+    public void Wipes_only_once()
+    {
+        var wipe = new ClipboardWipe();
+        wipe.Arm(7);
+        Assert.True(wipe.TakeDue(7));
+        Assert.False(wipe.TakeDue(7));
+    }
+
+    [Fact]
+    public void Ordinary_copies_disarm_it()
+    {
+        var wipe = new ClipboardWipe();
+        wipe.Arm(7);
+        wipe.Disarm();
+        Assert.False(wipe.TakeDue(7));
+    }
+
+    [Fact]
+    public void A_new_password_restarts_the_wait()
+    {
+        var wipe = new ClipboardWipe();
+        wipe.Arm(7);
+        wipe.Arm(9);
+        Assert.False(new ClipboardWipe().TakeDue(9));
+        Assert.True(wipe.TakeDue(9));
+    }
+
+    [Fact]
+    public void Waits_thirty_seconds() => Assert.Equal(TimeSpan.FromSeconds(30), ClipboardWipe.After);
+
+    [Fact]
+    public void Settings_from_before_the_wipe_still_load()
+    {
+        var old = System.Text.Json.JsonSerializer.Deserialize<AppSettings>("{\"ClipboardHistory\":false}")!;
+        Assert.False(old.ClipboardHistory);
+        Assert.True(old.ClearPasswords);
+    }
+}

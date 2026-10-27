@@ -214,6 +214,7 @@
                         <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
                         <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
                         <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
+                        <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
