@@ -87,6 +87,8 @@ internal sealed class AppSettings
     public bool Beam { get; set; } = true;
     /// <summary>Relay for sending over the internet, "host:port".</summary>
     public string? Relay { get; set; }
+    /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
+    public bool Waves { get; set; } = true;
     double? _collapsedScale, _expandedScale;
     double _legacyScale = 1;
 

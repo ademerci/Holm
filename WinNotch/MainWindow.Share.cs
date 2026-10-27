@@ -99,6 +99,7 @@ public partial class MainWindow
         _friends.FriendRequested += OnFriendRequested;
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
+        _friends.Waved += OnWaved;
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
 
@@ -933,6 +934,7 @@ public partial class MainWindow
         }
         if (_friends.Friends.Count == 0) return;
         MenuFriends.Items.Add(new Separator());
+        FillWaveMenu();
         var remove = new MenuItem { Header = "Remove friend" };
         foreach (var friend in _friends.Friends.ToList())
         {
