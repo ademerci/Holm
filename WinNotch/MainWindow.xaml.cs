@@ -1654,6 +1654,11 @@ public partial class MainWindow : Window
         CalcBox.Text = "";
         SetExpanded(false);
 
+        // 1.7: a friend waves
+        ShowWaveFrom("Lena Hoffmann", () => { });
+        await Snap(dir, "wave", 70);
+        HideTask();
+
         // 1.7: the volume of each app
         SetExpanded(true);
         _settings.AppVolume = true;
