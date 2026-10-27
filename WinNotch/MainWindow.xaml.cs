@@ -129,6 +129,7 @@ public partial class MainWindow : Window
         InitSleep();
         InitNotes();
         InitReminders();
+        InitCalculator();
 
         Progress.ValueCommitted += v =>
         {
@@ -1275,6 +1276,7 @@ public partial class MainWindow : Window
         MenuPauseForCalls.IsChecked = _settings.PauseForCalls;
         MenuNotes.IsChecked = _settings.Notes;
         MenuReminders.IsChecked = _settings.Reminders;
+        MenuCalculator.IsChecked = _settings.Calculator;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1552,6 +1554,14 @@ public partial class MainWindow : Window
         await Snap(dir, "reminder", 70);
         HideTask();
         _reminders = new ReminderList(new List<Reminder>());
+
+        // 1.7: the calculator
+        SetExpanded(true);
+        ShowTool(Tool.Calculator);
+        CalcBox.Text = "12,5 × 4 + 15%";
+        await Snap(dir, "expanded-calculator", 260);
+        CalcBox.Text = "";
+        SetExpanded(false);
 
         // 1.7: the sleep timer
         _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));
