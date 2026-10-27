@@ -75,6 +75,11 @@ internal sealed class AppSettings
     public bool UsbDrives { get; set; } = true;
     /// <summary>"No internet" when the connection drops, "Back online" with how long when it returns.</summary>
     public bool Connectivity { get; set; } = true;
+    /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
+    public bool Weather { get; set; } = true;
+    public string? WeatherPlace { get; set; }
+    public double? WeatherLatitude { get; set; }
+    public double? WeatherLongitude { get; set; }
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

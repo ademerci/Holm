@@ -134,6 +134,7 @@ public partial class MainWindow : Window
         InitPasswordWipe();
         InitDiskSpace();
         InitConnectivity();
+        InitWeather();
 
         Progress.ValueCommitted += v =>
         {
@@ -230,6 +231,7 @@ public partial class MainWindow : Window
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
+        StartWeather();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -248,6 +250,7 @@ public partial class MainWindow : Window
         _diskHourly.Stop();
         _diskSoon.Stop();
         StopConnectivity();
+        _weatherTick.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -276,6 +279,7 @@ public partial class MainWindow : Window
                 {
                     Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
                     Dispatcher.InvokeAsync(CheckDiskSoon, DispatcherPriority.Background);
+                    Dispatcher.InvokeAsync(() => _ = RefreshWeatherAsync(), DispatcherPriority.Background); // if half an hour has passed
                     Dispatcher.InvokeAsync(() => HushConnectivity(TimeSpan.FromSeconds(45)), DispatcherPriority.Send); // Wi-Fi takes a moment to come back
                 }
                 else if (ev == Native.PBT_APMSUSPEND)
@@ -391,6 +395,7 @@ public partial class MainWindow : Window
             _liveTimer.Stop();
             _trimTimer.Start();
             ShowTool(Tool.None); // the next time it opens on home
+            if (_choosingPlace) { _choosingPlace = false; ShowWeather(); }
         }
         ApplyState();
         UpdateBackdrop();
@@ -1304,6 +1309,7 @@ public partial class MainWindow : Window
         FillAiMenu();
         FillMessagesMenu();
         FillQuietMenu();
+        FillWeatherMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
@@ -1514,6 +1520,10 @@ public partial class MainWindow : Window
         StartUsb();
         _settings.Connectivity = false;
         StartConnectivity();
+        _settings.WeatherPlace = null; // nor where you are
+        _settings.WeatherLatitude = _settings.WeatherLongitude = null;
+        _weather = null;
+        StartWeather();
         _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
@@ -1547,7 +1557,22 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-idle", 200);
 
+        // 1.7: the weather, idle and open, and choosing the place
+        _settings.WeatherPlace = "Munich, Bavaria, Germany";
+        _weather = new WeatherNow(14.2, 2, true, 20, 0.6);
+        ShowWeather();
         SetExpanded(false);
+        await Snap(dir, "idle-weather", 50);
+        SetExpanded(true);
+        await Snap(dir, "expanded-weather", 260);
+        ChoosePlace();
+        WeatherBox.Text = "Hamburg";
+        await Snap(dir, "expanded-weather-place", 300);
+        SetExpanded(false);
+        _settings.WeatherPlace = null;
+        _weather = null;
+        ShowWeather();
+
         _messages = new List<ChatMessage>
         {
             new() { App = "whatsapp", Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
