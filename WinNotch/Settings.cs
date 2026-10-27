@@ -33,6 +33,8 @@ internal sealed class AppSettings
     public bool Privacy { get; set; } = true;
     /// <summary>A call (an app like Discord, Teams or Zoom using the microphone) shows in the notch with its length.</summary>
     public bool Calls { get; set; } = true;
+    /// <summary>Music pauses while a call runs and plays on afterwards, if Holm paused it.</summary>
+    public bool PauseForCalls { get; set; } = true;
     /// <summary>Files and folders parked on the shelf, oldest first (only their paths).</summary>
     public List<string> Shelf { get; set; } = new();
     /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>

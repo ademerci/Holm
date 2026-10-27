@@ -189,6 +189,7 @@
                         <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
                         <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
                         <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
+                        <MenuItem x:Name="MenuPauseForCalls" Header="Pause music during calls" IsCheckable="True" Click="MenuPauseForCalls_Click"/>
                         <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
