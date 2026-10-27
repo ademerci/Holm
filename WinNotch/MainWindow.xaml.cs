@@ -106,8 +106,8 @@ public partial class MainWindow : Window
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
-            // Dragging a slider or menu open: try again shortly.
-            if (Mouse.Captured != null || MenuOpen) { _collapseDelay!.Start(); return; }
+            // Dragging a slider, a menu open or typing: try again shortly.
+            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -127,6 +127,7 @@ public partial class MainWindow : Window
         InitPhone();
         InitScreenshots();
         InitSleep();
+        InitNotes();
 
         Progress.ValueCommitted += v =>
         {
@@ -141,6 +142,7 @@ public partial class MainWindow : Window
         VolSlider.ValueChanging += v => { _volume.SetLevel((float)v); UpdateVolumeIcon(v, false); };
         Island.SizeChanged += (_, _) => UpdateShape();
 
+        Deactivated += OnDeactivated;
         SourceInitialized += OnSourceInitialized;
         Loaded += OnLoaded;
         Closed += OnClosed;
@@ -216,6 +218,7 @@ public partial class MainWindow : Window
         InitShelf();
         StartScreenshots();
         ShowSleep();
+        RefreshToolBar();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -353,6 +356,7 @@ public partial class MainWindow : Window
         {
             _liveTimer.Stop();
             _trimTimer.Start();
+            ShowTool(Tool.None); // the next time it opens on home
         }
         ApplyState();
         UpdateBackdrop();
@@ -1264,6 +1268,7 @@ public partial class MainWindow : Window
         MenuPrivacy.IsChecked = _settings.Privacy;
         MenuCalls.IsChecked = _settings.Calls;
         MenuPauseForCalls.IsChecked = _settings.PauseForCalls;
+        MenuNotes.IsChecked = _settings.Notes;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1447,6 +1452,7 @@ public partial class MainWindow : Window
         _settings.MiniIdle = false;
         _settings.CollapsedScale = _settings.ExpandedScale = 1;
         _settings.PauseForCalls = false; // the demo call must not pause your real music
+        _settings.NoteText = ""; // your note must not end up in a picture
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
@@ -1516,6 +1522,14 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-playmodes", 240);
         SetExpanded(false);
+
+        // 1.7: notes
+        _settings.NoteText = "Call Lena about the mockups\nBuy oat milk\nBook the train for Friday";
+        SetExpanded(true);
+        ShowTool(Tool.Notes);
+        await Snap(dir, "expanded-notes", 300);
+        SetExpanded(false);
+        _settings.NoteText = "";
 
         // 1.7: the sleep timer
         _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));

@@ -41,6 +41,10 @@ internal sealed class AppSettings
     public bool Screenshots { get; set; } = true;
     /// <summary>The moon in the open player that sets the sleep timer (it pauses the music after 15, 30 or 60 minutes).</summary>
     public bool SleepTimer { get; set; } = true;
+    /// <summary>The notes tool in the open notch.</summary>
+    public bool Notes { get; set; } = true;
+    /// <summary>The note itself. It stays on this PC.</summary>
+    public string NoteText { get; set; } = "";
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
