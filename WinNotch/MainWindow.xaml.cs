@@ -132,6 +132,7 @@ public partial class MainWindow : Window
         InitCalculator();
         InitClipboardHistory();
         InitPasswordWipe();
+        InitDiskSpace();
 
         Progress.ValueCommitted += v =>
         {
@@ -225,6 +226,7 @@ public partial class MainWindow : Window
         RefreshToolBar();
         CheckReminders(); // also the ones missed while the PC was off
         StartCapsLock();
+        StartDiskSpace();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -240,6 +242,8 @@ public partial class MainWindow : Window
         _wipeTimer.Stop();
         _picker?.Dispose();
         StopCapsLock();
+        _diskHourly.Stop();
+        _diskSoon.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -265,7 +269,10 @@ public partial class MainWindow : Window
                 if (ev == Native.PBT_POWERSETTINGCHANGE || ev == Native.PBT_APMPOWERSTATUSCHANGE)
                     Dispatcher.InvokeAsync(ReadPower, DispatcherPriority.Background);
                 else if (ev == Native.PBT_APMRESUMEAUTOMATIC)
+                {
                     Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
+                    Dispatcher.InvokeAsync(CheckDiskSoon, DispatcherPriority.Background);
+                }
                 break;
 
             case Native.WM_DEVICECHANGE when wParam.ToInt32() == Native.DBT_DEVNODES_CHANGED:
@@ -1299,6 +1306,7 @@ public partial class MainWindow : Window
         MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuCapsLock.IsChecked = _settings.CapsLock;
+        MenuDiskWarning.IsChecked = _settings.DiskWarning;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1487,6 +1495,8 @@ public partial class MainWindow : Window
         _reminders = new ReminderList(new List<Reminder>()); // nor your reminders
         _clipsPaused = true; // nor what you copy
         _settings.ClearPasswords = false; // and your clipboard stays as it is
+        _settings.DiskWarning = false; // your drive's numbers stay out of the pictures
+        StartDiskSpace();
         _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
@@ -1625,6 +1635,11 @@ public partial class MainWindow : Window
         _peekTimer.Stop();
         _peekActive = false;
         ApplyState();
+
+        // 1.7: the system drive running low
+        ShowDiskWarning("C:", DiskSpace.Describe((long)(8.4 * DiskSpace.Gb), 256 * DiskSpace.Gb));
+        await Snap(dir, "disk-low", 70);
+        HideTask();
 
         // 1.7: Caps Lock
         ShowCapsLock(true);
