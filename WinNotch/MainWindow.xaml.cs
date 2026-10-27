@@ -126,6 +126,7 @@ public partial class MainWindow : Window
         InitCall();
         InitPhone();
         InitScreenshots();
+        InitSleep();
 
         Progress.ValueCommitted += v =>
         {
@@ -214,6 +215,7 @@ public partial class MainWindow : Window
         StartPrivacy();
         InitShelf();
         StartScreenshots();
+        ShowSleep();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -224,6 +226,7 @@ public partial class MainWindow : Window
         _btLate.Stop();
         _timerTick.Stop();
         _callTick.Stop();
+        _sleepTick.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -1167,7 +1170,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The right-click menu, the list of output devices or the Bluetooth list is open.</summary>
-    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true || _bluetoothMenu?.IsOpen == true;
+    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true || _bluetoothMenu?.IsOpen == true || _sleepMenu?.IsOpen == true;
 
     void OnDefaultDeviceChanged()
     {
@@ -1252,6 +1255,7 @@ public partial class MainWindow : Window
         MenuMini.IsChecked = _settings.MiniIdle;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         FillTimerMenu();
+        FillSleepMenu();
         FillAiMenu();
         FillMessagesMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
@@ -1510,6 +1514,14 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-playmodes", 240);
         SetExpanded(false);
 
+        // 1.7: the sleep timer
+        _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));
+        ShowSleep();
+        SetExpanded(true);
+        await Snap(dir, "expanded-sleep", 240);
+        SetExpanded(false);
+        CancelSleep();
+
         _demoFriends = new List<WinNotch.Sharing.Friend> { new() { Name = "Lena Hoffmann", Key = "demo-lena" }, new() { Name = "Jonas", Key = "demo-jonas" } };
         _demoPeers = new List<NearbyPeer>
         {
@@ -1665,7 +1677,8 @@ public partial class MainWindow : Window
     {
         await Task.Delay(900);
         UpdateLayout();
-        const double scale = 2, width = 480;
+        const double scale = 2;
+        double width = Width; // the whole window: the open notch is wider than the 480 it used to be
         var image = new RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         var desktop = new DrawingVisual();
         using (var dc = desktop.RenderOpen())

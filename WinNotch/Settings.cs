@@ -37,6 +37,8 @@ internal sealed class AppSettings
     public List<string> Shelf { get; set; } = new();
     /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>
     public bool Screenshots { get; set; } = true;
+    /// <summary>The moon in the open player that sets the sleep timer (it pauses the music after 15, 30 or 60 minutes).</summary>
+    public bool SleepTimer { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
