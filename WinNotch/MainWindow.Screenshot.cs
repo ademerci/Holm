@@ -133,6 +133,9 @@ public partial class MainWindow
         _taskHide.Start();
     }
 
+    /// <summary>The "Send / Shelf" popup is up (ShowTask hides the picture again for every other task).</summary>
+    bool ScreenshotShowing => _taskVisible && TaskThumb.Visibility == Visibility.Visible;
+
     /// <summary>Reads the text in the screenshot on this PC and puts it on the clipboard. The text is never logged.</summary>
     async Task CopyScreenshotTextAsync()
     {
