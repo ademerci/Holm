@@ -65,6 +65,8 @@ internal sealed class AppSettings
     public bool ClearPasswords { get; set; } = true;
     /// <summary>The color picker button in the open notch.</summary>
     public bool ColorPicker { get; set; } = true;
+    /// <summary>The notch says so when Caps Lock goes on or off.</summary>
+    public bool CapsLock { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

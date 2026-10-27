@@ -224,6 +224,7 @@ public partial class MainWindow : Window
         ShowSleep();
         RefreshToolBar();
         CheckReminders(); // also the ones missed while the PC was off
+        StartCapsLock();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -238,6 +239,7 @@ public partial class MainWindow : Window
         _reminderTick.Stop();
         _wipeTimer.Stop();
         _picker?.Dispose();
+        StopCapsLock();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -1296,6 +1298,7 @@ public partial class MainWindow : Window
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
+        MenuCapsLock.IsChecked = _settings.CapsLock;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1619,6 +1622,13 @@ public partial class MainWindow : Window
         // 1.7: a copied password wiped
         ShowPeek(PasswordGlyph, "Password cleared from the clipboard", "", null, false, null);
         await Snap(dir, "password-cleared", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: Caps Lock
+        ShowCapsLock(true);
+        await Snap(dir, "caps-lock", 60);
         _peekTimer.Stop();
         _peekActive = false;
         ApplyState();
