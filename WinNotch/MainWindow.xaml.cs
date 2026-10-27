@@ -1313,6 +1313,7 @@ public partial class MainWindow : Window
         FillMessagesMenu();
         FillQuietMenu();
         FillWeatherMenu();
+        FillBeamTextMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
@@ -1661,6 +1662,14 @@ public partial class MainWindow : Window
         ShowTask(FolderGlyph, ShareBlue, "Packing Holiday photos", "As a ZIP, to send · 42%", 0.42, null, ("Cancel", () => { }));
         await Snap(dir, "packing", 70);
         _busy = false;
+        HideTask();
+
+        // 1.7: a text beamed by a friend
+        ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Text from Lena Hoffmann", "Copy it to your clipboard?", null,
+                 ("Copy", () => { }), ("Decline", () => { }), textIcon: true);
+        await Snap(dir, "beam-text", 70);
+        EndTask("\uE77F", GreenBrush, "Text from Lena Hoffmann copied", "Paste it with Ctrl+V");
+        await Snap(dir, "beam-text-copied", 70);
         HideTask();
 
         // 1.7: a friend waves
