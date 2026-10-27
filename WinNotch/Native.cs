@@ -63,6 +63,20 @@ internal static class Native
     [DllImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", CharSet = CharSet.Unicode)]
     static extern bool QueryFullProcessImageName(IntPtr process, int flags, char[] name, ref int size);
 
+    /// <summary>Full path of a process's program, or "" when it can't be asked (gone, or protected).</summary>
+    public static string ProcessPath(int processId)
+    {
+        IntPtr process = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, (uint)processId);
+        if (process == IntPtr.Zero) return "";
+        try
+        {
+            var buffer = new char[1024];
+            int size = buffer.Length;
+            return QueryFullProcessImageName(process, 0, buffer, ref size) ? new string(buffer, 0, size) : "";
+        }
+        finally { CloseHandle(process); }
+    }
+
     static uint _lastPid;
     static string _lastExe = "";
 
