@@ -208,6 +208,7 @@ public partial class MainWindow
             var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var content = new Grid();
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -241,8 +242,17 @@ public partial class MainWindow
                 if (_clips.Remove(key) is { } gone) ForgetClips(new List<ClipEntry> { gone });
                 ShowClipRows();
             };
-            Grid.SetColumn(remove, 1);
+            Grid.SetColumn(remove, 2);
             row.Children.Add(remove);
+            if (entry.Text is { } text && _settings.Beam && _settings.BeamText)
+            {
+                // Beam it to a friend, someone nearby or your phone.
+                var beam = new Button { Style = (Style)FindResource("NotchButton"), Width = 24, Height = 24, Margin = new Thickness(6, 0, 0, 0), ToolTip = "Beam this text" };
+                beam.Content = new TextBlock { Text = "\uE724", FontFamily = IconFont, FontSize = 10, Foreground = DimBrush };
+                beam.Click += (_, _) => BeamText(text);
+                Grid.SetColumn(beam, 1);
+                row.Children.Add(beam);
+            }
             ClipRows.Children.Add(row);
         }
         ClipEmpty.Visibility = _clips.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

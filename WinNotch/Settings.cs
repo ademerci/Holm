@@ -91,6 +91,8 @@ internal sealed class AppSettings
     public bool Waves { get; set; } = true;
     /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>
     public bool SendFolders { get; set; } = true;
+    /// <summary>Text can be beamed (from the clipboard), and beamed text arriving goes to the clipboard.</summary>
+    public bool BeamText { get; set; } = true;
     double? _collapsedScale, _expandedScale;
     double _legacyScale = 1;
 

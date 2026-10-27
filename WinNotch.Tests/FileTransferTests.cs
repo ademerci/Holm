@@ -160,3 +160,72 @@ public class FileTransferTests
         public void Report(double value) => report(value);
     }
 }
+
+public class TextBeamTests
+{
+    // How Holm 1.6 read offers: the same record, without "Text".
+    sealed record OfferBefore17(string Sender, List<FileBefore17> Files);
+    sealed record FileBefore17(string Name, long Size);
+
+    [Fact]
+    public async Task A_beamed_text_arrives_marked_as_text_where_the_receiver_wants_it()
+    {
+        using var source = new TempFolder();
+        using var downloads = new TempFolder();
+        using var clipboard = new TempFolder();
+        var (sender, receiver) = await Net.ChannelPairAsync();
+        string path = source.File("Beamed text.txt", Encoding.UTF8.GetBytes("Meeting at 15:30 – Raum 2.14 ✓"));
+        ShareOffer? seen = null;
+
+        var receive = FileTransfer.ReceiveAsync(receiver, (offer, _) => { seen = offer; return Task.FromResult(true); },
+                                                offer => offer.IsText ? clipboard.Path : downloads.Path, null, Net.Timeout());
+        Assert.True(await FileTransfer.SendAsync(sender, "Lena", new[] { path }, null, Net.Timeout(), text: true));
+        var saved = await receive;
+
+        Assert.True(seen!.IsText);
+        Assert.Equal(clipboard.Path, Path.GetDirectoryName(saved![0]));
+        Assert.Equal("Meeting at 15:30 – Raum 2.14 ✓", File.ReadAllText(saved[0], Encoding.UTF8));
+        Assert.Empty(Directory.GetFiles(downloads.Path));
+    }
+
+    [Fact]
+    public async Task Ordinary_files_are_no_text()
+    {
+        using var source = new TempFolder();
+        using var target = new TempFolder();
+        var (sender, receiver) = await Net.ChannelPairAsync();
+        ShareOffer? seen = null;
+        var receive = FileTransfer.ReceiveAsync(receiver, offer => { seen = offer; return Task.FromResult(true); }, target.Path, null, Net.Timeout());
+        await FileTransfer.SendAsync(sender, "Lena", new[] { source.File("notes.txt", new byte[] { 65 }) }, null, Net.Timeout());
+        await receive;
+        Assert.False(seen!.IsText);
+    }
+
+    [Fact]
+    public async Task Text_is_one_small_file()
+    {
+        using var source = new TempFolder();
+        var (sender, _) = await Net.ChannelPairAsync();
+        var two = new[] { source.File("a.txt", new byte[] { 1 }), source.File("b.txt", new byte[] { 2 }) };
+        await Assert.ThrowsAsync<ArgumentException>(() => FileTransfer.SendAsync(sender, "Lena", two, null, Net.Timeout(), text: true));
+        var big = new[] { source.File("big.txt", new byte[FileTransfer.MaxTextBytes + 1]) };
+        await Assert.ThrowsAsync<ArgumentException>(() => FileTransfer.SendAsync(sender, "Lena", big, null, Net.Timeout(), text: true));
+    }
+
+    [Fact]
+    public void Holm_before_17_reads_a_text_offer_as_an_ordinary_file()
+    {
+        string json = """{"Sender":"Lena","Files":[{"Name":"Beamed text.txt","Size":12}],"Text":true}""";
+        var old = JsonSerializer.Deserialize<OfferBefore17>(json)!;
+        Assert.Equal("Lena", old.Sender);
+        Assert.Equal("Beamed text.txt", Assert.Single(old.Files).Name);
+    }
+
+    [Fact]
+    public void Settings_from_before_text_beaming_still_load()
+    {
+        var old = JsonSerializer.Deserialize<AppSettings>("{\"SendFolders\":false}")!;
+        Assert.False(old.SendFolders);
+        Assert.True(old.BeamText);
+    }
+}
