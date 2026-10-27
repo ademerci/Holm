@@ -750,6 +750,7 @@ public partial class MainWindow : Window
         if (_expanded) RefreshMediaUi();
         ApplyState();
         UpdateBackdrop();
+        UpdateCallPause();
     }
 
     void OnMessagesChanged(ChatMessage? arrived)
@@ -1262,6 +1263,7 @@ public partial class MainWindow : Window
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
         MenuCalls.IsChecked = _settings.Calls;
+        MenuPauseForCalls.IsChecked = _settings.PauseForCalls;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1444,6 +1446,7 @@ public partial class MainWindow : Window
         _settings.Animations = false; // still frames, so the bars are captured at rest
         _settings.MiniIdle = false;
         _settings.CollapsedScale = _settings.ExpandedScale = 1;
+        _settings.PauseForCalls = false; // the demo call must not pause your real music
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
@@ -1600,6 +1603,11 @@ public partial class MainWindow : Window
         // 1.6: a call
         _demoSensors = new[] { new SensorUse(Sensor.Microphone, "Discord", "Discord", DateTime.UtcNow.AddSeconds(-754)) };
         ShowPrivacy();
+        ShowCallPausePeek(); // 1.7: the music paused for it
+        await Snap(dir, "call-pause", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
         await Snap(dir, "call", 60);
         SetExpanded(true);
         await Snap(dir, "expanded-call", 300);
