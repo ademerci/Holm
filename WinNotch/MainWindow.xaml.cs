@@ -138,6 +138,7 @@ public partial class MainWindow : Window
         InitWeather();
         InitMixer();
         InitSendLater();
+        InitToday();
 
         Progress.ValueCommitted += v =>
         {
@@ -236,6 +237,7 @@ public partial class MainWindow : Window
         StartConnectivity();
         StartWeather();
         StartSendLater();
+        ShowIdle();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -258,6 +260,7 @@ public partial class MainWindow : Window
         HideMixer();
         _laterTick.Stop();
         _laterSoon.Stop();
+        _idleClock.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -434,6 +437,7 @@ public partial class MainWindow : Window
             case NotchState.Expanded:
                 ExpandedView.Visibility = Visibility.Visible;
                 ShowQuietNote();
+                if (ClockPanel.Visibility == Visibility.Visible) ShowToday();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
                 UpdateLayout();
@@ -454,7 +458,10 @@ public partial class MainWindow : Window
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
-            default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
+            default:
+                (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15);
+                if (!mini) ShowIdle();
+                break;
         }
 
         // Media apps report every few seconds; only animate when the shape really changes.
@@ -492,8 +499,9 @@ public partial class MainWindow : Window
 
         if (target != _state)
         {
-            SetView(IdleView, target == NotchState.Idle && !mini, animate);
-            SetView(CompactView, target == NotchState.Media, animate);
+            bool soft = animate && _settings.Animations; // music coming and going cross-fades, unless animations are off
+            SetView(IdleView, target == NotchState.Idle && !mini, soft);
+            SetView(CompactView, target == NotchState.Media, soft);
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(TimerView, target == NotchState.Timer, animate);
             SetView(CallView, target == NotchState.Call, animate);
@@ -1001,9 +1009,15 @@ public partial class MainWindow : Window
     void RefreshMediaUi()
     {
         var info = _info;
-        MediaPanel.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
-        ClockPanel.Visibility = info != null ? Visibility.Collapsed : Visibility.Visible;
-        if (info == null) { UpdateClock(); return; }
+        var media = info != null ? Visibility.Visible : Visibility.Collapsed;
+        if (MediaPanel.Visibility != media)
+        {
+            MediaPanel.Visibility = media;
+            ClockPanel.Visibility = info != null ? Visibility.Collapsed : Visibility.Visible;
+            FadeIn(info != null ? MediaPanel : ClockPanel);
+            RefreshToolBar(); // the card brings its own tools
+        }
+        if (info == null) { UpdateClock(); ShowToday(); return; }
 
         TitleText.Text = info.Title;
         ArtistText.Text = info.Artist;
@@ -1583,6 +1597,21 @@ public partial class MainWindow : Window
         WeatherBox.Text = "Hamburg";
         await Snap(dir, "expanded-weather-place", 300);
         SetExpanded(false);
+        _choosingPlace = false;
+        ShowWeather();
+
+        // 1.7: today, with something coming up and a note
+        var soon = DateTime.Now.AddHours(3);
+        _reminders.Add("Dentist", new DateTime(soon.Year, soon.Month, soon.Day, soon.Hour, 30, 0, DateTimeKind.Local).ToUniversalTime());
+        _settings.NoteText = "Call Lena about the mockups\nBuy oat milk\nBook the train for Friday";
+        ShowReminderRows();
+        await Snap(dir, "idle-today", 50);
+        SetExpanded(true);
+        await Snap(dir, "expanded-today", 280);
+        SetExpanded(false);
+        _reminders = new ReminderList(new List<Reminder>());
+        _settings.NoteText = "";
+        ShowReminderRows();
         _settings.WeatherPlace = null;
         _weather = null;
         ShowWeather();

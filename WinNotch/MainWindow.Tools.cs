@@ -36,6 +36,7 @@ public partial class MainWindow
             button.Background = which == tool ? ToolLit : Brushes.Transparent;
         }
         OnToolShown(tool);
+        RefreshToolBar(); // home without music has the tools on its card
         if (_expanded && _state == NotchState.Expanded) ApplyState(); // a page has its own height
     }
 
@@ -75,7 +76,7 @@ public partial class MainWindow
             if (button.Visibility == Visibility.Visible) any = true;
             else if (which == _tool) ShowTool(Tool.None); // its switch was turned off while it was open
         }
-        ToolBar.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+        ToolBar.Visibility = any && !TodayShowing ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ───────────── typing ─────────────

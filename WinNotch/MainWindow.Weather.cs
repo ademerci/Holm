@@ -71,12 +71,14 @@ public partial class MainWindow
         {
             IdleWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 12, DimBrush);
             IdleWeatherText.Text = weather.Degrees;
-            WeatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, System.Windows.Media.Brushes.White);
-            WeatherText.Text = $"{weather.Degrees}  {weather.Summary} · {_settings.WeatherPlace}";
+            WeatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 24, System.Windows.Media.Brushes.White);
+            WeatherTemp.Text = weather.Degrees;
+            WeatherText.Text = $"{weather.Summary} · {(_settings.WeatherPlace ?? "").Split(',')[0]}"; // the city is enough here
             RainText.Text = weather.RainNote ?? "";
             RainText.Visibility = weather.RainNote != null ? Visibility.Visible : Visibility.Collapsed;
             if (weather.RainNote != null) IdleWeatherIcon.Child = WeatherIcons.Make(WeatherKind.Rain, weather.IsDay, 12, DimBrush);
         }
+        ShowIdle(); // the weather takes the clock's place
         if (_expanded && _state == NotchState.Expanded) ApplyState();
     }
 

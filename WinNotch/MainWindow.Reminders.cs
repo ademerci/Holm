@@ -129,6 +129,8 @@ public partial class MainWindow
         }
         if (_reminders.Items.Count > 6)
             ReminderRows.Children.Add(new TextBlock { Text = $"+{_reminders.Items.Count - 6} more", FontSize = 11, Foreground = DimBrush, Margin = new Thickness(24, 0, 0, 0) });
+        ShowIdle();
+        ShowToday();
         if (_expanded && _state == NotchState.Expanded && _tool == Tool.Reminders) ApplyState();
     }
 

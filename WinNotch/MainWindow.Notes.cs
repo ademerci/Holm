@@ -47,6 +47,7 @@ public partial class MainWindow
         if (text == _settings.NoteText) return;
         _settings.NoteText = text;
         _settings.Save();
+        ShowToday();
     }
 
     void NotesTool_Click(object sender, RoutedEventArgs e) => ToggleTool(Tool.Notes);
