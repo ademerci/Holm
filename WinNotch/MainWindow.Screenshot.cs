@@ -131,6 +131,9 @@ public partial class MainWindow
         _taskHide.Start();
     }
 
+    /// <summary>The "Send / Shelf" popup is up (ShowTask hides the picture again for every other task).</summary>
+    bool ScreenshotShowing => _taskVisible && TaskThumb.Visibility == Visibility.Visible;
+
     void ShowTaskPicture(ImageSource picture)
     {
         var brush = new ImageBrush(picture) { Stretch = Stretch.UniformToFill };

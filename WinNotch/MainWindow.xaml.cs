@@ -1100,6 +1100,13 @@ public partial class MainWindow : Window
 
     void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (ScreenshotShowing)
+        {
+            // Hidden feature: a click on the screenshot popup's empty space (not a button or the picture) dismisses it.
+            e.Handled = true;
+            HideTask();
+            return;
+        }
         if (_expanded || TaskShowing || _sharing || PhoneShowing) return;
         _expandDelay.Stop();
         SetExpanded(true);
