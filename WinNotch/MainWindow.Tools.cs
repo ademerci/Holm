@@ -43,18 +43,21 @@ public partial class MainWindow
     (FrameworkElement Page, Button Button, Tool Tool)[] ToolPages() => new (FrameworkElement, Button, Tool)[]
     {
         (NotesPage, NotesToolBtn, Tool.Notes),
+        (RemindersPage, RemindersToolBtn, Tool.Reminders),
     };
 
     /// <summary>Called when a page opens, so a tool can fill it in.</summary>
     void OnToolShown(Tool tool)
     {
         if (tool == Tool.Notes) ShowNotes();
+        else if (tool == Tool.Reminders) ShowRemindersPage();
     }
 
     /// <summary>Which tools are switched on; the bar hides when none is.</summary>
     void RefreshToolBar()
     {
         NotesToolBtn.Visibility = _settings.Notes ? Visibility.Visible : Visibility.Collapsed;
+        RemindersToolBtn.Visibility = _settings.Reminders ? Visibility.Visible : Visibility.Collapsed;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())
         {
