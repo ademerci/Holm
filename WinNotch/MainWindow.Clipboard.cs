@@ -24,7 +24,7 @@ public partial class MainWindow
     static readonly string ClipFolder = Path.Combine(Path.GetTempPath(), "Holm", "Clipboard");
 
     readonly ClipboardHistory _clips = new();
-    bool _clipsPaused;   // posing for screenshots: your clipboard must not end up in a picture
+    bool _clipsPaused = false; // posing for screenshots (set in Debug builds): your clipboard must not end up in a picture
     uint _restoredSeq;   // the clipboard change we made ourselves by putting an entry back
     string? _restoredKey;
 

@@ -7,20 +7,35 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 *Holm was called WinNotch up to version 1.5.0. Your settings carry over when you switch.*
 
 <p align="center">
-  <img src="docs/expanded.png" width="480" alt="Expanded notch with media controls, shuffle and repeat, battery levels">
+  <img src="docs/expanded.png" width="480" alt="Expanded notch with media controls and the tool bar">
+  <img src="docs/today.png" width="480" alt="Open without music: the time, the weather, the next reminder, the note and quick tools">
 </p>
 <p align="center">
+  <img src="docs/idle.png" width="480" alt="Idle notch with the weather and the next reminder">
   <img src="docs/compact.png" width="480" alt="Compact notch while music plays">
   <img src="docs/volume.png" width="480" alt="Volume pop-out">
   <img src="docs/peek.png" width="480" alt="Pop-out when headphones connect">
   <img src="docs/vpn.png" width="480" alt="Pop-out when a VPN connects">
   <img src="docs/call.png" width="480" alt="A Discord call in the notch, with the microphone dot beside it">
   <img src="docs/timer.png" width="480" alt="A timer counting down in place of the equalizer">
-  <img src="docs/screenshot.png" width="480" alt="A screenshot pops out with Send and Shelf">
+  <img src="docs/screenshot.png" width="480" alt="A screenshot pops out with Copy text, Shelf and Send">
 </p>
 
 ## Features
 
+- **Today at a glance** – idle, the notch shows the time (or the weather) and the one thing that matters most: the next reminder today, else what's on the shelf. Open without music, it's a card for today: time and date, the weather, the next reminder, your note, and the tools you reach for most.
+- **Tools in the open notch** – notes, reminders, a calculator, the clipboard history, a mixer and a color picker, each a click away in the tool bar (and on the today card). The notch only takes the keyboard while you type into one of its fields.
+- **Notes** – a small note that survives a restart and stays on this PC.
+- **Reminders in plain words** – "20 min laundry", "14:30 dentist", "tomorrow 9:00 call" (German works too). The notch rings on time with *+10 min*; reminders survive a restart, and one missed while the PC was off shows when it's back.
+- **Calculator** – type a sum, the result is there at once; click it to copy. "50 + 15%" works like on any calculator.
+- **Clipboard history** – the last 20 texts and pictures you copied; click one to put it back. Passwords that password managers mark as private are never read or kept, and a copied password leaves the clipboard after 30 seconds if it's still there. The history lives in memory only.
+- **Color picker** – click anywhere on the screen to copy that color's hex code.
+- **Text from screenshots** – *Copy text* on the screenshot pop-out reads the text with Windows' own OCR, on your PC.
+- **Volume per app** – a slider for each app that plays sound; click its icon to mute it.
+- **Weather** – temperature in the idle notch, the sky and the next hour's rain when it's open, for the city you type in. From [Open-Meteo](https://open-meteo.com) without an account, at most every 30 minutes.
+- **Quiet hours** – from one time to another, messages don't pop out (they still count on the badge); apps and people you choose still do.
+- **Sleep timer** – the moon in the open player stops the music after 15, 30 or 60 minutes. Music also pauses for calls and plays on afterwards.
+- **Heads-ups** – Caps Lock on or off, a USB stick plugged in (*Open*, *Eject*), the internet gone and back (with how long), and once when the system drive runs low.
 - **Media controls** for anything that talks to Windows' media controls – Spotify, YouTube in Chrome or Edge, VLC, … Cover, title, album, seek bar, play/pause, skip, **shuffle and repeat**, volume. Click the cover to bring the player to the front.
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
@@ -32,7 +47,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Shelf** – drop files or folders on *Shelf* in the drop view to park them in the notch, switch to the folder or window where they should go, and drag them out of the open notch (one, or all at once by the *Shelf* title). Dropped on a folder on the same drive they move, elsewhere they're copied – like dragging from Explorer. A small count in the idle notch shows what's waiting; only the paths are kept, and the shelf works with Beam off too.
 - **Screenshots** – take one (Win+Shift+S, Print Screen, Win+Print Screen) and it pops out of the notch, small, with *Send* – click a friend, someone nearby, *Phone* or *Code* instead of dragging – and *Shelf*; click the picture to open it. Holm watches the Screenshots folder and, for snips that only go to the clipboard, the Snipping Tool's clipboard; images you copy anywhere else are left alone.
 - **Timer** – right-click › *Timer* and pick 1 minute to 1 hour. The time left counts down in the notch (in place of the equalizer while music plays), with pause and stop when you open it; when it's up, the notch rings and offers five more minutes.
-- **Beam** (Holm's AirDrop) – drop files on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below).
+- **Beam** (Holm's AirDrop) – drop files or folders on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below). Copied text can be beamed too, and a friend whose Holm isn't running gets the files once it is.
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
 - **Updates in the app** – checks for stable releases shortly after startup and every two hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
@@ -41,7 +56,24 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
-- **Right-click menu** – animated equalizer, minimize when idle, start with Windows, timer, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), downloads, VPN indicator, microphone and camera dot, calls, screenshots, Beam, receive with a copied code, friends, collapsed size, expanded size, pick a screen, quit.
+- **Right-click menu** – animations, minimize when idle, start with Windows, timer, sleep timer, a switch for each tool (notes, reminders, calculator, clipboard history, volume per app, color picker), clearing copied passwords, Caps Lock hint, low disk space warning, USB drives, internet connection, weather, AI button (Claude, Gemini, ChatGPT, choose app…, off), messages (one switch per app), quiet hours, downloads, VPN indicator, microphone and camera dot, calls, pausing music for calls, screenshots and copying their text, Beam, sending folders, beaming text, sending later, receive with a copied code, friends (waves too), collapsed size, expanded size, pick a screen, quit.
+
+<p align="center">
+  <img src="docs/notes.png" width="480" alt="The note in the open notch">
+  <img src="docs/reminders.png" width="480" alt="Reminders typed in plain words">
+  <img src="docs/calculator.png" width="480" alt="The calculator">
+  <img src="docs/clipboard.png" width="480" alt="The clipboard history">
+  <img src="docs/mixer.png" width="480" alt="A slider for each app">
+  <img src="docs/quiet.png" width="480" alt="Quiet hours with a VIP">
+  <img src="docs/reminder.png" width="480" alt="A reminder comes due">
+  <img src="docs/color.png" width="480" alt="A picked color, copied">
+  <img src="docs/usb.png" width="480" alt="A USB stick with Open and Eject">
+  <img src="docs/online.png" width="480" alt="Back online after an outage">
+  <img src="docs/caps.png" width="480" alt="Caps Lock on">
+  <img src="docs/disk.png" width="480" alt="The system drive is almost full">
+</p>
+
+<p align="center"><img src="docs/idle-redesign.png" width="720" alt="The quiet notch before and after 1.7"></p>
 
 ## Beam
 
@@ -49,6 +81,9 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
   <img src="docs/airdrop-share.png" width="480" alt="Dropping a file on the notch: pick a person or Code">
   <img src="docs/airdrop-ask.png" width="480" alt="The receiver's notch asks before anything is saved">
   <img src="docs/phone.png" width="480" alt="A QR code for the phone's camera">
+  <img src="docs/beam-text.png" width="480" alt="A beamed text, to the clipboard">
+  <img src="docs/wave.png" width="480" alt="A friend waves">
+  <img src="docs/send-later.png" width="480" alt="A friend is offline: it goes once their Holm is back">
 </p>
 
 Drag files onto the notch. It opens and shows:
@@ -58,7 +93,7 @@ Drag files onto the notch. It opens and shows:
 - **Phone** – drop the files on *Phone* and the notch shows a QR code. Point your phone's camera at it: a page with the files opens in the phone's browser, to download (or open photos, videos and PDFs right away). No app, no cable, no cloud – the files come straight from your PC over the Wi-Fi, so the phone has to be on the same network. The link carries 128 random bits, serves those files and nothing else, and stops when you click *Done*, ten minutes after it opened, or shortly after everything reached the phone.
 - **Code** – works anywhere, also on networks that don't let devices talk to each other (school, office, hotspots). Drop the files on *Code* and a code like `WN-K7Q2A-…` is copied for you. Paste it to your friend in any chat; as soon as they copy it, their notch offers to receive the file. Right-click › *Receive with copied code* does the same.
 
-Received files land in your **Downloads** folder.
+Received files land in your **Downloads** folder. A **folder** goes as a ZIP (packed for the trip, deleted afterwards). **Text** you beam (*Beam text › Beam copied text…*, or the arrow next to a text in the clipboard history) lands on the other person's clipboard; Holm before 1.7 saves it as a text file in Downloads instead.
 
 ### Friends
 
@@ -66,7 +101,9 @@ Received files land in your **Downloads** folder.
 2. Your friend copies your code and chooses **Add**. Their Holm waits while yours asks you to *Accept* or *Decline* the request. Neither friend list changes until you accept; acceptance adds each of you to the other's list.
 3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it. A **green dot** means their Holm is running right now, so they'll see your files at once.
 
-Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer a file availability check within 15 seconds, Holm reports that they're offline or their notch is closed. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
+Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer within 15 seconds, the files wait (*Send later*, shown in the open notch with *Don't send*) and go as soon as their Holm is back: Holm asks every 15 minutes for two hours, then hourly, and every six hours leaves a sealed "something waits" note that their Holm answers when it starts. After a week it gives up. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
+
+**Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
 
 How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
 
