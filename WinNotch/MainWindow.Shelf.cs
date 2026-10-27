@@ -57,8 +57,8 @@ public partial class MainWindow
     void ShowShelf()
     {
         var items = ShelfItems;
-        IdleShelf.Visibility = items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         IdleShelfCount.Text = items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ShowIdle(); // the shelf shows unless a reminder is due today
         if (_expanded) RefreshShelfRow();
     }
 

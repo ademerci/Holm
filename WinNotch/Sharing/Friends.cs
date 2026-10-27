@@ -163,6 +163,10 @@ public enum FriendNoteKind
     Ping,
     /// <summary>"Yes, my Holm is running": the answer to <see cref="Ping"/>.</summary>
     Here,
+    /// <summary>A wave: "thinking of you". Holm before 1.7 doesn't know it and leaves it unopened.</summary>
+    Wave,
+    /// <summary>"I have something for you": a Holm 1.7 answers with <see cref="Here"/> once it runs. Older ones leave it unopened.</summary>
+    Waiting,
 }
 
 public static class FriendNotes
@@ -205,6 +209,8 @@ public static class FriendNotes
                 FriendNoteKind.RemovedYou => "removed",
                 FriendNoteKind.Ping => "ping",
                 FriendNoteKind.Here => "here",
+                FriendNoteKind.Wave => "wave",
+                FriendNoteKind.Waiting => "waiting",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -214,6 +220,15 @@ public static class FriendNotes
             R = note.RequestId,
             A = note.Accepted,
         };
+        return SealDto(me, to, dto);
+    }
+
+    /// <summary>Seals a note of any kind, also one this version doesn't know (to test how unknown kinds are met).</summary>
+    internal static string SealKind(FriendIdentity me, Friend to, string kind, string from, long sent)
+        => SealDto(me, to, new NoteDto { K = kind, F = from, T = sent });
+
+    static string SealDto(FriendIdentity me, Friend to, NoteDto dto)
+    {
         byte[] plain = JsonSerializer.SerializeToUtf8Bytes(dto);
         var sealedNote = new byte[NonceSize + TagSize + plain.Length];
         RandomNumberGenerator.Fill(sealedNote.AsSpan(0, NonceSize));
@@ -260,7 +275,9 @@ public static class FriendNotes
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
                 "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T),
                 "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
-                _ => null,
+                "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
+                "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
+                _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];
             return note;

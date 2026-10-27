@@ -25,6 +25,12 @@ internal sealed class AppSettings
     public bool Messages { get; set; } = true;
     /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
     public List<string> MutedApps { get; set; } = new();
+    /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
+    public bool QuietHours { get; set; }
+    public string QuietFrom { get; set; } = "22:00";
+    public string QuietUntil { get; set; } = "07:00";
+    /// <summary>"app:whatsapp" lets a whole app through, "who:Lena" a person.</summary>
+    public List<string> QuietVips { get; set; } = new();
     /// <summary>Downloads in the Downloads folder show in the notch.</summary>
     public bool Downloads { get; set; } = true;
     /// <summary>A lock in the notch while a VPN is connected, and a note when it connects or drops.</summary>
@@ -33,15 +39,64 @@ internal sealed class AppSettings
     public bool Privacy { get; set; } = true;
     /// <summary>A call (an app like Discord, Teams or Zoom using the microphone) shows in the notch with its length.</summary>
     public bool Calls { get; set; } = true;
+    /// <summary>Music pauses while a call runs and plays on afterwards, if Holm paused it.</summary>
+    public bool PauseForCalls { get; set; } = true;
     /// <summary>Files and folders parked on the shelf, oldest first (only their paths).</summary>
     public List<string> Shelf { get; set; } = new();
     /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>
     public bool Screenshots { get; set; } = true;
+    /// <summary>"Copy text" on the screenshot: Windows reads the text in it (on this PC) and puts it on the clipboard.</summary>
+    public bool ScreenshotText { get; set; } = true;
+    /// <summary>The moon in the open player that sets the sleep timer (it pauses the music after 15, 30 or 60 minutes).</summary>
+    public bool SleepTimer { get; set; } = true;
+    /// <summary>The notes tool in the open notch.</summary>
+    public bool Notes { get; set; } = true;
+    /// <summary>The note itself. It stays on this PC.</summary>
+    public string NoteText { get; set; } = "";
+    /// <summary>Reminders typed into the open notch ("20 min laundry").</summary>
+    public bool Reminders { get; set; } = true;
+    /// <summary>The reminders waiting; they stay on this PC.</summary>
+    public List<Reminder> ReminderList { get; set; } = new();
+    /// <summary>The calculator in the open notch.</summary>
+    public bool Calculator { get; set; } = true;
+    /// <summary>The last 20 things copied, in the open notch. The list itself is never saved.</summary>
+    public bool ClipboardHistory { get; set; } = true;
+    /// <summary>The mixer in the open notch: a slider per app.</summary>
+    public bool AppVolume { get; set; } = true;
+    /// <summary>A password copied from a password manager leaves the clipboard after 30 seconds, if it is still there.</summary>
+    public bool ClearPasswords { get; set; } = true;
+    /// <summary>The color picker button in the open notch.</summary>
+    public bool ColorPicker { get; set; } = true;
+    /// <summary>The notch says so when Caps Lock goes on or off.</summary>
+    public bool CapsLock { get; set; } = true;
+    /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
+    public bool DiskWarning { get; set; } = true;
+    /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
+    public bool DiskWarned { get; set; }
+    /// <summary>A USB stick or SD card pops out with "Open" and "Eject", and shows in the open notch while plugged in.</summary>
+    public bool UsbDrives { get; set; } = true;
+    /// <summary>"No internet" when the connection drops, "Back online" with how long when it returns.</summary>
+    public bool Connectivity { get; set; } = true;
+    /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
+    public bool Weather { get; set; } = true;
+    public string? WeatherPlace { get; set; }
+    public double? WeatherLatitude { get; set; }
+    public double? WeatherLongitude { get; set; }
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
     /// <summary>Relay for sending over the internet, "host:port".</summary>
     public string? Relay { get; set; }
+    /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
+    public bool Waves { get; set; } = true;
+    /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>
+    public bool SendFolders { get; set; } = true;
+    /// <summary>Text can be beamed (from the clipboard), and beamed text arriving goes to the clipboard.</summary>
+    public bool BeamText { get; set; } = true;
+    /// <summary>A friend whose Holm isn't running gets the files once it is; see <see cref="SendQueue"/>.</summary>
+    public bool SendLater { get; set; } = true;
+    /// <summary>What waits for friends (paths only; files Holm made are kept in its temp folder).</summary>
+    public List<QueuedSend> SendQueue { get; set; } = new();
     double? _collapsedScale, _expandedScale;
     double _legacyScale = 1;
 

@@ -106,8 +106,8 @@ public partial class MainWindow : Window
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
-            // Dragging a slider or menu open: try again shortly.
-            if (Mouse.Captured != null || MenuOpen) { _collapseDelay!.Start(); return; }
+            // Dragging a slider, a menu open or typing: try again shortly.
+            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -120,12 +120,25 @@ public partial class MainWindow : Window
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
+        ForgetLeftoverZips();
         InitDownloads();
         InitUpdates();
         InitTimer();
         InitCall();
         InitPhone();
         InitScreenshots();
+        InitSleep();
+        InitNotes();
+        InitReminders();
+        InitCalculator();
+        InitClipboardHistory();
+        InitPasswordWipe();
+        InitDiskSpace();
+        InitConnectivity();
+        InitWeather();
+        InitMixer();
+        InitSendLater();
+        InitToday();
 
         Progress.ValueCommitted += v =>
         {
@@ -140,6 +153,7 @@ public partial class MainWindow : Window
         VolSlider.ValueChanging += v => { _volume.SetLevel((float)v); UpdateVolumeIcon(v, false); };
         Island.SizeChanged += (_, _) => UpdateShape();
 
+        Deactivated += OnDeactivated;
         SourceInitialized += OnSourceInitialized;
         Loaded += OnLoaded;
         Closed += OnClosed;
@@ -214,6 +228,16 @@ public partial class MainWindow : Window
         StartPrivacy();
         InitShelf();
         StartScreenshots();
+        ShowSleep();
+        RefreshToolBar();
+        CheckReminders(); // also the ones missed while the PC was off
+        StartCapsLock();
+        StartDiskSpace();
+        StartUsb();
+        StartConnectivity();
+        StartWeather();
+        StartSendLater();
+        ShowIdle();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -224,12 +248,27 @@ public partial class MainWindow : Window
         _btLate.Stop();
         _timerTick.Stop();
         _callTick.Stop();
+        _sleepTick.Stop();
+        _reminderTick.Stop();
+        _wipeTimer.Stop();
+        _picker?.Dispose();
+        StopCapsLock();
+        _diskHourly.Stop();
+        _diskSoon.Stop();
+        StopConnectivity();
+        _weatherTick.Stop();
+        HideMixer();
+        _laterTick.Stop();
+        _laterSoon.Stop();
+        _idleClock.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
+        ForgetClips(_clips.Clear()); // the pictures in the temp folder go with Holm
+        ForgetClipFiles();
         _volume.Shutdown();
         _vpn?.Dispose();
         StopPrivacy();
@@ -246,6 +285,19 @@ public partial class MainWindow : Window
                 int ev = wParam.ToInt32();
                 if (ev == Native.PBT_POWERSETTINGCHANGE || ev == Native.PBT_APMPOWERSTATUSCHANGE)
                     Dispatcher.InvokeAsync(ReadPower, DispatcherPriority.Background);
+                else if (ev == Native.PBT_APMRESUMEAUTOMATIC)
+                {
+                    Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
+                    Dispatcher.InvokeAsync(CheckDiskSoon, DispatcherPriority.Background);
+                    Dispatcher.InvokeAsync(() => _ = RefreshWeatherAsync(), DispatcherPriority.Background); // if half an hour has passed
+                    Dispatcher.InvokeAsync(() => HushConnectivity(TimeSpan.FromSeconds(45)), DispatcherPriority.Send); // Wi-Fi takes a moment to come back
+                }
+                else if (ev == Native.PBT_APMSUSPEND)
+                    Dispatcher.InvokeAsync(() => HushConnectivity(TimeSpan.FromHours(24)), DispatcherPriority.Send); // until it wakes
+                break;
+
+            case Native.WM_DEVICECHANGE when wParam.ToInt32() != Native.DBT_DEVNODES_CHANGED:
+                OnVolumeChange(wParam, lParam); // a USB stick or SD card came or went
                 break;
 
             case Native.WM_DEVICECHANGE when wParam.ToInt32() == Native.DBT_DEVNODES_CHANGED:
@@ -262,6 +314,8 @@ public partial class MainWindow : Window
             case Native.WM_CLIPBOARDUPDATE:
                 OnClipboardChanged();
                 OnClipboardForScreenshot(); // right away: who owns the clipboard can change
+                OnClipboardForHistory();
+                OnClipboardForPasswords();
                 break;
         }
         return IntPtr.Zero;
@@ -350,6 +404,8 @@ public partial class MainWindow : Window
         {
             _liveTimer.Stop();
             _trimTimer.Start();
+            ShowTool(Tool.None); // the next time it opens on home
+            if (_choosingPlace) { _choosingPlace = false; ShowWeather(); }
         }
         ApplyState();
         UpdateBackdrop();
@@ -380,6 +436,11 @@ public partial class MainWindow : Window
         {
             case NotchState.Expanded:
                 ExpandedView.Visibility = Visibility.Visible;
+                ShowQuietNote();
+                if (ClockPanel.Visibility == Visibility.Visible) ShowToday();
+                // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
+                // only the top would hand back its old size: lay out first.
+                UpdateLayout();
                 ExpandedView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(ExpandedView.DesiredSize.Height) + 18, 32);
                 break;
@@ -387,7 +448,7 @@ public partial class MainWindow : Window
                 ShareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(ShareView.DesiredSize.Height) + 6, 28);
                 break;
-            case NotchState.Task: (w, h, r) = (420, 60, 26); break;
+            case NotchState.Task: (w, h, r) = (TaskExtra.Visibility == Visibility.Visible ? 490 : 420, 60, 26); break;
             case NotchState.Phone: (w, h, r) = (420, 160, 28); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
@@ -397,7 +458,10 @@ public partial class MainWindow : Window
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
-            default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
+            default:
+                (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15);
+                if (!mini) ShowIdle();
+                break;
         }
 
         // Media apps report every few seconds; only animate when the shape really changes.
@@ -435,8 +499,9 @@ public partial class MainWindow : Window
 
         if (target != _state)
         {
-            SetView(IdleView, target == NotchState.Idle && !mini, animate);
-            SetView(CompactView, target == NotchState.Media, animate);
+            bool soft = animate && _settings.Animations; // music coming and going cross-fades, unless animations are off
+            SetView(IdleView, target == NotchState.Idle && !mini, soft);
+            SetView(CompactView, target == NotchState.Media, soft);
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(TimerView, target == NotchState.Timer, animate);
             SetView(CallView, target == NotchState.Call, animate);
@@ -635,12 +700,13 @@ public partial class MainWindow : Window
         }
     }
 
-    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3)
+    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3, Brush? glyphBrush = null)
     {
         if (_hiddenForFullscreen) return;
         if (_expanded) { RefreshDevices(); return; }
 
         PeekIcon.Text = glyph ?? "";
+        PeekIcon.Foreground = glyphBrush ?? Brushes.White;
         PeekIcon.Visibility = glyph == null ? Visibility.Collapsed : Visibility.Visible;
         PeekText.Text = text;
         PeekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170; // a sentence on its own may use the whole width
@@ -747,6 +813,7 @@ public partial class MainWindow : Window
         if (_expanded) RefreshMediaUi();
         ApplyState();
         UpdateBackdrop();
+        UpdateCallPause();
     }
 
     void OnMessagesChanged(ChatMessage? arrived)
@@ -757,7 +824,8 @@ public partial class MainWindow : Window
         _messages = _chat.Messages;
         Diag.Log($"Messages: {_chat.UnreadCount} unread" + (arrived != null ? $", new one from {arrived.App}" : ""));
         RefreshMessages();
-        if (arrived != null) ShowMessage(arrived);
+        if (arrived != null && Silenced(arrived)) Diag.Log("Quiet hours: no pop-out");
+        else if (arrived != null) ShowMessage(arrived);
         ApplyState();
     }
 
@@ -941,9 +1009,15 @@ public partial class MainWindow : Window
     void RefreshMediaUi()
     {
         var info = _info;
-        MediaPanel.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
-        ClockPanel.Visibility = info != null ? Visibility.Collapsed : Visibility.Visible;
-        if (info == null) { UpdateClock(); return; }
+        var media = info != null ? Visibility.Visible : Visibility.Collapsed;
+        if (MediaPanel.Visibility != media)
+        {
+            MediaPanel.Visibility = media;
+            ClockPanel.Visibility = info != null ? Visibility.Collapsed : Visibility.Visible;
+            FadeIn(info != null ? MediaPanel : ClockPanel);
+            RefreshToolBar(); // the card brings its own tools
+        }
+        if (info == null) { UpdateClock(); ShowToday(); return; }
 
         TitleText.Text = info.Title;
         ArtistText.Text = info.Artist;
@@ -1174,7 +1248,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The right-click menu, the list of output devices or the Bluetooth list is open.</summary>
-    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true || _bluetoothMenu?.IsOpen == true;
+    bool MenuOpen => Island.ContextMenu.IsOpen || _outputMenu?.IsOpen == true || _bluetoothMenu?.IsOpen == true || _sleepMenu?.IsOpen == true;
 
     void OnDefaultDeviceChanged()
     {
@@ -1255,18 +1329,14 @@ public partial class MainWindow : Window
     /// </summary>
     void Island_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        MenuAnim.IsChecked = _settings.Animations;
-        MenuMini.IsChecked = _settings.MiniIdle;
-        try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
+        SyncSwitches();
         FillTimerMenu();
+        FillSleepMenu();
         FillAiMenu();
         FillMessagesMenu();
-        MenuDownloads.IsChecked = _settings.Downloads;
-        MenuVpn.IsChecked = _settings.Vpn;
-        MenuPrivacy.IsChecked = _settings.Privacy;
-        MenuCalls.IsChecked = _settings.Calls;
-        MenuScreenshots.IsChecked = _settings.Screenshots;
-        MenuBeam.IsChecked = _settings.Beam;
+        FillQuietMenu();
+        FillWeatherMenu();
+        FillBeamTextMenu();
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
         FillSizeMenu();
@@ -1447,6 +1517,26 @@ public partial class MainWindow : Window
         _settings.Animations = false; // still frames, so the bars are captured at rest
         _settings.MiniIdle = false;
         _settings.CollapsedScale = _settings.ExpandedScale = 1;
+        _settings.PauseForCalls = false; // the demo call must not pause your real music
+        _settings.NoteText = ""; // your note must not end up in a picture
+        _reminderTick.Stop();
+        _reminders = new ReminderList(new List<Reminder>()); // nor your reminders
+        _clipsPaused = true; // nor what you copy
+        _settings.ClearPasswords = false; // and your clipboard stays as it is
+        _settings.DiskWarning = false; // your drive's numbers stay out of the pictures
+        StartDiskSpace();
+        _settings.UsbDrives = false; // nor your USB sticks
+        StartUsb();
+        _settings.Connectivity = false;
+        StartConnectivity();
+        _laterTick.Stop();
+        _settings.SendQueue = new List<QueuedSend>(); // nor what waits for your friends
+        ShowLaterRows();
+        _settings.WeatherPlace = null; // nor where you are
+        _settings.WeatherLatitude = _settings.WeatherLongitude = null;
+        _weather = null;
+        StartWeather();
+        _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
@@ -1479,7 +1569,37 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-idle", 200);
 
+        // 1.7: the weather, idle and open, and choosing the place
+        _settings.WeatherPlace = "Munich, Bavaria, Germany";
+        _weather = new WeatherNow(14.2, 2, true, 20, 0.6);
+        ShowWeather();
         SetExpanded(false);
+        await Snap(dir, "idle-weather", 50);
+        SetExpanded(true);
+        await Snap(dir, "expanded-weather", 260);
+        ChoosePlace();
+        WeatherBox.Text = "Hamburg";
+        await Snap(dir, "expanded-weather-place", 300);
+        SetExpanded(false);
+        _choosingPlace = false;
+        ShowWeather();
+
+        // 1.7: today, with something coming up and a note
+        var soon = DateTime.Now.AddHours(3);
+        _reminders.Add("Dentist", new DateTime(soon.Year, soon.Month, soon.Day, soon.Hour, 30, 0, DateTimeKind.Local).ToUniversalTime());
+        _settings.NoteText = "Call Lena about the mockups\nBuy oat milk\nBook the train for Friday";
+        ShowReminderRows();
+        await Snap(dir, "idle-today", 50);
+        SetExpanded(true);
+        await Snap(dir, "expanded-today", 280);
+        SetExpanded(false);
+        _reminders = new ReminderList(new List<Reminder>());
+        _settings.NoteText = "";
+        ShowReminderRows();
+        _settings.WeatherPlace = null;
+        _weather = null;
+        ShowWeather();
+
         _messages = new List<ChatMessage>
         {
             new() { App = "whatsapp", Title = "Lena Hoffmann", Text = "Morning! Did you see the new mockups?", Time = DateTimeOffset.Now.AddMinutes(-3) },
@@ -1496,6 +1616,17 @@ public partial class MainWindow : Window
 
         SetExpanded(true);
         await Snap(dir, "expanded-messages", 260);
+
+        // 1.7: quiet hours, with Lena let through
+        _settings.QuietHours = true;
+        _settings.QuietFrom = QuietHours.Format(TimeSpan.FromHours(DateTime.Now.Hour));
+        _settings.QuietUntil = QuietHours.Format(TimeSpan.FromHours((DateTime.Now.Hour + 9) % 24));
+        _settings.QuietVips = new List<string> { QuietHours.PersonPrefix + "Lena Hoffmann" };
+        ApplyState();
+        await Snap(dir, "expanded-quiet", 260);
+        _settings.QuietHours = false;
+        _settings.QuietVips = new List<string>();
+        ApplyState();
 
         // 1.2: volume, Beam, shuffle/repeat
         SetExpanded(false);
@@ -1516,6 +1647,166 @@ public partial class MainWindow : Window
         SetExpanded(true);
         await Snap(dir, "expanded-playmodes", 240);
         SetExpanded(false);
+
+        // 1.7: notes
+        _settings.NoteText = "Call Lena about the mockups\nBuy oat milk\nBook the train for Friday";
+        SetExpanded(true);
+        ShowTool(Tool.Notes);
+        await Snap(dir, "expanded-notes", 300);
+        SetExpanded(false);
+        _settings.NoteText = "";
+
+        // 1.7: reminders
+        _reminders.Add("Laundry", DateTime.UtcNow.AddMinutes(20));
+        _reminders.Add("Dentist", DateTime.Today.AddDays(1).AddHours(14).AddMinutes(30).ToUniversalTime());
+        SetExpanded(true);
+        ShowTool(Tool.Reminders);
+        ReminderBox.Text = "18:30 call Lena";
+        await Snap(dir, "expanded-reminders", 320);
+        ReminderBox.Text = "";
+        SetExpanded(false);
+        ShowTask(BellGlyph, TimerOrange, "Laundry", "Reminder · " + DateTime.Now.ToString("HH:mm"), null, ("+10 min", () => { }), ("OK", () => { }));
+        await Snap(dir, "reminder", 70);
+        HideTask();
+        _reminders = new ReminderList(new List<Reminder>());
+
+        // 1.7: the calculator
+        SetExpanded(true);
+        ShowTool(Tool.Calculator);
+        CalcBox.Text = "12,5 × 4 + 15%";
+        await Snap(dir, "expanded-calculator", 260);
+        CalcBox.Text = "";
+        SetExpanded(false);
+
+        // 1.7: a folder packed to be sent
+        _busy = true;
+        ShowTask(FolderGlyph, ShareBlue, "Packing Holiday photos", "As a ZIP, to send · 42%", 0.42, null, ("Cancel", () => { }));
+        await Snap(dir, "packing", 70);
+        _busy = false;
+        HideTask();
+
+        // 1.7: a text beamed by a friend
+        ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Text from Lena Hoffmann", "Copy it to your clipboard?", null,
+                 ("Copy", () => { }), ("Decline", () => { }), textIcon: true);
+        await Snap(dir, "beam-text", 70);
+        EndTask("\uE77F", GreenBrush, "Text from Lena Hoffmann copied", "Paste it with Ctrl+V");
+        await Snap(dir, "beam-text-copied", 70);
+        HideTask();
+
+        // 1.7: sending later
+        EndTask(LaterGlyph, TimerOrange, "Lena Hoffmann is offline", "It goes once their Holm is back", ("Don't send", () => { }));
+        await Snap(dir, "send-later", 70);
+        HideTask();
+        _settings.SendQueue = new List<QueuedSend> { new() { FriendName = "Lena Hoffmann", Paths = { @"C:\Demo\Holiday photos.zip" }, QueuedUtc = DateTime.UtcNow } };
+        ShowLaterRows();
+        SetExpanded(true);
+        await Snap(dir, "expanded-later", 260);
+        SetExpanded(false);
+        _settings.SendQueue = new List<QueuedSend>();
+        ShowLaterRows();
+
+        // 1.7: a friend waves
+        ShowWaveFrom("Lena Hoffmann", () => { });
+        await Snap(dir, "wave", 70);
+        HideTask();
+
+        // 1.7: the volume of each app
+        SetExpanded(true);
+        _settings.AppVolume = true;
+        _tool = Tool.Mixer; // the page without the real mixer behind it
+        HomePanel.Visibility = Visibility.Collapsed;
+        ToolPage.Visibility = Visibility.Visible;
+        foreach (var (page, button, which) in ToolPages())
+        {
+            page.Visibility = which == Tool.Mixer ? Visibility.Visible : Visibility.Collapsed;
+            button.Background = which == Tool.Mixer ? ToolLit : Brushes.Transparent;
+        }
+        ShowMixerRows(new List<AppVolume>
+        {
+            new("demo-spotify", "Spotify", "", 0.7f, false, true, new[] { 0 }),
+            new("demo-browser", "Microsoft Edge", "", 0.42f, false, true, new[] { 1 }),
+            new("demo-discord", "Discord", "", 0.85f, true, false, new[] { 2 }),
+        });
+        await Snap(dir, "expanded-mixer", 300);
+        SetExpanded(false);
+
+        // 1.7: the clipboard history
+        var demoPicture = new RenderTargetBitmap(160, 100, 96, 96, PixelFormats.Pbgra32);
+        var sketch = new DrawingVisual();
+        using (var dc = sketch.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0xFF, 0x9F, 0x0A), Color.FromRgb(0xBF, 0x5A, 0xF2), 30), null, new Rect(0, 0, 160, 100));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)), null, new Point(112, 38), 18, 18);
+        }
+        demoPicture.Render(sketch);
+        demoPicture.Freeze();
+        foreach (var (text, minutes) in new[] { ("Oat milk, bread, coffee beans", 41), ("https://example.com/holm/release-notes", 12), ("Meeting moved to 15:30, room 2.14", 3) })
+            _clips.Add(new ClipEntry { Key = ClipboardHistory.TextKey(text), Text = text, CopiedAt = DateTime.UtcNow.AddMinutes(-minutes) });
+        _clips.Add(new ClipEntry { Key = "demo-picture", ImagePath = "demo", Width = 1280, Height = 800, Thumb = demoPicture, CopiedAt = DateTime.UtcNow.AddSeconds(-20) });
+        _clips.Add(new ClipEntry { Key = "demo-now", Text = "Holm 1.7 is out", CopiedAt = DateTime.UtcNow });
+        SetExpanded(true);
+        ShowTool(Tool.Clipboard);
+        await Snap(dir, "expanded-clipboard", 340);
+        SetExpanded(false);
+        _clips.Clear();
+
+        // 1.7: a copied password wiped
+        ShowPeek(PasswordGlyph, "Password cleared from the clipboard", "", null, false, null);
+        await Snap(dir, "password-cleared", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: a USB stick
+        var stick = new UsbDrive('E', "KINGSTON", 32_000_000_000L, 12_884_901_888L);
+        ShowUsb(stick);
+        await Snap(dir, "usb", 70);
+        EndTask(UsbGlyph, GreenBrush, "Safe to remove", stick.Name);
+        await Snap(dir, "usb-ejected", 70);
+        HideTask();
+        _usb = new List<UsbDrive> { stick };
+        ShowUsbRows();
+        SetExpanded(true);
+        await Snap(dir, "expanded-usb", 300);
+        SetExpanded(false);
+        _usb = new List<UsbDrive>();
+        ShowUsbRows();
+
+        // 1.7: the internet gone and back
+        ShowPeek(OfflineGlyph, "No internet", "", null, false, null, seconds: 5, glyphBrush: RedBrush);
+        await Snap(dir, "offline", 60);
+        ShowPeek(OnlineGlyph, "Back online", "after " + Outage.Describe(TimeSpan.FromMinutes(3)), null, false, GreenBrush, seconds: 4);
+        await Snap(dir, "online", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: the system drive running low
+        ShowDiskWarning("C:", DiskSpace.Describe((long)(8.4 * DiskSpace.Gb), 256 * DiskSpace.Gb));
+        await Snap(dir, "disk-low", 70);
+        HideTask();
+
+        // 1.7: Caps Lock
+        ShowCapsLock(true);
+        await Snap(dir, "caps-lock", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: a color picked from the screen
+        ShowPickedColor("#0A84FF", Color.FromRgb(0x0A, 0x84, 0xFF));
+        await Snap(dir, "color-picked", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: the sleep timer
+        _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));
+        ShowSleep();
+        SetExpanded(true);
+        await Snap(dir, "expanded-sleep", 240);
+        SetExpanded(false);
+        CancelSleep();
 
         _demoFriends = new List<WinNotch.Sharing.Friend> { new() { Name = "Lena Hoffmann", Key = "demo-lena" }, new() { Name = "Jonas", Key = "demo-jonas" } };
         _demoPeers = new List<NearbyPeer>
@@ -1595,6 +1886,11 @@ public partial class MainWindow : Window
         // 1.6: a call
         _demoSensors = new[] { new SensorUse(Sensor.Microphone, "Discord", "Discord", DateTime.UtcNow.AddSeconds(-754)) };
         ShowPrivacy();
+        ShowCallPausePeek(); // 1.7: the music paused for it
+        await Snap(dir, "call-pause", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
         await Snap(dir, "call", 60);
         SetExpanded(true);
         await Snap(dir, "expanded-call", 300);
@@ -1638,8 +1934,38 @@ public partial class MainWindow : Window
         // 1.6: a screenshot
         ShowTask("\uE722", ShareBlue, "Screenshot", "Saved in Screenshots", null, ("Send", () => { }), ("Shelf", () => { }));
         if (DemoMedia().Art is { } picture) ShowTaskPicture(picture);
+        ShowTaskExtra("Copy text", () => { }); // 1.7
         await Snap(dir, "screenshot", 70);
+
+        // 1.7: the text read from it
+        TaskSubtitle.Text = "Text copied · 6 lines";
+        TaskExtra.Content = "Copied";
+        TaskExtra.IsEnabled = false;
+        await Snap(dir, "screenshot-text", 70);
         HideTask();
+
+        // 1.7.1: the settings window, off screen (snapshot settings, never saved)
+        var settings = MakeSettingsWindow();
+        settings.WindowStartupLocation = WindowStartupLocation.Manual;
+        settings.Left = -5000;
+        settings.ShowActivated = false;
+        settings.Show();
+        await Task.Delay(400);
+        settings.UpdateLayout();
+        if (settings.Content is FrameworkElement settingsPage)
+        {
+            var shot = new RenderTargetBitmap((int)(settingsPage.ActualWidth + 32) * 2, (int)(settingsPage.ActualHeight + 32) * 2, 192, 192, PixelFormats.Pbgra32);
+            var desk = new DrawingVisual();
+            using (var dc = desk.RenderOpen())
+                dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0x5B, 0x7F, 0xC9), Color.FromRgb(0x1D, 0x2B, 0x4F), 90), null, new Rect(0, 0, settingsPage.ActualWidth + 32, settingsPage.ActualHeight + 32));
+            shot.Render(desk);
+            shot.Render(settingsPage);
+            var png = new PngBitmapEncoder();
+            png.Frames.Add(BitmapFrame.Create(shot));
+            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, "settings.png"));
+            png.Save(file);
+        }
+        settings.Close();
     }
 
     static MediaInfo DemoMedia()
@@ -1672,7 +1998,9 @@ public partial class MainWindow : Window
     {
         await Task.Delay(900);
         UpdateLayout();
-        const double scale = 2, width = 480;
+        const double scale = 2;
+        double width = Width; // the whole window: the open notch is wider than the 480 it used to be
+        height = Math.Max(height, Math.Ceiling(Height) + 16); // never cut off a notch that grew
         var image = new RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         var desktop = new DrawingVisual();
         using (var dc = desktop.RenderOpen())

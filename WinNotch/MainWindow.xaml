@@ -123,6 +123,35 @@
             </Setter>
         </Style>
 
+        <!-- Typing in the open notch: notes, reminders, the calculator -->
+        <Style x:Key="NotchTextBox" TargetType="TextBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="#FF0A84FF"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd" Background="#14FFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="12" Padding="10,7">
+                            <ScrollViewer x:Name="PART_ContentHost" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#990A84FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A tool in the open notch's tool bar; lit while its page is open -->
+        <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource NotchButton}">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="3,0"/>
+        </Style>
+
         <!-- A whole row you can click (the messages in the open notch) -->
         <Style x:Key="RowButton" TargetType="Button">
             <Setter Property="Focusable" Value="False"/>
@@ -173,27 +202,56 @@
                     AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver" DragLeave="Island_DragLeave" Drop="Island_Drop">
                 <Border.ContextMenu>
                     <ContextMenu Closed="Menu_Closed">
-                        <MenuItem x:Name="MenuAnim" Header="Animate equalizer" IsCheckable="True" Click="MenuAnim_Click"/>
-                        <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
-                        <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
-                        <Separator/>
                         <!-- 5 minutes … 1 hour, or pause / more time / stop while one runs; filled when the menu opens -->
                         <MenuItem x:Name="MenuTimer" Header="Timer"/>
-                        <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
-                        <MenuItem x:Name="MenuAi" Header="AI button"/>
-                        <!-- Show messages, then one switch per app; filled in when the menu opens -->
-                        <MenuItem x:Name="MenuMessages" Header="Messages"/>
-                        <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
-                        <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
-                        <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
-                        <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
-                        <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
-                        <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
+                        <!-- 15 minutes / 30 minutes / 1 hour / Off, and the moon button; filled when the menu opens -->
+                        <MenuItem x:Name="MenuSleep" Header="Sleep timer"/>
+                        <!-- Beam copied text…, and whether beamed text goes to the clipboard; filled when the menu opens -->
+                        <MenuItem x:Name="MenuBeamText" Header="Beam text"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
-                        <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
-                        <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                        <Separator/>
+                        <MenuItem x:Name="MenuSettings" Header="Settings…" Click="MenuSettings_Click"/>
+                        <MenuItem x:Name="MenuCustomize" Header="Customize">
+                            <!-- Show messages, then one switch per app; filled in when the menu opens -->
+                            <MenuItem x:Name="MenuMessages" Header="Messages"/>
+                            <!-- On, from, until, and the apps and people that still pop out; filled when the menu opens -->
+                            <MenuItem x:Name="MenuQuiet" Header="Quiet hours"/>
+                            <!-- On, and the place; filled when the menu opens -->
+                            <MenuItem x:Name="MenuWeather" Header="Weather"/>
+                            <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
+                            <MenuItem x:Name="MenuAi" Header="AI button"/>
+                            <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
+                            <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                        </MenuItem>
+                        <!-- The switches the settings window shows: their handlers apply each setting. Never shown here. -->
+                        <MenuItem x:Name="SettingsSwitches" Visibility="Collapsed">
+                            <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
+                            <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
+                            <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
+                            <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
+                            <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
+                            <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
+                            <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
+                            <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
+                            <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
+                            <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
+                            <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
+                            <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
+                            <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
+                            <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
+                            <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
+                            <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
+                            <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
+                            <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
+                            <MenuItem x:Name="MenuPauseForCalls" Header="Pause music during calls" IsCheckable="True" Click="MenuPauseForCalls_Click"/>
+                            <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
+                            <MenuItem x:Name="MenuScreenshotText" Header="Copy text from screenshots" IsCheckable="True" Click="MenuScreenshotText_Click"/>
+                            <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
+                            <MenuItem x:Name="MenuSendFolders" Header="Send folders as ZIP" IsCheckable="True" Click="MenuSendFolders_Click"/>
+                            <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
+                        </MenuItem>
                         <MenuItem x:Name="MenuUpdates">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -253,16 +311,28 @@
                     </Grid>
 
                     <!-- Idle: nothing going on; a small lock while a VPN is connected -->
-                    <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="0,0,14,0">
-                        <!-- Something on the shelf: how many -->
-                        <StackPanel x:Name="IdleShelf" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Margin="14,0,0,0" Visibility="Collapsed">
-                            <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="IdleShelfCount" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                    <!-- Idle: the time (or the weather) on the left, the one thing that matters most on the right -->
+                    <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="14,0,14,0">
+                        <TextBlock x:Name="IdleClock" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}"
+                                   HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <StackPanel x:Name="IdleWeather" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed">
+                            <Border x:Name="IdleWeatherIcon" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="IdleWeatherText" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
-                                   Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                   Visibility="Collapsed"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <!-- The next reminder today -->
+                            <StackPanel x:Name="IdleReminder" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="IdleReminderTime" FontSize="11" FontWeight="SemiBold" Foreground="#FFFF9F0A" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <!-- Something on the shelf: how many -->
+                            <StackPanel x:Name="IdleShelf" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="IdleShelfCount" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10" Margin="8,0,0,0"
+                                       Foreground="{StaticResource Dim}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Call: Discord, Teams, Zoom, WhatsApp or a browser uses the microphone -->
@@ -391,6 +461,7 @@
                             <Border x:Name="TaskProgressHost" Margin="0,4,0,0" Visibility="Collapsed"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="TaskExtra" Style="{StaticResource PillButton}" Margin="0,0,6,0" Visibility="Collapsed" Click="TaskExtra_Click"/>
                             <Button x:Name="TaskSecondary" Style="{StaticResource PillButton}" Click="TaskSecondary_Click"/>
                             <Button x:Name="TaskPrimary" Style="{StaticResource PillButton}" Background="#FF0A84FF" Margin="6,0,0,0" Click="TaskPrimary_Click"/>
                         </StackPanel>
@@ -401,136 +472,352 @@
                           Width="480" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
                         <StackPanel>
 
-                            <StackPanel x:Name="MediaPanel">
-                                <Grid>
+                            <!-- Home: the player (or the clock), and whatever is going on -->
+                            <StackPanel x:Name="HomePanel">
+                                <StackPanel x:Name="MediaPanel">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <!-- The sleep timer: a moon, and the minutes left while it runs -->
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0">
+                                            <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
+                                                    ToolTip="Sleep timer">
+                                                <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                                           Foreground="{StaticResource Faint}"/>
+                                            </Button>
+                                            <TextBlock x:Name="SleepText" FontSize="10" FontWeight="SemiBold" Foreground="#FFFF9F0A"
+                                                       HorizontalAlignment="Center" Visibility="Collapsed"/>
+                                        </StackPanel>
+                                        <!-- Clicking the cover or the title brings the player to the front -->
+                                        <Border x:Name="BigArt" Width="58" Height="58" CornerRadius="12" Background="{StaticResource ArtFallback}"
+                                                Cursor="Hand" ToolTip="Open the player" MouseLeftButtonUp="Player_Click">
+                                            <TextBlock x:Name="ArtPlaceholder" Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                                                       Foreground="{StaticResource Faint}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Background="Transparent"
+                                                    Cursor="Hand" MouseLeftButtonUp="Player_Click">
+                                            <TextBlock x:Name="TitleText" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15"
+                                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="ArtistText" FontSize="13" Foreground="{StaticResource Dim}"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                            <TextBlock x:Name="AppText" FontSize="11" Foreground="{StaticResource Faint}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+    
+                                    <Grid x:Name="ProgressRow" Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="42"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="42"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="PosText" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                        <Border x:Name="ProgressHost" Grid.Column="1" Margin="4,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="RemainText" Grid.Column="2" FontSize="11" Foreground="{StaticResource Dim}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+    
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                                        <Button x:Name="ShuffleBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="0,0,14,0"
+                                                Click="Shuffle_Click" ToolTip="Shuffle">
+                                            <TextBlock x:Name="ShuffleIcon" Text="&#xE8B1;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
+                                        </Button>
+                                        <Button x:Name="PrevBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Prev_Click">
+                                            <Path Data="{StaticResource PrevGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
+                                        </Button>
+                                        <Button x:Name="PlayBtn" Style="{StaticResource NotchButton}" Width="46" Height="46" Margin="16,0" Click="Play_Click">
+                                            <Path x:Name="PlayIcon" Data="{StaticResource PlayGeo}" Style="{StaticResource IconPath}" Width="18" Height="20"/>
+                                        </Button>
+                                        <Button x:Name="NextBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Next_Click">
+                                            <Path Data="{StaticResource NextGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
+                                        </Button>
+                                        <Button x:Name="RepeatBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="14,0,0,0"
+                                                Click="Repeat_Click" ToolTip="Repeat">
+                                            <TextBlock x:Name="RepeatIcon" Text="&#xE8EE;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+    
+                                <!-- No music: today at a glance. The time and the weather, what's next, the note, and the tools reached for most -->
+                                <StackPanel x:Name="ClockPanel" Visibility="Collapsed" Margin="2,0,2,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
+                                                       FontWeight="Light" Margin="0,-6,0,0"/>
+                                            <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
+                                        </StackPanel>
+                                        <!-- The weather; a click changes the place -->
+                                        <StackPanel x:Name="WeatherLine" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,2,0,0"
+                                                    Background="Transparent" Cursor="Hand" Visibility="Collapsed" ToolTip="Change the place"
+                                                    MouseLeftButtonUp="WeatherLine_Click">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Border x:Name="WeatherIconHost" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="WeatherTemp" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="26"
+                                                           FontWeight="Light" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="WeatherText" FontSize="11" Foreground="{StaticResource Dim}" HorizontalAlignment="Right"
+                                                       MaxWidth="230" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                            <TextBlock x:Name="RainText" FontSize="11" Foreground="#FF64D2FF" HorizontalAlignment="Right"
+                                                       MaxWidth="230" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="WeatherAdd" Grid.Column="1" Text="+ Weather" FontSize="11" Foreground="{StaticResource Faint}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,6,0,0" Cursor="Hand" Visibility="Collapsed"
+                                                   ToolTip="Show the weather for your city" MouseLeftButtonUp="WeatherLine_Click"/>
+                                    </Grid>
+                                    <StackPanel x:Name="WeatherSetup" Margin="0,10,0,0" Visibility="Collapsed">
+                                        <Grid>
+                                            <TextBox x:Name="WeatherBox" Style="{StaticResource NotchTextBox}" MaxLength="80"
+                                                     TextChanged="WeatherBox_TextChanged" KeyDown="WeatherBox_KeyDown"/>
+                                            <TextBlock x:Name="WeatherPlaceholder" Text="Your city, for the weather" FontSize="13"
+                                                       Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"/>
+                                        </Grid>
+                                        <TextBlock x:Name="WeatherHint" Text="Type a city and press Enter" FontSize="11"
+                                                   Foreground="{StaticResource Dim}" Margin="4,6,0,0" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- What's next, and the note: each opens its tool -->
+                                    <Grid x:Name="TodayCards" Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="TodayReminder" Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="TodayReminder_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                    <TextBlock x:Name="TodayReminderTitle" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock x:Name="TodayReminderWhen" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                        <Button x:Name="TodayNote" Grid.Column="2" Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="TodayNote_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFFD60A" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                    <TextBlock x:Name="TodayNoteTitle" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock x:Name="TodayNoteMore" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- The tools reached for most -->
+                                    <WrapPanel x:Name="TodayTools" Margin="0,10,0,-8">
+                                        <Button x:Name="QuickCalculator" Style="{StaticResource ChipButton}" Click="CalculatorTool_Click" ToolTip="Calculator">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Calculator" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickColor" Style="{StaticResource ChipButton}" Click="ColorPicker_Click" ToolTip="Pick a color from the screen (Esc cancels)">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Pick a color" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickClipboard" Style="{StaticResource ChipButton}" Click="ClipboardTool_Click" ToolTip="Clipboard history">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Clipboard" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="QuickMixer" Style="{StaticResource ChipButton}" Click="MixerTool_Click" ToolTip="Volume per app">
+                                            <StackPanel Orientation="Horizontal" Margin="8,3,0,3">
+                                                <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Apps" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
+                                </StackPanel>
+    
+                                <!-- Quiet hours: why messages don't pop out right now -->
+                                <TextBlock x:Name="QuietNote" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,12,0,-6" Visibility="Collapsed"/>
+                                <StackPanel x:Name="MessageRows" Margin="0,14,0,0"/>
+    
+                                <!-- Downloads running right now -->
+                                <Grid x:Name="DownloadRow" Margin="2,12,2,0" Visibility="Collapsed">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <!-- Clicking the cover or the title brings the player to the front -->
-                                    <Border x:Name="BigArt" Width="58" Height="58" CornerRadius="12" Background="{StaticResource ArtFallback}"
-                                            Cursor="Hand" ToolTip="Open the player" MouseLeftButtonUp="Player_Click">
-                                        <TextBlock x:Name="ArtPlaceholder" Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" FontSize="22"
-                                                   Foreground="{StaticResource Faint}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Background="Transparent"
-                                                Cursor="Hand" MouseLeftButtonUp="Player_Click">
-                                        <TextBlock x:Name="TitleText" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15"
-                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock x:Name="ArtistText" FontSize="13" Foreground="{StaticResource Dim}"
-                                                   TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
-                                        <TextBlock x:Name="AppText" FontSize="11" Foreground="{StaticResource Faint}" Margin="0,3,0,0"/>
+                                    <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FF0A84FF" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="DownloadRowName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                </Grid>
+    
+                                <!-- Sends waiting for a friend's Holm to come back -->
+                                <StackPanel x:Name="LaterRows"/>
+
+                                <!-- USB sticks and SD cards plugged in: open or eject -->
+                                <StackPanel x:Name="UsbRows"/>
+
+                                <!-- A call: the app, how long, and a button that mutes the microphone -->
+                                <Grid x:Name="CallRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="CallRowLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="CallRowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="CallRowTime" FontSize="12" Foreground="#FF30D158" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <Button x:Name="CallMuteBtn" Grid.Column="2" Style="{StaticResource PillButton}" VerticalAlignment="Center" Click="CallMute_Click"/>
+                                </Grid>
+    
+                                <!-- Apps using the microphone or the camera, and a button that mutes the microphone -->
+                                <StackPanel x:Name="PrivacyRows" Margin="2,12,2,0" Visibility="Collapsed"/>
+    
+                                <!-- A running timer: what's left, pause and stop -->
+                                <Grid x:Name="TimerRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE916;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TimerRowText" FontSize="15" FontWeight="SemiBold" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TimerRowLength" FontSize="12" Foreground="{StaticResource Dim}" Margin="10,1,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Button x:Name="TimerPauseBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="TimerPause_Click">
+                                            <TextBlock x:Name="TimerPauseIcon" Text="&#xE769;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                                        </Button>
+                                        <Button Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="2,0,0,0" ToolTip="Stop the timer" Click="TimerStop_Click">
+                                            <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                                        </Button>
                                     </StackPanel>
                                 </Grid>
-
-                                <Grid x:Name="ProgressRow" Margin="0,12,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="42"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="42"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="PosText" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
-                                    <Border x:Name="ProgressHost" Grid.Column="1" Margin="4,0" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="RemainText" Grid.Column="2" FontSize="11" Foreground="{StaticResource Dim}"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
-                                    <Button x:Name="ShuffleBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="0,0,14,0"
-                                            Click="Shuffle_Click" ToolTip="Shuffle">
-                                        <TextBlock x:Name="ShuffleIcon" Text="&#xE8B1;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
-                                    </Button>
-                                    <Button x:Name="PrevBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Prev_Click">
-                                        <Path Data="{StaticResource PrevGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
-                                    </Button>
-                                    <Button x:Name="PlayBtn" Style="{StaticResource NotchButton}" Width="46" Height="46" Margin="16,0" Click="Play_Click">
-                                        <Path x:Name="PlayIcon" Data="{StaticResource PlayGeo}" Style="{StaticResource IconPath}" Width="18" Height="20"/>
-                                    </Button>
-                                    <Button x:Name="NextBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Next_Click">
-                                        <Path Data="{StaticResource NextGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
-                                    </Button>
-                                    <Button x:Name="RepeatBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="14,0,0,0"
-                                            Click="Repeat_Click" ToolTip="Repeat">
-                                        <TextBlock x:Name="RepeatIcon" Text="&#xE8EE;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
-                                    </Button>
+    
+                                <!-- The shelf: files parked here, to drag out where they should go -->
+                                <StackPanel x:Name="ShelfRow" Margin="2,12,2,0" Visibility="Collapsed">
+                                    <Grid>
+                                        <TextBlock x:Name="ShelfTitle" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"
+                                                   HorizontalAlignment="Left" Background="Transparent" Cursor="SizeAll"
+                                                   ToolTip="Drag to take everything off the shelf at once"
+                                                   MouseLeftButtonDown="Shelf_MouseDown" MouseMove="Shelf_MouseMove"/>
+                                        <Button HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
+                                                ToolTip="Clear the shelf (the files stay where they are)" Click="ShelfClear_Click">
+                                            <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}"/>
+                                        </Button>
+                                    </Grid>
+                                    <WrapPanel x:Name="ShelfItemsPanel" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </StackPanel>
 
-                            <StackPanel x:Name="ClockPanel" Visibility="Collapsed" Margin="2,0,0,0">
-                                <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
-                                           FontWeight="Light" Margin="0,-6,0,0"/>
-                                <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
-                                <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
-                            </StackPanel>
+                            <!-- A tool from the tool bar, in place of home while it is open -->
+                            <Grid x:Name="ToolPage" Visibility="Collapsed">
+                                <!-- A short note that survives a restart -->
+                                <StackPanel x:Name="NotesPage" Visibility="Collapsed">
+                                    <TextBlock Text="Notes" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,6"/>
+                                    <Grid>
+                                        <TextBox x:Name="NotesBox" Style="{StaticResource NotchTextBox}" AcceptsReturn="True" AcceptsTab="False"
+                                                 TextWrapping="Wrap" MinHeight="96" MaxHeight="170" MaxLength="4000" TextChanged="NotesBox_TextChanged"/>
+                                        <TextBlock x:Name="NotesPlaceholder" Text="Jot something down – it stays here, even after a restart"
+                                                   FontSize="13" Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"
+                                                   TextWrapping="Wrap"/>
+                                    </Grid>
+                                </StackPanel>
 
-                            <StackPanel x:Name="MessageRows" Margin="0,14,0,0"/>
+                                <!-- Reminders in plain words: "20 min laundry", "14:30 dentist" -->
+                                <StackPanel x:Name="RemindersPage" Visibility="Collapsed">
+                                    <TextBlock Text="Reminders" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,6"/>
+                                    <Grid>
+                                        <TextBox x:Name="ReminderBox" Style="{StaticResource NotchTextBox}" MaxLength="200"
+                                                 TextChanged="ReminderBox_TextChanged" KeyDown="ReminderBox_KeyDown"/>
+                                        <TextBlock x:Name="ReminderPlaceholder" Text="20 min laundry · 14:30 dentist · tomorrow 9:00 call"
+                                                   FontSize="13" Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"/>
+                                    </Grid>
+                                    <TextBlock x:Name="ReminderHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,6,0,10"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel x:Name="ReminderRows"/>
+                                </StackPanel>
 
-                            <!-- Downloads running right now -->
-                            <Grid x:Name="DownloadRow" Margin="2,12,2,0" Visibility="Collapsed">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FF0A84FF" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="DownloadRowName" Grid.Column="1" Margin="10,0,10,0" FontSize="12" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="DownloadRowSize" Grid.Column="2" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                <!-- A quick sum: the result shows while you type; click it or press Enter to copy -->
+                                <StackPanel x:Name="CalculatorPage" Visibility="Collapsed">
+                                    <TextBlock Text="Calculator" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,6"/>
+                                    <Grid>
+                                        <TextBox x:Name="CalcBox" Style="{StaticResource NotchTextBox}" MaxLength="300"
+                                                 TextChanged="CalcBox_TextChanged" KeyDown="CalcBox_KeyDown"/>
+                                        <TextBlock x:Name="CalcPlaceholder" Text="12,5 × 4 + 15%"
+                                                   FontSize="13" Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"/>
+                                    </Grid>
+                                    <Button Style="{StaticResource RowButton}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                            Margin="0,8,0,0" ToolTip="Copy the result" Click="CalcResult_Click">
+                                        <TextBlock x:Name="CalcResult" FontSize="26" FontWeight="SemiBold" Margin="4,0,4,0" MinHeight="34"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Button>
+                                    <TextBlock x:Name="CalcHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,2,0,4"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <!-- A slider per app that plays sound; its icon mutes it -->
+                                <StackPanel x:Name="MixerPage" Visibility="Collapsed">
+                                    <TextBlock Text="Volume per app" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,8"/>
+                                    <TextBlock x:Name="MixerEmpty" Text="No app is playing sound right now." FontSize="13" Foreground="{StaticResource Faint}"
+                                               Margin="2,0,2,8" Visibility="Collapsed"/>
+                                    <StackPanel x:Name="MixerRows"/>
+                                </StackPanel>
+
+                                <!-- The last 20 things copied; a click puts one back. Passwords never show up here -->
+                                <StackPanel x:Name="ClipboardPage" Visibility="Collapsed">
+                                    <Grid Margin="2,0,0,6">
+                                        <TextBlock Text="Clipboard" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                        <Button x:Name="ClipClearBtn" HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
+                                                ToolTip="Clear the list" Click="ClipClear_Click">
+                                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{StaticResource Dim}"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock x:Name="ClipEmpty" Text="Copy a text or a picture: the last 20 show up here. Passwords never do."
+                                               FontSize="13" Foreground="{StaticResource Faint}" TextWrapping="Wrap" Margin="2,4,2,8"/>
+                                    <ScrollViewer MaxHeight="236" VerticalScrollBarVisibility="Hidden" PanningMode="VerticalOnly">
+                                        <StackPanel x:Name="ClipRows"/>
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="ClipHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,4,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
                             </Grid>
 
-                            <!-- A call: the app, how long, and a button that mutes the microphone -->
-                            <Grid x:Name="CallRow" Margin="2,12,2,0" Visibility="Collapsed">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border x:Name="CallRowLogoHost" Width="28" Height="28" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
-                                    <TextBlock x:Name="CallRowTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock x:Name="CallRowTime" FontSize="12" Foreground="#FF30D158" Margin="0,1,0,0"/>
-                                </StackPanel>
-                                <Button x:Name="CallMuteBtn" Grid.Column="2" Style="{StaticResource PillButton}" VerticalAlignment="Center" Click="CallMute_Click"/>
-                            </Grid>
-
-                            <!-- Apps using the microphone or the camera, and a button that mutes the microphone -->
-                            <StackPanel x:Name="PrivacyRows" Margin="2,12,2,0" Visibility="Collapsed"/>
-
-                            <!-- A running timer: what's left, pause and stop -->
-                            <Grid x:Name="TimerRow" Margin="2,12,2,0" Visibility="Collapsed">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="&#xE916;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,10,0" VerticalAlignment="Center">
-                                    <TextBlock x:Name="TimerRowText" FontSize="15" FontWeight="SemiBold" Foreground="#FFFF9F0A" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="TimerRowLength" FontSize="12" Foreground="{StaticResource Dim}" Margin="10,1,0,0" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button x:Name="TimerPauseBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="TimerPause_Click">
-                                        <TextBlock x:Name="TimerPauseIcon" Text="&#xE769;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
-                                    </Button>
-                                    <Button Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="2,0,0,0" ToolTip="Stop the timer" Click="TimerStop_Click">
-                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- The shelf: files parked here, to drag out where they should go -->
-                            <StackPanel x:Name="ShelfRow" Margin="2,12,2,0" Visibility="Collapsed">
-                                <Grid>
-                                    <TextBlock x:Name="ShelfTitle" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"
-                                               HorizontalAlignment="Left" Background="Transparent" Cursor="SizeAll"
-                                               ToolTip="Drag to take everything off the shelf at once"
-                                               MouseLeftButtonDown="Shelf_MouseDown" MouseMove="Shelf_MouseMove"/>
-                                    <Button HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
-                                            ToolTip="Clear the shelf (the files stay where they are)" Click="ShelfClear_Click">
-                                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}"/>
-                                    </Button>
-                                </Grid>
-                                <WrapPanel x:Name="ShelfItemsPanel" Margin="0,6,0,0"/>
+                            <!-- Tools: each opens its page in place of home; click again to go back -->
+                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
+                                    <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" Click="RemindersTool_Click">
+                                    <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
+                                    <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
+                                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" Click="MixerTool_Click">
+                                    <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <!-- Not a page: it closes the notch and picks a color from the screen -->
+                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">
+                                    <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
                             </StackPanel>
 
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>

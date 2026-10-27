@@ -74,6 +74,7 @@ public partial class MainWindow
         PrivacyDots.Visibility = uses.Count > 0 && !_expanded ? Visibility.Visible : Visibility.Collapsed;
         if (_expanded) RefreshPrivacyRows();
         ShowCall();
+        UpdateCallPause();
         // The minimized idle bar is too thin to sit beside: it grows back while the dot shows.
         if (_state == NotchState.Idle && _settings.MiniIdle)
         {

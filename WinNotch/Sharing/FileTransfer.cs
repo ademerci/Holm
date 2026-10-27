@@ -11,7 +11,8 @@ namespace WinNotch.Sharing;
 public sealed record ShareFile(string Name, long Size);
 
 /// <summary>What the sender proposes. The receiver sees this before anything is written to disk.</summary>
-public sealed record ShareOffer(string Sender, IReadOnlyList<ShareFile> Files)
+/// <param name="IsText">A beamed text: one small UTF-8 file meant for the clipboard rather than Downloads.</param>
+public sealed record ShareOffer(string Sender, IReadOnlyList<ShareFile> Files, bool IsText = false)
 {
     public long TotalBytes => Files.Sum(f => f.Size);
 }
@@ -28,7 +29,11 @@ public static class FileTransfer
     public const int MaxFiles = 1000;
     public const long MaxTotalBytes = 100L * 1024 * 1024 * 1024;
 
-    sealed record OfferDto(string Sender, List<FileDto> Files);
+    /// <summary>A beamed text is at most this big; anything larger is an ordinary file.</summary>
+    public const long MaxTextBytes = 1024 * 1024;
+
+    // "Text" came with 1.7. Older Holm skips the field it doesn't know and saves the text as a file in Downloads.
+    sealed record OfferDto(string Sender, List<FileDto> Files, bool? Text = null);
     sealed record FileDto(string Name, long Size);
 
     public sealed class SenderCancelledException : OperationCanceledException
@@ -38,15 +43,18 @@ public static class FileTransfer
 
     /// <summary>Offers the files, and sends them if the receiver accepts.</summary>
     /// <returns>True when the receiver accepted and confirmed everything arrived; false when they declined.</returns>
+    /// <param name="text">The one file is a beamed text (see <see cref="ShareOffer.IsText"/>).</param>
     public static async Task<bool> SendAsync(SecureChannel channel, string sender, IReadOnlyList<string> paths,
-                                             IProgress<double>? progress, CancellationToken ct)
+                                             IProgress<double>? progress, CancellationToken ct, bool text = false)
     {
         if (paths.Count == 0 || paths.Count > MaxFiles) throw new ArgumentException("Send between 1 and 1000 files.", nameof(paths));
         var files = paths.Select(p => new FileDto(Path.GetFileName(p), new FileInfo(p).Length)).ToList();
         long total = files.Sum(f => f.Size);
         if (total > MaxTotalBytes) throw new IOException("That's more than 100 GB.");
 
-        var offer = JsonSerializer.SerializeToUtf8Bytes(new OfferDto(Trim(sender, 64), files));
+        if (text && (files.Count != 1 || total > MaxTextBytes)) throw new ArgumentException("A text is one small file.", nameof(paths));
+        var offer = JsonSerializer.SerializeToUtf8Bytes(new OfferDto(Trim(sender, 64), files, text ? true : null),
+                                                        new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull });
         await channel.SendAsync(Prefix(Offer, offer), ct).ConfigureAwait(false);
 
         byte[] answer;
@@ -99,13 +107,20 @@ public static class FileTransfer
                                                                   string folder, IProgress<double>? progress, CancellationToken ct)
         => await ReceiveAsync(channel, (offer, _) => decide(offer), folder, progress, ct).ConfigureAwait(false);
 
+    public static Task<IReadOnlyList<string>?> ReceiveAsync(SecureChannel channel,
+                                                            Func<ShareOffer, CancellationToken, Task<bool>> decide,
+                                                            string folder, IProgress<double>? progress, CancellationToken ct)
+        => ReceiveAsync(channel, decide, _ => folder, progress, ct);
+
+    /// <summary>As above, with the folder chosen once the offer is known (a beamed text needn't land in Downloads).</summary>
     public static async Task<IReadOnlyList<string>?> ReceiveAsync(SecureChannel channel,
                                                                   Func<ShareOffer, CancellationToken, Task<bool>> decide,
-                                                                  string folder, IProgress<double>? progress, CancellationToken ct)
+                                                                  Func<ShareOffer, string> folderFor, IProgress<double>? progress, CancellationToken ct)
     {
         var first = await channel.ReceiveAsync(ct).ConfigureAwait(false);
         if (first.Length < 2 || first[0] != Offer) throw new InvalidDataException("Expected an offer.");
         var offer = ParseOffer(first.AsSpan(1));
+        string folder = folderFor(offer);
 
         using var decisionLifetime = CancellationTokenSource.CreateLinkedTokenSource(ct);
         using var waitForCancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -220,7 +235,9 @@ public static class FileTransfer
         }
         var files = dto.Files.Select(f => new ShareFile(SafeFileName(f.Name), f.Size)).ToList();
         string sender = Trim(dto.Sender, 64);
-        return new ShareOffer(sender.Length > 0 ? sender : "Someone", files);
+        // Only one small file can be a text; anything else is saved as the files it is.
+        bool text = dto.Text == true && files.Count == 1 && total <= MaxTextBytes;
+        return new ShareOffer(sender.Length > 0 ? sender : "Someone", files, text);
     }
 
     static readonly string[] ReservedNames =

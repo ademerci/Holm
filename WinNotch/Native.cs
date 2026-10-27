@@ -13,7 +13,7 @@ internal static class Native
     public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOACTIVATE = 0x0010, SWP_NOOWNERZORDER = 0x0200;
 
     public const int WM_DISPLAYCHANGE = 0x007E, WM_POWERBROADCAST = 0x0218, WM_DEVICECHANGE = 0x0219, WM_DPICHANGED = 0x02E0;
-    public const int PBT_APMPOWERSTATUSCHANGE = 0x000A, PBT_POWERSETTINGCHANGE = 0x8013, DBT_DEVNODES_CHANGED = 0x0007;
+    public const int PBT_APMSUSPEND = 0x0004, PBT_APMRESUMEAUTOMATIC = 0x0012, PBT_APMPOWERSTATUSCHANGE = 0x000A, PBT_POWERSETTINGCHANGE = 0x8013, DBT_DEVNODES_CHANGED = 0x0007;
 
     public static Guid GUID_BATTERY_PERCENTAGE_REMAINING = new("A7AD8041-B45A-4CAE-87A3-EECBB468A9E1");
     public static Guid GUID_ACDC_POWER_SOURCE = new("5D3E9A59-E9D5-4B00-A6BD-FF34FF516548");
@@ -34,6 +34,7 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW", CharSet = CharSet.Unicode)] static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFOEX info);
     [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc callback, IntPtr data);
 
@@ -62,6 +63,20 @@ internal static class Native
     [DllImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", CharSet = CharSet.Unicode)]
     static extern bool QueryFullProcessImageName(IntPtr process, int flags, char[] name, ref int size);
 
+    /// <summary>Full path of a process's program, or "" when it can't be asked (gone, or protected).</summary>
+    public static string ProcessPath(int processId)
+    {
+        IntPtr process = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, (uint)processId);
+        if (process == IntPtr.Zero) return "";
+        try
+        {
+            var buffer = new char[1024];
+            int size = buffer.Length;
+            return QueryFullProcessImageName(process, 0, buffer, ref size) ? new string(buffer, 0, size) : "";
+        }
+        finally { CloseHandle(process); }
+    }
+
     static uint _lastPid;
     static string _lastExe = "";
 
@@ -87,6 +102,11 @@ internal static class Native
     public const int WM_CLIPBOARDUPDATE = 0x031D;
     [DllImport("user32.dll")] public static extern bool AddClipboardFormatListener(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+    /// <summary>Goes up whenever the clipboard changes: the same number means the same content.</summary>
+    [DllImport("user32.dll")] public static extern uint GetClipboardSequenceNumber();
+    /// <summary>Asks whether a format is on the clipboard without opening (or reading) it.</summary>
+    [DllImport("user32.dll")] public static extern bool IsClipboardFormatAvailable(uint format);
+    [DllImport("user32.dll", EntryPoint = "RegisterClipboardFormatW", CharSet = CharSet.Unicode)] public static extern uint RegisterClipboardFormat(string name);
 
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);

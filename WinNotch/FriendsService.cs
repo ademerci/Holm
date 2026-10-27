@@ -25,6 +25,8 @@ internal sealed class FriendsService
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
     /// <summary>An older "are you there?" or answer is history: it came in while Holm wasn't running.</summary>
     const long FreshSeconds = 30;
+    /// <summary>A "something waits for you" note is answered this long after it was left.</summary>
+    const long WaitingSeconds = 24 * 60 * 60;
 
     readonly AppSettings _settings;
     readonly Dispatcher _ui;
@@ -47,6 +49,10 @@ internal sealed class FriendsService
     public event Action<Friend>? RemovedUs;
     /// <summary>A friend's notch answered or asked: their Holm is running now (UI thread).</summary>
     public event Action<Friend>? FriendOnline;
+    /// <summary>A friend waved (UI thread); already limited to one per friend every 30 seconds.</summary>
+    public event Action<Friend>? Waved;
+
+    readonly WaveLimit _wavesOut = new(), _wavesIn = new();
 
     public FriendsService(AppSettings settings, Dispatcher ui)
     {
@@ -270,6 +276,34 @@ internal sealed class FriendsService
         return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
     }
 
+    /// <summary>Waves at a friend. False when it's too soon after the last wave (see <see cref="WaveLimit"/>).</summary>
+    public bool Wave(Friend to)
+    {
+        if (!_wavesOut.Allow(to.Key, DateTime.UtcNow)) return false;
+        Tell(EnsureMe(), to, FriendNoteKind.Wave);
+        return true;
+    }
+
+    /// <summary>Asks one friend whether their Holm runs (if not asked a minute ago); <see cref="FriendOnline"/> follows if so.</summary>
+    public void AskIfHere(Friend friend)
+    {
+        if (_follow == null || Me is not { } me) return; // the answer comes to our inbox
+        if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
+    }
+
+    /// <summary>Leaves a note that something waits; their Holm answers when it next runs.</summary>
+    public void TellWaiting(Friend friend)
+    {
+        if (_follow == null || Me is not { } me) return;
+        Tell(me, friend, FriendNoteKind.Waiting);
+    }
+
+    /// <summary>Sending to them just failed: they're not online, whatever they said a minute ago.</summary>
+    public void MarkOffline(Friend friend) => _presence.Forget(friend.Key);
+
+    /// <summary>How long until the next wave to this friend may go.</summary>
+    public TimeSpan WaveWait(Friend to) => _wavesOut.Wait(to.Key, DateTime.UtcNow);
+
     /// <summary>Follows our inbox while Beam is on and we have an identity; costs nothing otherwise.</summary>
     public void Restart()
     {
@@ -390,6 +424,19 @@ internal sealed class FriendsService
             case FriendNoteKind.Here:
                 SawOnline(friend);
                 break;
+            case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds:
+                break; // the inbox server keeps notes for about 12 hours anyway
+            case FriendNoteKind.Waiting:
+                // They have something for us and will send it once they hear we're here.
+                if (age <= FreshSeconds) SawOnline(friend);
+                if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
+                break;
+            case FriendNoteKind.Wave when friend == null || age > WaveLimit.FreshSeconds:
+                break; // strangers can't wave; an old wave came while Holm wasn't running
+            case FriendNoteKind.Wave:
+                SawOnline(friend);
+                if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
+                break;
         }
     }
 
@@ -435,6 +482,9 @@ internal sealed class FriendPresence
         _asked[key] = now;
         return true;
     }
+
+    /// <summary>They're not online after all (a send to them just failed).</summary>
+    public void Forget(string key) => _seen.Remove(key);
 
     /// <summary>Whether to answer their question now.</summary>
     public bool ShouldAnswer(string key, DateTime now)

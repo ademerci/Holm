@@ -70,7 +70,7 @@ public partial class MainWindow
     string? _shownPeers;
     readonly Dictionary<string, FrameworkElement> _onlineDots = new(); // by friend key, on the chips shown now
     CancellationTokenSource? _taskCts;
-    Action? _primaryAction, _secondaryAction;
+    Action? _primaryAction, _secondaryAction, _extraAction;
     readonly HashSet<string> _ownCodes = new();
     string? _lastOfferedCode, _lastOfferedFriend;
     IReadOnlyList<NearbyPeer>? _demoPeers = null; // README screenshots only (set in Debug builds)
@@ -99,6 +99,7 @@ public partial class MainWindow
         _friends.FriendRequested += OnFriendRequested;
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
+        _friends.Waved += OnWaved;
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
 
@@ -192,6 +193,7 @@ public partial class MainWindow
         _shareWatch.Stop();
         _pickClose.Stop();
         _pickFiles = null;
+        ForgetPickedText();
         if (!_sharing) return;
         Diag.Log("Share view closed");
         _sharing = false;
@@ -209,9 +211,14 @@ public partial class MainWindow
     }
 
     /// <summary>Files dropped (or, after a screenshot, clicked) onto a chip in the share view.</summary>
-    void SendTo(ShareTarget? target, string[] dropped)
+    void SendTo(ShareTarget? target, string[] dropped, bool text = false)
     {
         if (_draggingOut || _busy || _installingUpdate) return;
+        if (text && target?.Place == ShareTarget.ShelfPlace)
+        {
+            ShowPeek(null, "A text can't go on the shelf", "", null, false, null);
+            return;
+        }
         if (target?.Place == ShareTarget.ShelfPlace)
         {
             AddToShelf(dropped); // folders too: only the paths are kept
@@ -224,7 +231,8 @@ public partial class MainWindow
         }
 
         var paths = dropped.Where(File.Exists).ToList();
-        if (paths.Count == 0)
+        var folders = _settings.SendFolders ? dropped.Where(Directory.Exists).ToList() : new List<string>();
+        if (paths.Count == 0 && folders.Count == 0)
         {
             ShowPeek("", dropped.Length > 0 ? "Folders can't be sent – zip them first" : "Nothing to send", "", null, false, null);
             return;
@@ -234,10 +242,18 @@ public partial class MainWindow
             ShowPeek("", "Drop it on a person or on “Code”", "", null, false, null);
             return;
         }
-        if (target.Place == ShareTarget.PhonePlace) BeamToPhone(paths);
-        else if (target.Friend != null) _ = SendToFriendAsync(target.Friend, paths);
-        else if (target.Peer != null) _ = SendNearbyAsync(target.Peer, paths);
-        else _ = SendWithCodeAsync(paths);
+        if (folders.Count > 0) _ = PackAndSendAsync(target, paths, folders);
+        else if (text) _ = BeamTextFileAsync(target, paths[0]);
+        else _ = SendFilesAsync(target, paths);
+    }
+
+    /// <summary>Sends to whoever the chip stands for; done when the transfer is over (or, for the phone, has begun).</summary>
+    Task SendFilesAsync(ShareTarget target, List<string> paths, bool text = false)
+    {
+        if (target.Place == ShareTarget.PhonePlace) { BeamToPhone(paths); return Task.CompletedTask; }
+        if (target.Friend != null) return SendToFriendAsync(target.Friend, paths, text);
+        if (target.Peer != null) return SendNearbyAsync(target.Peer, paths, text);
+        return SendWithCodeAsync(paths, text);
     }
 
     static ShareTarget? TargetOf(DependencyObject? element)
@@ -263,7 +279,7 @@ public partial class MainWindow
     {
         int files = _dragFiles.Length;
         bool beam = _settings.Beam;
-        string what = files == 1 ? $"“{Path.GetFileName(_dragFiles[0])}”" : $"{files} files";
+        string what = _pickText != null ? "the copied text" : files == 1 ? $"“{Path.GetFileName(_dragFiles[0])}”" : $"{files} files";
         ShareTitle.Text = beam ? "Send " + what : what;
         var peers = beam ? _demoPeers ?? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _demoFriends ?? _friends.Friends : Array.Empty<Friend>();
@@ -343,8 +359,10 @@ public partial class MainWindow
         {
             if (_pickFiles is not { } files) return;
             Diag.Log($"Picked {target.Name}");
+            bool text = _pickText != null;
+            _pickText = null; // it's the sending's now
             EndShare();
-            SendTo(target, files);
+            SendTo(target, files, text);
         };
         button.MouseEnter += (_, _) => { if (_pickFiles != null) HighlightChip(button); };
         button.MouseLeave += (_, _) => { if (_pickFiles != null) HighlightChip(null); };
@@ -385,7 +403,7 @@ public partial class MainWindow
 
     // ───────────── sending ─────────────
 
-    async Task SendNearbyAsync(NearbyPeer peer, List<string> paths)
+    async Task SendNearbyAsync(NearbyPeer peer, List<string> paths, bool text = false)
     {
         var cts = BeginTask();
         ShowTask("", ShareBlue, $"Checking if {peer.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask));
@@ -408,7 +426,7 @@ public partial class MainWindow
             {
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
                 bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
-                    new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token);
+                    new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token, text);
                 if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
             }
@@ -416,7 +434,7 @@ public partial class MainWindow
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
 
-    async Task SendWithCodeAsync(List<string> paths)
+    async Task SendWithCodeAsync(List<string> paths, bool text = false)
     {
         var cts = BeginTask();
         byte[] secret = ShareCode.NewSecret();
@@ -431,7 +449,7 @@ public partial class MainWindow
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
             bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
-                new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token);
+                new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) EndTask("", GreenBrush, "Sent", Summary(paths));
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
         }
@@ -446,7 +464,7 @@ public partial class MainWindow
     /// Like sending with a code, except that nobody has to pass the code on: it goes into the friend's inbox,
     /// sealed for them, and their notch comes to the relay by itself and asks them.
     /// </summary>
-    async Task SendToFriendAsync(Friend friend, List<string> paths)
+    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null)
     {
         var cts = BeginTask();
         ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
@@ -460,13 +478,30 @@ public partial class MainWindow
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
-                new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token);
+                new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
             else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
+            if (queued != null) Unqueue(queued); // delivered, or they said no
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
         {
-            EndTask("\uE916", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
+            if (queued != null)
+            {
+                // Still not there: keep waiting, without a word.
+                _busy = false;
+                _friends.MarkOffline(friend);
+                HideTask();
+            }
+            else if (_settings.SendLater)
+            {
+                var send = Enqueue(friend, paths, text);
+                EndTask(LaterGlyph, TimerOrange, $"{friend.Name} is offline", "It goes once their Holm is back",
+                        ("Don't send", () => { HideTask(); Unqueue(send); }));
+                _taskHide.Interval = TimeSpan.FromSeconds(8);
+                _taskHide.Start();
+            }
+            else
+                EndTask("\uE916", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
@@ -666,6 +701,7 @@ public partial class MainWindow
         Dispatcher.InvokeAsync(() =>
         {
             if (!_settings.Beam || _busy || _installingUpdate || _taskVisible || _hiddenForFullscreen) return;
+            if (ClipboardVerdict() != ClipVerdict.Keep) return; // a password: not ours to read
             string? text = ReadClipboardText();
             if (FriendIdentity.ParseFriendCode(text) is { } card)
             {
@@ -719,7 +755,7 @@ public partial class MainWindow
                     sender = offer.Sender;
                     return AskAsync(offer, decisionToken);
                 }).Task.Unwrap(),
-                Native.DownloadsFolder(),
+                offer => offer.IsText && _settings.BeamText ? TextInbox : Native.DownloadsFolder(),
                 new Progress<double>(p => ShowProgress($"Receiving from {sender}", "Saving to Downloads", p, sending: false)), cts.Token);
         }
         catch (FileTransfer.SenderCancelledException)
@@ -728,6 +764,11 @@ public partial class MainWindow
             return;
         }
 
+        if (saved != null && saved.Count == 1 && saved[0].StartsWith(TextInbox, StringComparison.OrdinalIgnoreCase))
+        {
+            TakeBeamedText(saved[0], sender);
+            return;
+        }
         if (saved == null) { EndTask("", RedBrush, "Declined", $"Nothing was saved from {sender}"); return; }
         string first = saved[0];
         EndTask("", GreenBrush, saved.Count == 1 ? $"Saved {Path.GetFileName(first)}" : $"Saved {saved.Count} files",
@@ -740,14 +781,16 @@ public partial class MainWindow
     async Task<bool> AskAsync(ShareOffer offer, CancellationToken ct)
     {
         var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        ShowTask(Initials(offer.Sender), AvatarColor(offer.Sender), $"{offer.Sender} wants to send you", Summary(offer), null,
-                 ("Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
+        bool text = offer.IsText && _settings.BeamText;
+        ShowTask(Initials(offer.Sender), AvatarColor(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
+                 text ? "Copy it to your clipboard?" : Summary(offer), null,
+                 (text ? "Copy" : "Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
         PlayIncomingFileSound();
         using (ct.Register(() => answer.TrySetResult(false)))
         {
             var finished = await Task.WhenAny(answer.Task, Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None));
             bool accepted = finished == answer.Task && answer.Task.Result;
-            if (accepted) ShowTask("", ShareBlue, $"Receiving from {offer.Sender}", "Saving to Downloads", 0, null, ("Cancel", CancelTask));
+            if (accepted) ShowTask("", ShareBlue, $"Receiving from {offer.Sender}", text ? "Copying it" : "Saving to Downloads", 0, null, ("Cancel", CancelTask));
             return accepted;
         }
     }
@@ -770,6 +813,8 @@ public partial class MainWindow
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
         TaskThumb.Visibility = Visibility.Collapsed; // a screenshot puts its picture back afterwards
+        TaskExtra.Visibility = Visibility.Collapsed; // and its third button
+        _extraAction = null;
         TaskIconCircle.Visibility = Visibility.Visible;
         TaskIcon.Text = icon;
         TaskIcon.FontFamily = textIcon ? new FontFamily("Segoe UI Variable Text, Segoe UI") : IconFont;
@@ -840,7 +885,7 @@ public partial class MainWindow
     void HideTask()
     {
         _taskHide.Stop();
-        _primaryAction = _secondaryAction = null;
+        _primaryAction = _secondaryAction = _extraAction = null;
         if (!_taskVisible) return;
         _taskVisible = false;
         ApplyState();
@@ -856,6 +901,22 @@ public partial class MainWindow
     {
         e.Handled = true;
         _secondaryAction?.Invoke();
+    }
+
+    /// <summary>A third button, left of the other two, for the task shown last; the notch grows to fit it.</summary>
+    void ShowTaskExtra(string label, Action act)
+    {
+        TaskExtra.Content = label;
+        TaskExtra.IsEnabled = true;
+        TaskExtra.Visibility = Visibility.Visible;
+        _extraAction = act;
+        ApplyState();
+    }
+
+    void TaskExtra_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _extraAction?.Invoke();
     }
 
     // ───────────── menu ─────────────
@@ -914,6 +975,7 @@ public partial class MainWindow
         }
         if (_friends.Friends.Count == 0) return;
         MenuFriends.Items.Add(new Separator());
+        FillWaveMenu();
         var remove = new MenuItem { Header = "Remove friend" };
         foreach (var friend in _friends.Friends.ToList())
         {
