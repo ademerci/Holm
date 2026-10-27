@@ -220,6 +220,8 @@
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
                         <MenuItem x:Name="MenuMessages" Header="Messages"/>
+                        <!-- On, from, until, and the apps and people that still pop out; filled when the menu opens -->
+                        <MenuItem x:Name="MenuQuiet" Header="Quiet hours"/>
                         <MenuItem x:Name="MenuDownloads" Header="Downloads" IsCheckable="True" Click="MenuDownloads_Click"/>
                         <MenuItem x:Name="MenuVpn" Header="VPN indicator" IsCheckable="True" Click="MenuVpn_Click"/>
                         <MenuItem x:Name="MenuPrivacy" Header="Microphone and camera dot" IsCheckable="True" Click="MenuPrivacy_Click"/>
@@ -516,6 +518,8 @@
                                     <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
                                 </StackPanel>
     
+                                <!-- Quiet hours: why messages don't pop out right now -->
+                                <TextBlock x:Name="QuietNote" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,12,0,-6" Visibility="Collapsed"/>
                                 <StackPanel x:Name="MessageRows" Margin="0,14,0,0"/>
     
                                 <!-- Downloads running right now -->
