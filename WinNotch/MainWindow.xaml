@@ -214,6 +214,7 @@
                         <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
                         <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
                         <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
+                        <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
                         <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
                         <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                         <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
@@ -673,6 +674,14 @@
                                                TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
 
+                                <!-- A slider per app that plays sound; its icon mutes it -->
+                                <StackPanel x:Name="MixerPage" Visibility="Collapsed">
+                                    <TextBlock Text="Volume per app" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,8"/>
+                                    <TextBlock x:Name="MixerEmpty" Text="No app is playing sound right now." FontSize="13" Foreground="{StaticResource Faint}"
+                                               Margin="2,0,2,8" Visibility="Collapsed"/>
+                                    <StackPanel x:Name="MixerRows"/>
+                                </StackPanel>
+
                                 <!-- The last 20 things copied; a click puts one back. Passwords never show up here -->
                                 <StackPanel x:Name="ClipboardPage" Visibility="Collapsed">
                                     <Grid Margin="2,0,0,6">
@@ -705,6 +714,9 @@
                                 </Button>
                                 <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
                                     <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" Click="MixerTool_Click">
+                                    <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                                 <!-- Not a page: it closes the notch and picks a color from the screen -->
                                 <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">

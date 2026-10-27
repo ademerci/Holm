@@ -46,15 +46,18 @@ public partial class MainWindow
         (RemindersPage, RemindersToolBtn, Tool.Reminders),
         (CalculatorPage, CalculatorToolBtn, Tool.Calculator),
         (ClipboardPage, ClipboardToolBtn, Tool.Clipboard),
+        (MixerPage, MixerToolBtn, Tool.Mixer),
     };
 
     /// <summary>Called when a page opens, so a tool can fill it in.</summary>
     void OnToolShown(Tool tool)
     {
+        if (tool != Tool.Mixer) HideMixer();
         if (tool == Tool.Notes) ShowNotes();
         else if (tool == Tool.Reminders) ShowRemindersPage();
         else if (tool == Tool.Calculator) ShowCalculator();
         else if (tool == Tool.Clipboard) ShowClipboardPage();
+        else if (tool == Tool.Mixer) ShowMixerPage();
     }
 
     /// <summary>Which tools are switched on; the bar hides when none is.</summary>
@@ -64,6 +67,7 @@ public partial class MainWindow
         RemindersToolBtn.Visibility = _settings.Reminders ? Visibility.Visible : Visibility.Collapsed;
         CalculatorToolBtn.Visibility = _settings.Calculator ? Visibility.Visible : Visibility.Collapsed;
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
+        MixerToolBtn.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
         ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
         bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())

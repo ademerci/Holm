@@ -135,6 +135,7 @@ public partial class MainWindow : Window
         InitDiskSpace();
         InitConnectivity();
         InitWeather();
+        InitMixer();
 
         Progress.ValueCommitted += v =>
         {
@@ -251,6 +252,7 @@ public partial class MainWindow : Window
         _diskSoon.Stop();
         StopConnectivity();
         _weatherTick.Stop();
+        HideMixer();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -1319,6 +1321,7 @@ public partial class MainWindow : Window
         MenuReminders.IsChecked = _settings.Reminders;
         MenuCalculator.IsChecked = _settings.Calculator;
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
+        MenuAppVolume.IsChecked = _settings.AppVolume;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
@@ -1649,6 +1652,26 @@ public partial class MainWindow : Window
         CalcBox.Text = "12,5 × 4 + 15%";
         await Snap(dir, "expanded-calculator", 260);
         CalcBox.Text = "";
+        SetExpanded(false);
+
+        // 1.7: the volume of each app
+        SetExpanded(true);
+        _settings.AppVolume = true;
+        _tool = Tool.Mixer; // the page without the real mixer behind it
+        HomePanel.Visibility = Visibility.Collapsed;
+        ToolPage.Visibility = Visibility.Visible;
+        foreach (var (page, button, which) in ToolPages())
+        {
+            page.Visibility = which == Tool.Mixer ? Visibility.Visible : Visibility.Collapsed;
+            button.Background = which == Tool.Mixer ? ToolLit : Brushes.Transparent;
+        }
+        ShowMixerRows(new List<AppVolume>
+        {
+            new("demo-spotify", "Spotify", "", 0.7f, false, true, new[] { 0 }),
+            new("demo-browser", "Microsoft Edge", "", 0.42f, false, true, new[] { 1 }),
+            new("demo-discord", "Discord", "", 0.85f, true, false, new[] { 2 }),
+        });
+        await Snap(dir, "expanded-mixer", 300);
         SetExpanded(false);
 
         // 1.7: the clipboard history

@@ -61,6 +61,8 @@ internal sealed class AppSettings
     public bool Calculator { get; set; } = true;
     /// <summary>The last 20 things copied, in the open notch. The list itself is never saved.</summary>
     public bool ClipboardHistory { get; set; } = true;
+    /// <summary>The mixer in the open notch: a slider per app.</summary>
+    public bool AppVolume { get; set; } = true;
     /// <summary>A password copied from a password manager leaves the clipboard after 30 seconds, if it is still there.</summary>
     public bool ClearPasswords { get; set; } = true;
     /// <summary>The color picker button in the open notch.</summary>
