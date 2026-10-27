@@ -165,6 +165,8 @@ public enum FriendNoteKind
     Here,
     /// <summary>A wave: "thinking of you". Holm before 1.7 doesn't know it and leaves it unopened.</summary>
     Wave,
+    /// <summary>"I have something for you": a Holm 1.7 answers with <see cref="Here"/> once it runs. Older ones leave it unopened.</summary>
+    Waiting,
 }
 
 public static class FriendNotes
@@ -208,6 +210,7 @@ public static class FriendNotes
                 FriendNoteKind.Ping => "ping",
                 FriendNoteKind.Here => "here",
                 FriendNoteKind.Wave => "wave",
+                FriendNoteKind.Waiting => "waiting",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -273,6 +276,7 @@ public static class FriendNotes
                 "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T),
                 "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
+                "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];

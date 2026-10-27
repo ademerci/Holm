@@ -137,6 +137,7 @@ public partial class MainWindow : Window
         InitConnectivity();
         InitWeather();
         InitMixer();
+        InitSendLater();
 
         Progress.ValueCommitted += v =>
         {
@@ -234,6 +235,7 @@ public partial class MainWindow : Window
         StartUsb();
         StartConnectivity();
         StartWeather();
+        StartSendLater();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -254,6 +256,8 @@ public partial class MainWindow : Window
         StopConnectivity();
         _weatherTick.Stop();
         HideMixer();
+        _laterTick.Stop();
+        _laterSoon.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -1325,6 +1329,7 @@ public partial class MainWindow : Window
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
         MenuAppVolume.IsChecked = _settings.AppVolume;
         MenuSendFolders.IsChecked = _settings.SendFolders;
+        MenuSendLater.IsChecked = _settings.SendLater;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
@@ -1526,6 +1531,9 @@ public partial class MainWindow : Window
         StartUsb();
         _settings.Connectivity = false;
         StartConnectivity();
+        _laterTick.Stop();
+        _settings.SendQueue = new List<QueuedSend>(); // nor what waits for your friends
+        ShowLaterRows();
         _settings.WeatherPlace = null; // nor where you are
         _settings.WeatherLatitude = _settings.WeatherLongitude = null;
         _weather = null;
@@ -1671,6 +1679,18 @@ public partial class MainWindow : Window
         EndTask("\uE77F", GreenBrush, "Text from Lena Hoffmann copied", "Paste it with Ctrl+V");
         await Snap(dir, "beam-text-copied", 70);
         HideTask();
+
+        // 1.7: sending later
+        EndTask(LaterGlyph, TimerOrange, "Lena Hoffmann is offline", "It goes once their Holm is back", ("Don't send", () => { }));
+        await Snap(dir, "send-later", 70);
+        HideTask();
+        _settings.SendQueue = new List<QueuedSend> { new() { FriendName = "Lena Hoffmann", Paths = { @"C:\Demo\Holiday photos.zip" }, QueuedUtc = DateTime.UtcNow } };
+        ShowLaterRows();
+        SetExpanded(true);
+        await Snap(dir, "expanded-later", 260);
+        SetExpanded(false);
+        _settings.SendQueue = new List<QueuedSend>();
+        ShowLaterRows();
 
         // 1.7: a friend waves
         ShowWaveFrom("Lena Hoffmann", () => { });

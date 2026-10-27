@@ -93,6 +93,10 @@ internal sealed class AppSettings
     public bool SendFolders { get; set; } = true;
     /// <summary>Text can be beamed (from the clipboard), and beamed text arriving goes to the clipboard.</summary>
     public bool BeamText { get; set; } = true;
+    /// <summary>A friend whose Holm isn't running gets the files once it is; see <see cref="SendQueue"/>.</summary>
+    public bool SendLater { get; set; } = true;
+    /// <summary>What waits for friends (paths only; files Holm made are kept in its temp folder).</summary>
+    public List<QueuedSend> SendQueue { get; set; } = new();
     double? _collapsedScale, _expandedScale;
     double _legacyScale = 1;
 
