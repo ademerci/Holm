@@ -88,6 +88,11 @@ internal static class Native
     public const int WM_CLIPBOARDUPDATE = 0x031D;
     [DllImport("user32.dll")] public static extern bool AddClipboardFormatListener(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+    /// <summary>Goes up whenever the clipboard changes: the same number means the same content.</summary>
+    [DllImport("user32.dll")] public static extern uint GetClipboardSequenceNumber();
+    /// <summary>Asks whether a format is on the clipboard without opening (or reading) it.</summary>
+    [DllImport("user32.dll")] public static extern bool IsClipboardFormatAvailable(uint format);
+    [DllImport("user32.dll", EntryPoint = "RegisterClipboardFormatW", CharSet = CharSet.Unicode)] public static extern uint RegisterClipboardFormat(string name);
 
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);

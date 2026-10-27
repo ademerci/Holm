@@ -213,6 +213,7 @@
                         <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
                         <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
                         <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
+                        <MenuItem x:Name="MenuClipboardHistory" Header="Clipboard history" IsCheckable="True" Click="MenuClipboardHistory_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -627,6 +628,24 @@
                                     <TextBlock x:Name="CalcHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,2,0,4"
                                                TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
+
+                                <!-- The last 20 things copied; a click puts one back. Passwords never show up here -->
+                                <StackPanel x:Name="ClipboardPage" Visibility="Collapsed">
+                                    <Grid Margin="2,0,0,6">
+                                        <TextBlock Text="Clipboard" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                        <Button x:Name="ClipClearBtn" HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
+                                                ToolTip="Clear the list" Click="ClipClear_Click">
+                                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{StaticResource Dim}"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock x:Name="ClipEmpty" Text="Copy a text or a picture: the last 20 show up here. Passwords never do."
+                                               FontSize="13" Foreground="{StaticResource Faint}" TextWrapping="Wrap" Margin="2,4,2,8"/>
+                                    <ScrollViewer MaxHeight="236" VerticalScrollBarVisibility="Hidden" PanningMode="VerticalOnly">
+                                        <StackPanel x:Name="ClipRows"/>
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="ClipHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,4,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
                             </Grid>
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
@@ -639,6 +658,9 @@
                                 </Button>
                                 <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
                                     <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
+                                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
 

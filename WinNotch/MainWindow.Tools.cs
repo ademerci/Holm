@@ -45,6 +45,7 @@ public partial class MainWindow
         (NotesPage, NotesToolBtn, Tool.Notes),
         (RemindersPage, RemindersToolBtn, Tool.Reminders),
         (CalculatorPage, CalculatorToolBtn, Tool.Calculator),
+        (ClipboardPage, ClipboardToolBtn, Tool.Clipboard),
     };
 
     /// <summary>Called when a page opens, so a tool can fill it in.</summary>
@@ -53,6 +54,7 @@ public partial class MainWindow
         if (tool == Tool.Notes) ShowNotes();
         else if (tool == Tool.Reminders) ShowRemindersPage();
         else if (tool == Tool.Calculator) ShowCalculator();
+        else if (tool == Tool.Clipboard) ShowClipboardPage();
     }
 
     /// <summary>Which tools are switched on; the bar hides when none is.</summary>
@@ -61,6 +63,7 @@ public partial class MainWindow
         NotesToolBtn.Visibility = _settings.Notes ? Visibility.Visible : Visibility.Collapsed;
         RemindersToolBtn.Visibility = _settings.Reminders ? Visibility.Visible : Visibility.Collapsed;
         CalculatorToolBtn.Visibility = _settings.Calculator ? Visibility.Visible : Visibility.Collapsed;
+        ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())
         {

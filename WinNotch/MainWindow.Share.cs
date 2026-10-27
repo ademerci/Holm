@@ -666,6 +666,7 @@ public partial class MainWindow
         Dispatcher.InvokeAsync(() =>
         {
             if (!_settings.Beam || _busy || _installingUpdate || _taskVisible || _hiddenForFullscreen) return;
+            if (ClipboardVerdict() != ClipVerdict.Keep) return; // a password: not ours to read
             string? text = ReadClipboardText();
             if (FriendIdentity.ParseFriendCode(text) is { } card)
             {
