@@ -130,6 +130,7 @@ public partial class MainWindow : Window
         InitNotes();
         InitReminders();
         InitCalculator();
+        InitClipboardHistory();
 
         Progress.ValueCommitted += v =>
         {
@@ -240,6 +241,8 @@ public partial class MainWindow : Window
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
         if (_hwnd != IntPtr.Zero) Native.RemoveClipboardFormatListener(_hwnd);
+        ForgetClips(_clips.Clear()); // the pictures in the temp folder go with Holm
+        ForgetClipFiles();
         _volume.Shutdown();
         _vpn?.Dispose();
         StopPrivacy();
@@ -274,6 +277,7 @@ public partial class MainWindow : Window
             case Native.WM_CLIPBOARDUPDATE:
                 OnClipboardChanged();
                 OnClipboardForScreenshot(); // right away: who owns the clipboard can change
+                OnClipboardForHistory();
                 break;
         }
         return IntPtr.Zero;
@@ -393,6 +397,9 @@ public partial class MainWindow : Window
         {
             case NotchState.Expanded:
                 ExpandedView.Visibility = Visibility.Visible;
+                // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
+                // only the top would hand back its old size: lay out first.
+                UpdateLayout();
                 ExpandedView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(ExpandedView.DesiredSize.Height) + 18, 32);
                 break;
@@ -1277,6 +1284,7 @@ public partial class MainWindow : Window
         MenuNotes.IsChecked = _settings.Notes;
         MenuReminders.IsChecked = _settings.Reminders;
         MenuCalculator.IsChecked = _settings.Calculator;
+        MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1463,6 +1471,8 @@ public partial class MainWindow : Window
         _settings.NoteText = ""; // your note must not end up in a picture
         _reminderTick.Stop();
         _reminders = new ReminderList(new List<Reminder>()); // nor your reminders
+        _clipsPaused = true; // nor what you copy
+        _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
@@ -1562,6 +1572,26 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-calculator", 260);
         CalcBox.Text = "";
         SetExpanded(false);
+
+        // 1.7: the clipboard history
+        var demoPicture = new RenderTargetBitmap(160, 100, 96, 96, PixelFormats.Pbgra32);
+        var sketch = new DrawingVisual();
+        using (var dc = sketch.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0xFF, 0x9F, 0x0A), Color.FromRgb(0xBF, 0x5A, 0xF2), 30), null, new Rect(0, 0, 160, 100));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)), null, new Point(112, 38), 18, 18);
+        }
+        demoPicture.Render(sketch);
+        demoPicture.Freeze();
+        foreach (var (text, minutes) in new[] { ("Oat milk, bread, coffee beans", 41), ("https://example.com/holm/release-notes", 12), ("Meeting moved to 15:30, room 2.14", 3) })
+            _clips.Add(new ClipEntry { Key = ClipboardHistory.TextKey(text), Text = text, CopiedAt = DateTime.UtcNow.AddMinutes(-minutes) });
+        _clips.Add(new ClipEntry { Key = "demo-picture", ImagePath = "demo", Width = 1280, Height = 800, Thumb = demoPicture, CopiedAt = DateTime.UtcNow.AddSeconds(-20) });
+        _clips.Add(new ClipEntry { Key = "demo-now", Text = "Holm 1.7 is out", CopiedAt = DateTime.UtcNow });
+        SetExpanded(true);
+        ShowTool(Tool.Clipboard);
+        await Snap(dir, "expanded-clipboard", 340);
+        SetExpanded(false);
+        _clips.Clear();
 
         // 1.7: the sleep timer
         _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));
@@ -1733,6 +1763,7 @@ public partial class MainWindow : Window
         UpdateLayout();
         const double scale = 2;
         double width = Width; // the whole window: the open notch is wider than the 480 it used to be
+        height = Math.Max(height, Math.Ceiling(Height) + 16); // never cut off a notch that grew
         var image = new RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         var desktop = new DrawingVisual();
         using (var dc = desktop.RenderOpen())

@@ -51,6 +51,8 @@ internal sealed class AppSettings
     public List<Reminder> ReminderList { get; set; } = new();
     /// <summary>The calculator in the open notch.</summary>
     public bool Calculator { get; set; } = true;
+    /// <summary>The last 20 things copied, in the open notch. The list itself is never saved.</summary>
+    public bool ClipboardHistory { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;
