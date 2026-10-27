@@ -70,7 +70,7 @@ public partial class MainWindow
     string? _shownPeers;
     readonly Dictionary<string, FrameworkElement> _onlineDots = new(); // by friend key, on the chips shown now
     CancellationTokenSource? _taskCts;
-    Action? _primaryAction, _secondaryAction;
+    Action? _primaryAction, _secondaryAction, _extraAction;
     readonly HashSet<string> _ownCodes = new();
     string? _lastOfferedCode, _lastOfferedFriend;
     IReadOnlyList<NearbyPeer>? _demoPeers = null; // README screenshots only (set in Debug builds)
@@ -771,6 +771,8 @@ public partial class MainWindow
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
         TaskThumb.Visibility = Visibility.Collapsed; // a screenshot puts its picture back afterwards
+        TaskExtra.Visibility = Visibility.Collapsed; // and its third button
+        _extraAction = null;
         TaskIconCircle.Visibility = Visibility.Visible;
         TaskIcon.Text = icon;
         TaskIcon.FontFamily = textIcon ? new FontFamily("Segoe UI Variable Text, Segoe UI") : IconFont;
@@ -841,7 +843,7 @@ public partial class MainWindow
     void HideTask()
     {
         _taskHide.Stop();
-        _primaryAction = _secondaryAction = null;
+        _primaryAction = _secondaryAction = _extraAction = null;
         if (!_taskVisible) return;
         _taskVisible = false;
         ApplyState();
@@ -857,6 +859,22 @@ public partial class MainWindow
     {
         e.Handled = true;
         _secondaryAction?.Invoke();
+    }
+
+    /// <summary>A third button, left of the other two, for the task shown last; the notch grows to fit it.</summary>
+    void ShowTaskExtra(string label, Action act)
+    {
+        TaskExtra.Content = label;
+        TaskExtra.IsEnabled = true;
+        TaskExtra.Visibility = Visibility.Visible;
+        _extraAction = act;
+        ApplyState();
+    }
+
+    void TaskExtra_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _extraAction?.Invoke();
     }
 
     // ───────────── menu ─────────────

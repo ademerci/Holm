@@ -39,6 +39,8 @@ internal sealed class AppSettings
     public List<string> Shelf { get; set; } = new();
     /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>
     public bool Screenshots { get; set; } = true;
+    /// <summary>"Copy text" on the screenshot: Windows reads the text in it (on this PC) and puts it on the clipboard.</summary>
+    public bool ScreenshotText { get; set; } = true;
     /// <summary>The moon in the open player that sets the sleep timer (it pauses the music after 15, 30 or 60 minutes).</summary>
     public bool SleepTimer { get; set; } = true;
     /// <summary>The notes tool in the open notch.</summary>

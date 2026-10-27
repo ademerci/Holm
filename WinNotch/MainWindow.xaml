@@ -226,6 +226,7 @@
                         <MenuItem x:Name="MenuCalls" Header="Calls" IsCheckable="True" Click="MenuCalls_Click"/>
                         <MenuItem x:Name="MenuPauseForCalls" Header="Pause music during calls" IsCheckable="True" Click="MenuPauseForCalls_Click"/>
                         <MenuItem x:Name="MenuScreenshots" Header="Screenshots" IsCheckable="True" Click="MenuScreenshots_Click"/>
+                        <MenuItem x:Name="MenuScreenshotText" Header="Copy text from screenshots" IsCheckable="True" Click="MenuScreenshotText_Click"/>
                         <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                         <MenuItem x:Name="MenuReceive" Header="Receive with copied code" Click="MenuReceive_Click"/>
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
@@ -429,6 +430,7 @@
                             <Border x:Name="TaskProgressHost" Margin="0,4,0,0" Visibility="Collapsed"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="TaskExtra" Style="{StaticResource PillButton}" Margin="0,0,6,0" Visibility="Collapsed" Click="TaskExtra_Click"/>
                             <Button x:Name="TaskSecondary" Style="{StaticResource PillButton}" Click="TaskSecondary_Click"/>
                             <Button x:Name="TaskPrimary" Style="{StaticResource PillButton}" Background="#FF0A84FF" Margin="6,0,0,0" Click="TaskPrimary_Click"/>
                         </StackPanel>

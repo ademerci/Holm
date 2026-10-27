@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -127,8 +128,45 @@ public partial class MainWindow
                  ("Send", () => { if (_shotPath is { } shot) PickTarget(new[] { shot }); }),
                  ("Shelf", () => { HideTask(); if (_shotPath is { } shot) AddToShelf(new[] { shot }); }));
         ShowTaskPicture(thumbnail);
+        if (_settings.ScreenshotText && ScreenText.Available) ShowTaskExtra("Copy text", () => _ = CopyScreenshotTextAsync());
         _taskHide.Interval = TimeSpan.FromSeconds(6);
         _taskHide.Start();
+    }
+
+    /// <summary>Reads the text in the screenshot on this PC and puts it on the clipboard. The text is never logged.</summary>
+    async Task CopyScreenshotTextAsync()
+    {
+        if (_shotPath is not { } path) return;
+        _taskHide.Stop();
+        TaskExtra.Content = "Reading…";
+        TaskExtra.IsEnabled = false;
+        string subtitle;
+        try
+        {
+            string? text = await ScreenText.ReadAsync(path);
+            subtitle = text == null ? "Windows can't read text: add a language with OCR"
+                     : text.Length == 0 ? "No text found"
+                     : TrySetClipboard(text) ? "Text copied · " + OcrText.Count(text)
+                     : "Clipboard busy, try again";
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Screenshot text: " + ex.GetType().Name);
+            subtitle = "Couldn't read the text";
+        }
+        if (!_taskVisible || _shotPath != path) return; // gone or another screenshot meanwhile
+        TaskSubtitle.Text = subtitle;
+        TaskSubtitle.Visibility = Visibility.Visible;
+        TaskExtra.Content = subtitle.StartsWith("Text copied") ? "Copied" : "Copy text";
+        TaskExtra.IsEnabled = !subtitle.StartsWith("Text copied");
+        _taskHide.Interval = TimeSpan.FromSeconds(4);
+        _taskHide.Start();
+    }
+
+    void MenuScreenshotText_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.ScreenshotText = MenuScreenshotText.IsChecked;
+        _settings.Save();
     }
 
     void ShowTaskPicture(ImageSource picture)
