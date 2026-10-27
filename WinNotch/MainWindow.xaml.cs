@@ -131,6 +131,7 @@ public partial class MainWindow : Window
         InitReminders();
         InitCalculator();
         InitClipboardHistory();
+        InitPasswordWipe();
 
         Progress.ValueCommitted += v =>
         {
@@ -235,6 +236,7 @@ public partial class MainWindow : Window
         _callTick.Stop();
         _sleepTick.Stop();
         _reminderTick.Stop();
+        _wipeTimer.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -278,6 +280,7 @@ public partial class MainWindow : Window
                 OnClipboardChanged();
                 OnClipboardForScreenshot(); // right away: who owns the clipboard can change
                 OnClipboardForHistory();
+                OnClipboardForPasswords();
                 break;
         }
         return IntPtr.Zero;
@@ -1285,6 +1288,7 @@ public partial class MainWindow : Window
         MenuReminders.IsChecked = _settings.Reminders;
         MenuCalculator.IsChecked = _settings.Calculator;
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
+        MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1472,6 +1476,7 @@ public partial class MainWindow : Window
         _reminderTick.Stop();
         _reminders = new ReminderList(new List<Reminder>()); // nor your reminders
         _clipsPaused = true; // nor what you copy
+        _settings.ClearPasswords = false; // and your clipboard stays as it is
         _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
@@ -1592,6 +1597,13 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-clipboard", 340);
         SetExpanded(false);
         _clips.Clear();
+
+        // 1.7: a copied password wiped
+        ShowPeek(PasswordGlyph, "Password cleared from the clipboard", "", null, false, null);
+        await Snap(dir, "password-cleared", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
 
         // 1.7: the sleep timer
         _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));

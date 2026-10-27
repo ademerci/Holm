@@ -34,6 +34,7 @@ public partial class MainWindow
     static ClipVerdict ClipboardVerdict()
     {
         bool Has(string format) => Native.IsClipboardFormatAvailable(Native.RegisterClipboardFormat(format));
+        if (Has(ClipboardPrivacy.ExcludeFormat)) return ClipVerdict.Private; // without opening the clipboard at all
         bool? history = null;
         if (Has(ClipboardPrivacy.HistoryFormat))
         {
@@ -49,7 +50,7 @@ public partial class MainWindow
                 catch (COMException) { Thread.Sleep(30); }
             }
         }
-        return ClipboardPrivacy.Judge(Has(ClipboardPrivacy.ExcludeFormat), Has(ClipboardPrivacy.ViewerIgnoreFormat), history);
+        return ClipboardPrivacy.Judge(false, Has(ClipboardPrivacy.ViewerIgnoreFormat), history);
     }
 
     void OnClipboardForHistory()
