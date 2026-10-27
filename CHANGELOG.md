@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.2 – 2026-10-27
+
+### Changed
+- **Screenshot pop-out.** A click on its empty space (not on *Send*, *Shelf*, *Copy text* or the picture) closes it. Other pop-outs are unchanged.
+
 ## 1.7.1 – 2026-10-27
 
 ### Changed
