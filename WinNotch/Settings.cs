@@ -55,6 +55,8 @@ internal sealed class AppSettings
     public bool ClipboardHistory { get; set; } = true;
     /// <summary>A password copied from a password manager leaves the clipboard after 30 seconds, if it is still there.</summary>
     public bool ClearPasswords { get; set; } = true;
+    /// <summary>The color picker button in the open notch.</summary>
+    public bool ColorPicker { get; set; } = true;
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

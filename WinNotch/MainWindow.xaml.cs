@@ -237,6 +237,7 @@ public partial class MainWindow : Window
         _sleepTick.Stop();
         _reminderTick.Stop();
         _wipeTimer.Stop();
+        _picker?.Dispose();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -658,12 +659,13 @@ public partial class MainWindow : Window
         }
     }
 
-    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3)
+    void ShowPeek(string? glyph, string text, string value, int? battery, bool charging, Brush? valueBrush, double seconds = 3, Brush? glyphBrush = null)
     {
         if (_hiddenForFullscreen) return;
         if (_expanded) { RefreshDevices(); return; }
 
         PeekIcon.Text = glyph ?? "";
+        PeekIcon.Foreground = glyphBrush ?? Brushes.White;
         PeekIcon.Visibility = glyph == null ? Visibility.Collapsed : Visibility.Visible;
         PeekText.Text = text;
         PeekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170; // a sentence on its own may use the whole width
@@ -1289,6 +1291,7 @@ public partial class MainWindow : Window
         MenuCalculator.IsChecked = _settings.Calculator;
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
+        MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1601,6 +1604,13 @@ public partial class MainWindow : Window
         // 1.7: a copied password wiped
         ShowPeek(PasswordGlyph, "Password cleared from the clipboard", "", null, false, null);
         await Snap(dir, "password-cleared", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
+
+        // 1.7: a color picked from the screen
+        ShowPickedColor("#0A84FF", Color.FromRgb(0x0A, 0x84, 0xFF));
+        await Snap(dir, "color-picked", 60);
         _peekTimer.Stop();
         _peekActive = false;
         ApplyState();
