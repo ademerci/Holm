@@ -25,6 +25,12 @@ internal sealed class AppSettings
     public bool Messages { get; set; } = true;
     /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
     public List<string> MutedApps { get; set; } = new();
+    /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
+    public bool QuietHours { get; set; }
+    public string QuietFrom { get; set; } = "22:00";
+    public string QuietUntil { get; set; } = "07:00";
+    /// <summary>"app:whatsapp" lets a whole app through, "who:Lena" a person.</summary>
+    public List<string> QuietVips { get; set; } = new();
     /// <summary>Downloads in the Downloads folder show in the notch.</summary>
     public bool Downloads { get; set; } = true;
     /// <summary>A lock in the notch while a VPN is connected, and a note when it connects or drops.</summary>

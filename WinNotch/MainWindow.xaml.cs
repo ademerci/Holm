@@ -401,6 +401,7 @@ public partial class MainWindow : Window
         {
             case NotchState.Expanded:
                 ExpandedView.Visibility = Visibility.Visible;
+                ShowQuietNote();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
                 UpdateLayout();
@@ -783,7 +784,8 @@ public partial class MainWindow : Window
         _messages = _chat.Messages;
         Diag.Log($"Messages: {_chat.UnreadCount} unread" + (arrived != null ? $", new one from {arrived.App}" : ""));
         RefreshMessages();
-        if (arrived != null) ShowMessage(arrived);
+        if (arrived != null && Silenced(arrived)) Diag.Log("Quiet hours: no pop-out");
+        else if (arrived != null) ShowMessage(arrived);
         ApplyState();
     }
 
@@ -1281,6 +1283,7 @@ public partial class MainWindow : Window
         FillSleepMenu();
         FillAiMenu();
         FillMessagesMenu();
+        FillQuietMenu();
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
@@ -1531,6 +1534,17 @@ public partial class MainWindow : Window
 
         SetExpanded(true);
         await Snap(dir, "expanded-messages", 260);
+
+        // 1.7: quiet hours, with Lena let through
+        _settings.QuietHours = true;
+        _settings.QuietFrom = QuietHours.Format(TimeSpan.FromHours(DateTime.Now.Hour));
+        _settings.QuietUntil = QuietHours.Format(TimeSpan.FromHours((DateTime.Now.Hour + 9) % 24));
+        _settings.QuietVips = new List<string> { QuietHours.PersonPrefix + "Lena Hoffmann" };
+        ApplyState();
+        await Snap(dir, "expanded-quiet", 260);
+        _settings.QuietHours = false;
+        _settings.QuietVips = new List<string>();
+        ApplyState();
 
         // 1.2: volume, Beam, shuffle/repeat
         SetExpanded(false);
