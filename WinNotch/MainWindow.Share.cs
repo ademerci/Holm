@@ -225,7 +225,8 @@ public partial class MainWindow
         }
 
         var paths = dropped.Where(File.Exists).ToList();
-        if (paths.Count == 0)
+        var folders = _settings.SendFolders ? dropped.Where(Directory.Exists).ToList() : new List<string>();
+        if (paths.Count == 0 && folders.Count == 0)
         {
             ShowPeek("", dropped.Length > 0 ? "Folders can't be sent – zip them first" : "Nothing to send", "", null, false, null);
             return;
@@ -235,10 +236,17 @@ public partial class MainWindow
             ShowPeek("", "Drop it on a person or on “Code”", "", null, false, null);
             return;
         }
-        if (target.Place == ShareTarget.PhonePlace) BeamToPhone(paths);
-        else if (target.Friend != null) _ = SendToFriendAsync(target.Friend, paths);
-        else if (target.Peer != null) _ = SendNearbyAsync(target.Peer, paths);
-        else _ = SendWithCodeAsync(paths);
+        if (folders.Count > 0) _ = PackAndSendAsync(target, paths, folders);
+        else _ = SendFilesAsync(target, paths);
+    }
+
+    /// <summary>Sends to whoever the chip stands for; done when the transfer is over (or, for the phone, has begun).</summary>
+    Task SendFilesAsync(ShareTarget target, List<string> paths)
+    {
+        if (target.Place == ShareTarget.PhonePlace) { BeamToPhone(paths); return Task.CompletedTask; }
+        if (target.Friend != null) return SendToFriendAsync(target.Friend, paths);
+        if (target.Peer != null) return SendNearbyAsync(target.Peer, paths);
+        return SendWithCodeAsync(paths);
     }
 
     static ShareTarget? TargetOf(DependencyObject? element)

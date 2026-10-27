@@ -89,6 +89,8 @@ internal sealed class AppSettings
     public string? Relay { get; set; }
     /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
     public bool Waves { get; set; } = true;
+    /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>
+    public bool SendFolders { get; set; } = true;
     double? _collapsedScale, _expandedScale;
     double _legacyScale = 1;
 

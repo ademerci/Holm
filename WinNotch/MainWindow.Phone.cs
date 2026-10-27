@@ -98,6 +98,7 @@ public partial class MainWindow
         _phoneFinished.Stop();
         if (_phone is not { } share) return;
         _phone = null;
+        ForgetPhoneZips();
         bool delivered = share.AllDelivered;
         share.Dispose();
         PhoneQrHost.Child = null;
