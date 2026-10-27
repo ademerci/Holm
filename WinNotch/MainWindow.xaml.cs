@@ -120,6 +120,7 @@ public partial class MainWindow : Window
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
+        ForgetLeftoverZips();
         InitDownloads();
         InitUpdates();
         InitTimer();
@@ -1322,6 +1323,7 @@ public partial class MainWindow : Window
         MenuCalculator.IsChecked = _settings.Calculator;
         MenuClipboardHistory.IsChecked = _settings.ClipboardHistory;
         MenuAppVolume.IsChecked = _settings.AppVolume;
+        MenuSendFolders.IsChecked = _settings.SendFolders;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
@@ -1653,6 +1655,13 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-calculator", 260);
         CalcBox.Text = "";
         SetExpanded(false);
+
+        // 1.7: a folder packed to be sent
+        _busy = true;
+        ShowTask(FolderGlyph, ShareBlue, "Packing Holiday photos", "As a ZIP, to send · 42%", 0.42, null, ("Cancel", () => { }));
+        await Snap(dir, "packing", 70);
+        _busy = false;
+        HideTask();
 
         // 1.7: a friend waves
         ShowWaveFrom("Lena Hoffmann", () => { });
