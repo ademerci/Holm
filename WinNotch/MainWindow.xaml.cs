@@ -128,6 +128,7 @@ public partial class MainWindow : Window
         InitScreenshots();
         InitSleep();
         InitNotes();
+        InitReminders();
 
         Progress.ValueCommitted += v =>
         {
@@ -219,6 +220,7 @@ public partial class MainWindow : Window
         StartScreenshots();
         ShowSleep();
         RefreshToolBar();
+        CheckReminders(); // also the ones missed while the PC was off
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -230,6 +232,7 @@ public partial class MainWindow : Window
         _timerTick.Stop();
         _callTick.Stop();
         _sleepTick.Stop();
+        _reminderTick.Stop();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -252,6 +255,8 @@ public partial class MainWindow : Window
                 int ev = wParam.ToInt32();
                 if (ev == Native.PBT_POWERSETTINGCHANGE || ev == Native.PBT_APMPOWERSTATUSCHANGE)
                     Dispatcher.InvokeAsync(ReadPower, DispatcherPriority.Background);
+                else if (ev == Native.PBT_APMRESUMEAUTOMATIC)
+                    Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
                 break;
 
             case Native.WM_DEVICECHANGE when wParam.ToInt32() == Native.DBT_DEVNODES_CHANGED:
@@ -1269,6 +1274,7 @@ public partial class MainWindow : Window
         MenuCalls.IsChecked = _settings.Calls;
         MenuPauseForCalls.IsChecked = _settings.PauseForCalls;
         MenuNotes.IsChecked = _settings.Notes;
+        MenuReminders.IsChecked = _settings.Reminders;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1453,6 +1459,8 @@ public partial class MainWindow : Window
         _settings.CollapsedScale = _settings.ExpandedScale = 1;
         _settings.PauseForCalls = false; // the demo call must not pause your real music
         _settings.NoteText = ""; // your note must not end up in a picture
+        _reminderTick.Stop();
+        _reminders = new ReminderList(new List<Reminder>()); // nor your reminders
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
@@ -1530,6 +1538,20 @@ public partial class MainWindow : Window
         await Snap(dir, "expanded-notes", 300);
         SetExpanded(false);
         _settings.NoteText = "";
+
+        // 1.7: reminders
+        _reminders.Add("Laundry", DateTime.UtcNow.AddMinutes(20));
+        _reminders.Add("Dentist", DateTime.Today.AddDays(1).AddHours(14).AddMinutes(30).ToUniversalTime());
+        SetExpanded(true);
+        ShowTool(Tool.Reminders);
+        ReminderBox.Text = "18:30 call Lena";
+        await Snap(dir, "expanded-reminders", 320);
+        ReminderBox.Text = "";
+        SetExpanded(false);
+        ShowTask(BellGlyph, TimerOrange, "Laundry", "Reminder · " + DateTime.Now.ToString("HH:mm"), null, ("+10 min", () => { }), ("OK", () => { }));
+        await Snap(dir, "reminder", 70);
+        HideTask();
+        _reminders = new ReminderList(new List<Reminder>());
 
         // 1.7: the sleep timer
         _sleep.Start(TimeSpan.FromMinutes(30), DateTime.UtcNow.AddMinutes(-7));

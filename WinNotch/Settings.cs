@@ -45,6 +45,10 @@ internal sealed class AppSettings
     public bool Notes { get; set; } = true;
     /// <summary>The note itself. It stays on this PC.</summary>
     public string NoteText { get; set; } = "";
+    /// <summary>Reminders typed into the open notch ("20 min laundry").</summary>
+    public bool Reminders { get; set; } = true;
+    /// <summary>The reminders waiting; they stay on this PC.</summary>
+    public List<Reminder> ReminderList { get; set; } = new();
     /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
     [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
     public bool Beam { get; set; } = true;

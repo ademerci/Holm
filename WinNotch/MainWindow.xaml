@@ -211,6 +211,7 @@
                         <!-- 15 minutes / 30 minutes / 1 hour / Off, and the moon button; filled when the menu opens -->
                         <MenuItem x:Name="MenuSleep" Header="Sleep timer"/>
                         <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
+                        <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -593,12 +594,29 @@
                                                    TextWrapping="Wrap"/>
                                     </Grid>
                                 </StackPanel>
+
+                                <!-- Reminders in plain words: "20 min laundry", "14:30 dentist" -->
+                                <StackPanel x:Name="RemindersPage" Visibility="Collapsed">
+                                    <TextBlock Text="Reminders" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,0,0,6"/>
+                                    <Grid>
+                                        <TextBox x:Name="ReminderBox" Style="{StaticResource NotchTextBox}" MaxLength="200"
+                                                 TextChanged="ReminderBox_TextChanged" KeyDown="ReminderBox_KeyDown"/>
+                                        <TextBlock x:Name="ReminderPlaceholder" Text="20 min laundry · 14:30 dentist · tomorrow 9:00 call"
+                                                   FontSize="13" Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"/>
+                                    </Grid>
+                                    <TextBlock x:Name="ReminderHint" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,6,0,10"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel x:Name="ReminderRows"/>
+                                </StackPanel>
                             </Grid>
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
                             <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" Click="RemindersTool_Click">
+                                    <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
 
