@@ -48,6 +48,7 @@ public partial class MainWindow
             return;
         }
         _outageGrace.Stop();
+        _ = RefreshWeatherAsync(); // if it's due: it may have been missed while offline
         if (_outage.Back(DateTime.UtcNow) is { } length) ShowPeek(OnlineGlyph, "Back online", "after " + Outage.Describe(length), null, false, GreenBrush, seconds: 4);
     }
 

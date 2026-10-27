@@ -220,6 +220,8 @@
                         <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                         <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
                         <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
+                        <!-- On, and the place; filled when the menu opens -->
+                        <MenuItem x:Name="MenuWeather" Header="Weather"/>
                         <!-- Claude / Gemini / ChatGPT / your app are filled in when the menu opens -->
                         <MenuItem x:Name="MenuAi" Header="AI button"/>
                         <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -299,15 +301,21 @@
 
                     <!-- Idle: nothing going on; a small lock while a VPN is connected -->
                     <Grid x:Name="IdleView" Opacity="0" IsHitTestVisible="False" Margin="0,0,14,0">
-                        <!-- Something on the shelf: how many -->
-                        <StackPanel x:Name="IdleShelf" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        <!-- The weather where you are -->
+                        <StackPanel x:Name="IdleWeather" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Margin="14,0,0,0" Visibility="Collapsed">
-                            <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="IdleShelfCount" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            <Border x:Name="IdleWeatherIcon" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="IdleWeatherText" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10"
-                                   Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                   Visibility="Collapsed"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <!-- Something on the shelf: how many -->
+                            <StackPanel x:Name="IdleShelf" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="IdleShelfCount" FontSize="10" Foreground="{StaticResource Dim}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="IdleLock" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="10" Margin="8,0,0,0"
+                                       Foreground="{StaticResource Dim}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Call: Discord, Teams, Zoom, WhatsApp or a browser uses the microphone -->
@@ -520,6 +528,27 @@
                                                FontWeight="Light" Margin="0,-6,0,0"/>
                                     <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
                                     <TextBlock Text="Nothing playing" FontSize="11" Foreground="{StaticResource Faint}" Margin="1,6,0,0"/>
+                                    <!-- The weather; a click changes the place -->
+                                    <StackPanel x:Name="WeatherLine" Margin="1,10,0,0" Background="Transparent" Cursor="Hand" Visibility="Collapsed"
+                                                ToolTip="Change the place" MouseLeftButtonUp="WeatherLine_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border x:Name="WeatherIconHost" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="WeatherText" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="RainText" FontSize="11" Foreground="#FF64D2FF" Margin="24,2,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="WeatherAdd" Text="+ Add the weather for your city" FontSize="11" Foreground="{StaticResource Faint}"
+                                               Margin="1,10,0,0" Cursor="Hand" Visibility="Collapsed" MouseLeftButtonUp="WeatherLine_Click"/>
+                                    <StackPanel x:Name="WeatherSetup" Margin="0,10,0,0" Visibility="Collapsed">
+                                        <Grid>
+                                            <TextBox x:Name="WeatherBox" Style="{StaticResource NotchTextBox}" MaxLength="80"
+                                                     TextChanged="WeatherBox_TextChanged" KeyDown="WeatherBox_KeyDown"/>
+                                            <TextBlock x:Name="WeatherPlaceholder" Text="Your city, for the weather" FontSize="13"
+                                                       Foreground="{StaticResource Faint}" Margin="12,8,12,0" IsHitTestVisible="False"/>
+                                        </Grid>
+                                        <TextBlock x:Name="WeatherHint" Text="Type a city and press Enter" FontSize="11"
+                                                   Foreground="{StaticResource Dim}" Margin="4,6,0,0" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
                                 </StackPanel>
     
                                 <!-- Quiet hours: why messages don't pop out right now -->
