@@ -133,6 +133,7 @@ public partial class MainWindow : Window
         InitClipboardHistory();
         InitPasswordWipe();
         InitDiskSpace();
+        InitConnectivity();
 
         Progress.ValueCommitted += v =>
         {
@@ -228,6 +229,7 @@ public partial class MainWindow : Window
         StartCapsLock();
         StartDiskSpace();
         StartUsb();
+        StartConnectivity();
     }
 
     void OnClosed(object? sender, EventArgs e)
@@ -245,6 +247,7 @@ public partial class MainWindow : Window
         StopCapsLock();
         _diskHourly.Stop();
         _diskSoon.Stop();
+        StopConnectivity();
         StopPhone();
         StopScreenshots();
         StopUpdates();
@@ -273,7 +276,10 @@ public partial class MainWindow : Window
                 {
                     Dispatcher.InvokeAsync(CheckReminders, DispatcherPriority.Background); // back from sleep: anything due meanwhile
                     Dispatcher.InvokeAsync(CheckDiskSoon, DispatcherPriority.Background);
+                    Dispatcher.InvokeAsync(() => HushConnectivity(TimeSpan.FromSeconds(45)), DispatcherPriority.Send); // Wi-Fi takes a moment to come back
                 }
+                else if (ev == Native.PBT_APMSUSPEND)
+                    Dispatcher.InvokeAsync(() => HushConnectivity(TimeSpan.FromHours(24)), DispatcherPriority.Send); // until it wakes
                 break;
 
             case Native.WM_DEVICECHANGE when wParam.ToInt32() != Native.DBT_DEVNODES_CHANGED:
@@ -1313,6 +1319,7 @@ public partial class MainWindow : Window
         MenuCapsLock.IsChecked = _settings.CapsLock;
         MenuDiskWarning.IsChecked = _settings.DiskWarning;
         MenuUsbDrives.IsChecked = _settings.UsbDrives;
+        MenuConnectivity.IsChecked = _settings.Connectivity;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
@@ -1505,6 +1512,8 @@ public partial class MainWindow : Window
         StartDiskSpace();
         _settings.UsbDrives = false; // nor your USB sticks
         StartUsb();
+        _settings.Connectivity = false;
+        StartConnectivity();
         _clips.Clear();
         ApplyScale();
         await Task.Delay(2500); // let the real sources report in once, then take over
@@ -1658,6 +1667,15 @@ public partial class MainWindow : Window
         SetExpanded(false);
         _usb = new List<UsbDrive>();
         ShowUsbRows();
+
+        // 1.7: the internet gone and back
+        ShowPeek(OfflineGlyph, "No internet", "", null, false, null, seconds: 5, glyphBrush: RedBrush);
+        await Snap(dir, "offline", 60);
+        ShowPeek(OnlineGlyph, "Back online", "after " + Outage.Describe(TimeSpan.FromMinutes(3)), null, false, GreenBrush, seconds: 4);
+        await Snap(dir, "online", 60);
+        _peekTimer.Stop();
+        _peekActive = false;
+        ApplyState();
 
         // 1.7: the system drive running low
         ShowDiskWarning("C:", DiskSpace.Describe((long)(8.4 * DiskSpace.Gb), 256 * DiskSpace.Gb));
