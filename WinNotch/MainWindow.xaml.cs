@@ -434,6 +434,7 @@ public partial class MainWindow : Window
                    : _timer != null ? NotchState.Timer
                    : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
+        PlacePrivacyDots(target == NotchState.Badge);
         bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
 

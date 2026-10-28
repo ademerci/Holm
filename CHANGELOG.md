@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.7.4 – 2026-10-28
+
+### Added
+- **Live microphone monitoring.** Observe Windows audio-session events across all recording endpoints, including muted capture, without reading audio samples. Older privacy records remain a fallback if live monitoring is unavailable.
+- **Live camera monitoring.** Observe Media Foundation camera-activity reports without opening a camera or reading frames, retaining privacy-record fallback for other capture paths. Some legacy DirectShow virtual cameras may not be reported by Windows.
+
+### Changed
+- **Internal privacy dots.** Microphone and camera indicators now sit inside the closed notch, just before the unread count in badge view, with reserved space in idle, call and media views.
+
+### Fixed
+- **Missing active calls and microphone indicators.** Live recording sessions detect current Discord calls even when Windows' older privacy records are stale or missing; old executable records remain rejected.
+- **Stable call start times.** Continuous live reports retain the original start time, while a stopped and restarted recording gets a new one.
+
 ## 1.7.3 – 2026-10-28
 
 ### Added

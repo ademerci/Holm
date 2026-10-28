@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
@@ -58,6 +59,12 @@ internal sealed class PrivacyMonitor : IDisposable
     readonly Dispatcher _ui;
     readonly DispatcherTimer _settle;
     readonly DispatcherTimer _verify;
+    readonly DispatcherTimer _microphoneSoon;
+    MicrophoneActivity? _microphoneActivity;
+    CameraActivity? _cameraActivity;
+    IReadOnlyList<SensorUse>? _liveMicrophone, _liveCamera;
+    readonly HashSet<string> _observedLiveCameras = new(StringComparer.OrdinalIgnoreCase);
+    bool _readingMicrophone, _readMicrophoneAgain;
     readonly List<Watch> _watches = new();
     readonly Dictionary<string, string> _exeNames = new(StringComparer.OrdinalIgnoreCase);
     volatile bool _disposed;
@@ -79,6 +86,9 @@ internal sealed class PrivacyMonitor : IDisposable
         _settle.Stop();
         _verify = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => Check(), ui);
         _verify.Stop();
+        _microphoneSoon = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background,
+            (_, _) => { _microphoneSoon!.Stop(); _ = RefreshMicrophoneAsync(); }, ui);
+        _microphoneSoon.Stop();
         foreach (var (sensor, name) in new[] { (Sensor.Microphone, "microphone"), (Sensor.Camera, "webcam") })
         {
             var key = Registry.CurrentUser.OpenSubKey($@"{store}\{name}");
@@ -95,7 +105,84 @@ internal sealed class PrivacyMonitor : IDisposable
         }
         InUse = Scan();
         if (InUse.Count > 0) _verify.Start();
+        if (store == Store) { _ = StartMicrophoneAsync(); _ = StartCameraAsync(); }
     }
+
+    async Task StartMicrophoneAsync()
+    {
+        try
+        {
+            var source = await Task.Run(() => new MicrophoneActivity());
+            if (_disposed) { _ = Task.Run(source.Dispose); return; }
+            _microphoneActivity = source;
+            source.Changed += () => _ui.InvokeAsync(() =>
+            {
+                if (_disposed) return;
+                _microphoneSoon.Stop();
+                _microphoneSoon.Start();
+            });
+            await RefreshMicrophoneAsync();
+        }
+        catch (Exception ex) { Diag.Log("Live microphone monitor: " + ex.GetType().Name); }
+    }
+
+    async Task RefreshMicrophoneAsync()
+    {
+        if (_disposed || _microphoneActivity is not { } source) return;
+        if (_readingMicrophone) { _readMicrophoneAgain = true; return; }
+        _readingMicrophone = true;
+        try
+        {
+            do
+            {
+                _readMicrophoneAgain = false;
+                var current = await Task.Run(source.Read);
+                if (!_disposed) SetLive(Sensor.Microphone, current);
+            } while (_readMicrophoneAgain && !_disposed);
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Live microphone activity: " + ex.GetType().Name);
+            if (!_disposed) { _liveMicrophone = null; Check(); }
+        }
+        finally { _readingMicrophone = false; }
+    }
+
+    async Task StartCameraAsync()
+    {
+        CameraActivity? source = null;
+        try
+        {
+            source = await Task.Run(() => new CameraActivity());
+            if (_disposed) { _ = Task.Run(source.Dispose); return; }
+            _cameraActivity = source;
+            source.Changed += current => _ui.InvokeAsync(() => { if (!_disposed) SetLive(Sensor.Camera, current); });
+            await Task.Run(source.Start);
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Live camera monitor: " + ex.GetType().Name);
+            if (source != null) await Task.Run(source.Dispose);
+            _cameraActivity = null;
+        }
+    }
+
+    void SetLive(Sensor sensor, IReadOnlyList<SensorUse> current)
+    {
+        var previous = sensor == Sensor.Microphone ? _liveMicrophone : _liveCamera;
+        var stable = StableLive(current, previous ?? Array.Empty<SensorUse>());
+        if (sensor == Sensor.Microphone) _liveMicrophone = stable;
+        else
+        {
+            _liveCamera = stable;
+            foreach (var use in stable) _observedLiveCameras.Add(use.Key);
+        }
+        Check();
+    }
+
+    internal static IReadOnlyList<SensorUse> StableLive(IEnumerable<SensorUse> current, IReadOnlyList<SensorUse> previous)
+        => current.Select(use => use with { Since = previous.FirstOrDefault(old => old.Sensor == use.Sensor
+            && old.Key.Equals(use.Key, StringComparison.OrdinalIgnoreCase))?.Since ?? use.Since }).ToArray();
 
     static bool Arm(Watch watch)
         => RegNotifyChangeKeyValue(watch.Key.Handle, true, NotifyName | NotifyLastSet | NotifyThreadAgnostic, watch.Signal.SafeWaitHandle, true) == 0;
@@ -127,6 +214,13 @@ internal sealed class PrivacyMonitor : IDisposable
             {
                 Diag.Log("Sensor record unreadable: " + ex.Message);
             }
+        }
+        if (_liveMicrophone != null) { uses.RemoveAll(use => use.Sensor == Sensor.Microphone); uses.AddRange(_liveMicrophone); }
+        if (_liveCamera != null)
+        {
+            // Legacy DirectShow virtual cameras are absent from Media Foundation reports; retain their registry fallback.
+            uses.RemoveAll(use => use.Sensor == Sensor.Camera && _observedLiveCameras.Contains(use.Key));
+            uses.AddRange(_liveCamera);
         }
         return uses.OrderBy(u => u.Sensor == Sensor.Camera ? 0 : 1).ThenBy(u => u.Since).ToList();
     }
@@ -245,6 +339,9 @@ internal sealed class PrivacyMonitor : IDisposable
         _disposed = true;
         _settle.Stop();
         _verify.Stop();
+        _microphoneSoon.Stop();
+        if (_microphoneActivity is { } microphone) _ = Task.Run(microphone.Dispose);
+        if (_cameraActivity is { } camera) _ = Task.Run(camera.Dispose);
         foreach (var watch in _watches)
         {
             watch.Wait?.Unregister(null);

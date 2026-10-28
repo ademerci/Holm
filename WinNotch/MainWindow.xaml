@@ -308,6 +308,10 @@
                 </Border.ContextMenu>
 
                 <Grid x:Name="IslandContent">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
                     <!-- Compact: something is playing -->
                     <Grid x:Name="CompactView" Opacity="0" IsHitTestVisible="False" Margin="9,0,12,0">
@@ -383,10 +387,17 @@
 
                     <!-- Badge: nothing playing, unread messages -->
                     <Grid x:Name="BadgeView" Opacity="0" IsHitTestVisible="False" Margin="10,0">
-                        <StackPanel x:Name="BadgeLogoList" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <Border x:Name="BadgePill" Style="{StaticResource CountPill}" HorizontalAlignment="Right">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="BadgeLogoList" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" ClipToBounds="True"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="BadgePrivacyHost" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed"/>
+                        <Border x:Name="BadgePill" Style="{StaticResource CountPill}">
                             <TextBlock x:Name="BadgeText" Style="{StaticResource CountText}"/>
                         </Border>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Message: a message just came in (WhatsApp, Discord, Outlook, ...) -->
@@ -874,15 +885,16 @@
 
                         </StackPanel>
                     </Grid>
-                </Grid>
-            </Border>
-
-            <!-- Orange while an app uses the microphone, green while one uses the camera: beside the notch, like a phone's -->
-            <StackPanel x:Name="PrivacyDots" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="0,11,-28,0" IsHitTestVisible="False" Visibility="Collapsed">
+                    <!-- Privacy indicators stay inside the notch, with their own space beside the content. -->
+                    <Border x:Name="PrivacyHost" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="Collapsed">
+            <StackPanel x:Name="PrivacyDots" Orientation="Horizontal" VerticalAlignment="Center"
+                        IsHitTestVisible="False" Visibility="Collapsed">
                 <Ellipse x:Name="MicrophoneDot" Width="7" Height="7" Fill="#FFFF9F0A" Visibility="Collapsed"/>
                 <Ellipse x:Name="CameraDot" Width="7" Height="7" Fill="#FF30D158" Margin="4,0,0,0" Visibility="Collapsed"/>
             </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Window>

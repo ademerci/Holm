@@ -9,7 +9,7 @@ using System.Windows.Media;
 namespace WinNotch;
 
 /// <summary>
-/// Like a phone's privacy dots: orange beside the notch while an app uses the microphone, green while one uses the
+/// Like a phone's privacy dots: orange inside the notch while an app uses the microphone, green while one uses the
 /// camera. The open notch says which apps and has a button that mutes the microphone for all of them.
 /// </summary>
 public partial class MainWindow
@@ -65,13 +65,24 @@ public partial class MainWindow
 
     static string SensorWord(Sensor sensor) => sensor == Sensor.Camera ? "camera" : "microphone";
 
-    /// <summary>The dot beside the closed notch, or the rows in the open one.</summary>
+    void PlacePrivacyDots(bool badge)
+    {
+        var host = badge ? BadgePrivacyHost : PrivacyHost;
+        if (PrivacyDots.Parent is Border previous && previous != host) previous.Child = null;
+        if (host.Child != PrivacyDots) host.Child = PrivacyDots;
+        bool visible = PrivacyDots.Visibility == Visibility.Visible;
+        PrivacyHost.Visibility = visible && !badge ? Visibility.Visible : Visibility.Collapsed;
+        BadgePrivacyHost.Visibility = visible && badge ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The dots inside the closed notch, or the rows in the open one.</summary>
     void ShowPrivacy()
     {
         var uses = SensorsInUse;
         MicrophoneDot.Visibility = uses.Any(u => u.Sensor == Sensor.Microphone) ? Visibility.Visible : Visibility.Collapsed;
         CameraDot.Visibility = uses.Any(u => u.Sensor == Sensor.Camera) ? Visibility.Visible : Visibility.Collapsed;
         PrivacyDots.Visibility = uses.Count > 0 && !_expanded ? Visibility.Visible : Visibility.Collapsed;
+        PlacePrivacyDots(_state == NotchState.Badge);
         if (_expanded) RefreshPrivacyRows();
         ShowCall();
         UpdateCallPause();

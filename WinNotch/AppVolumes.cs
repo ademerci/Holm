@@ -106,13 +106,17 @@ internal sealed class AppVolumes : IDisposable
     /// <summary>Raised on an audio thread when sessions come, go, or change volume elsewhere.</summary>
     public event Action? Changed;
 
-    public AppVolumes()
+    public AppVolumes(string? captureDeviceId = null)
     {
         _listener = new Listener(this);
         var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
         try
         {
-            if (enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out var device) != 0) throw new COMException("No playback device");
+            IMMDevice device;
+            int result = captureDeviceId == null
+                ? enumerator.GetDefaultAudioEndpoint(0 /* eRender */, 1 /* eMultimedia */, out device)
+                : enumerator.GetDevice(captureDeviceId, out device);
+            if (result != 0) throw new COMException("Audio device unavailable", result);
             var iid = typeof(IAudioSessionManager2).GUID;
             Marshal.ThrowExceptionForHR(device.Activate(ref iid, 0x17 /* CLSCTX_ALL */, IntPtr.Zero, out var manager));
             Marshal.ReleaseComObject(device);
@@ -127,6 +131,9 @@ internal sealed class AppVolumes : IDisposable
 
     /// <summary>The apps with sound on the default device, as the mixer shows them.</summary>
     public List<AppVolume> Read()
+        => AppVolumeList.Build(ReadSessions(), Environment.ProcessId);
+
+    internal List<AudioSessionInfo> ReadSessions()
     {
         lock (_gate)
         {
@@ -154,7 +161,7 @@ internal sealed class AppVolumes : IDisposable
                 }
             }
             finally { Marshal.ReleaseComObject(list); }
-            return AppVolumeList.Build(infos, Environment.ProcessId);
+            return infos;
         }
     }
 
