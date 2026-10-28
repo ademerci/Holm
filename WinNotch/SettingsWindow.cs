@@ -73,8 +73,9 @@ internal sealed class SettingsWindow : Window
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
-        var reset = new Button { Content = "Reset to defaults", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 10, 0) };
-        var apply = new Button { Content = "Apply", Padding = new Thickness(18, 6, 18, 6) };
+        var actionStyle = ActionButtonStyle();
+        var reset = new Button { Style = actionStyle, Content = "Reset to defaults", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 10, 0) };
+        var apply = new Button { Style = actionStyle, Background = new SolidColorBrush(Color.FromRgb(10, 132, 255)), BorderBrush = Brushes.Transparent, Content = "Apply", Padding = new Thickness(18, 6, 18, 6) };
         reset.Click += (_, _) => ResetDefaults();
         apply.Click += (_, _) => ApplyChanges();
         footer.Children.Add(reset);
@@ -116,6 +117,43 @@ internal sealed class SettingsWindow : Window
             if (item.Name == "MenuAnim") _animate = item.IsChecked;
         }
     }
+
+    static Style ActionButtonStyle() => (Style)System.Windows.Markup.XamlReader.Parse(@"
+        <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+               xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'>
+            <Setter Property='Foreground' Value='White'/>
+            <Setter Property='Background' Value='#14FFFFFF'/>
+            <Setter Property='BorderBrush' Value='#24FFFFFF'/>
+            <Setter Property='FontSize' Value='12'/>
+            <Setter Property='FontWeight' Value='SemiBold'/>
+            <Setter Property='MinHeight' Value='32'/>
+            <Setter Property='Cursor' Value='Hand'/>
+            <Setter Property='Template'>
+                <Setter.Value>
+                    <ControlTemplate TargetType='Button'>
+                        <Border x:Name='Surface' Background='{TemplateBinding Background}'
+                                BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='7'
+                                Padding='{TemplateBinding Padding}'>
+                            <ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property='IsMouseOver' Value='True'>
+                                <Setter TargetName='Surface' Property='Opacity' Value='0.82'/>
+                            </Trigger>
+                            <Trigger Property='IsPressed' Value='True'>
+                                <Setter TargetName='Surface' Property='Opacity' Value='0.65'/>
+                            </Trigger>
+                            <Trigger Property='IsKeyboardFocused' Value='True'>
+                                <Setter TargetName='Surface' Property='BorderBrush' Value='#B3FFFFFF'/>
+                            </Trigger>
+                            <Trigger Property='IsEnabled' Value='False'>
+                                <Setter TargetName='Surface' Property='Opacity' Value='0.4'/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>");
 
     FrameworkElement Header(string version)
     {

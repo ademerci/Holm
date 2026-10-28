@@ -59,6 +59,32 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ClearNotificationsButton" TargetType="Button">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#24FFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Unread count, like the badge on a phone's app icon -->
         <Style x:Key="CountPill" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource BadgeFallback}"/>
@@ -505,7 +531,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <!-- The sleep timer: a moon, and the minutes left while it runs -->
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,0,0,0">
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,-8,0,0">
                                             <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
                                                     ToolTip="Sleep timer">
                                                 <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
@@ -670,7 +696,7 @@
     
                                 <!-- Quiet hours: why messages don't pop out right now -->
                                 <TextBlock x:Name="QuietNote" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,12,0,-6" Visibility="Collapsed"/>
-                                <Button x:Name="ClearNotificationsBtn" Style="{StaticResource NotchButton}" MinWidth="76"
+                                <Button x:Name="ClearNotificationsBtn" Style="{StaticResource ClearNotificationsButton}"
                                         HorizontalAlignment="Right" Height="24" Margin="0,8,0,0" Padding="6,0"
                                         Visibility="Collapsed" ToolTip="Clear message notifications" Click="ClearNotifications_Click">
                                     <StackPanel Orientation="Horizontal">

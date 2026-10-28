@@ -925,25 +925,40 @@ public partial class MainWindow : Window
             Grid.SetColumn(pill, 2);
             row.Children.Add(pill);
             button.Content = row;
-            MessageRows.Children.Add(DismissibleNotification(button, () => _chat.MarkRead(group.App)));
+            MessageRows.Children.Add(DismissibleNotification(button, () => _chat.MarkRead(group.App), pill));
         }
     }
 
-    FrameworkElement DismissibleNotification(Button notification, Action dismiss)
+    FrameworkElement DismissibleNotification(Button notification, Action dismiss, FrameworkElement? badge = null)
     {
+        // Both controls occupy the same row. The close target replaces the count without moving the card.
         var host = new Grid();
-        host.ColumnDefinitions.Add(new ColumnDefinition());
-        host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         host.Children.Add(notification);
         var close = new Button
         {
-            Content = "×", Style = (Style)FindResource("NotchButton"), Width = 26, Height = 26,
-            Margin = new Thickness(4, 0, 0, 8), Opacity = 0, ToolTip = "Dismiss notification"
+            Content = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 0,0 L 10,10 M 10,0 L 0,10"),
+                Stroke = DimBrush, StrokeThickness = 1.1,
+                StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round,
+                Width = 10, Height = 10
+            },
+            Style = (Style)FindResource("NotchButton"), Width = 26, Height = 26,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 7, 8), Visibility = Visibility.Hidden,
+            ToolTip = "Dismiss notification", IsEnabled = notification.IsEnabled
         };
-        Grid.SetColumn(close, 1);
         host.Children.Add(close);
-        host.MouseEnter += (_, _) => close.Opacity = 1;
-        host.MouseLeave += (_, _) => close.Opacity = 0;
+        host.MouseEnter += (_, _) =>
+        {
+            close.Visibility = Visibility.Visible;
+            if (badge != null) badge.Opacity = 0;
+        };
+        host.MouseLeave += (_, _) =>
+        {
+            close.Visibility = Visibility.Hidden;
+            if (badge != null) badge.Opacity = 1;
+        };
         close.Click += (_, e) => { e.Handled = true; dismiss(); };
         return host;
     }
