@@ -29,7 +29,7 @@ internal sealed class SettingsWindow : Window
     bool _animate, _allowClose;
     readonly Button _apply;
     readonly DockPanel _body;
-    readonly Border _dialog;
+    readonly Border _dialog, _surface;
     IInputElement? _previousFocus;
     bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn);
     readonly Action _sync;
@@ -90,25 +90,29 @@ internal sealed class SettingsWindow : Window
         body.Children.Add(columns);
 
         var layers = new Grid();
-        layers.Children.Add(body);
-        _dialog = new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
-            CornerRadius = new CornerRadius(8), Visibility = Visibility.Collapsed
-        };
-        KeyboardNavigation.SetTabNavigation(_dialog, KeyboardNavigationMode.Cycle);
-        layers.Children.Add(_dialog);
-        Content = new Border
+        _surface = new Border
         {
             Background = Panel,
             BorderBrush = Edge,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(14),
             Padding = new Thickness(22, 16, 22, 22),
-            Margin = new Thickness(16), // room for the shadow
+            Margin = new Thickness(16), // room for the shadow and modal blur
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.45 },
-            Child = layers,
+            Child = body,
         };
+        layers.Children.Add(_surface);
+        // Cover the entire settings surface, including the padding and outer panel.
+        // Keeping the dialog as a sibling makes only the background blur.
+        _dialog = new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
+            CornerRadius = new CornerRadius(14), Margin = new Thickness(16),
+            Visibility = Visibility.Collapsed
+        };
+        KeyboardNavigation.SetTabNavigation(_dialog, KeyboardNavigationMode.Cycle);
+        layers.Children.Add(_dialog);
+        Content = layers;
 
         RefreshApplyState();
         PreviewKeyDown += (_, e) =>
@@ -171,7 +175,7 @@ internal sealed class SettingsWindow : Window
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.45 }, Child = content
         };
-        _body.Effect = new BlurEffect { Radius = 5 };
+        _surface.Effect = new BlurEffect { Radius = 5 };
         _body.IsEnabled = false;
         _dialog.Visibility = Visibility.Visible;
         first?.Focus();
@@ -181,7 +185,7 @@ internal sealed class SettingsWindow : Window
     {
         _dialog.Visibility = Visibility.Collapsed;
         _dialog.Child = null;
-        _body.Effect = null;
+        _surface.Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.45 };
         _body.IsEnabled = true;
         if (_previousFocus != null) Keyboard.Focus(_previousFocus);
     }

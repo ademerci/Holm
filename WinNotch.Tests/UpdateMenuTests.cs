@@ -155,11 +155,14 @@ public class UpdateMenuTests
             var body = (DockPanel)typeof(SettingsWindow).GetField("_body", Private)!.GetValue(settings)!;
             Assert.Equal(Visibility.Visible, dialog.Visibility);
             Assert.False(body.IsEnabled);
-            Assert.IsType<System.Windows.Media.Effects.BlurEffect>(body.Effect);
+            var surface = (Border)typeof(SettingsWindow).GetField("_surface", Private)!.GetValue(settings)!;
+            Assert.IsType<System.Windows.Media.Effects.BlurEffect>(surface.Effect);
+            Assert.Same(body, surface.Child);
+            Assert.Null(dialog.Effect);
             typeof(SettingsWindow).GetMethod("HideDialog", Private)!.Invoke(settings, null);
             Assert.Equal(Visibility.Collapsed, dialog.Visibility);
             Assert.True(body.IsEnabled);
-            Assert.Null(body.Effect);
+            Assert.IsType<System.Windows.Media.Effects.DropShadowEffect>(surface.Effect);
             Assert.False(applied);
             typeof(SettingsWindow).GetMethod("ApplyChanges", Private)!.Invoke(settings, null);
             Assert.True(applied);
