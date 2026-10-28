@@ -499,7 +499,8 @@
                         <StackPanel>
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
-                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <Grid Margin="0,0,0,12">
+                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
@@ -520,6 +521,16 @@
                                     <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
+                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
+                                            <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
+                                                    ToolTip="Sleep timer">
+                                                <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                                           Foreground="{StaticResource Faint}"/>
+                                            </Button>
+                                            <TextBlock x:Name="SleepText" FontSize="10" FontWeight="SemiBold" Foreground="#FFFF9F0A"
+                                                       HorizontalAlignment="Center" Visibility="Collapsed"/>
+                                        </StackPanel>
+                            </Grid>
 
                             <!-- Home: the player (or the clock), and whatever is going on -->
                             <StackPanel x:Name="HomePanel">
@@ -531,15 +542,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <!-- The sleep timer: a moon, and the minutes left while it runs -->
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="8,-8,0,0">
-                                            <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
-                                                    ToolTip="Sleep timer">
-                                                <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
-                                                           Foreground="{StaticResource Faint}"/>
-                                            </Button>
-                                            <TextBlock x:Name="SleepText" FontSize="10" FontWeight="SemiBold" Foreground="#FFFF9F0A"
-                                                       HorizontalAlignment="Center" Visibility="Collapsed"/>
-                                        </StackPanel>
+
                                         <!-- Clicking the cover or the title brings the player to the front -->
                                         <Border x:Name="BigArt" Width="58" Height="58" CornerRadius="12" Background="{StaticResource ArtFallback}"
                                                 Cursor="Hand" ToolTip="Open the player" MouseLeftButtonUp="Player_Click">

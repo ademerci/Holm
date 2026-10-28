@@ -26,7 +26,11 @@ internal sealed class SettingsWindow : Window
     static readonly Brush Line = Frozen(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
     static readonly Brush Dim = Frozen(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
 
-    bool _animate;
+    bool _animate, _allowClose;
+    readonly Button _apply;
+    readonly DockPanel _body;
+    readonly Border _dialog;
+    IInputElement? _previousFocus;
     bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn);
     readonly Action _sync;
     readonly List<(MenuItem Item, ToggleSwitch Switch)> _rows = new();
@@ -68,15 +72,16 @@ internal sealed class SettingsWindow : Window
             if (toLeft) leftRows += group.Switches.Count + 2; else rightRows += group.Switches.Count + 2;
         }
 
-        var body = new DockPanel();
+        var body = _body = new DockPanel();
         var header = Header(version);
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
         var actionStyle = ActionButtonStyle();
         var reset = new Button { Style = actionStyle, Content = "Reset to defaults", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 10, 0) };
-        var apply = new Button { Style = actionStyle, Background = new SolidColorBrush(Color.FromRgb(10, 132, 255)), BorderBrush = Brushes.Transparent, Content = "Apply", Padding = new Thickness(18, 6, 18, 6) };
-        reset.Click += (_, _) => ResetDefaults();
+        var apply = _apply = new Button { Style = actionStyle, Background = new SolidColorBrush(Color.FromRgb(10, 132, 255)), BorderBrush = Brushes.Transparent, Content = "Apply", Padding = new Thickness(18, 6, 18, 6) };
+        reset.Click += (_, _) => ShowDialog("Reset settings?", "Restore the settings shown here to their defaults? Click Apply afterwards to save them.",
+            ("Cancel", () => { }), ("Reset to defaults", ResetDefaults));
         apply.Click += (_, _) => ApplyChanges();
         footer.Children.Add(reset);
         footer.Children.Add(apply);
@@ -84,6 +89,15 @@ internal sealed class SettingsWindow : Window
         body.Children.Add(footer);
         body.Children.Add(columns);
 
+        var layers = new Grid();
+        layers.Children.Add(body);
+        _dialog = new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
+            CornerRadius = new CornerRadius(8), Visibility = Visibility.Collapsed
+        };
+        KeyboardNavigation.SetTabNavigation(_dialog, KeyboardNavigationMode.Cycle);
+        layers.Children.Add(_dialog);
         Content = new Border
         {
             Background = Panel,
@@ -93,17 +107,26 @@ internal sealed class SettingsWindow : Window
             Padding = new Thickness(22, 16, 22, 22),
             Margin = new Thickness(16), // room for the shadow
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.45 },
-            Child = body,
+            Child = layers,
         };
 
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
-        Activated += (_, _) => { if (!HasChanges) Refresh(); };
+        RefreshApplyState();
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Escape) return;
+            e.Handled = true;
+            if (_dialog.Visibility == Visibility.Visible) HideDialog(); else Close();
+        };
+        Activated += (_, _) => { if (!HasChanges && _dialog.Visibility != Visibility.Visible) Refresh(); };
         Closing += (_, e) =>
         {
-            if (!HasChanges) return;
-            var choice = MessageBox.Show(this, "Your changes have not been applied. Apply them before closing?\n\nYes: Apply and close\nNo: Discard and close\nCancel: Keep editing", "Unapplied changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
-            if (choice == MessageBoxResult.Cancel) e.Cancel = true;
-            else if (choice == MessageBoxResult.Yes) { ApplyChanges(); e.Cancel = HasChanges; }
+            if (_allowClose || !HasChanges && _dialog.Visibility != Visibility.Visible) return;
+            e.Cancel = true;
+            if (_dialog.Visibility == Visibility.Visible) return;
+            ShowDialog("Unapplied changes", "Your changes have not been applied. Apply them before closing, or discard them?",
+                ("Keep editing", () => { }),
+                ("Discard", () => { _allowClose = true; Close(); }),
+                ("Apply and close", () => { ApplyChanges(); if (!HasChanges) Close(); }));
         };
     }
 
@@ -116,6 +139,51 @@ internal sealed class SettingsWindow : Window
             toggle.Set(item.IsChecked, animate: false);
             if (item.Name == "MenuAnim") _animate = item.IsChecked;
         }
+        RefreshApplyState();
+    }
+
+    void RefreshApplyState()
+    {
+        _apply.IsEnabled = HasChanges;
+        _apply.Background = HasChanges ? new SolidColorBrush(Color.FromRgb(10, 132, 255)) : Card;
+    }
+
+    void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
+    {
+        _previousFocus = Keyboard.FocusedElement;
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeights.SemiBold });
+        content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Dim, Margin = new Thickness(0, 10, 0, 20) });
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        Button? first = null;
+        foreach (var (label, run) in choices)
+        {
+            var button = new Button { Content = label, Style = ActionButtonStyle(), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(6, 0, 0, 0) };
+            button.Click += (_, _) => { HideDialog(); run(); };
+            actions.Children.Add(button);
+            first ??= button;
+        }
+        content.Children.Add(actions);
+        _dialog.Child = new Border
+        {
+            Background = Frozen(Color.FromRgb(32, 32, 34)), BorderBrush = Edge, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12), Padding = new Thickness(22), Width = 460,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.45 }, Child = content
+        };
+        _body.Effect = new BlurEffect { Radius = 5 };
+        _body.IsEnabled = false;
+        _dialog.Visibility = Visibility.Visible;
+        first?.Focus();
+    }
+
+    void HideDialog()
+    {
+        _dialog.Visibility = Visibility.Collapsed;
+        _dialog.Child = null;
+        _body.Effect = null;
+        _body.IsEnabled = true;
+        if (_previousFocus != null) Keyboard.Focus(_previousFocus);
     }
 
     static Style ActionButtonStyle() => (Style)System.Windows.Markup.XamlReader.Parse(@"
@@ -244,6 +312,7 @@ internal sealed class SettingsWindow : Window
         if (item.Name == "MenuAnim") _animate = next;
         toggle.Set(next, _animate);
         if (!_animate) foreach (var row in _rows) row.Switch.Set(row.Switch.IsOn, false);
+        RefreshApplyState();
     }
 
     void ApplyChanges()
@@ -268,6 +337,7 @@ internal sealed class SettingsWindow : Window
             toggle.Set(value, false);
             if (name == "Animations") _animate = value;
         }
+        RefreshApplyState();
     }
 
     static Brush Frozen(Color color)
