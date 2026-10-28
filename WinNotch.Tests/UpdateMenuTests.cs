@@ -47,6 +47,28 @@ public class UpdateMenuTests
         });
 
     [Fact]
+    public void Available_update_stays_in_notification_rows_and_closed_notch_badges()
+        => WithWindow(async window =>
+        {
+            using var http = new HttpClient(new ResponseHandler(ReleaseJson("99.0.0")));
+            Set(window, "_updates", new UpdateService(http));
+            await Check(window, manual: true);
+            Set(window, "_peekActive", false);
+            typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
+            var rows = (StackPanel)window.FindName("MessageRows");
+            Assert.Single(rows.Children.Cast<Button>());
+            foreach (string name in new[] { "BadgeLogoList", "MediaBadgeLogos" })
+            {
+                var icon = Assert.IsType<Border>(((StackPanel)window.FindName(name)).Children[0]);
+                Assert.Equal("\uE896", Assert.IsType<TextBlock>(icon.Child).Text);
+            }
+            Set(window, "_availableUpdate", null!);
+            typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
+            Assert.Empty(rows.Children.Cast<Button>());
+            Assert.Empty(((StackPanel)window.FindName("BadgeLogoList")).Children.Cast<UIElement>());
+        });
+
+    [Fact]
     public void Automatic_check_does_not_contact_GitHub_when_disabled()
         => WithWindow(async window =>
         {

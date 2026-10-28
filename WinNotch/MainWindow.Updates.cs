@@ -28,7 +28,7 @@ public partial class MainWindow
             _updateTimer.Interval = UpdateCheckInterval;
             _ = CheckForUpdatesAsync(manual: false);
         });
-        RefreshUpdateMenu();
+        RefreshUpdateMenu(refreshNotification: false);
     }
 
     void StartUpdates()
@@ -46,8 +46,13 @@ public partial class MainWindow
         _updates?.Dispose();
     }
 
-    void RefreshUpdateMenu()
+    void RefreshUpdateMenu(bool refreshNotification = true)
     {
+        if (refreshNotification)
+        {
+            RefreshMessages();
+            ApplyState();
+        }
         MenuAutoUpdates.IsChecked = _settings.CheckForUpdatesAutomatically;
         MenuUpdatesLabel.Text = _installingUpdate ? "Updating…"
             : _availableUpdate is { } available ? $"Updates · {available.Version.ToString(3)} available" : "Updates";
@@ -120,12 +125,7 @@ public partial class MainWindow
         if (_availableUpdate is not { } release || _notifiedUpdateVersion == release.Version
             || _hiddenForFullscreen || _expanded || _busy || _sharing || TaskShowing
             || _peekActive || _installingUpdate || _updatesClosing) return;
-        MessageLogoHost.Child = new System.Windows.Controls.TextBlock
-        {
-            Text = "\uE895", FontFamily = IconFont, FontSize = 24,
-            Foreground = System.Windows.Media.Brushes.White,
-            VerticalAlignment = VerticalAlignment.Center
-        };
+        MessageLogoHost.Child = UpdateNotificationIcon(28);
         MessageTitle.Text = $"Holm {release.Version.ToString(3)} is available";
         MessageText.Text = "Click to update and restart Holm";
         MessageText.Visibility = Visibility.Visible;
@@ -137,6 +137,57 @@ public partial class MainWindow
         _peekTimer.Interval = TimeSpan.FromSeconds(8);
         _peekTimer.Start();
         ApplyState();
+    }
+
+    System.Windows.Controls.Border UpdateNotificationIcon(double size)
+        => new()
+        {
+            Width = size, Height = size, CornerRadius = new CornerRadius(size / 2),
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(10, 132, 255)),
+            Child = new System.Windows.Controls.TextBlock
+            {
+                Text = "\uE896", FontFamily = IconFont, FontSize = size * 12 / 19,
+                Foreground = System.Windows.Media.Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+
+    void AddUpdateNotification()
+    {
+        if (_availableUpdate is not { } release) return;
+        BadgeLogoList.Children.Add(UpdateNotificationIcon(14));
+        MediaBadgeLogos.Children.Add(UpdateNotificationIcon(12));
+        var row = new System.Windows.Controls.Grid();
+        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());
+        row.Children.Add(UpdateNotificationIcon(28));
+        var text = new System.Windows.Controls.StackPanel { Margin = new Thickness(10, 0, 10, 0) };
+        text.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = $"Holm {release.Version.ToString(3)} is available", FontSize = 13,
+            FontWeight = FontWeights.SemiBold
+        });
+        text.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = _installingUpdate ? _updateStatus : "Click to update and restart Holm",
+            FontSize = 12, Foreground = DimBrush
+        });
+        System.Windows.Controls.Grid.SetColumn(text, 1);
+        row.Children.Add(text);
+        var button = new System.Windows.Controls.Button
+        {
+            Content = row, Style = (Style)FindResource("RowButton"),
+            Margin = new Thickness(0, 0, 0, 8), IsEnabled = !_installingUpdate,
+            ToolTip = "Update and restart Holm"
+        };
+        button.Click += async (_, _) =>
+        {
+            SetExpanded(false);
+            await InstallUpdateAsync();
+            if (!_updatesClosing && !_installingUpdate && _updateStatus != null)
+                ShowPeek("\uE896", _updateStatus, "", null, false, null, seconds: 8);
+        };
+        MessageRows.Children.Add(button);
     }
 
     async void MenuInstallUpdate_Click(object sender, RoutedEventArgs e)

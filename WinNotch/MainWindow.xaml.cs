@@ -427,7 +427,7 @@ public partial class MainWindow : Window
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
-                   : _messages.Count > 0 ? NotchState.Badge
+                   : _messages.Count > 0 || _availableUpdate != null ? NotchState.Badge
                    : NotchState.Idle;
         bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
@@ -835,7 +835,7 @@ public partial class MainWindow : Window
     /// <summary>The count on the badges and the newest message in the open notch.</summary>
     void RefreshMessages()
     {
-        int count = _messages.Sum(m => m.Count);
+        int count = _messages.Sum(m => m.Count) + (_availableUpdate != null ? 1 : 0);
         string totalText = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
         BadgeText.Text = MediaBadgeText.Text = totalText;
         MediaBadge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -859,6 +859,7 @@ public partial class MainWindow : Window
 
         PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), 14);
         PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), 12);
+        AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 
         foreach (var group in groups)
