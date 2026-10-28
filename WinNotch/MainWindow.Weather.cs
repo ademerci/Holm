@@ -42,6 +42,7 @@ public partial class MainWindow
         if (!_settings.Weather || _fetchingWeather || _settings.WeatherLatitude is not { } lat || _settings.WeatherLongitude is not { } lon) return;
         if (!Weather.Due(_weatherAt, DateTime.UtcNow)) return;
         _fetchingWeather = true;
+        ShowWeather();
         try
         {
             using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -66,7 +67,9 @@ public partial class MainWindow
         IdleWeather.Visibility = weather != null ? Visibility.Visible : Visibility.Collapsed;
         WeatherLine.Visibility = weather != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         WeatherSetup.Visibility = _settings.Weather && _choosingPlace ? Visibility.Visible : Visibility.Collapsed;
-        WeatherAdd.Visibility = _settings.Weather && !_choosingPlace && weather == null && _settings.WeatherLatitude == null ? Visibility.Visible : Visibility.Collapsed;
+        WeatherAdd.Visibility = _settings.Weather && !_choosingPlace && weather == null ? Visibility.Visible : Visibility.Collapsed;
+        WeatherAdd.Text = _settings.WeatherLatitude == null ? "+ Weather"
+            : _fetchingWeather ? "Loading weather…" : "Weather unavailable · choose city";
         if (weather != null)
         {
             IdleWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 12, DimBrush);
@@ -92,7 +95,9 @@ public partial class MainWindow
 
     void ChoosePlace()
     {
+        ShowTool(Tool.None);
         _choosingPlace = true;
+        RefreshMediaUi();
         WeatherBox.Text = "";
         WeatherHint.Text = _settings.WeatherPlace is { } place ? "Now: " + place : "Type a city and press Enter";
         ShowWeather();
@@ -118,6 +123,7 @@ public partial class MainWindow
             _settings.WeatherLongitude = place.Longitude;
             _settings.Save();
             _choosingPlace = false;
+            RefreshMediaUi();
             _weather = null;
             _weatherAt = null; // a new place is asked about at once
             EndTyping();

@@ -190,6 +190,30 @@ public class UpdateMenuTests
             return Task.CompletedTask;
         });
 
+    [Fact]
+    public void Weather_city_setup_is_visible_with_media_and_failed_forecasts_allow_recovery()
+        => WithWindow(window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.Weather = true;
+            settings.WeatherLatitude = 47;
+            settings.WeatherLongitude = 8;
+            Set(window, "_info", new MediaInfo { Title = "Song", App = "Spotify", IsPlaying = true });
+            typeof(MainWindow).GetMethod("RefreshMediaUi", Private)!.Invoke(window, null);
+            typeof(MainWindow).GetMethod("ChoosePlace", Private)!.Invoke(window, null);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("HomePanel")).Visibility);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("ClockPanel")).Visibility);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("WeatherSetup")).Visibility);
+            Set(window, "_choosingPlace", false);
+            typeof(MainWindow).GetMethod("RefreshMediaUi", Private)!.Invoke(window, null);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("MediaPanel")).Visibility);
+            typeof(MainWindow).GetMethod("ShowWeather", Private)!.Invoke(window, null);
+            var add = (TextBlock)window.FindName("WeatherAdd");
+            Assert.Equal(Visibility.Visible, add.Visibility);
+            Assert.Contains("unavailable", add.Text);
+            return Task.CompletedTask;
+        });
+
     static string ReleaseJson(string version) => JsonSerializer.Serialize(new
     {
         tag_name = "v" + version, draft = false, prerelease = false,

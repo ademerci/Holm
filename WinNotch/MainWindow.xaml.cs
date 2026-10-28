@@ -406,7 +406,7 @@ public partial class MainWindow : Window
             _liveTimer.Stop();
             _trimTimer.Start();
             ShowTool(Tool.None); // the next time it opens on home
-            if (_choosingPlace) { _choosingPlace = false; ShowWeather(); }
+            if (_choosingPlace) { _choosingPlace = false; RefreshMediaUi(); ShowWeather(); }
         }
         ApplyState();
         UpdateBackdrop();
@@ -1085,15 +1085,15 @@ public partial class MainWindow : Window
     void RefreshMediaUi()
     {
         var info = _info;
-        var media = info != null ? Visibility.Visible : Visibility.Collapsed;
+        var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
         {
             MediaPanel.Visibility = media;
-            ClockPanel.Visibility = info != null ? Visibility.Collapsed : Visibility.Visible;
-            FadeIn(info != null ? MediaPanel : ClockPanel);
+            ClockPanel.Visibility = media == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            FadeIn(media == Visibility.Visible ? MediaPanel : ClockPanel);
             RefreshToolBar(); // the card brings its own tools
         }
-        if (info == null) { UpdateClock(); ShowToday(); return; }
+        if (info == null || _choosingPlace) { UpdateClock(); ShowToday(); return; }
 
         TitleText.Text = info.Title;
         ArtistText.Text = info.Artist;
