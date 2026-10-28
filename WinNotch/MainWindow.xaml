@@ -472,6 +472,29 @@
                           Width="480" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
                         <StackPanel>
 
+                            <!-- Tools: each opens its page in place of home; click again to go back -->
+                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
+                                    <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" Click="RemindersTool_Click">
+                                    <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
+                                    <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
+                                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" Click="MixerTool_Click">
+                                    <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <!-- Not a page: it closes the notch and picks a color from the screen -->
+                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">
+                                    <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                            </StackPanel>
+
                             <!-- Home: the player (or the clock), and whatever is going on -->
                             <StackPanel x:Name="HomePanel">
                                 <StackPanel x:Name="MediaPanel">
@@ -797,28 +820,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Tools: each opens its page in place of home; click again to go back -->
-                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
-                                <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
-                                    <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" Click="RemindersTool_Click">
-                                    <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                                <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
-                                    <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
-                                    <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" Click="MixerTool_Click">
-                                    <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                                <!-- Not a page: it closes the notch and picks a color from the screen -->
-                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">
-                                    <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
-                                </Button>
-                            </StackPanel>
+
 
                             <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,8"/>
 
