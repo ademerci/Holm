@@ -833,8 +833,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The count on the badges and the newest message in the open notch.</summary>
+    void ClearNotifications_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _chat.MarkRead();
+        _messages = _chat.Messages;
+        _peekActive = false;
+        _peekTimer.Stop();
+        RefreshMessages();
+        ApplyState();
+    }
+
     void RefreshMessages()
     {
+        ClearNotificationsBtn.Visibility = _messages.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         int count = _messages.Sum(m => m.Count) + (_availableUpdate != null ? 1 : 0);
         string totalText = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
         BadgeText.Text = MediaBadgeText.Text = totalText;
