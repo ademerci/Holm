@@ -20,6 +20,8 @@ public partial class MainWindow
     string? _updateStatus;
     Version? _notifiedUpdateVersion;
     bool _updateNotification;
+    Version? _dismissedUpdateVersion;
+    bool HasUpdateNotification => _availableUpdate is { } update && update.Version != _dismissedUpdateVersion;
 
     void InitUpdates()
     {
@@ -154,7 +156,7 @@ public partial class MainWindow
 
     void AddUpdateNotification()
     {
-        if (_availableUpdate is not { } release) return;
+        if (!HasUpdateNotification || _availableUpdate is not { } release) return;
         BadgeLogoList.Children.Add(UpdateNotificationIcon(14));
         MediaBadgeLogos.Children.Add(UpdateNotificationIcon(12));
         var row = new System.Windows.Controls.Grid();
@@ -187,7 +189,13 @@ public partial class MainWindow
             if (!_updatesClosing && !_installingUpdate && _updateStatus != null)
                 ShowPeek("\uE896", _updateStatus, "", null, false, null, seconds: 8);
         };
-        MessageRows.Children.Add(button);
+        MessageRows.Children.Add(DismissibleNotification(button, () =>
+        {
+            _dismissedUpdateVersion = release.Version;
+            _peekActive = false;
+            RefreshMessages();
+            ApplyState();
+        }));
     }
 
     async void MenuInstallUpdate_Click(object sender, RoutedEventArgs e)

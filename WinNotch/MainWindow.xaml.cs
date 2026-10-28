@@ -427,7 +427,7 @@ public partial class MainWindow : Window
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
-                   : _messages.Count > 0 || _availableUpdate != null ? NotchState.Badge
+                   : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
         bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
@@ -847,7 +847,7 @@ public partial class MainWindow : Window
     void RefreshMessages()
     {
         ClearNotificationsBtn.Visibility = _messages.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        int count = _messages.Sum(m => m.Count) + (_availableUpdate != null ? 1 : 0);
+        int count = _messages.Sum(m => m.Count) + (HasUpdateNotification ? 1 : 0);
         string totalText = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
         BadgeText.Text = MediaBadgeText.Text = totalText;
         MediaBadge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -925,8 +925,27 @@ public partial class MainWindow : Window
             Grid.SetColumn(pill, 2);
             row.Children.Add(pill);
             button.Content = row;
-            MessageRows.Children.Add(button);
+            MessageRows.Children.Add(DismissibleNotification(button, () => _chat.MarkRead(group.App)));
         }
+    }
+
+    FrameworkElement DismissibleNotification(Button notification, Action dismiss)
+    {
+        var host = new Grid();
+        host.ColumnDefinitions.Add(new ColumnDefinition());
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        host.Children.Add(notification);
+        var close = new Button
+        {
+            Content = "×", Style = (Style)FindResource("NotchButton"), Width = 26, Height = 26,
+            Margin = new Thickness(4, 0, 0, 8), Opacity = 0, ToolTip = "Dismiss notification"
+        };
+        Grid.SetColumn(close, 1);
+        host.Children.Add(close);
+        host.MouseEnter += (_, _) => close.Opacity = 1;
+        host.MouseLeave += (_, _) => close.Opacity = 0;
+        close.Click += (_, e) => { e.Handled = true; dismiss(); };
+        return host;
     }
 
     void PopulateAppLogos(Panel host, IEnumerable<string> apps, double size)

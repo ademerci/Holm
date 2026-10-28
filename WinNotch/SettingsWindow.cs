@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,8 +15,7 @@ internal sealed record SettingsGroup(string Title, IReadOnlyList<MenuItem> Switc
 
 /// <summary>
 /// The on/off switches that used to make the right-click menu taller than the screen, in a window of their own.
-/// Each switch stands for a hidden menu entry: flipping it checks that entry and raises its Click, so the
-/// menu's handlers stay the one place that applies a setting.
+/// Switches stage a draft; Apply raises the hidden menu entries' handlers to save the changes.
 /// </summary>
 internal sealed class SettingsWindow : Window
 {
@@ -26,7 +26,8 @@ internal sealed class SettingsWindow : Window
     static readonly Brush Line = Frozen(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
     static readonly Brush Dim = Frozen(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
 
-    readonly bool _animate;
+    bool _animate;
+    bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn);
     readonly Action _sync;
     readonly List<(MenuItem Item, ToggleSwitch Switch)> _rows = new();
 
@@ -71,6 +72,15 @@ internal sealed class SettingsWindow : Window
         var header = Header(version);
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
+        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
+        var reset = new Button { Content = "Reset to defaults", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 10, 0) };
+        var apply = new Button { Content = "Apply", Padding = new Thickness(18, 6, 18, 6) };
+        reset.Click += (_, _) => ResetDefaults();
+        apply.Click += (_, _) => ApplyChanges();
+        footer.Children.Add(reset);
+        footer.Children.Add(apply);
+        DockPanel.SetDock(footer, Dock.Bottom);
+        body.Children.Add(footer);
         body.Children.Add(columns);
 
         Content = new Border
@@ -86,14 +96,25 @@ internal sealed class SettingsWindow : Window
         };
 
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
-        Activated += (_, _) => Refresh();
+        Activated += (_, _) => { if (!HasChanges) Refresh(); };
+        Closing += (_, e) =>
+        {
+            if (!HasChanges) return;
+            var choice = MessageBox.Show(this, "Your changes have not been applied. Apply them before closing?\n\nYes: Apply and close\nNo: Discard and close\nCancel: Keep editing", "Unapplied changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+            if (choice == MessageBoxResult.Cancel) e.Cancel = true;
+            else if (choice == MessageBoxResult.Yes) { ApplyChanges(); e.Cancel = HasChanges; }
+        };
     }
 
     /// <summary>Shows each switch as its menu entry stands now.</summary>
     public void Refresh()
     {
         _sync();
-        foreach (var (item, toggle) in _rows) toggle.Set(item.IsChecked, animate: false);
+        foreach (var (item, toggle) in _rows)
+        {
+            toggle.Set(item.IsChecked, animate: false);
+            if (item.Name == "MenuAnim") _animate = item.IsChecked;
+        }
     }
 
     FrameworkElement Header(string version)
@@ -181,11 +202,34 @@ internal sealed class SettingsWindow : Window
 
     void Flip(MenuItem item, ToggleSwitch toggle)
     {
-        item.IsChecked = !item.IsChecked;
-        try { item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, item)); }
-        catch (Exception ex) { Diag.Error(ex); }
-        // The handler may have said no (Start with Windows can fail): show what stands now.
-        toggle.Set(item.IsChecked, _animate);
+        bool next = !toggle.IsOn;
+        if (item.Name == "MenuAnim") _animate = next;
+        toggle.Set(next, _animate);
+        if (!_animate) foreach (var row in _rows) row.Switch.Set(row.Switch.IsOn, false);
+    }
+
+    void ApplyChanges()
+    {
+        foreach (var (item, toggle) in _rows)
+        {
+            if (item.IsChecked == toggle.IsOn) continue;
+            item.IsChecked = toggle.IsOn;
+            try { item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, item)); }
+            catch (Exception ex) { Diag.Error(ex); }
+        }
+        Refresh();
+    }
+
+    void ResetDefaults()
+    {
+        var defaults = new AppSettings();
+        foreach (var (item, toggle) in _rows)
+        {
+            string name = item.Name switch { "MenuAnim" => "Animations", "MenuMini" => "MiniIdle", _ => item.Name.Substring(4) };
+            bool value = name != "Autostart" && typeof(AppSettings).GetProperty(name)?.GetValue(defaults) is true;
+            toggle.Set(value, false);
+            if (name == "Animations") _animate = value;
+        }
     }
 
     static Brush Frozen(Color color)

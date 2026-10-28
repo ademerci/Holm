@@ -56,7 +56,7 @@ public class UpdateMenuTests
             Set(window, "_peekActive", false);
             typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
             var rows = (StackPanel)window.FindName("MessageRows");
-            Assert.Single(rows.Children.Cast<Button>());
+            Assert.Single(rows.Children.Cast<FrameworkElement>());
             foreach (string name in new[] { "BadgeLogoList", "MediaBadgeLogos" })
             {
                 var icon = Assert.IsType<Border>(((StackPanel)window.FindName(name)).Children[0]);
@@ -64,7 +64,7 @@ public class UpdateMenuTests
             }
             Set(window, "_availableUpdate", null!);
             typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
-            Assert.Empty(rows.Children.Cast<Button>());
+            Assert.Empty(rows.Children.Cast<FrameworkElement>());
             Assert.Empty(((StackPanel)window.FindName("BadgeLogoList")).Children.Cast<UIElement>());
         });
 
@@ -119,6 +119,36 @@ public class UpdateMenuTests
             Set(window, "_installingUpdate", true);
             await Check(window, manual: true);
             Assert.Equal(0, handler.Requests);
+        });
+
+    [Fact]
+    public void Settings_changes_wait_for_apply_and_reset_is_only_a_draft()
+        => WithWindow(window =>
+        {
+            var item = new MenuItem { Name = "MenuAnim", Header = "Animations", IsChecked = true };
+            bool applied = true;
+            int clicks = 0;
+            item.Click += (_, _) => { applied = item.IsChecked; clicks++; };
+            var settings = new SettingsWindow(new[] { new SettingsGroup("General", new[] { item }) }, "test", true,
+                () => item.IsChecked = applied);
+            var rows = (System.Collections.IEnumerable)typeof(SettingsWindow).GetField("_rows", Private)!.GetValue(settings)!;
+            var entry = rows.Cast<object>().Single();
+            var toggle = (ToggleSwitch)entry.GetType().GetField("Item2")!.GetValue(entry)!;
+            typeof(SettingsWindow).GetMethod("Flip", Private)!.Invoke(settings, new object[] { item, toggle });
+            Assert.False(toggle.IsOn);
+            Assert.True(applied);
+            Assert.Equal(0, clicks);
+            Assert.False((bool)typeof(SettingsWindow).GetField("_animate", Private)!.GetValue(settings)!);
+            typeof(SettingsWindow).GetMethod("ApplyChanges", Private)!.Invoke(settings, null);
+            Assert.False(applied);
+            Assert.Equal(1, clicks);
+            typeof(SettingsWindow).GetMethod("ResetDefaults", Private)!.Invoke(settings, null);
+            Assert.True(toggle.IsOn);
+            Assert.False(applied);
+            typeof(SettingsWindow).GetMethod("ApplyChanges", Private)!.Invoke(settings, null);
+            Assert.True(applied);
+            settings.Close();
+            return Task.CompletedTask;
         });
 
     static string ReleaseJson(string version) => JsonSerializer.Serialize(new
