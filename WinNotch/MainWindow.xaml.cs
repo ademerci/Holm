@@ -416,6 +416,7 @@ public partial class MainWindow : Window
 
     void ApplyState(bool animate = true)
     {
+        animate &= _settings.Animations;
         var target = _expanded ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : TaskShowing ? NotchState.Task
@@ -498,7 +499,7 @@ public partial class MainWindow : Window
             }
         }
 
-        if (target != _state)
+        if (target != _state || !animate)
         {
             bool soft = animate && _settings.Animations; // music coming and going cross-fades, unless animations are off
             SetView(IdleView, target == NotchState.Idle && !mini, soft);
@@ -586,6 +587,13 @@ public partial class MainWindow : Window
     {
         view.IsHitTestVisible = show;
         if (show) view.Visibility = Visibility.Visible;
+        if (!animate)
+        {
+            view.BeginAnimation(OpacityProperty, null);
+            view.Opacity = show ? 1 : 0;
+            if (!show && view == ExpandedView) view.Visibility = Visibility.Collapsed;
+            return;
+        }
         var fade = new DoubleAnimation(show ? 1 : 0, TimeSpan.FromMilliseconds(!animate ? 0 : show ? 220 : 110))
         {
             BeginTime = TimeSpan.FromMilliseconds(show && animate ? 110 : 0),
@@ -634,6 +642,24 @@ public partial class MainWindow : Window
     void UpdateBackdrop()
     {
         var wanted = _info is { Backdrop: { } art } info && (info.IsPlaying || _expanded) ? art : null;
+        if (ReferenceEquals(wanted, _shownBackdrop)
+            && (_settings.Animations || !ArtLayerA.HasAnimatedProperties && !ArtLayerB.HasAnimatedProperties)) return;
+        if (!_settings.Animations)
+        {
+            ArtLayerA.BeginAnimation(OpacityProperty, null);
+            ArtLayerB.BeginAnimation(OpacityProperty, null);
+            _artFront.Opacity = wanted != null ? 1 : 0;
+            _artBack.Opacity = 0;
+            if (wanted != null && _info != null)
+            {
+                var instantBrush = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
+                instantBrush.Freeze();
+                _artFront.Background = instantBrush;
+                ((Border)_artFront.Child).Opacity = _info.BackdropShade;
+            }
+            _shownBackdrop = wanted;
+            return;
+        }
         if (ReferenceEquals(wanted, _shownBackdrop)) return;
         _shownBackdrop = wanted;
 
@@ -1489,7 +1515,8 @@ public partial class MainWindow : Window
     {
         _settings.Animations = MenuAnim.IsChecked;
         _settings.Save();
-        UpdateEqualizer();
+        UpdateBackdrop();
+        ApplyState();
     }
 
     void MenuMini_Click(object sender, RoutedEventArgs e)

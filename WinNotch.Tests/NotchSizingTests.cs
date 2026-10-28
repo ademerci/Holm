@@ -89,6 +89,7 @@ public class NotchSizingTests
     {
         WithWindow(window =>
         {
+            Settings(window).Animations = true;
             var settings = Settings(window);
             settings.CollapsedScale = 0.85;
             settings.ExpandedScale = 1.3;
@@ -114,6 +115,7 @@ public class NotchSizingTests
     {
         WithWindow(window =>
         {
+            Settings(window).Animations = true;
             var settings = Settings(window);
             settings.CollapsedScale = 1.3;
             settings.ExpandedScale = 0.85;

@@ -167,6 +167,26 @@ public class UpdateMenuTests
             return Task.CompletedTask;
         });
 
+    [Fact]
+    public void Disabling_animations_snaps_open_and_closed_shapes_and_opacity()
+        => WithWindow(window =>
+        {
+            Field<AppSettings>(window, "_settings").Animations = false;
+            var apply = typeof(MainWindow).GetMethod("ApplyState", Private)!;
+            var island = (Border)window.FindName("Island");
+            var expanded = (System.Windows.Controls.Grid)window.FindName("ExpandedView");
+            foreach (bool open in new[] { true, false })
+            {
+                Set(window, "_expanded", open);
+                apply.Invoke(window, new object[] { true });
+                Assert.False(Field<bool>(window, "_shapeAnimating"));
+                Assert.False(island.HasAnimatedProperties);
+                Assert.False(expanded.HasAnimatedProperties);
+                Assert.Equal(open ? 1.0 : 0.0, expanded.Opacity);
+            }
+            return Task.CompletedTask;
+        });
+
     static string ReleaseJson(string version) => JsonSerializer.Serialize(new
     {
         tag_name = "v" + version, draft = false, prerelease = false,
