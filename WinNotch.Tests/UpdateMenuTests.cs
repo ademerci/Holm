@@ -30,6 +30,23 @@ public class UpdateMenuTests
         });
 
     [Fact]
+    public void Update_notification_uses_message_layout_and_does_not_repeat_the_same_version()
+        => WithWindow(async window =>
+        {
+            using var http = new HttpClient(new ResponseHandler(ReleaseJson("99.0.0")));
+            Set(window, "_updates", new UpdateService(http));
+            await Check(window, manual: true);
+            Assert.True(Field<bool>(window, "_updateNotification"));
+            Assert.True(Field<bool>(window, "_peekMessage"));
+            Assert.Contains("99.0.0", ((TextBlock)window.FindName("MessageTitle")).Text);
+            Assert.Contains("Click to update", ((TextBlock)window.FindName("MessageText")).Text);
+            Set(window, "_peekActive", false);
+            Set(window, "_updateNotification", false);
+            await Check(window, manual: true);
+            Assert.False(Field<bool>(window, "_updateNotification"));
+        });
+
+    [Fact]
     public void Automatic_check_does_not_contact_GitHub_when_disabled()
         => WithWindow(async window =>
         {

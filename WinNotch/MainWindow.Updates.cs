@@ -18,6 +18,8 @@ public partial class MainWindow
     UpdateRelease? _availableUpdate;
     bool _checkingUpdates, _installingUpdate, _updatesClosing, _trimmedAfterFirstCheck;
     string? _updateStatus;
+    Version? _notifiedUpdateVersion;
+    bool _updateNotification;
 
     void InitUpdates()
     {
@@ -99,7 +101,11 @@ public partial class MainWindow
         finally
         {
             _checkingUpdates = false;
-            if (!_updatesClosing) RefreshUpdateMenu();
+            if (!_updatesClosing)
+            {
+                RefreshUpdateMenu();
+                NotifyAvailableUpdate();
+            }
             // The check 20 s after start pulls the network and TLS code back in right after the startup trim.
             if (!manual && !_updatesClosing && !_trimmedAfterFirstCheck)
             {
@@ -107,6 +113,30 @@ public partial class MainWindow
                 _trimTimer.Start();
             }
         }
+    }
+
+    void NotifyAvailableUpdate()
+    {
+        if (_availableUpdate is not { } release || _notifiedUpdateVersion == release.Version
+            || _hiddenForFullscreen || _expanded || _busy || _sharing || TaskShowing
+            || _peekActive || _installingUpdate || _updatesClosing) return;
+        MessageLogoHost.Child = new System.Windows.Controls.TextBlock
+        {
+            Text = "\uE895", FontFamily = IconFont, FontSize = 24,
+            Foreground = System.Windows.Media.Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        MessageTitle.Text = $"Holm {release.Version.ToString(3)} is available";
+        MessageText.Text = "Click to update and restart Holm";
+        MessageText.Visibility = Visibility.Visible;
+        _updateNotification = true;
+        _notifiedUpdateVersion = release.Version;
+        _peekActive = true;
+        _peekMessage = true;
+        _peekTimer.Stop();
+        _peekTimer.Interval = TimeSpan.FromSeconds(8);
+        _peekTimer.Start();
+        ApplyState();
     }
 
     async void MenuInstallUpdate_Click(object sender, RoutedEventArgs e)

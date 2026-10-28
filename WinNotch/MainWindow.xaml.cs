@@ -343,6 +343,7 @@ public partial class MainWindow : Window
     /// <summary>Gets out of the way of games and fullscreen videos, and stays above other topmost windows.</summary>
     void WatchFullscreen()
     {
+        NotifyAvailableUpdate();
         // The shell's answer covers all monitors, so also check that the fullscreen app is on ours.
         bool fullscreen = Native.SHQueryUserNotificationState(out int state) == 0 && state is 2 or 3 or 4
             && Native.MonitorFromWindow(Native.GetForegroundWindow(), 2 /* NEAREST */) == _monitor;
@@ -705,6 +706,7 @@ public partial class MainWindow : Window
         if (_hiddenForFullscreen) return;
         if (_expanded) { RefreshDevices(); return; }
 
+        _updateNotification = false;
         PeekIcon.Text = glyph ?? "";
         PeekIcon.Foreground = glyphBrush ?? Brushes.White;
         PeekIcon.Visibility = glyph == null ? Visibility.Collapsed : Visibility.Visible;
@@ -728,6 +730,7 @@ public partial class MainWindow : Window
     void ShowMessage(ChatMessage message)
     {
         if (_hiddenForFullscreen || _expanded) return;
+        _updateNotification = false;
         MessageLogoHost.Child = AppLogo(message.App, 28);
         MessageTitle.Text = message.Title;
         MessageText.Text = message.Text;
@@ -1172,13 +1175,25 @@ public partial class MainWindow : Window
         if (_expanded) _collapseDelay.Start();
     }
 
-    void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    async void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (ScreenshotShowing)
         {
             // Hidden feature: a click on the screenshot popup's empty space (not a button or the picture) dismisses it.
             e.Handled = true;
             HideTask();
+            return;
+        }
+        if (_updateNotification && _peekActive && _peekMessage && !_expanded)
+        {
+            e.Handled = true;
+            _updateNotification = false;
+            _peekActive = false;
+            _peekTimer.Stop();
+            ApplyState();
+            await InstallUpdateAsync();
+            if (!_updatesClosing && !_installingUpdate && _updateStatus != null)
+                ShowPeek("\uE895", _updateStatus, "", null, false, null, seconds: 8);
             return;
         }
         if (_expanded || TaskShowing || _sharing || PhoneShowing) return;
