@@ -16,7 +16,8 @@ public partial class MainWindow
     {
         new SettingsGroup("General", new[] { MenuAnim, MenuMini, MenuAutostart }),
         new SettingsGroup("Pop-outs", new[] { MenuDownloads, MenuScreenshots, MenuScreenshotText, MenuCapsLock, MenuDiskWarning, MenuUsbDrives, MenuConnectivity }),
-        new SettingsGroup("Open notch", new[] { MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker }),
+        new SettingsGroup("Open notch", new[] { MenuMediaControls, MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker }),
+        new SettingsGroup("Weather", new[] { MenuWeatherAutoLocation }),
         new SettingsGroup("Calls and privacy", new[] { MenuCalls, MenuPauseForCalls, MenuPrivacy, MenuVpn, MenuClearPasswords }),
         new SettingsGroup("Beam", new[] { MenuBeam, MenuSendFolders, MenuSendLater }),
     };
@@ -26,6 +27,8 @@ public partial class MainWindow
     {
         MenuAnim.IsChecked = _settings.Animations;
         MenuMini.IsChecked = _settings.MiniIdle;
+        MenuMediaControls.IsChecked = _settings.MediaControls;
+        MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;

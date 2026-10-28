@@ -196,6 +196,7 @@ public class UpdateMenuTests
         {
             var settings = Field<AppSettings>(window, "_settings");
             settings.Weather = true;
+            settings.MediaControls = true;
             settings.WeatherLatitude = 47;
             settings.WeatherLongitude = 8;
             Set(window, "_info", new MediaInfo { Title = "Song", App = "Spotify", IsPlaying = true });
@@ -211,6 +212,175 @@ public class UpdateMenuTests
             var add = (TextBlock)window.FindName("WeatherAdd");
             Assert.Equal(Visibility.Visible, add.Visibility);
             Assert.Contains("unavailable", add.Text);
+            return Task.CompletedTask;
+        });
+
+    [Fact]
+    public void A_new_call_in_the_same_app_uses_the_new_start_time()
+        => WithWindow(window =>
+        {
+            Field<AppSettings>(window, "_settings").Calls = true;
+            var since = DateTime.UtcNow.AddMinutes(-1);
+            Set(window, "_call", new SensorUse(Sensor.Microphone, "Discord", "Discord", since.AddHours(-19)));
+            Set(window, "_demoSensors", new[] { new SensorUse(Sensor.Microphone, "Discord", "Discord", since) });
+            typeof(MainWindow).GetMethod("ShowCall", Private)!.Invoke(window, null);
+            Assert.Equal(since, Field<SensorUse>(window, "_call").Since);
+            return Task.CompletedTask;
+        });
+
+    [Fact]
+    public void Disabled_media_controls_hide_playback_and_can_be_enabled_without_waiting_for_a_track_change()
+        => WithWindow(window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            Assert.True(new AppSettings().MediaControls);
+            settings.MediaControls = false;
+            settings.Animations = false;
+            Set(window, "_expanded", true);
+            var track = new MediaInfo { Title = "Song", Artist = "Artist", App = "Spotify", IsPlaying = true };
+            typeof(MainWindow).GetMethod("OnMediaChanged", Private)!.Invoke(window, new object[] { track, true });
+            Assert.Null(typeof(MainWindow).GetField("_info", Private)!.GetValue(window));
+            Assert.Equal(Visibility.Collapsed, ((FrameworkElement)window.FindName("MediaPanel")).Visibility);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("ClockPanel")).Visibility);
+            bool readOnly = AppSettings.ReadOnly;
+            AppSettings.ReadOnly = true;
+            try
+            {
+                var menu = Item(window, "MenuMediaControls");
+                foreach (bool enabled in new[] { true, false })
+                {
+                    menu.IsChecked = enabled;
+                    menu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, menu));
+                    Assert.Equal(enabled, settings.MediaControls);
+                    Assert.Equal(enabled ? Visibility.Visible : Visibility.Collapsed, ((FrameworkElement)window.FindName("MediaPanel")).Visibility);
+                    Assert.Equal(enabled ? Visibility.Visible : Visibility.Collapsed, ((FrameworkElement)window.FindName("SleepBtn")).Visibility);
+                }
+            }
+            finally { AppSettings.ReadOnly = readOnly; }
+            return Task.CompletedTask;
+        });
+
+    [Fact]
+    public void Weather_location_is_found_once_and_saved_locations_are_preserved()
+        => WithWindow(async window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.Weather = settings.WeatherAutoLocation = true;
+            settings.WeatherLatitude = settings.WeatherLongitude = null;
+            int lookups = 0;
+            Set(window, "_locateWeather", new Func<CancellationToken, Task<WeatherPlace?>>(_ =>
+            {
+                lookups++;
+                return Task.FromResult<WeatherPlace?>(WeatherLocation.Approximate(47.3769, 8.5417));
+            }));
+            Set(window, "_fetchWeather", new Func<double, double, CancellationToken, Task<WeatherNow?>>((lat, lon, _) =>
+            {
+                Assert.Equal(47.4, lat);
+                Assert.Equal(8.5, lon);
+                return Task.FromResult<WeatherNow?>(new WeatherNow(15, 0, true, null, 0));
+            }));
+            bool readOnly = AppSettings.ReadOnly;
+            AppSettings.ReadOnly = true;
+            try
+            {
+                var locate = typeof(MainWindow).GetMethod("LocateWeatherAsync", Private)!;
+                await (Task)locate.Invoke(window, null)!;
+                await (Task)locate.Invoke(window, null)!;
+                Assert.Equal(1, lookups);
+                Assert.Equal(47.4, settings.WeatherLatitude);
+                settings.WeatherPlace = "Saved city";
+                Set(window, "_locationAttempted", false);
+                await (Task)locate.Invoke(window, null)!;
+                Assert.Equal("Saved city", settings.WeatherPlace);
+                Assert.Equal(1, lookups);
+            }
+            finally { AppSettings.ReadOnly = readOnly; }
+        });
+
+    [Fact]
+    public void Disabled_or_unavailable_location_does_not_retry_or_block_manual_city_selection()
+        => WithWindow(async window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.WeatherLatitude = settings.WeatherLongitude = null;
+            int lookups = 0;
+            Set(window, "_locateWeather", new Func<CancellationToken, Task<WeatherPlace?>>(_ =>
+            {
+                lookups++;
+                throw new UnauthorizedAccessException();
+            }));
+            var locate = typeof(MainWindow).GetMethod("LocateWeatherAsync", Private)!;
+            settings.Weather = false;
+            settings.WeatherAutoLocation = true;
+            await (Task)locate.Invoke(window, null)!;
+            settings.Weather = true;
+            settings.WeatherAutoLocation = false;
+            await (Task)locate.Invoke(window, null)!;
+            Assert.Equal(0, lookups);
+            settings.WeatherAutoLocation = true;
+            await (Task)locate.Invoke(window, null)!;
+            await (Task)locate.Invoke(window, null)!;
+            Assert.Equal(1, lookups);
+            Assert.Null(settings.WeatherLatitude);
+            typeof(MainWindow).GetMethod("ChoosePlace", Private)!.Invoke(window, null);
+            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("WeatherSetup")).Visibility);
+        });
+
+    [Fact]
+    public void Choosing_a_city_cancels_pending_automatic_location()
+        => WithWindow(async window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.Weather = settings.WeatherAutoLocation = true;
+            settings.WeatherLatitude = settings.WeatherLongitude = null;
+            var pending = new TaskCompletionSource<WeatherPlace?>();
+            Set(window, "_locateWeather", new Func<CancellationToken, Task<WeatherPlace?>>(_ => pending.Task));
+            var locating = (Task)typeof(MainWindow).GetMethod("LocateWeatherAsync", Private)!.Invoke(window, null)!;
+            typeof(MainWindow).GetMethod("ChoosePlace", Private)!.Invoke(window, null);
+            pending.SetResult(WeatherLocation.Approximate(47.3, 8.5));
+            await locating;
+            Assert.Null(settings.WeatherLatitude);
+            Assert.True(Field<bool>(window, "_choosingPlace"));
+        });
+
+    [Fact]
+    public void Media_header_keeps_a_small_clock_and_date_clear_of_the_toolbar()
+        => WithWindow(window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.MediaControls = true;
+            settings.Animations = false;
+            Set(window, "_expanded", true);
+            typeof(MainWindow).GetMethod("OnMediaChanged", Private)!.Invoke(window,
+                new object[] { new MediaInfo { Title = "Song", App = "Spotify", IsPlaying = true }, true });
+            var view = (FrameworkElement)window.FindName("ExpandedView");
+            view.Measure(new Size(480, double.PositiveInfinity));
+            view.Arrange(new Rect(0, 0, 480, view.DesiredSize.Height));
+            var clock = (FrameworkElement)window.FindName("MediaClockHeader");
+            var toolbar = (FrameworkElement)window.FindName("ToolBar");
+            Assert.Equal(Visibility.Visible, clock.Visibility);
+            Assert.Equal(((TextBlock)window.FindName("ClockBig")).Text, ((TextBlock)window.FindName("MediaClock")).Text);
+            Assert.NotEmpty(((TextBlock)window.FindName("MediaDate")).Text);
+            Assert.True(clock.TranslatePoint(new Point(clock.ActualWidth, 0), view).X <= toolbar.TranslatePoint(new Point(), view).X);
+            return Task.CompletedTask;
+        });
+
+    [Theory]
+    [InlineData("OutputBtn", "_outputMenu", "Output_Click")]
+    [InlineData("BluetoothBtn", "_bluetoothMenu", "Bluetooth_Click")]
+    public void Clicking_a_menu_button_after_popup_mouse_down_dismissal_does_not_reopen_it(string buttonName, string menuField, string handler)
+        => WithWindow(window =>
+        {
+            var button = (Button)window.FindName(buttonName);
+            var closed = new ContextMenu { PlacementTarget = button };
+            Set(window, menuField, closed);
+            // WPF has dismissed the popup on mouse-down; Click follows on mouse-up.
+            Set(window, "_dismissedMenuButton", button);
+            typeof(MainWindow).GetMethod(handler, Private)!.Invoke(window, new object[] { button, new RoutedEventArgs() });
+            Assert.Same(closed, typeof(MainWindow).GetField(menuField, Private)!.GetValue(window));
+            Assert.False(closed.IsOpen);
+            Assert.Null(typeof(MainWindow).GetField("_dismissedMenuButton", Private)!.GetValue(window));
+            Assert.False((bool)typeof(MainWindow).GetMethod("CloseButtonMenu", Private)!.Invoke(window, new object[] { button, closed })!);
             return Task.CompletedTask;
         });
 

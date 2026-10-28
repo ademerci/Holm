@@ -52,6 +52,7 @@ public partial class MainWindow
     /// <summary>The switch, then the paired devices with a tick at the connected ones; picking one connects or disconnects it.</summary>
     async void Bluetooth_Click(object sender, RoutedEventArgs e)
     {
+        if (CloseButtonMenu(BluetoothBtn, _bluetoothMenu)) return;
         var radio = _radio;
         if (radio == null || _bluetoothListing) return;
         bool on = radio.State == RadioState.On;

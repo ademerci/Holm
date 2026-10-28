@@ -286,6 +286,7 @@ internal sealed class SettingsWindow : Window
         var row = new Grid
         {
             Background = Brushes.Transparent, Cursor = Cursors.Hand, MinHeight = 38,
+            ToolTip = item.ToolTip,
         };
         var hover = new Border
         {

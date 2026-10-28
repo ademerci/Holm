@@ -12,6 +12,8 @@ internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
+    public bool MediaControls { get; set; } = true;
     /// <summary>Check GitHub for a newer stable release at startup and every six hours.</summary>
     public bool CheckForUpdatesAutomatically { get; set; } = true;
     /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
@@ -79,6 +81,8 @@ internal sealed class AppSettings
     public bool Connectivity { get; set; } = true;
     /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
     public bool Weather { get; set; } = true;
+    /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
+    public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }
     public double? WeatherLatitude { get; set; }
     public double? WeatherLongitude { get; set; }

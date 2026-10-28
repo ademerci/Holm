@@ -24,7 +24,7 @@ public partial class MainWindow
     void ShowCall()
     {
         var call = _settings.Calls ? Calls.Current(AllSensors) : null;
-        if (call?.Key != _call?.Key)
+        if (call?.Key != _call?.Key || call?.Since != _call?.Since)
         {
             var ended = _call;
             _call = call;

@@ -9,7 +9,7 @@ namespace WinNotch;
 /// <summary>
 /// The quiet states. Idle, the notch shows the time (or the weather) and on its right the one thing that matters
 /// most: the next reminder today, else what's on the shelf. Open without music, it is a card for today: time and
-/// date, the weather, what's next, the note, and the tools reached for most.
+/// date, the weather, what's next, and the note. Tools stay in the shared top bar.
 /// </summary>
 public partial class MainWindow
 {
@@ -54,16 +54,7 @@ public partial class MainWindow
         System.Windows.Controls.Grid.SetColumnSpan(TodayNote, _settings.Reminders ? 1 : 3);
         TodayCards.Visibility = _settings.Reminders || _settings.Notes ? Visibility.Visible : Visibility.Collapsed;
 
-        QuickCalculator.Visibility = _settings.Calculator ? Visibility.Visible : Visibility.Collapsed;
-        QuickColor.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
-        QuickClipboard.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
-        QuickMixer.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
-        TodayTools.Visibility = _settings.Calculator || _settings.ColorPicker || _settings.ClipboardHistory || _settings.AppVolume
-            ? Visibility.Visible : Visibility.Collapsed;
     }
-
-    /// <summary>The card has the tools itself: the tool bar shows with music, or on a tool's page.</summary>
-    bool TodayShowing => ClockPanel.Visibility == Visibility.Visible && _tool == Tool.None;
 
     /// <summary>Music started or stopped while open: the player and the card cross-fade (unless animations are off).</summary>
     void FadeIn(UIElement panel)

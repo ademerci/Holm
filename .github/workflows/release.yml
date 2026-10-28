@@ -33,24 +33,17 @@ jobs:
           if (-not (Test-Path "publish/release-$env:VERSION-release-notes.md")) { throw "publish/release-$env:VERSION-release-notes.md is missing" }
           if (git ls-remote --tags origin "v$env:VERSION") { throw "v$env:VERSION exists already" }
 
-      # Shown in the log; a few tests need hardware a hosted runner doesn't have (audio devices, Bluetooth).
+      # Local tests need hardware; online and manual tests use external services or user interaction.
       - name: Test
-        continue-on-error: true
-        run: dotnet test WinNotch.Tests -c Release
-
-      - name: Framework-dependent exe
         shell: pwsh
-        run: |
-          git clean -xdfq
-          dotnet publish WinNotch -c Release -r win-x64 -p:SelfContained=false -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/fd
-          New-Item -ItemType Directory -Force assets | Out-Null
-          Move-Item out/fd/Holm.exe "assets/Holm-$env:VERSION-win-x64-dotnet10.exe"
+        run: dotnet test WinNotch.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
 
       - name: Self-contained zip
         shell: pwsh
         run: |
-          git clean -xdfq -e assets
           dotnet publish WinNotch -c Release -r win-x64 -p:SelfContained=true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -p:IncludeNativeLibrariesForSelfExtract=true -o out/sc
+          New-Item -ItemType Directory -Force assets | Out-Null
+          Copy-Item out/sc/Holm.exe assets/Holm.exe
           # Only Holm.exe, LICENSE and text files: anything else and the updater refuses the archive.
           New-Item -ItemType Directory -Force zip | Out-Null
           Copy-Item out/sc/Holm.exe zip/Holm.exe
@@ -66,4 +59,4 @@ jobs:
         run: |
           gh release create "v$env:VERSION" --target $env:GITHUB_SHA --title "Holm $env:VERSION" `
             --notes-file "publish/release-$env:VERSION-release-notes.md" --latest `
-            "assets/Holm-$env:VERSION-win-x64.zip" "assets/Holm-$env:VERSION-win-x64-dotnet10.exe"
+            "assets/Holm-$env:VERSION-win-x64.zip" "assets/Holm.exe"

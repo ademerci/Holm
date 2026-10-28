@@ -20,6 +20,7 @@ public partial class MainWindow
 
     void StartSleep(int minutes)
     {
+        if (!_settings.MediaControls) return;
         _sleep.Start(TimeSpan.FromMinutes(minutes), DateTime.UtcNow);
         Diag.Log($"Sleep timer: {minutes} min");
         ShowSleep();
@@ -52,7 +53,8 @@ public partial class MainWindow
     /// <summary>The moon in the player and its minutes; plans the next tick for when the minute changes.</summary>
     void ShowSleep()
     {
-        SleepBtn.Visibility = _settings.SleepTimer ? Visibility.Visible : Visibility.Collapsed;
+        SleepBtn.Visibility = _settings.MediaControls && _settings.SleepTimer ? Visibility.Visible : Visibility.Collapsed;
+        MenuSleep.Visibility = _settings.MediaControls ? Visibility.Visible : Visibility.Collapsed;
         if (!_sleep.Running)
         {
             _sleepTick.Stop();
@@ -107,6 +109,7 @@ public partial class MainWindow
 
     void Sleep_Click(object sender, RoutedEventArgs e)
     {
+        if (CloseButtonMenu(SleepBtn, _sleepMenu)) return;
         var menu = new ContextMenu { PlacementTarget = SleepBtn, Placement = PlacementMode.Bottom };
         FillSleepItems(menu);
         menu.Closed += Menu_Closed;

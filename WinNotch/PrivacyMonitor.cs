@@ -24,7 +24,7 @@ internal readonly record struct SensorEntry(string Name, bool NonPackaged, long 
 
 /// <summary>
 /// Which apps use the microphone or the camera, from the record Windows keeps for its own privacy settings
-/// ("recently used"). Windows says when that record changes, so nothing is polled.
+/// ("recently used"). Windows reports record changes; active entries are also rechecked for crashed apps.
 /// </summary>
 internal sealed class PrivacyMonitor : IDisposable
 {
@@ -57,6 +57,7 @@ internal sealed class PrivacyMonitor : IDisposable
 
     readonly Dispatcher _ui;
     readonly DispatcherTimer _settle;
+    readonly DispatcherTimer _verify;
     readonly List<Watch> _watches = new();
     readonly Dictionary<string, string> _exeNames = new(StringComparer.OrdinalIgnoreCase);
     volatile bool _disposed;
@@ -76,6 +77,8 @@ internal sealed class PrivacyMonitor : IDisposable
         // An app starting to record writes several values in a row; look once they're written.
         _settle = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, (_, _) => { _settle!.Stop(); Check(); }, ui);
         _settle.Stop();
+        _verify = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => Check(), ui);
+        _verify.Stop();
         foreach (var (sensor, name) in new[] { (Sensor.Microphone, "microphone"), (Sensor.Camera, "webcam") })
         {
             var key = Registry.CurrentUser.OpenSubKey($@"{store}\{name}");
@@ -91,6 +94,7 @@ internal sealed class PrivacyMonitor : IDisposable
             _watches.Add(watch);
         }
         InUse = Scan();
+        if (InUse.Count > 0) _verify.Start();
     }
 
     static bool Arm(Watch watch)
@@ -106,7 +110,8 @@ internal sealed class PrivacyMonitor : IDisposable
     void Check()
     {
         var now = Scan();
-        if (now.Select(u => (u.Sensor, u.Key)).SequenceEqual(InUse.Select(u => (u.Sensor, u.Key)))) return;
+        if (now.Count > 0) _verify.Start(); else _verify.Stop();
+        if (now.SequenceEqual(InUse)) return;
         InUse = now;
         Diag.Log("Sensors in use: " + (now.Count == 0 ? "none" : string.Join(", ", now.Select(u => $"{u.Name} ({u.Sensor})"))));
         Changed?.Invoke();
@@ -156,9 +161,10 @@ internal sealed class PrivacyMonitor : IDisposable
 
     /// <summary>
     /// The entries in use now: started and not stopped. An app that crashed while recording never writes its stop
-    /// time, so a desktop app also has to be running, and a Store app must have started in the last 12 hours.
+    /// time, so the same desktop executable must still be running from before the recording started.
+    /// A Store app must have started recording in the last 12 hours.
     /// </summary>
-    internal static IEnumerable<SensorUse> Active(Sensor sensor, IEnumerable<SensorEntry> entries, Func<string, bool> isRunning,
+    internal static IEnumerable<SensorUse> Active(Sensor sensor, IEnumerable<SensorEntry> entries, Func<string, DateTime, bool> isRunning,
                                                   DateTime nowUtc, Func<string, string>? exeName = null)
     {
         foreach (var entry in entries)
@@ -172,7 +178,7 @@ internal sealed class PrivacyMonitor : IDisposable
             {
                 string path = entry.Name.Replace('#', '\\');
                 string process = Path.GetFileNameWithoutExtension(path);
-                if (process.Length == 0 || !isRunning(process)) continue;
+                if (process.Length == 0 || !isRunning(path, since)) continue;
                 yield return new SensorUse(sensor, exeName?.Invoke(path) ?? NameOfProcess(process), process, since);
             }
             else
@@ -183,11 +189,25 @@ internal sealed class PrivacyMonitor : IDisposable
         }
     }
 
-    static bool IsRunning(string process)
+    internal static bool MatchesRecording(string recordedPath, DateTime since, string processPath, DateTime processStartedUtc)
+        => string.Equals(recordedPath, processPath, StringComparison.OrdinalIgnoreCase) && processStartedUtc <= since;
+
+    static bool IsRunning(string path, DateTime since)
     {
-        var found = Process.GetProcessesByName(process);
-        foreach (var p in found) p.Dispose();
-        return found.Length > 0;
+        var found = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(path));
+        try
+        {
+            foreach (var process in found)
+            {
+                try
+                {
+                    if (MatchesRecording(path, since, Native.ProcessPath(process.Id), process.StartTime.ToUniversalTime())) return true;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+            }
+            return false;
+        }
+        finally { foreach (var process in found) process.Dispose(); }
     }
 
     /// <summary>Known apps by their usual name, others by the description in the exe ("Google Chrome"), or its file name.</summary>
@@ -224,6 +244,7 @@ internal sealed class PrivacyMonitor : IDisposable
         if (_disposed) return;
         _disposed = true;
         _settle.Stop();
+        _verify.Stop();
         foreach (var watch in _watches)
         {
             watch.Wait?.Unregister(null);

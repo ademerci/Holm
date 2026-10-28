@@ -12,7 +12,7 @@ namespace WinNotch;
 
 /// <summary>
 /// The weather where you say you are: the temperature and a symbol in the idle notch, the sky and the next hour's
-/// rain in the open notch. From Open-Meteo, at most every 30 minutes; the place is typed in the open notch.
+/// rain in the open notch. From Open-Meteo, at most every 30 minutes; use a saved city or approximate Windows location.
 /// </summary>
 public partial class MainWindow
 {
@@ -20,6 +20,10 @@ public partial class MainWindow
     DateTime? _weatherAt;
     DispatcherTimer _weatherTick = null!;
     bool _fetchingWeather, _choosingPlace;
+    bool _locatingWeather, _locationAttempted, _weatherClosed;
+    CancellationTokenSource? _locationCancel;
+    Func<CancellationToken, Task<WeatherPlace?>> _locateWeather = WeatherLocation.FindAsync;
+    Func<double, double, CancellationToken, Task<WeatherNow?>> _fetchWeather = Weather.NowAsync;
 
     void InitWeather()
     {
@@ -31,9 +35,55 @@ public partial class MainWindow
     {
         _weatherTick.Stop();
         ShowWeather();
-        if (!_settings.Weather || _settings.WeatherLatitude == null) return;
+        if (!_settings.Weather) { _locationCancel?.Cancel(); return; }
+        if (_settings.WeatherLatitude == null || _settings.WeatherLongitude == null)
+        {
+            _ = LocateWeatherAsync();
+            return;
+        }
         _weatherTick.Start();
         _ = RefreshWeatherAsync();
+    }
+
+    async Task LocateWeatherAsync()
+    {
+        if (_weatherClosed || !_settings.Weather || !_settings.WeatherAutoLocation || _locatingWeather || _locationAttempted
+            || _choosingPlace || (_settings.WeatherLatitude != null && _settings.WeatherLongitude != null)) return;
+        _locationAttempted = true;
+        _locatingWeather = true;
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        _locationCancel = cancel;
+        ShowWeather();
+        try
+        {
+            var place = await _locateWeather(cancel.Token);
+            cancel.Token.ThrowIfCancellationRequested();
+            if (place == null || _weatherClosed || !_settings.Weather || !_settings.WeatherAutoLocation || _choosingPlace) return;
+            _settings.WeatherPlace = place.Label;
+            _settings.WeatherLatitude = place.Latitude;
+            _settings.WeatherLongitude = place.Longitude;
+            _settings.Save();
+            StartWeather();
+        }
+        catch (Exception ex)
+        {
+            // Windows location can be disabled, denied or unavailable. Manual city selection remains available.
+            Diag.Log("Approximate weather location: " + ex.GetType().Name);
+        }
+        finally
+        {
+            _locationCancel = null;
+            _locatingWeather = false;
+            if (!_weatherClosed) ShowWeather();
+        }
+    }
+
+    void MenuWeatherAutoLocation_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.WeatherAutoLocation = MenuWeatherAutoLocation.IsChecked;
+        _settings.Save();
+        if (!_settings.WeatherAutoLocation) _locationCancel?.Cancel();
+        else { _locationAttempted = false; StartWeather(); }
     }
 
     /// <summary>Asks Open-Meteo, unless it was asked less than 30 minutes ago (for this place).</summary>
@@ -46,7 +96,8 @@ public partial class MainWindow
         try
         {
             using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-            var now = await Weather.NowAsync(lat, lon, cancel.Token);
+            var now = await _fetchWeather(lat, lon, cancel.Token);
+            if (_settings.WeatherLatitude != lat || _settings.WeatherLongitude != lon || _weatherClosed) return;
             _weatherAt = DateTime.UtcNow;
             if (now != null) _weather = now;
         }
@@ -68,7 +119,8 @@ public partial class MainWindow
         WeatherLine.Visibility = weather != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         WeatherSetup.Visibility = _settings.Weather && _choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         WeatherAdd.Visibility = _settings.Weather && !_choosingPlace && weather == null ? Visibility.Visible : Visibility.Collapsed;
-        WeatherAdd.Text = _settings.WeatherLatitude == null ? "+ Weather"
+        WeatherAdd.Text = _locatingWeather ? "Finding approximate location…"
+            : _settings.WeatherLatitude == null ? (_locationAttempted ? "Choose weather city" : "+ Weather")
             : _fetchingWeather ? "Loading weather…" : "Weather unavailable · choose city";
         if (weather != null)
         {
@@ -95,6 +147,7 @@ public partial class MainWindow
 
     void ChoosePlace()
     {
+        _locationCancel?.Cancel();
         ShowTool(Tool.None);
         _choosingPlace = true;
         RefreshMediaUi();
@@ -154,6 +207,25 @@ public partial class MainWindow
             ChoosePlace();
         };
         MenuWeather.Items.Add(place);
+        var automatic = new MenuItem
+        {
+            Header = "Use approximate Windows location", IsEnabled = _settings.Weather && !_locatingWeather,
+            ToolTip = "Uses Windows location services once. Rounded coordinates go to Open-Meteo. No IP lookup service."
+        };
+        automatic.Click += async (_, _) =>
+        {
+            _settings.WeatherAutoLocation = true;
+            _settings.WeatherPlace = null;
+            _settings.WeatherLatitude = _settings.WeatherLongitude = null;
+            _weather = null;
+            _weatherAt = null;
+            _settings.Save();
+            _locationAttempted = false;
+            _choosingPlace = false;
+            RefreshMediaUi();
+            await LocateWeatherAsync();
+        };
+        MenuWeather.Items.Add(automatic);
         MenuWeather.Items.Add(new MenuItem { Header = "From Open-Meteo, every 30 minutes", IsEnabled = false });
     }
 }

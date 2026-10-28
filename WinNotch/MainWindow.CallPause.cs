@@ -11,7 +11,7 @@ public partial class MainWindow
     /// <summary>Whenever the call or the music changes. Works whether or not the call shows in the notch.</summary>
     void UpdateCallPause()
     {
-        if (!_settings.PauseForCalls) return;
+        if (!_settings.MediaControls || !_settings.PauseForCalls) { _callPause.Reset(); return; }
         var call = Calls.Current(AllSensors);
         string player = _info?.AppId is { Length: > 0 } id ? id : _info?.App ?? "";
         _callPause.Update(call?.Key, _info?.IsPlaying == true, player, out bool pause, out bool resume);

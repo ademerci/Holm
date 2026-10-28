@@ -8,7 +8,21 @@ public class PrivacyMonitorTests
     static long Ft(DateTime t) => t.ToFileTimeUtc();
 
     static List<SensorUse> Active(params SensorEntry[] entries)
-        => PrivacyMonitor.Active(Sensor.Microphone, entries, process => process is "Discord" or "chrome", Now).ToList();
+        => PrivacyMonitor.Active(Sensor.Microphone, entries, (path, _) => Path.GetFileNameWithoutExtension(path) is "Discord" or "chrome", Now).ToList();
+
+    [Theory]
+    [InlineData(@"C:\Discord\app-old\Discord.exe", -30, false)]
+    [InlineData(@"C:\Discord\app-current\Discord.exe", -5, false)]
+    [InlineData(@"C:\Discord\app-current\Discord.exe", -30, true)]
+    [InlineData(@"c:\discord\APP-CURRENT\discord.exe", -30, true)]
+    public void Desktop_recording_requires_the_same_executable_and_process_lifetime(string runningPath, int startedMinutesAgo, bool expected)
+    {
+        var since = Now.AddMinutes(-12);
+        var uses = PrivacyMonitor.Active(Sensor.Microphone,
+            new[] { new SensorEntry(@"C:#Discord#app-current#Discord.exe", true, Ft(since), 0) },
+            (path, start) => PrivacyMonitor.MatchesRecording(path, start, runningPath, Now.AddMinutes(startedMinutesAgo)), Now);
+        Assert.Equal(expected, uses.Any());
+    }
 
     [Fact]
     public void An_app_that_started_and_did_not_stop_is_using_it()
@@ -69,8 +83,10 @@ public class PrivacyMonitorTests
     public void Notices_an_app_starting_and_stopping_to_record()
     {
         string store = @"Software\Holm.Tests\ConsentStore" + Guid.NewGuid().ToString("N");
-        string process = System.Diagnostics.Process.GetCurrentProcess().ProcessName; // running, so it counts
-        string app = $@"{store}\microphone\NonPackaged\C:#Tests#{process}.exe";
+        using var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+        string process = currentProcess.ProcessName;
+        string executable = currentProcess.MainModule!.FileName.Replace('\\', '#');
+        string app = $@"{store}\microphone\NonPackaged\{executable}";
         using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(app))
         {
             key.SetValue("LastUsedTimeStart", 0L, Microsoft.Win32.RegistryValueKind.QWord);
@@ -101,6 +117,12 @@ public class PrivacyMonitorTests
                 key.SetValue("LastUsedTimeStart", DateTime.UtcNow.ToFileTimeUtc(), Microsoft.Win32.RegistryValueKind.QWord);
             Assert.True(changes.TryTake(out var started, TimeSpan.FromSeconds(5)), "No change reported after an app started recording.");
             Assert.Equal(process, Assert.Single(started!).Key);
+
+            var restartedAt = DateTime.UtcNow;
+            using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(app, writable: true)!)
+                key.SetValue("LastUsedTimeStart", restartedAt.ToFileTimeUtc(), Microsoft.Win32.RegistryValueKind.QWord);
+            Assert.True(changes.TryTake(out var restarted, TimeSpan.FromSeconds(5)), "No change reported when the same app started a new recording.");
+            Assert.Equal(restartedAt, Assert.Single(restarted!).Since);
 
             using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(app, writable: true)!)
                 key.SetValue("LastUsedTimeStop", DateTime.UtcNow.ToFileTimeUtc(), Microsoft.Win32.RegistryValueKind.QWord);

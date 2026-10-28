@@ -70,6 +70,7 @@ public partial class MainWindow : Window
     double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeScale = 1;
     bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
     MediaInfo? _info;
+    MediaInfo? _latestMediaInfo;
     ImageSource? _shownArt, _shownBackdrop;
     ImageBrush? _artBrush;
     Border _artFront, _artBack;
@@ -256,7 +257,10 @@ public partial class MainWindow : Window
         _diskHourly.Stop();
         _diskSoon.Stop();
         StopConnectivity();
+        _weatherClosed = true;
+        InputManager.Current.PostProcessInput -= ClearMenuButtonDismissal;
         _weatherTick.Stop();
+        _locationCancel?.Cancel();
         HideMixer();
         _laterTick.Stop();
         _laterSoon.Stop();
@@ -819,6 +823,8 @@ public partial class MainWindow : Window
 
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
+        _latestMediaInfo = info;
+        if (!_settings.MediaControls) info = null;
         var oldAccent = _info?.Accent;
         // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
         if (_info?.IsPlaying == true && info?.IsPlaying != true && !_expanded) _trimTimer.Start();
@@ -1084,14 +1090,16 @@ public partial class MainWindow : Window
 
     void RefreshMediaUi()
     {
-        var info = _info;
+        var info = _settings.MediaControls ? _info : null;
+        MediaClockHeader.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
+        UpdateClock();
         var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
         {
             MediaPanel.Visibility = media;
             ClockPanel.Visibility = media == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
             FadeIn(media == Visibility.Visible ? MediaPanel : ClockPanel);
-            RefreshToolBar(); // the card brings its own tools
+            RefreshToolBar();
         }
         if (info == null || _choosingPlace) { UpdateClock(); ShowToday(); return; }
 
@@ -1132,6 +1140,16 @@ public partial class MainWindow : Window
         PlayIcon.Margin = new Thickness(playing ? 0 : 3, 0, 0, 0); // a triangle looks off-centre when centred
     }
 
+    void MenuMediaControls_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.MediaControls = MenuMediaControls.IsChecked;
+        _settings.Save();
+        if (!_settings.MediaControls) { CancelSleep(); _callPause.Reset(); }
+        OnMediaChanged(_latestMediaInfo, false);
+        RefreshMediaUi();
+        ShowSleep();
+    }
+
     /// <summary>Runs every 500 ms, but only while the notch is open.</summary>
     void UpdateLive()
     {
@@ -1142,7 +1160,7 @@ public partial class MainWindow : Window
             PosText.Text = FormatTime(pos);
             RemainText.Text = "-" + FormatTime(info.Duration - pos);
         }
-        if (ClockPanel.Visibility == Visibility.Visible) UpdateClock();
+        if (ClockPanel.Visibility == Visibility.Visible || MediaClockHeader.Visibility == Visibility.Visible) UpdateClock();
         ReadVolume();
     }
 
@@ -1156,11 +1174,13 @@ public partial class MainWindow : Window
         if (_shownClockMinute != minute)
         {
             ClockBig.Text = now.ToString("HH:mm");
+            MediaClock.Text = ClockBig.Text;
             _shownClockMinute = minute;
         }
         if (_shownClockDate != now.Date)
         {
             DateText.Text = now.ToString("dddd, MMMM d", CultureInfo.GetCultureInfo("en-US"));
+            MediaDate.Text = now.ToString("ddd, MMM d", CultureInfo.GetCultureInfo("en-US"));
             _shownClockDate = now.Date;
         }
     }
@@ -1359,6 +1379,7 @@ public partial class MainWindow : Window
     /// <summary>Lists the speakers and headphones that are plugged in; picking one makes it the default, like the Sound settings do.</summary>
     void Output_Click(object sender, RoutedEventArgs e)
     {
+        if (CloseButtonMenu(OutputBtn, _outputMenu)) return;
         var outputs = _volume.Outputs(out string? current);
         var menu = new ContextMenu { PlacementTarget = OutputBtn, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         foreach (var output in outputs)
@@ -1508,6 +1529,7 @@ public partial class MainWindow : Window
 
     void Menu_Closed(object sender, RoutedEventArgs e)
     {
+        RememberMenuButtonDismissal(sender as ContextMenu);
         if (_expanded && !Island.IsMouseOver) _collapseDelay.Start();
     }
 
@@ -1622,6 +1644,8 @@ public partial class MainWindow : Window
         _settings.SendQueue = new List<QueuedSend>(); // nor what waits for your friends
         ShowLaterRows();
         _settings.WeatherPlace = null; // nor where you are
+        _settings.MediaControls = true;
+        _settings.WeatherAutoLocation = false; // screenshot poses never request location
         _settings.WeatherLatitude = _settings.WeatherLongitude = null;
         _weather = null;
         StartWeather();

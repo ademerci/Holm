@@ -121,6 +121,7 @@ public class MediaUpdateTests
                 // Never shown, so no real service starts; settings only change in memory.
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
                 ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = false;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).MediaControls = true;
                 typeof(MainWindow).GetField("_expanded", flags)!.SetValue(window, expanded);
                 var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
                 var compact = (Border)window.FindName("CompactArt");
@@ -176,6 +177,7 @@ public class MediaUpdateTests
                 // Never shown, so no real service starts; settings only change in memory.
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
                 ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = true;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).MediaControls = true;
                 var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
                 var settled = typeof(MainWindow).GetMethod("OnShapeSettled", flags)!;
                 var clocks = (System.Windows.Media.Animation.AnimationClock?[])typeof(MainWindow).GetField("_barClocks", flags)!.GetValue(window)!;
@@ -216,6 +218,7 @@ public class MediaUpdateTests
             {
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
                 ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = false;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).MediaControls = true;
                 var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
                 var trim = (DispatcherTimer)typeof(MainWindow).GetField("_trimTimer", flags)!.GetValue(window)!;
 

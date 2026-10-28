@@ -148,5 +148,35 @@ public class WeatherTests
         Assert.False(old.Connectivity);
         Assert.True(old.Weather);
         Assert.Null(old.WeatherPlace);
+        Assert.True(old.WeatherAutoLocation);
+        Assert.True(old.MediaControls);
+    }
+
+    [Theory]
+    [InlineData(47.3769, 8.5417, 47.4, 8.5)]
+    [InlineData(-33.8688, 151.2093, -33.9, 151.2)]
+    public void Automatic_location_is_rounded_before_storage_or_forecasts(double lat, double lon, double expectedLat, double expectedLon)
+    {
+        var place = WeatherLocation.Approximate(lat, lon)!;
+        Assert.Equal(expectedLat, place.Latitude);
+        Assert.Equal(expectedLon, place.Longitude);
+    }
+
+    [Theory]
+    [InlineData(double.NaN, 0)]
+    [InlineData(0, double.PositiveInfinity)]
+    [InlineData(91, 0)]
+    [InlineData(0, -181)]
+    public void Invalid_automatic_locations_are_rejected(double lat, double lon)
+        => Assert.Null(WeatherLocation.Approximate(lat, lon));
+
+    [Fact]
+    public void Media_controls_setting_persists_and_old_settings_default_on()
+    {
+        Assert.True(JsonSerializer.Deserialize<AppSettings>("{}")!.MediaControls);
+        var saved = JsonSerializer.Serialize(new AppSettings { MediaControls = false, WeatherAutoLocation = false });
+        var loaded = JsonSerializer.Deserialize<AppSettings>(saved)!;
+        Assert.False(loaded.MediaControls);
+        Assert.False(loaded.WeatherAutoLocation);
     }
 }

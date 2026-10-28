@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.7.3 – 2026-10-28
+
+### Added
+- **Updates in the notch.** A clickable notification offers to update and restart Holm. Available updates stay in the notification list and closed-notch badges until dismissed, without repeatedly popping out for the same version.
+- **Dismiss notifications.** Close individual message or update rows, or use *Clear all* above the message list. A dismissed update remains available in the menu.
+- **Media controls switch.** On by default in *Settings › Open notch*. Turn it off to keep the idle clock and today card while music or video plays, without track details, artwork or album backgrounds; call-driven playback actions and the sleep timer are also inactive. Saved choices are preserved.
+- **Automatic weather setup.** If no place is saved, try Windows approximate location once at startup, round coordinates to one decimal place before saving or sending to Open-Meteo, and reuse the saved place. No separate IP lookup provider or continuous location tracking. Respects Windows location services, keeps manual city selection, and has a Settings switch and a menu action to detect again.
+
+### Changed
+- **Stable open-notch layout.** The top toolbar stays in the same place during idle, playback and tool pages. Removed duplicate tool chips from the idle card. Idle time and date stay below the toolbar; media playback keeps a small time and date at the upper left. The sleep timer stays aligned at the right.
+- **Settings apply flow.** Switches stage changes until *Apply*. Added *Reset to defaults* and apply/discard confirmation for unsaved changes. Confirmation dialogs stay inside Settings and blur the full surface behind them; action buttons have clearer interaction states.
+- **Release downloads.** Both the ZIP and the executable named `Holm.exe` contain the self-contained Windows x64 app; no .NET installation is required.
+
+### Fixed
+- **Stale Discord calls.** Match desktop microphone and camera records to the exact executable and process lifetime, recheck active records after apps exit, and refresh the call start time when the same app starts recording again.
+- **Device-menu toggles.** Clicking the Bluetooth, audio-output or sleep-timer button again closes its menu without reopening it on mouse-up.
+- **Disabled animations.** Turning animations off also stops notch shape and view transitions, including ones already in progress.
+- **Weather recovery.** City setup opens during media playback and returns to the player afterwards; loading and failed forecasts expose their status and allow choosing another city.
+
 ## 1.7.2 – 2026-10-27
 
 ### Changed
