@@ -140,6 +140,61 @@ public class PrivacyMonitorTests
         }
     }
 
+    [Fact, Trait("Category", "Local")]
+    public void Rechecks_active_camera_when_its_stop_notification_is_missed()
+    {
+        string store = @"Software\Holm.Tests\ConsentStore" + Guid.NewGuid().ToString("N");
+        string app = $@"{store}\webcam\Microsoft.WindowsCamera_8wekyb3d8bbwe";
+        using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(app))
+        {
+            key.SetValue("LastUsedTimeStart", DateTime.UtcNow.ToFileTimeUtc(), Microsoft.Win32.RegistryValueKind.QWord);
+            key.SetValue("LastUsedTimeStop", 0L, Microsoft.Win32.RegistryValueKind.QWord);
+        }
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            PrivacyMonitor? monitor = null;
+            try
+            {
+                var ui = Dispatcher.CurrentDispatcher;
+                monitor = new PrivacyMonitor(ui, store);
+                Assert.Equal("Camera", Assert.Single(monitor.InUse).Name);
+                const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                // Simulate a lost Windows notification by unregistering only the event callbacks.
+                var watches = (System.Collections.IEnumerable)typeof(PrivacyMonitor).GetField("_watches", flags)!.GetValue(monitor)!;
+                foreach (var watch in watches)
+                    ((RegisteredWaitHandle?)watch.GetType().GetField("Wait")!.GetValue(watch))?.Unregister(null);
+                var verify = (DispatcherTimer)typeof(PrivacyMonitor).GetField("_verify", flags)!.GetValue(monitor)!;
+                verify.Interval = TimeSpan.FromMilliseconds(50);
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(app, writable: true)!)
+                    key.SetValue("LastUsedTimeStop", DateTime.UtcNow.ToFileTimeUtc(), Microsoft.Win32.RegistryValueKind.QWord);
+                var frame = new DispatcherFrame();
+                int changes = 0;
+                monitor.Changed += () => { changes++; frame.Continue = false; };
+                var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+                timeout.Tick += (_, _) => frame.Continue = false;
+                timeout.Start();
+                Dispatcher.PushFrame(frame);
+                timeout.Stop();
+                Assert.Equal(1, changes);
+                Assert.Empty(monitor.InUse);
+                Assert.False(verify.IsEnabled);
+                monitor.Dispose();
+                Assert.False(verify.IsEnabled);
+            }
+            catch (Exception ex) { failure = ex; }
+            finally { monitor?.Dispose(); Dispatcher.CurrentDispatcher.InvokeShutdown(); }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        try
+        {
+            thread.Start();
+            Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
+            if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+        finally { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(store, throwOnMissingSubKey: false); }
+    }
+
     /// <summary>Reads this PC's record without changing anything.</summary>
     [Fact, Trait("Category", "Local")]
     public void Reads_this_PCs_record_and_stops_cleanly()
