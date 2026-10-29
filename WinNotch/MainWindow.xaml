@@ -265,6 +265,7 @@
                             <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
                             <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
                             <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
+                            <MenuItem x:Name="MenuFocumon" Header="Focumon timer (needs the browser extension)" IsCheckable="True" Click="MenuFocumon_Click"/>
                             <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
@@ -538,14 +539,28 @@
                                     <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
-                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
-                                            <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
-                                                    ToolTip="Sleep timer">
-                                                <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
-                                                           Foreground="{StaticResource Faint}"/>
+                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
+                                            <!-- Your Focumon and its timer, from the Focumon browser extension; click to open Focumon -->
+                                            <Button x:Name="FocumonChip" Style="{StaticResource NotchButton}" Height="30" Margin="0,0,2,0" Visibility="Collapsed"
+                                                    ToolTip="Open Focumon" Click="FocumonChip_Click">
+                                                <StackPanel Orientation="Horizontal" Margin="5,0,10,0">
+                                                    <Border x:Name="FocumonSprite" Width="22" Height="22" CornerRadius="7" Background="{StaticResource ArtFallback}" VerticalAlignment="Center">
+                                                        <TextBlock x:Name="FocumonInitial" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <TextBlock x:Name="FocumonTime" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center"
+                                                               FontFamily="Segoe UI Variable Display, Segoe UI"/>
+                                                </StackPanel>
                                             </Button>
-                                            <TextBlock x:Name="SleepText" FontSize="10" FontWeight="SemiBold" Foreground="#FFFF9F0A"
-                                                       HorizontalAlignment="Center" Visibility="Collapsed"/>
+                                            <StackPanel VerticalAlignment="Top">
+                                                <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
+                                                        ToolTip="Sleep timer">
+                                                    <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                                               Foreground="{StaticResource Faint}"/>
+                                                </Button>
+                                                <TextBlock x:Name="SleepText" FontSize="10" FontWeight="SemiBold" Foreground="#FFFF9F0A"
+                                                           HorizontalAlignment="Center" Visibility="Collapsed"/>
+                                            </StackPanel>
                                         </StackPanel>
                             </Grid>
 

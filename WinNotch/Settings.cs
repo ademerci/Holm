@@ -69,6 +69,8 @@ internal sealed class AppSettings
     public bool ClearPasswords { get; set; } = true;
     /// <summary>The color picker button in the open notch.</summary>
     public bool ColorPicker { get; set; } = true;
+    /// <summary>Your Focumon and its timer in the open notch's top bar, fed by the Focumon browser extension.</summary>
+    public bool Focumon { get; set; } = true;
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>

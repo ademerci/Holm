@@ -16,7 +16,7 @@ public partial class MainWindow
     {
         new SettingsGroup("General", new[] { MenuAnim, MenuMini, MenuAutostart }),
         new SettingsGroup("Pop-outs", new[] { MenuDownloads, MenuScreenshots, MenuScreenshotText, MenuCapsLock, MenuDiskWarning, MenuUsbDrives, MenuConnectivity }),
-        new SettingsGroup("Open notch", new[] { MenuMediaControls, MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker }),
+        new SettingsGroup("Open notch", new[] { MenuMediaControls, MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker, MenuFocumon }),
         new SettingsGroup("Weather", new[] { MenuWeatherAutoLocation }),
         new SettingsGroup("Calls and privacy", new[] { MenuCalls, MenuPauseForCalls, MenuPrivacy, MenuVpn, MenuClearPasswords }),
         new SettingsGroup("Beam", new[] { MenuBeam, MenuSendFolders, MenuSendLater }),
@@ -44,6 +44,7 @@ public partial class MainWindow
         MenuSendLater.IsChecked = _settings.SendLater;
         MenuClearPasswords.IsChecked = _settings.ClearPasswords;
         MenuColorPicker.IsChecked = _settings.ColorPicker;
+        MenuFocumon.IsChecked = _settings.Focumon;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuCapsLock.IsChecked = _settings.CapsLock;
         MenuDiskWarning.IsChecked = _settings.DiskWarning;

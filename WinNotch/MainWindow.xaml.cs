@@ -238,6 +238,7 @@ public partial class MainWindow : Window
         StartConnectivity();
         StartWeather();
         StartSendLater();
+        StartFocumon();
         ShowIdle();
     }
 
@@ -267,6 +268,7 @@ public partial class MainWindow : Window
         _idleClock.Stop();
         StopPhone();
         StopScreenshots();
+        _focumonLink?.Dispose();
         StopUpdates();
         if (_powerNotifyA != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyA);
         if (_powerNotifyB != IntPtr.Zero) Native.UnregisterPowerSettingNotification(_powerNotifyB);
@@ -399,6 +401,7 @@ public partial class MainWindow : Window
             RefreshOutput();
             RefreshBluetooth();
             ShowTimer();
+            RefreshFocumon();
             ResolveAi(force: false);
             // Access may have been granted in Settings since we last asked.
             if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
@@ -1163,6 +1166,7 @@ public partial class MainWindow : Window
         }
         if (ClockPanel.Visibility == Visibility.Visible || MediaClockHeader.Visibility == Visibility.Visible) UpdateClock();
         ReadVolume();
+        RefreshFocumon();
     }
 
     static string FormatTime(TimeSpan t)
