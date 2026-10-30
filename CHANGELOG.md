@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.5 – 2026-10-30
+
+### Tested
+- Added regression coverage confirming that active camera records are rechecked and cleared when a stop notification is missed. The privacy-monitoring behavior is unchanged from 1.7.4.
+
 ## 1.7.4 – 2026-10-28
 
 ### Added
