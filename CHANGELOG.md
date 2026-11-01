@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.6 – 2026-11-01
+
+### Added
+- **Focumon in the open notch.** When the companion browser extension is running, your monster and focus/break timer appear in the open notch's top bar next to the sleep timer. Click the chip to open Focumon. Off switch in *Settings › Open notch*.
+
 ## 1.7.5 – 2026-10-30
 
 ### Tested
