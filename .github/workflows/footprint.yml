@@ -1,0 +1,63 @@
+# Measures idle memory and CPU of release builds on Windows, so changes meant to make Holm lighter can be checked.
+# Started by hand (Actions › Footprint › Run workflow) or by a push to a perf/ or claude/ branch.
+name: Footprint
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["perf/**", "claude/**"]
+    paths: ["WinNotch/**", "tools/Measure-Footprint.ps1", ".github/workflows/footprint.yml"]
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          # The same build the Release workflow ships, and the same without single-file compression.
+          $common = @('-c', 'Release', '-r', 'win-x64', '-p:SelfContained=true', '-p:PublishSingleFile=true', '-p:PublishReadyToRun=true',
+                      '-p:DebugType=none', '-p:IncludeNativeLibrariesForSelfExtract=true')
+          dotnet publish WinNotch @common -o out/release
+          dotnet publish WinNotch @common -p:EnableCompressionInSingleFile=false -o out/uncompressed
+          Get-ChildItem out/*/Holm.exe | Format-Table FullName, Length
+
+      - name: Measure
+        shell: pwsh
+        run: |
+          $variants = @(
+            @{ Label = 'release';               Exe = 'out/release/Holm.exe';      Env = @{} }
+            @{ Label = 'uncompressed';          Exe = 'out/uncompressed/Holm.exe'; Env = @{} }
+            @{ Label = 'release + gen0 4MB';    Exe = 'out/release/Holm.exe';      Env = @{ DOTNET_GCgen0size = '400000' } }
+            @{ Label = 'release + conserve 7';  Exe = 'out/release/Holm.exe';      Env = @{ DOTNET_GCConserveMemory = '7' } }
+          )
+          # First runs unpack the native libraries and fill the disk cache; they don't count.
+          foreach ($v in $variants[0..1]) { ./tools/Measure-Footprint.ps1 -Exe $v.Exe -WarmupSeconds 10 -SampleSeconds 5 | Out-Null }
+          $results = foreach ($round in 1..3) {
+            foreach ($v in $variants) { ./tools/Measure-Footprint.ps1 -Exe $v.Exe -Label $v.Label -Environment $v.Env }
+          }
+          $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          $summary = $results | Group-Object Variant | ForEach-Object {
+            $g = $_.Group
+            [pscustomobject]@{
+              Variant = $_.Name
+              'Private MB' = [math]::Round(($g | Measure-Object 'Private MB' -Average).Average, 1)
+              'Working MB' = [math]::Round(($g | Measure-Object 'Working MB' -Average).Average, 1)
+              'Peak WS MB' = [math]::Round(($g | Measure-Object 'Peak WS MB' -Average).Average, 1)
+              'Start CPU ms' = [math]::Round(($g | Measure-Object 'Start CPU ms' -Average).Average)
+              'Idle CPU ms/min' = [math]::Round(($g | Measure-Object 'Idle CPU ms/min' -Average).Average)
+              Threads = [math]::Round(($g | Measure-Object Threads -Average).Average)
+            }
+          }
+          Write-Host "AVERAGES"
+          $summary | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          $lines = @('| Variant | Private MB | Working MB | Peak WS MB | Start CPU ms | Idle CPU ms/min | Threads |', '|---|---|---|---|---|---|---|')
+          $lines += $summary | ForEach-Object { "| $($_.Variant) | $($_.'Private MB') | $($_.'Working MB') | $($_.'Peak WS MB') | $($_.'Start CPU ms') | $($_.'Idle CPU ms/min') | $($_.Threads) |" }
+          $lines | Out-File -Append $env:GITHUB_STEP_SUMMARY
