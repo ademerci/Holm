@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **About 106 MB less memory.** The release exe was a compressed single file, and a compressed bundle unpacks every part of .NET and WPF it loads into Holm's own memory. Without compression Windows reads those parts straight from the exe. Measured idle on Windows, three runs each: 148 MB private memory before, 42 MB now; the peak while starting drops from 256 to 130 MB, and starting takes about a third less CPU (1.4 s to 1.0 s). The exe on disk grows from 86 to 219 MB; the download (the zip) only from 79.6 to 80.9 MB. The GC settings tried alongside (a smaller gen0 budget, `GCConserveMemory`) made no difference and were left out.
+- `tools/Measure-Footprint.ps1` measures Holm's idle memory and CPU, and the *Footprint* workflow runs it on Windows, optionally against a second build with other settings.
+
 ## 1.7.6 – 2026-11-01
 
 ### Added
