@@ -93,14 +93,21 @@ public static class Focumon
         return result.Length <= MaxName ? result : result[..MaxName].TrimEnd();
     }
 
-    /// <summary>The picture of the monster is only fetched from Focumon itself, over https.</summary>
+    /// <summary>
+    /// The picture of the monster is only fetched from Focumon's own monster assets
+    /// (<c>/assets/focumon/mini/…</c> or <c>/assets/focumon/battle/…</c>), never logos or page screenshots.
+    /// </summary>
     internal static string? SafeImage(string? url)
     {
         if (string.IsNullOrWhiteSpace(url) || url.Length > MaxImageUrl) return null;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !uri.IsDefaultPort || uri.UserInfo.Length > 0) return null;
         bool ours = uri.Host.Equals("focumon.com", StringComparison.OrdinalIgnoreCase)
                     || uri.Host.EndsWith(".focumon.com", StringComparison.OrdinalIgnoreCase);
-        return ours ? uri.AbsoluteUri : null;
+        if (!ours) return null;
+        string path = uri.AbsolutePath;
+        bool monster = path.StartsWith("/assets/focumon/mini/", StringComparison.OrdinalIgnoreCase)
+                       || path.StartsWith("/assets/focumon/battle/", StringComparison.OrdinalIgnoreCase);
+        return monster ? uri.AbsoluteUri : null;
     }
 
     /// <summary>"24:13", or "1:02:03" from an hour on.</summary>

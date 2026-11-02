@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.7 – 2026-11-02
+
+### Added
+- **Focumon in the closed notch.** During a focus or break session, the closed notch shows your monster and timer instead of the weather. Compact media view can show it too when no Holm timer is running.
+- **Focumon for Holm browser extension.** Ships in `extension/focumon`: reads the floor sprite next to your blue *Productive Me!* bubble and posts the session to Holm on this PC only.
+
+### Fixed
+- **Wrong Focumon sprite.** The companion extension no longer picks another trainer's monster from party lists or shared floor containers; it probes above each floor slot for your *Productive Me!* bubble.
+
 ## 1.7.6 – 2026-11-01
 
 ### Added

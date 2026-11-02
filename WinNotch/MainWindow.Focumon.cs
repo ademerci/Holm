@@ -3,16 +3,18 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace WinNotch;
 
 /// <summary>
-/// Focumon in the open notch: your monster and the timer, in the top bar next to the sleep timer; a click opens Focumon.
+/// Focumon in the notch: your monster and the timer, in the closed bar and in the open top bar next to the sleep timer.
 /// The numbers come from the Focumon browser extension (extension/focumon in the repository), which tells the page's
-/// state to <see cref="FocumonLink"/> on this PC. It only shows while the notch is open, never in the small one,
-/// and it counts down by itself between two messages.
+/// state to <see cref="FocumonLink"/> on this PC. A click on the open chip opens Focumon. The closed notch ticks by
+/// itself between two messages.
 /// </summary>
 public partial class MainWindow
 {
@@ -23,6 +25,19 @@ public partial class MainWindow
     FocumonStatus? _focumon;
     string? _spriteUrl;
     ImageBrush? _spriteBrush;
+    DispatcherTimer? _focumonTick;
+    bool _focumonWasShowing;
+
+    /// <summary>A live focus/break session the closed notch should show instead of weather.</summary>
+    bool HasFocumon
+    {
+        get
+        {
+            if (!_settings.Focumon || _focumon is not { } status) return false;
+            if (status.IsStale(DateTime.UtcNow)) { _focumon = null; return false; }
+            return status.Phase is FocumonPhase.Focus or FocumonPhase.Break;
+        }
+    }
 
     void StartFocumon()
     {
@@ -39,6 +54,7 @@ public partial class MainWindow
         _focumonLink?.Dispose();
         _focumonLink = null;
         _focumon = null;
+        _focumonTick?.Stop();
         RefreshFocumon();
     }
 
@@ -46,39 +62,90 @@ public partial class MainWindow
     {
         if (!_settings.Focumon) return;
         _focumon = status;
+        if (status?.ImageUrl is { } url)
+        {
+            if (url != _spriteUrl) _ = LoadSpriteAsync(url);
+        }
+        else
+        {
+            _spriteUrl = null;
+            _spriteBrush = null;
+        }
         RefreshFocumon();
-        if (status?.ImageUrl is { } url && url != _spriteUrl) _ = LoadSpriteAsync(url);
     }
 
-    /// <summary>The chip in the open notch's bar, as the page says it now; called every half second while open.</summary>
+    /// <summary>The chip in the open bar and the closed Focumon / compact views; called every half second while live.</summary>
     void RefreshFocumon()
     {
         var now = DateTime.UtcNow;
         if (_focumon is { } stale && stale.IsStale(now)) _focumon = null;
-        if (!_settings.Focumon || _focumon is not { } status)
+        bool show = _settings.Focumon && _focumon is not null;
+        if (show != _focumonWasShowing)
+        {
+            _focumonWasShowing = show;
+            if (!_expanded) ApplyState();
+        }
+
+        if (!show)
         {
             FocumonChip.Visibility = Visibility.Collapsed;
+            CompactFocumon.Visibility = Visibility.Collapsed;
+            _focumonTick?.Stop();
+            if (_info?.IsPlaying == true && _timer == null)
+            {
+                EqPanel.Visibility = Visibility.Visible;
+                UpdateEqualizer();
+            }
             return;
         }
 
-        FocumonChip.Visibility = Visibility.Visible;
+        var status = _focumon!;
         bool known = _spriteBrush != null && status.ImageUrl == _spriteUrl;
-        FocumonSprite.Background = known ? _spriteBrush : (Brush)FindResource("ArtFallback");
-        FocumonInitial.Text = known || status.Monster.Length == 0 ? "" : status.Monster[..1].ToUpperInvariant();
-
+        Brush sprite = known ? _spriteBrush! : (Brush)FindResource("ArtFallback");
+        string initial = known || status.Monster.Length == 0 ? "" : status.Monster[..1].ToUpperInvariant();
         string name = status.Monster.Length > 0 ? status.Monster : "Focumon";
-        if (status.Clock(now) is { } clock)
+        string? time = status.Clock(now) is { } clock ? Focumon.Format(clock) : null;
+        Brush timeBrush = status.Phase == FocumonPhase.Break ? TimerOrange : Brushes.White;
+
+        PaintFocumon(FocumonChip, FocumonSprite, FocumonInitial, FocumonTime, sprite, initial, time, timeBrush, name, status, setHostVisible: true);
+        PaintFocumon(null, CollapsedFocumonSprite, CollapsedFocumonInitial, CollapsedFocumonTime, sprite, initial, time, timeBrush, name, status, setHostVisible: false);
+        PaintFocumon(CompactFocumon, CompactFocumonSprite, CompactFocumonInitial, CompactFocumonTime, sprite, initial, time, timeBrush, name, status, setHostVisible: false);
+
+        // Compact: Focumon yields to a Holm timer; otherwise it takes the equalizer's place.
+        bool compact = _info?.IsPlaying == true && _timer == null && CompactTimer.Visibility != Visibility.Visible;
+        CompactFocumon.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+        if (compact)
         {
-            FocumonTime.Visibility = Visibility.Visible;
-            string time = Focumon.Format(clock);
-            if (FocumonTime.Text != time) FocumonTime.Text = time;
-            FocumonTime.Foreground = status.Phase == FocumonPhase.Break ? TimerOrange : Brushes.White;
-            FocumonChip.ToolTip = $"{name}: {(status.Phase == FocumonPhase.Break ? "break" : status.CountsDown ? "focusing" : "focused for")} – click to open Focumon";
+            EqPanel.Visibility = Visibility.Collapsed;
+            UpdateEqualizer();
+        }
+
+        _focumonTick ??= MakeTimer(500, RefreshFocumon);
+        if (!_expanded && !_focumonTick.IsEnabled) _focumonTick.Start();
+        if (_expanded) _focumonTick.Stop(); // UpdateLive already ticks while open
+    }
+
+    void PaintFocumon(FrameworkElement? host, Border spriteHost, TextBlock initial, TextBlock timeLabel,
+        Brush sprite, string letter, string? time, Brush timeBrush, string name, FocumonStatus status, bool setHostVisible)
+    {
+        if (setHostVisible && host != null) host.Visibility = Visibility.Visible;
+        spriteHost.Background = sprite;
+        initial.Text = letter;
+        if (time != null)
+        {
+            timeLabel.Visibility = Visibility.Visible;
+            if (timeLabel.Text != time) timeLabel.Text = time;
+            timeLabel.Foreground = timeBrush;
         }
         else
         {
-            FocumonTime.Visibility = Visibility.Collapsed;
-            FocumonChip.ToolTip = $"{name} – click to open Focumon";
+            timeLabel.Visibility = Visibility.Collapsed;
+        }
+        if (host != null)
+        {
+            host.ToolTip = time == null
+                ? $"{name} – click to open Focumon"
+                : $"{name}: {(status.Phase == FocumonPhase.Break ? "break" : status.CountsDown ? "focusing" : "focused for")} – click to open Focumon";
         }
     }
 
@@ -112,6 +179,7 @@ public partial class MainWindow
             image.EndInit();
             image.Freeze();
             var brush = new ImageBrush(image) { Stretch = Stretch.Uniform };
+            RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor); // pixel art stays crisp
             brush.Freeze();
             if (_spriteUrl != url) return; // another monster meanwhile
             _spriteBrush = brush;

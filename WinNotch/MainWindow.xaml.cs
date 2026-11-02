@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -414,6 +414,7 @@ public partial class MainWindow : Window
             _trimTimer.Start();
             ShowTool(Tool.None); // the next time it opens on home
             if (_choosingPlace) { _choosingPlace = false; RefreshMediaUi(); ShowWeather(); }
+            RefreshFocumon(); // closed Focumon view + its tick (live timer only runs while open)
         }
         ApplyState();
         UpdateBackdrop();
@@ -433,8 +434,9 @@ public partial class MainWindow : Window
                    : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
-                   : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
+                   : _info?.IsPlaying == true ? NotchState.Media // a running timer / Focumon shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
+                   : HasFocumon ? NotchState.Focumon
                    : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
         PlacePrivacyDots(target == NotchState.Badge);
@@ -468,6 +470,7 @@ public partial class MainWindow : Window
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
+            case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default:
                 (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15);
                 if (!mini) ShowIdle();
@@ -514,6 +517,7 @@ public partial class MainWindow : Window
             SetView(CompactView, target == NotchState.Media, soft);
             SetView(BadgeView, target == NotchState.Badge, animate);
             SetView(TimerView, target == NotchState.Timer, animate);
+            SetView(FocumonView, target == NotchState.Focumon, soft);
             SetView(CallView, target == NotchState.Call, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);

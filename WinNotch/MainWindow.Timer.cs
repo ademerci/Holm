@@ -84,6 +84,7 @@ public partial class MainWindow
         {
             _timerTick.Stop();
             _shownTimerText = null;
+            RefreshFocumon();
             return;
         }
 
@@ -103,10 +104,12 @@ public partial class MainWindow
         if (timer.Paused)
         {
             _timerTick.Stop();
+            RefreshFocumon(); // CompactFocumon may take the equalizer's place again
             return;
         }
         _timerTick.Interval = TimeSpan.FromMilliseconds(left.TotalMilliseconds % 1000 + 15);
         if (!_timerTick.IsEnabled) _timerTick.Start();
+        RefreshFocumon();
     }
 
     void TimerDone(Countdown timer)

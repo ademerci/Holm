@@ -265,7 +265,7 @@
                             <MenuItem x:Name="MenuAppVolume" Header="Volume per app" IsCheckable="True" Click="MenuAppVolume_Click"/>
                             <MenuItem x:Name="MenuClearPasswords" Header="Clear copied passwords after 30 s" IsCheckable="True" Click="MenuClearPasswords_Click"/>
                             <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
-                            <MenuItem x:Name="MenuFocumon" Header="Focumon timer (needs the browser extension)" IsCheckable="True" Click="MenuFocumon_Click"/>
+                            <MenuItem x:Name="MenuFocumon" Header="Focumon" ToolTip="Show your Focumon monster and timer in the closed notch (instead of weather) and in the open bar. Needs the Focumon for Holm browser extension (extension/focumon in the repo)." IsCheckable="True" Click="MenuFocumon_Click"/>
                             <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
@@ -326,6 +326,15 @@
                             <!-- A running timer takes the equalizer's place -->
                             <TextBlock x:Name="CompactTimer" FontSize="13" FontWeight="SemiBold" Foreground="#FFFF9F0A"
                                        VerticalAlignment="Center" Visibility="Collapsed"/>
+                            <!-- Focumon focus time, when no Holm timer is running -->
+                            <StackPanel x:Name="CompactFocumon" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,0,2,0">
+                                <Border x:Name="CompactFocumonSprite" Width="18" Height="18" CornerRadius="5" Background="{StaticResource ArtFallback}" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CompactFocumonInitial" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Dim}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock x:Name="CompactFocumonTime" FontSize="13" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center"
+                                           FontFamily="Segoe UI Variable Display, Segoe UI"/>
+                            </StackPanel>
                             <StackPanel x:Name="EqPanel" VerticalAlignment="Center" Orientation="Horizontal" Height="14">
                                 <Rectangle x:Name="Bar1" Width="3" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="White" Margin="1,0" RenderTransformOrigin="0.5,0.5">
                                     <Rectangle.RenderTransform><ScaleTransform ScaleY="0.45"/></Rectangle.RenderTransform>
@@ -384,6 +393,18 @@
                                    HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         <TextBlock x:Name="TimerText" FontSize="14" FontWeight="SemiBold" Foreground="#FFFF9F0A"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Focumon: a focus/break session, nothing else claiming the closed notch -->
+                    <Grid x:Name="FocumonView" Opacity="0" IsHitTestVisible="False" Margin="10,0,14,0">
+                        <Border x:Name="CollapsedFocumonSprite" Width="20" Height="20" CornerRadius="6" Background="{StaticResource ArtFallback}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock x:Name="CollapsedFocumonInitial" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Dim}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="CollapsedFocumonTime" FontSize="13" FontWeight="SemiBold"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   FontFamily="Segoe UI Variable Display, Segoe UI"/>
                     </Grid>
 
                     <!-- Badge: nothing playing, unread messages -->
