@@ -195,3 +195,4 @@ Open source under the [MIT License](LICENSE).
 
 - Hide the Holm bar when a Browser is open so the Tabs are accessible in horizontal mode
 - Add a Superkey
+- Make the color picker move one pixel with the arrow keys
