@@ -189,3 +189,9 @@ Alongside the human contributors recorded in the commit history, we credit Claud
 ## License
 
 Open source under the [MIT License](LICENSE).
+
+
+## Ideas for new Feautures
+
+- Hide the Holm bar when a Browser is open so the Tabs are accessible in horizontal mode
+- Add a Superkey
