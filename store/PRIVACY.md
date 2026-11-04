@@ -1,8 +1,6 @@
-# Holm for Windows privacy policy (draft)
+# Holm for Windows privacy policy
 
 **Effective date: November 4, 2026**
-
-This draft describes the current Holm desktop app. The Holm Team should review it before using it as the Microsoft Store privacy policy.
 
 ## Information Holm handles on your device
 
@@ -32,5 +30,4 @@ Feature data remains on your PC until you remove it, change it in Holm or uninst
 
 ## Contact and changes
 
-For questions or requests, contact the Holm Team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com) or through the [Holm GitHub repository](https://github.com/ademerci/Holm). The team should update this policy when app behavior changes.
-
+For questions or requests, contact the Holm Team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com) or through the [Holm GitHub repository](https://github.com/ademerci/Holm).
