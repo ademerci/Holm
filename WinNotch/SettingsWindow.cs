@@ -286,7 +286,7 @@ internal sealed class SettingsWindow : Window
         var row = new Grid
         {
             Background = Brushes.Transparent, Cursor = Cursors.Hand, MinHeight = 38,
-            ToolTip = item.ToolTip,
+            ToolTip = item.ToolTip, IsEnabled = item.IsEnabled,
         };
         var hover = new Border
         {
@@ -337,6 +337,7 @@ internal sealed class SettingsWindow : Window
         var defaults = new AppSettings();
         foreach (var (item, toggle) in _rows)
         {
+            if (!item.IsEnabled) continue;
             string name = item.Name switch { "MenuAnim" => "Animations", "MenuMini" => "MiniIdle", _ => item.Name.Substring(4) };
             bool value = name != "Autostart" && typeof(AppSettings).GetProperty(name)?.GetValue(defaults) is true;
             toggle.Set(value, false);

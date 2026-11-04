@@ -184,7 +184,7 @@ internal static class FormerName
             }
         }
         catch (Exception ex) { Diag.Error(ex); }
-        try { Autostart.TakeOver(Name); }
+        try { if (!PackageIdentity.IsPackaged) Autostart.TakeOver(Name); }
         catch (Exception ex) { Diag.Error(ex); }
     }
 }

@@ -25,6 +25,7 @@ public partial class MainWindow
 
     void InitUpdates()
     {
+        MenuUpdates.Visibility = PackageIdentity.IsPackaged ? Visibility.Collapsed : Visibility.Visible;
         _updateTimer = MakeTimer(20_000, () =>
         {
             _updateTimer.Interval = UpdateCheckInterval;
@@ -35,7 +36,7 @@ public partial class MainWindow
 
     void StartUpdates()
     {
-        if (_updatesClosing || !_settings.CheckForUpdatesAutomatically) return;
+        if (PackageIdentity.IsPackaged || _updatesClosing || !_settings.CheckForUpdatesAutomatically) return;
         _updateTimer.Interval = TimeSpan.FromSeconds(20);
         _updateTimer.Start();
     }
@@ -59,10 +60,10 @@ public partial class MainWindow
         MenuUpdatesLabel.Text = _installingUpdate ? "Updating…"
             : _availableUpdate is { } available ? $"Updates · {available.Version.ToString(3)} available" : "Updates";
         MenuUpdateIcon.Visibility = _availableUpdate != null && !_installingUpdate ? Visibility.Visible : Visibility.Collapsed;
-        MenuUpdateStatus.Header = _updateStatus ?? $"Current version: {RunningVersion.ToString(3)}";
+        MenuUpdateStatus.Header = PackageIdentity.IsPackaged ? "Updates are managed by Windows" : _updateStatus ?? $"Current version: {RunningVersion.ToString(3)}";
         MenuCheckUpdates.Header = _checkingUpdates ? "Checking for updates…" : "Check for updates";
-        MenuCheckUpdates.IsEnabled = !_checkingUpdates && !_installingUpdate;
-        MenuAutoUpdates.IsEnabled = !_installingUpdate;
+        MenuCheckUpdates.IsEnabled = !PackageIdentity.IsPackaged && !_checkingUpdates && !_installingUpdate;
+        MenuAutoUpdates.IsEnabled = !PackageIdentity.IsPackaged && !_installingUpdate;
         MenuInstallUpdate.Visibility = _availableUpdate != null ? Visibility.Visible : Visibility.Collapsed;
         MenuInstallUpdate.Header = _installingUpdate ? "Updating…"
             : _availableUpdate is { } release ? $"Update to {release.Version.ToString(3)} and restart" : "Update and restart";

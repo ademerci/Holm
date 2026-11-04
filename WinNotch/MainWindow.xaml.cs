@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -1616,10 +1616,22 @@ public partial class MainWindow : Window
         ShowVpn();
     }
 
-    void MenuAutostart_Click(object sender, RoutedEventArgs e)
+    async void MenuAutostart_Click(object sender, RoutedEventArgs e)
     {
-        try { Autostart.Set(MenuAutostart.IsChecked); }
-        catch (Exception ex) { Diag.Error(ex); }
+        try
+        {
+            if (!PackageIdentity.IsPackaged) { Autostart.Set(MenuAutostart.IsChecked); return; }
+            if (_startupTask == null) return;
+            if (MenuAutostart.IsChecked)
+            {
+                var state = await _startupTask.RequestEnableAsync();
+                if (state != Windows.ApplicationModel.StartupTaskState.Enabled)
+                    MessageBox.Show("Windows did not enable startup. Check Startup apps in Windows Settings.", "Holm", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else _startupTask.Disable();
+        }
+        catch (Exception ex) { Diag.Error(ex); MessageBox.Show("Could not change startup. Check Windows Settings and try again.", "Holm"); }
+        finally { if (PackageIdentity.IsPackaged) _settingsWindow?.Refresh(); }
     }
 
     void MenuExit_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();

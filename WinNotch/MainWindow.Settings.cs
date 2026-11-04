@@ -11,6 +11,7 @@ namespace WinNotch;
 public partial class MainWindow
 {
     SettingsWindow? _settingsWindow;
+    Windows.ApplicationModel.StartupTask? _startupTask;
 
     SettingsGroup[] SettingsGroups() => new[]
     {
@@ -29,7 +30,9 @@ public partial class MainWindow
         MenuMini.IsChecked = _settings.MiniIdle;
         MenuMediaControls.IsChecked = _settings.MediaControls;
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
-        try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
+        MenuAutostart.IsEnabled = !PackageIdentity.IsPackaged || _startupTask != null;
+        MenuAutostart.ToolTip = PackageIdentity.IsPackaged && _startupTask == null ? "Windows startup is unavailable." : null;
+        try { MenuAutostart.IsChecked = PackageIdentity.IsPackaged ? _startupTask?.State == Windows.ApplicationModel.StartupTaskState.Enabled : Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
         MenuPrivacy.IsChecked = _settings.Privacy;
@@ -57,7 +60,7 @@ public partial class MainWindow
     // After the menu has closed: a window opened from inside the click would lose the focus to the closing menu.
     void MenuSettings_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(ShowSettings, DispatcherPriority.Background);
 
-    void ShowSettings()
+    async void ShowSettings()
     {
         SetExpanded(false);
         if (_settingsWindow != null)
@@ -65,6 +68,12 @@ public partial class MainWindow
             _settingsWindow.Activate();
             return;
         }
+        if (PackageIdentity.IsPackaged)
+        {
+            try { _startupTask = await Windows.ApplicationModel.StartupTask.GetAsync("HolmStartup"); }
+            catch (Exception ex) { Diag.Error(ex); }
+        }
+        if (_settingsWindow != null) { _settingsWindow.Activate(); return; }
         _settingsWindow = MakeSettingsWindow();
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();

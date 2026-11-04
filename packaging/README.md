@@ -1,0 +1,23 @@
+# Local MSIX testing
+
+Open PowerShell in the repository root (the folder containing `packaging`), then run `powershell -ExecutionPolicy Bypass -File .\packaging\build-msix.ps1`. This needs the .NET 10 SDK and Windows SDK (MakeAppx). The output is `artifacts/msix/Holm-test.msix`, an unsigned, self-contained x64 test package. Its identity and artwork are placeholders, not Store submission metadata.
+
+For a local test, create a code-signing certificate, trust its public certificate on the test machine, and sign the package. Trusting a certificate changes Windows security settings; only trust a certificate you created and control. Open an elevated PowerShell in the repository root, then run:
+
+```powershell
+$cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=Holm Local Test' -KeyUsage DigitalSignature -FriendlyName 'Holm local MSIX test' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')
+Export-Certificate -Cert $cert -FilePath "$PWD\artifacts\msix\Holm-test.cer"
+Import-Certificate -FilePath "$PWD\artifacts\msix\Holm-test.cer" -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople'
+$signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+& $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint artifacts\msix\Holm-test.msix
+Add-AppxPackage artifacts\msix\Holm-test.msix
+```
+
+The build alone does not install the package. Verify installation with `Get-AppxPackage -Name Holm.LocalTest`; if it returns nothing, check the output of `Add-AppxPackage` for an error. After a successful installation, launch **Holm Local Test** from Start. Close any running portable Holm first. Test launch, settings, notifications, media, Beam, privacy indicators, and uninstall/reinstall. Use Settings > Start with Windows to enable the packaged startup task, then sign out and back in to verify it. If Windows has disabled Holm in Startup apps, re-enable it there. Packaged updates are managed by Windows instead of Holm's GitHub updater. Test package data may be isolated from portable settings and removed on uninstall. Remove the test package through Windows Settings, and remove the test certificate from Trusted People when finished. Do not distribute the test certificate or its private key.
+
+Before Store submission, replace the identity and publisher with Partner Center values, supply final assets and listing, test packaged startup and upgrades, review capabilities and settings migration, and run the Windows App Certification Kit and Store certification. This script does not submit anything.
+
+
+
+For an upgrade, build with a higher four-part -Version, sign using the same certificate (do not create a new one), and install the signed package. Rebuilding overwrites the signed package with an unsigned one.
+

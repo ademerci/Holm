@@ -22,6 +22,7 @@ internal static class UpdateInstaller
     {
         get
         {
+            if (PackageIdentity.IsPackaged) return "Updates are managed by Windows.";
             if (!OperatingSystem.IsWindows() || !Environment.Is64BitProcess)
                 return "Automatic updates are available for the Windows x64 version.";
             if (Assembly.GetExecutingAssembly().Location.Length != 0 || Environment.ProcessPath is not { } path
