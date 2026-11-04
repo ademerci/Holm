@@ -12,6 +12,8 @@ internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Step aside while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
+    public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
     public bool MediaControls { get; set; } = true;
     /// <summary>Check GitHub for a newer stable release at startup and every six hours.</summary>

@@ -14,7 +14,7 @@ public partial class MainWindow
 
     SettingsGroup[] SettingsGroups() => new[]
     {
-        new SettingsGroup("General", new[] { MenuAnim, MenuMini, MenuAutostart }),
+        new SettingsGroup("General", new[] { MenuAnim, MenuMini, MenuAutostart, MenuHideOverBrowsers }),
         new SettingsGroup("Pop-outs", new[] { MenuDownloads, MenuScreenshots, MenuScreenshotText, MenuCapsLock, MenuDiskWarning, MenuUsbDrives, MenuConnectivity }),
         new SettingsGroup("Open notch", new[] { MenuMediaControls, MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker, MenuFocumon }),
         new SettingsGroup("Weather", new[] { MenuWeatherAutoLocation }),
@@ -27,6 +27,7 @@ public partial class MainWindow
     {
         MenuAnim.IsChecked = _settings.Animations;
         MenuMini.IsChecked = _settings.MiniIdle;
+        MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
         MenuMediaControls.IsChecked = _settings.MediaControls;
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
