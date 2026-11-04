@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.8 – 2026-11-04
 
 ### Added
 - **Hide over browser tabs.** A new switch in *Settings › General*: while a maximized browser is in front on the notch's screen, the resting notch (idle, music, unread badge, a timer) steps aside so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once; unlike fullscreen, nothing is declined meanwhile. Off by default. Knows Chrome, Edge, Firefox, Brave, Opera (GX), Vivaldi, LibreWolf, Waterfox, Floorp, Zen, Thorium, Chromium and Arc.
