@@ -15,9 +15,15 @@ Add-AppxPackage artifacts\msix\Holm-test.msix
 
 The build alone does not install the package. Verify installation with `Get-AppxPackage -Name Holm.LocalTest`; if it returns nothing, check the output of `Add-AppxPackage` for an error. After a successful installation, launch **Holm Local Test** from Start. Close any running portable Holm first. Test launch, settings, notifications, media, Beam, privacy indicators, and uninstall/reinstall. Use Settings > Start with Windows to enable the packaged startup task, then sign out and back in to verify it. If Windows has disabled Holm in Startup apps, re-enable it there. Packaged updates are managed by Windows instead of Holm's GitHub updater. Test package data may be isolated from portable settings and removed on uninstall. Remove the test package through Windows Settings, and remove the test certificate from Trusted People when finished. Do not distribute the test certificate or its private key.
 
-Before Store submission, replace the identity and publisher with Partner Center values, supply final assets and listing, test packaged startup and upgrades, review capabilities and settings migration, and run the Windows App Certification Kit and Store certification. This script does not submit anything.
+The default build uses a local test identity and cannot be submitted to the Store.
 
 
 
 For an upgrade, build with a higher four-part -Version, sign using the same certificate (do not create a new one), and install the signed package. Rebuilding overwrites the signed package with an unsigned one.
 
+
+## Store package
+
+Run `powershell -ExecutionPolicy Bypass -File .\packaging\build-msix.ps1 -Store` to create `artifacts\msix\Holm-Store.msix` using the reserved Holm for Windows identity and Holm Team publisher. For subsequent submissions supply a higher Store version, for example `-Store -Version 1.7.8.0`; the fourth component must be zero. This package is unsigned for Partner Center; do not sign it with the local test certificate. The Store supplies its own signature.
+
+Before submitting, run Windows App Certification Kit on the current packaged build, investigate warnings, test startup after sign-in, notifications, Bluetooth, weather, Beam and updates, and verify upgrade and settings migration on a clean machine. Complete the Store listing, privacy policy, screenshots, logo, age rating and pricing in Partner Center. The generated package logos are derived from the existing icon and need visual review.
