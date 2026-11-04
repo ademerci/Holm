@@ -1,0 +1,9 @@
+# Certification assessment
+
+The Windows App Certification Kit (10.0.26100.8249) was run against the installed self-contained x64 local test package. It returned an overall warning. The optional blocked-executables test flagged process-launch APIs and strings in the app and framework binaries. Holm intentionally opens other apps, URLs and Explorer, while its portable updater launches a PowerShell helper; the packaged build disables that updater. The string scan is not evidence that each named executable is launched. Microsoft describes this test as checking compatibility with Windows S mode and recommends assessing calls outside the package. Confirm intended behavior and explain it during Store review; do not claim S-mode compatibility without testing it.
+
+The DPI test reported that it could not process Holm.exe and warned that it was not DPI aware. Extracting the executable manifest with the Windows SDK manifest tool showed both `dpiAware=true/PM` and `dpiAwareness=PerMonitorV2`. A non-single-file self-contained test build produced the same DPI warning, so the packaging layout did not resolve the tool's inability to inspect it. Test actual behavior on displays at multiple scaling levels and ask Microsoft about the warning if Partner Center reports it; this assessment does not establish certification approval.
+
+The alternate package also had blocked-executable findings in .NET and WPF runtime files, so it was not adopted. Certification was run on a local test identity, not a Store-signed package. The final Store submission is subject to Microsoft's validation and review.
+
+See [Microsoft's Desktop Bridge tests](https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-desktop-bridge-app-tests) and [Windows App Certification Kit](https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-app-certification-kit).

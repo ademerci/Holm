@@ -2132,7 +2132,7 @@ public partial class MainWindow : Window
     {
         await Task.Delay(900);
         UpdateLayout();
-        const double scale = 2;
+        const double scale = 3;
         double width = Width; // the whole window: the open notch is wider than the 480 it used to be
         height = Math.Max(height, Math.Ceiling(Height) + 16); // never cut off a notch that grew
         var image = new RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
