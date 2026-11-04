@@ -11,3 +11,4 @@ These PNGs were rendered with Holm's built-in demo snapshot mode from version 1.
 - holm-beam-choose.png — choose a recipient
 - holm-beam-receive.png — accept or decline an incoming file
 - holm-beam-sending.png — transfer progress
+- holm-music.png — music playback
