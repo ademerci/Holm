@@ -1,0 +1,30 @@
+# Runs the tests on Windows for every push and pull request that touches the app or its tests,
+# the same tests the Release workflow runs before it publishes.
+name: Test
+
+on:
+  push:
+    paths: ["WinNotch/**", "WinNotch.Tests/**", ".github/workflows/test.yml"]
+  pull_request:
+    paths: ["WinNotch/**", "WinNotch.Tests/**", ".github/workflows/test.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # Local tests need hardware; online and manual tests use external services or user interaction.
+      - name: Test
+        shell: pwsh
+        run: dotnet test WinNotch.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
