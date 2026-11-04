@@ -2,7 +2,7 @@
 
 **Effective date: November 4, 2026**
 
-Holm Team publishes the Holm for Windows desktop application. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
+Holm for Windows is published by an individual developer under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
 
 ## Information on your device
 
@@ -33,6 +33,10 @@ If you use Focumon integration, its browser extension sends Focumon status to Ho
 Local feature data remains on your PC until you change or remove it, clear the relevant app data, or uninstall and remove its data, subject to Windows' storage behavior. Temporary transfer files may be created during sharing. Received files in your personal folders may remain after uninstalling. Recipients and third-party services control information they receive under their own practices and retention rules.
 
 You can disable individual features in Holm, revoke permissions in Windows, delete received files and uninstall Holm. Depending on where you live and the circumstances, you may have rights concerning your personal information, including rights to access, correct or delete it, or to complain to a data protection authority. Contact us using the address below for requests about information the Holm Team holds; for information handled by third-party services, contact the relevant provider. Deleting local data does not delete copies already received by another person or service.
+
+## Children
+
+Holm is a general-audience desktop app and can be used by people of different ages. Its local and connected features handle information as described in this policy; parents and guardians can manage relevant device permissions and settings.
 
 ## Changes and contact
 
