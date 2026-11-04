@@ -2,7 +2,7 @@
 
 **Effective date: November 4, 2026**
 
-Holm for Windows is published by an individual developer under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
+Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
 
 ## At a glance
 
