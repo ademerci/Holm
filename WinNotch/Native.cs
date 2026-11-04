@@ -110,6 +110,7 @@ internal static class Native
 
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);
+    [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hwnd);
 
     [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
     /// <summary>Whether the left or right mouse button is held (physical buttons, so swapped buttons count too).</summary>

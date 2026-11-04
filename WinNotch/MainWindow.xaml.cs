@@ -69,6 +69,7 @@ public partial class MainWindow : Window
     NotchState _state = NotchState.None;
     double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeScale = 1;
     bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
+    bool _browserInFront, _hiddenForBrowser; // see StepAsideForBrowser
     MediaInfo? _info;
     MediaInfo? _latestMediaInfo;
     ImageSource? _shownArt, _shownBackdrop;
@@ -351,13 +352,16 @@ public partial class MainWindow : Window
     {
         NotifyAvailableUpdate();
         // The shell's answer covers all monitors, so also check that the fullscreen app is on ours.
-        bool fullscreen = Native.SHQueryUserNotificationState(out int state) == 0 && state is 2 or 3 or 4
-            && Native.MonitorFromWindow(Native.GetForegroundWindow(), 2 /* NEAREST */) == _monitor;
+        IntPtr foreground = Native.GetForegroundWindow();
+        bool onOurs = Native.MonitorFromWindow(foreground, 2 /* NEAREST */) == _monitor;
+        bool fullscreen = onOurs && Native.SHQueryUserNotificationState(out int state) == 0 && state is 2 or 3 or 4;
+        _browserInFront = onOurs && _settings.HideOverBrowsers && Native.IsZoomed(foreground) && Browsers.Is(Native.ProcessNameOf(foreground));
         if (fullscreen != _hiddenForFullscreen)
         {
             _hiddenForFullscreen = fullscreen;
             if (fullscreen)
             {
+                _hiddenForBrowser = false; // hidden either way; showing again is up to the fullscreen check
                 _expanded = false;
                 _peekActive = false;
                 _liveTimer.Stop();
@@ -372,8 +376,9 @@ public partial class MainWindow : Window
             }
             UpdateEqualizer();
         }
+        StepAsideForBrowser(_state);
         // Not while the menu is open: the notch would jump in front of it and the menu flicker.
-        if (!fullscreen && _hwnd != IntPtr.Zero && !MenuOpen)
+        if (!fullscreen && !_hiddenForBrowser && _hwnd != IntPtr.Zero && !MenuOpen)
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
         if (_messages.Count > 0 && AppInFront() is { } front && _messages.Any(m => m.App == front.Key)) _chat.MarkRead(front.Key);
@@ -440,6 +445,7 @@ public partial class MainWindow : Window
                    : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
         PlacePrivacyDots(target == NotchState.Badge);
+        StepAsideForBrowser(target);
         bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
 
@@ -1548,6 +1554,29 @@ public partial class MainWindow : Window
         _settings.Save();
         UpdateBackdrop();
         ApplyState();
+    }
+
+    /// <summary>
+    /// A maximized browser has its tabs right under the notch, so the resting notch (idle, music, unread badge, a timer)
+    /// steps aside. Anything that wants you (a Beam offer, a message, the volume, a download, a call) brings it back at
+    /// once. Unlike fullscreen, nothing is declined meanwhile.
+    /// </summary>
+    void StepAsideForBrowser(NotchState state)
+    {
+        bool hide = _browserInFront && !_hiddenForFullscreen && !_expanded
+                    && state is NotchState.None or NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
+        if (hide == _hiddenForBrowser) return;
+        _hiddenForBrowser = hide;
+        Diag.Log(hide ? "Stepped aside for a browser" : "Back from a browser");
+        if (hide) Hide();
+        else if (!_hiddenForFullscreen) { Show(); PositionWindow(); }
+    }
+
+    void MenuHideOverBrowsers_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.HideOverBrowsers = MenuHideOverBrowsers.IsChecked;
+        _settings.Save();
+        WatchFullscreen();
     }
 
     void MenuMini_Click(object sender, RoutedEventArgs e)

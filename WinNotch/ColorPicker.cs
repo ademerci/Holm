@@ -14,12 +14,16 @@ namespace WinNotch;
 /// <summary>
 /// Picks one color from anywhere on the screen. A low-level mouse hook takes the next click (so it never reaches
 /// the app below), a magnifier beside the cursor shows the pixels around it, and Escape or a right click cancels.
+/// The arrow keys move the cursor one pixel (ten with Shift) and Enter picks, for the exact pixel a hand can't hit.
 /// There is no overlay over the screen: the pixel read is exactly what the display shows.
 /// </summary>
 internal sealed class ColorPicker : IDisposable
 {
     const int WH_MOUSE_LL = 14, WM_MOUSEMOVE = 0x0200, WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202,
               WM_RBUTTONDOWN = 0x0204, WM_RBUTTONUP = 0x0205, WM_HOTKEY = 0x0312, VK_ESCAPE = 0x1B, HotkeyId = 0x4E31;
+    const uint MOD_SHIFT = 0x4, MOD_NOREPEAT = 0x4000, VK_RETURN = 0x0D;
+    /// <summary>The keys taken while picking, each with and without Shift: Enter and the arrows (left, up, right, down).</summary>
+    static readonly uint[] StepKeys = { VK_RETURN, 0x25, 0x26, 0x27, 0x28 };
     const int Zoom = 10;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -33,6 +37,7 @@ internal sealed class ColorPicker : IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetModuleHandle(string? name);
     [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hwnd, int id);
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint affinity);
     [DllImport("user32.dll")] static extern IntPtr MonitorFromPoint(Native.POINT point, uint flags);
     [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")] static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
@@ -101,7 +106,13 @@ internal sealed class ColorPicker : IDisposable
             Native.SetWindowLongPtr(_loupeHwnd, Native.GWL_EXSTYLE, new IntPtr(ex | Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE | 0x20 /* WS_EX_TRANSPARENT */));
             SetWindowDisplayAffinity(_loupeHwnd, 0x11); // WDA_EXCLUDEFROMCAPTURE: never in its own pixels
             HwndSource.FromHwnd(_loupeHwnd)?.AddHook(OnLoupeMessage);
-            RegisterHotKey(_loupeHwnd, HotkeyId, 0x4000 /* MOD_NOREPEAT */, VK_ESCAPE);
+            RegisterHotKey(_loupeHwnd, HotkeyId, MOD_NOREPEAT, VK_ESCAPE);
+            // Arrows repeat while held, like moving a selection in an image editor.
+            for (int i = 0; i < StepKeys.Length; i++)
+            {
+                RegisterHotKey(_loupeHwnd, HotkeyId + 1 + i, StepKeys[i] == VK_RETURN ? MOD_NOREPEAT : 0, StepKeys[i]);
+                RegisterHotKey(_loupeHwnd, HotkeyId + 1 + StepKeys.Length + i, MOD_SHIFT | (StepKeys[i] == VK_RETURN ? MOD_NOREPEAT : 0), StepKeys[i]);
+            }
         };
         // Nobody picks for a minute: give up. After a pick, the button's release is waited for at most a moment.
         _giveUp = new DispatcherTimer(TimeSpan.FromMinutes(1), DispatcherPriority.Background, (_, _) =>
@@ -154,7 +165,18 @@ internal sealed class ColorPicker : IDisposable
 
     IntPtr OnLoupeMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WM_HOTKEY && wParam.ToInt32() == HotkeyId) { handled = true; Finish(null); }
+        if (msg != WM_HOTKEY) return IntPtr.Zero;
+        int id = wParam.ToInt32();
+        if (id == HotkeyId) { handled = true; Finish(null); return IntPtr.Zero; }
+        if (id <= HotkeyId || id > HotkeyId + 2 * StepKeys.Length || _done) return IntPtr.Zero;
+        handled = true;
+        uint key = (uint)((lParam.ToInt64() >> 16) & 0xFFFF);
+        bool shift = ((lParam.ToInt64() & 0xFFFF) & MOD_SHIFT) != 0;
+        if (key == VK_RETURN) { Finish(Read(_cursor)); return IntPtr.Zero; }
+        var (dx, dy) = ColorPick.Step(key, shift);
+        // Moving the real cursor keeps the click, the magnifier and the pixel read in step; the mouse hook redraws.
+        Native.GetCursorPos(out var at);
+        SetCursorPos(at.X + dx, at.Y + dy);
         return IntPtr.Zero;
     }
 
@@ -221,7 +243,8 @@ internal sealed class ColorPicker : IDisposable
             _giveUp.Interval = TimeSpan.FromSeconds(2);
             _giveUp.Start();
         }
-        if (_loupeHwnd != IntPtr.Zero) UnregisterHotKey(_loupeHwnd, HotkeyId);
+        if (_loupeHwnd != IntPtr.Zero)
+            for (int id = HotkeyId; id <= HotkeyId + 2 * StepKeys.Length; id++) UnregisterHotKey(_loupeHwnd, id);
         _loupe.Close();
         if (color is { } c) Done?.Invoke(ColorPick.Hex(c.R, c.G, c.B), Color.FromRgb(c.R, c.G, c.B));
         else Done?.Invoke(null, default);

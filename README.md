@@ -29,7 +29,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Reminders in plain words** – "20 min laundry", "14:30 dentist", "tomorrow 9:00 call" (German works too). The notch rings on time with *+10 min*; reminders survive a restart, and one missed while the PC was off shows when it's back.
 - **Calculator** – type a sum, the result is there at once; click it to copy. "50 + 15%" works like on any calculator.
 - **Clipboard history** – the last 20 texts and pictures you copied; click one to put it back. Passwords that password managers mark as private are never read or kept, and a copied password leaves the clipboard after 30 seconds if it's still there. The history lives in memory only.
-- **Color picker** – click anywhere on the screen to copy that color's hex code.
+- **Color picker** – click anywhere on the screen to copy that color's hex code. The arrow keys move the cursor one pixel (ten with Shift) and Enter picks, for the exact pixel.
 - **Text from screenshots** – *Copy text* on the screenshot pop-out reads the text with Windows' own OCR, on your PC.
 - **Volume per app** – a slider for each app that plays sound; click its icon to mute it.
 - **Weather** – temperature in the idle notch, the sky and the next hour's rain when it's open. If no place is saved, Holm tries Windows approximate location once at startup, rounds coordinates to one decimal place before saving them or sending them to [Open-Meteo](https://open-meteo.com), and reuses that place afterwards. No separate IP lookup service or continuous location tracking. Windows location services must be on; if unavailable, choose a city manually. Turn automatic setup off in Settings, or use *Weather › Use approximate Windows location* to detect again. Forecasts refresh at most every 30 minutes.
@@ -56,6 +56,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Messages** from WhatsApp, Discord, Outlook, Telegram, Signal and Slack – also when they run in the browser. A new message pops out of the notch with who wrote and the first line, and a badge in the app's colour counts what you haven't seen yet. Opening the app (or clicking the message in the notch) clears it. Each app can be switched off.
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
+- **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
 - **Right-click menu** – short again: timer, sleep timer, beam text, receive with a copied code, friends (waves too), **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
 - **Settings window** – *Settings…* opens every on/off switch in a window of its own, in groups: general (animations, minimize when idle, start with Windows), pop-outs (downloads, screenshots and their text, Caps Lock, low disk space, USB drives, internet connection), the open notch's tools (notes, reminders, calculator, clipboard history, volume per app, color picker), calls and privacy (calls, pausing music for calls, microphone and camera dot, VPN, clearing copied passwords) and Beam (Beam, sending folders, sending later). Esc closes it.
 
@@ -191,8 +192,6 @@ Alongside the human contributors recorded in the commit history, we credit Claud
 Open source under the [MIT License](LICENSE).
 
 
-## Ideas for new Feautures
+## Ideas for new features
 
-- Hide the Holm bar when a Browser is open so the Tabs are accessible in horizontal mode
 - Add a Superkey
-- Make the color picker move one pixel with the arrow keys

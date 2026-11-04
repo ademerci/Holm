@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.8 – 2026-11-04
+
+### Added
+- **Hide over browser tabs.** A new switch in *Settings › General*: while a maximized browser is in front on the notch's screen, the resting notch (idle, music, unread badge, a timer) steps aside so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once; unlike fullscreen, nothing is declined meanwhile. Off by default. Knows Chrome, Edge, Firefox, Brave, Opera (GX), Vivaldi, LibreWolf, Waterfox, Floorp, Zen, Thorium, Chromium and Arc.
+- **Pixel-exact color picking.** While the color picker is out, the arrow keys move the cursor one pixel (ten with Shift) and Enter picks the color under it.
+- **Tests on every push.** The *Test* workflow runs the 800 tests on Windows for every push and pull request that touches the app; until now they only ran right before a release.
+
+### Changed
+- **About 106 MB less memory.** The release exe was a compressed single file, and a compressed bundle unpacks every part of .NET and WPF it loads into Holm's own memory. Without compression Windows reads those parts straight from the exe. Measured idle on Windows, three runs each: 148 MB private memory before, 42 MB now; the peak while starting drops from 256 to 130 MB, and starting takes about a third less CPU (1.4 s to 1.0 s). The exe on disk grows from 86 to 219 MB; the download (the zip) only from 79.6 to 80.9 MB. The GC settings tried alongside (a smaller gen0 budget, `GCConserveMemory`) made no difference and were left out.
+- `tools/Measure-Footprint.ps1` measures Holm's idle memory and CPU, and the *Footprint* workflow runs it on Windows, optionally against a second build with other settings.
+
 ## 1.7.7 – 2026-11-02
 
 ### Added

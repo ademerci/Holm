@@ -1,0 +1,57 @@
+# Measures idle memory and CPU of the release build on Windows (Actions › Footprint › Run workflow), so changes meant to
+# make Holm lighter can be checked. Give MSBuild properties (e.g. -p:EnableCompressionInSingleFile=true) to compare a variant.
+name: Footprint
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Extra MSBuild properties for a second build to compare (optional)"
+        required: false
+        default: ""
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      VARIANT: ${{ inputs.variant }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          # The same build the Release workflow ships.
+          $common = @('-c', 'Release', '-r', 'win-x64', '-p:SelfContained=true', '-p:PublishSingleFile=true', '-p:PublishReadyToRun=true',
+                      '-p:DebugType=none', '-p:IncludeNativeLibrariesForSelfExtract=true')
+          dotnet publish WinNotch @common -o out/release
+          if ($env:VARIANT) { dotnet publish WinNotch @common @($env:VARIANT -split '\s+' | Where-Object { $_ }) -o out/variant }
+          Get-ChildItem out/*/Holm.exe | Format-Table FullName, Length
+
+      - name: Measure
+        shell: pwsh
+        run: |
+          $variants = @(@{ Label = 'release'; Exe = 'out/release/Holm.exe' })
+          if ($env:VARIANT) { $variants += @{ Label = "variant ($env:VARIANT)"; Exe = 'out/variant/Holm.exe' } }
+          # First runs unpack the native libraries and fill the disk cache; they don't count.
+          foreach ($v in $variants) { ./tools/Measure-Footprint.ps1 -Exe $v.Exe -WarmupSeconds 10 -SampleSeconds 5 | Out-Null }
+          $results = foreach ($round in 1..3) {
+            foreach ($v in $variants) { ./tools/Measure-Footprint.ps1 -Exe $v.Exe -Label $v.Label }
+          }
+          $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          $columns = 'Private MB', 'Working MB', 'Peak WS MB', 'Start CPU ms', 'Idle CPU ms/min', 'Threads'
+          $summary = $results | Group-Object Variant | ForEach-Object {
+            $row = [ordered]@{ Variant = $_.Name }
+            foreach ($c in $columns) { $row[$c] = [math]::Round(($_.Group | Measure-Object $c -Average).Average, 1) }
+            [pscustomobject]$row
+          }
+          Write-Host "AVERAGES"
+          $summary | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          $lines = @("| Variant | $($columns -join ' | ') |", "|---$('|---' * $columns.Count)|")
+          $lines += $summary | ForEach-Object { $r = $_; "| $($r.Variant) | $(($columns | ForEach-Object { $r.$_ }) -join ' | ') |" }
+          $lines | Out-File -Append $env:GITHUB_STEP_SUMMARY

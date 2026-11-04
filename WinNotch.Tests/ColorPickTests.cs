@@ -50,4 +50,15 @@ public class ColorPickTests
         Assert.False(old.ClearPasswords);
         Assert.True(old.ColorPicker);
     }
+
+    [Theory]
+    [InlineData(0x25u, false, -1, 0)]
+    [InlineData(0x26u, false, 0, -1)]
+    [InlineData(0x27u, false, 1, 0)]
+    [InlineData(0x28u, false, 0, 1)]
+    [InlineData(0x25u, true, -10, 0)]
+    [InlineData(0x28u, true, 0, 10)]
+    [InlineData(0x0Du, false, 0, 0)] // Enter picks, it doesn't move
+    public void Arrow_keys_move_one_pixel_or_ten_with_shift(uint key, bool shift, int dx, int dy)
+        => Assert.Equal((dx, dy), ColorPick.Step(key, shift));
 }

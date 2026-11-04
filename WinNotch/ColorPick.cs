@@ -19,6 +19,20 @@ internal static class ColorPick
         return (bgra[i + 2], bgra[i + 1], bgra[i]);
     }
 
+    /// <summary>How far an arrow key moves the cursor while picking: one pixel, ten with Shift. (0, 0) for other keys.</summary>
+    public static (int Dx, int Dy) Step(uint virtualKey, bool shift)
+    {
+        int n = shift ? 10 : 1;
+        return virtualKey switch
+        {
+            0x25 => (-n, 0), // left
+            0x26 => (0, -n), // up
+            0x27 => (n, 0),  // right
+            0x28 => (0, n),  // down
+            _ => (0, 0),
+        };
+    }
+
     /// <summary>
     /// Top-left of the magnifier: below and right of the cursor, flipped to the other side where it would leave
     /// the display. All in physical pixels.

@@ -5,17 +5,21 @@ param(
     [switch]$Store
 )
 $ErrorActionPreference = 'Stop'
+$root = Split-Path $PSScriptRoot -Parent
+if (-not $Version) {
+    [xml]$project = Get-Content (Join-Path $root 'WinNotch\WinNotch.csproj') -Raw
+    $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+    if ($releaseVersion -notmatch '^[1-9][0-9]*\.[0-9]+\.[0-9]+$') { throw 'Project version must have three numeric components.' }
+    $Version = $releaseVersion + '.0'
+}
 if ($Store) {
     $Identity = 'HolmTeam.HolmforWindows'
     $Publisher = 'CN=D6BE962E-E0E5-4718-93AF-960659970417'
-    if (-not $Version) { $Version = '1.7.7.0' }
     if ($Version -notmatch '^([1-9][0-9]*)\.([0-9]+)\.([0-9]+)\.0$') { throw 'Store package version must have four components and end in .0.' }
 }
-if (-not $Version) { $Version = '1.7.7.1' }
 $displayName = if ($Store) { 'Holm for Windows' } else { 'Holm Local Test' }
 $publisherDisplayName = if ($Store) { 'Holm Team' } else { 'Holm Local Test' }
 $packageName = if ($Store) { 'Holm-Store.msix' } else { 'Holm-test.msix' }
-$root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'artifacts\msix'
 $app = Join-Path $out 'layout'
 if (Test-Path -LiteralPath $app) { Remove-Item -LiteralPath $app -Recurse -Force }
