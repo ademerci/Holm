@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Focumon for Holm",
+  "version": "1.0.13",
+  "description": "Shows your Focumon and its timer in the Holm notch. It reads the Focumon page and tells Holm on this PC; nothing goes anywhere else.",
+  "host_permissions": ["http://127.0.0.1:47631/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.focumon.com/*", "https://focumon.com/*"],
+      "js": ["readers.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -6,6 +6,15 @@
 - **About 106 MB less memory.** The release exe was a compressed single file, and a compressed bundle unpacks every part of .NET and WPF it loads into Holm's own memory. Without compression Windows reads those parts straight from the exe. Measured idle on Windows, three runs each: 148 MB private memory before, 42 MB now; the peak while starting drops from 256 to 130 MB, and starting takes about a third less CPU (1.4 s to 1.0 s). The exe on disk grows from 86 to 219 MB; the download (the zip) only from 79.6 to 80.9 MB. The GC settings tried alongside (a smaller gen0 budget, `GCConserveMemory`) made no difference and were left out.
 - `tools/Measure-Footprint.ps1` measures Holm's idle memory and CPU, and the *Footprint* workflow runs it on Windows, optionally against a second build with other settings.
 
+## 1.7.7 – 2026-11-02
+
+### Added
+- **Focumon in the closed notch.** During a focus or break session, the closed notch shows your monster and timer instead of the weather. Compact media view can show it too when no Holm timer is running.
+- **Focumon for Holm browser extension.** Ships in `extension/focumon`: reads the floor sprite next to your blue *Productive Me!* bubble and posts the session to Holm on this PC only.
+
+### Fixed
+- **Wrong Focumon sprite.** The companion extension no longer picks another trainer's monster from party lists or shared floor containers; it probes above each floor slot for your *Productive Me!* bubble.
+
 ## 1.7.6 – 2026-11-01
 
 ### Added

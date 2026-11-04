@@ -75,18 +75,22 @@ public class FocumonTests
     }
 
     [Theory]
-    [InlineData("https://www.focumon.com/assets/monsters/embrix.png", true)]
-    [InlineData("https://focumon.com/a.png", true)]
-    [InlineData("https://cdn.focumon.com/a.png", true)]
-    [InlineData("http://www.focumon.com/a.png", false)]                 // not encrypted
-    [InlineData("https://focumon.com.evil.example/a.png", false)]
-    [InlineData("https://evilfocumon.com/a.png", false)]
-    [InlineData("https://user:pass@www.focumon.com/a.png", false)]
-    [InlineData("https://www.focumon.com:8443/a.png", false)]
+    [InlineData("https://www.focumon.com/assets/focumon/mini/124-e8d047c8.png", true)]
+    [InlineData("https://www.focumon.com/assets/focumon/battle/124-460dc07e.png", true)]
+    [InlineData("https://cdn.focumon.com/assets/focumon/mini/1-abc.png", true)]
+    [InlineData("https://www.focumon.com/assets/logo/active-2f9cbc6b.png", false)]          // logo, not a monster
+    [InlineData("https://www.focumon.com/assets/app/desktop_app-51314787.png", false)]      // page screenshot
+    [InlineData("https://www.focumon.com/assets/social_media/focumon-83323be5.png", false)]
+    [InlineData("https://focumon.com/a.png", false)]                                       // not under /assets/focumon/
+    [InlineData("http://www.focumon.com/assets/focumon/mini/1.png", false)]                 // not encrypted
+    [InlineData("https://focumon.com.evil.example/assets/focumon/mini/1.png", false)]
+    [InlineData("https://evilfocumon.com/assets/focumon/mini/1.png", false)]
+    [InlineData("https://user:pass@www.focumon.com/assets/focumon/mini/1.png", false)]
+    [InlineData("https://www.focumon.com:8443/assets/focumon/mini/1.png", false)]
     [InlineData("file:///C:/secret.png", false)]
-    [InlineData("//www.focumon.com/a.png", false)]
+    [InlineData("//www.focumon.com/assets/focumon/mini/1.png", false)]
     [InlineData("", false)]
-    public void Pictures_only_come_from_Focumon_itself(string url, bool allowed)
+    public void Pictures_only_come_from_Focumon_monster_assets(string url, bool allowed)
         => Assert.Equal(allowed, Focumon.SafeImage(url) != null);
 
     [Fact]
