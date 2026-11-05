@@ -6,6 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+if ($Store -and -not $Version) { $Version = '1.7.9.0' }
 if (-not $Version) {
     [xml]$project = Get-Content (Join-Path $root 'WinNotch\WinNotch.csproj') -Raw
     $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
@@ -30,15 +31,34 @@ dotnet publish (Join-Path $root 'WinNotch\WinNotch.csproj') -c Release -r win-x6
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 Get-ChildItem -LiteralPath $app -Filter *.pdb | Remove-Item -Force
 Add-Type -AssemblyName System.Drawing
-$icon = New-Object System.Drawing.Icon (Join-Path $root 'WinNotch\notch.ico')
-foreach ($size in @(44, 150, 50)) {
-    $bitmap = New-Object System.Drawing.Bitmap $size, $size
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    $graphics.DrawIcon($icon, [System.Drawing.Rectangle]::new(0, 0, $size, $size))
-    $bitmap.Save((Join-Path $app "Assets\Logo$size.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-    $graphics.Dispose(); $bitmap.Dispose()
-}
-$icon.Dispose()
+# Generate each size from the original 2048px artwork, never from a smaller icon frame.
+$artwork = [System.Drawing.Image]::FromFile((Join-Path $root 'docs\icon.png'))
+try {
+    if ($artwork.Width -ne $artwork.Height -or $artwork.Width -lt 600) { throw 'Holm artwork must be square and at least 600 pixels.' }
+    function Save-Logo([int]$pixels, [string]$path) {
+        $bitmap = New-Object System.Drawing.Bitmap $pixels, $pixels, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+        try {
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            try {
+                $graphics.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+                $graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+                $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                $graphics.DrawImage($artwork, 0, 0, $pixels, $pixels)
+            } finally { $graphics.Dispose() }
+            $bitmap.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+        } finally { $bitmap.Dispose() }
+    }
+    foreach ($size in @(44, 150, 50)) {
+        Save-Logo $size (Join-Path $app "Assets\Logo$size.png")
+        foreach ($scale in @(125, 150, 200, 400)) {
+            $pixels = [int][Math]::Round($size * $scale / 100.0, [MidpointRounding]::AwayFromZero)
+            Save-Logo $pixels (Join-Path $app "Assets\Logo$size.scale-$scale.png")
+        }
+    }
+    # Optional Partner Center listing icon; the manifest assets above are also fixed.
+    Save-Logo 300 (Join-Path $out 'Holm-Store-tile-300.png')
+} finally { $artwork.Dispose() }
 $escapedPublisher = [System.Security.SecurityElement]::Escape($Publisher)
 $escapedIdentity = [System.Security.SecurityElement]::Escape($Identity)
 $escapedVersion = [System.Security.SecurityElement]::Escape($Version)
