@@ -97,7 +97,7 @@ Drag files onto the notch. It opens and shows:
 - **Phone** – drop the files on *Phone* and the notch shows a QR code. Point your phone's camera at it: a page with the files opens in the phone's browser, to download (or open photos, videos and PDFs right away). No app, no cable, no cloud – the files come straight from your PC over the Wi-Fi, so the phone has to be on the same network. The link carries 128 random bits, serves those files and nothing else, and stops when you click *Done*, ten minutes after it opened, or shortly after everything reached the phone.
 - **Code** – works anywhere, also on networks that don't let devices talk to each other (school, office, hotspots). Drop the files on *Code* and a code like `WN-K7Q2A-…` is copied for you. Paste it to your friend in any chat; as soon as they copy it, their notch offers to receive the file. Right-click › *Receive with copied code* does the same.
 
-Received files land in your **Downloads** folder. A **folder** goes as a ZIP (packed for the trip, deleted afterwards). **Text** you beam (*Beam text › Beam copied text…*, or the arrow next to a text in the clipboard history) lands on the other person's clipboard; Holm before 1.7 saves it as a text file in Downloads instead.
+Received files land in your **Downloads** folder; when they're in, the notch offers *Open* or *Show* so you don't have to dig through Explorer. A **folder** goes as a ZIP (packed for the trip, deleted afterwards). **Text** you beam (*Beam text › Beam copied text…*, or the arrow next to a text in the clipboard history) lands on the other person's clipboard; Holm before 1.7 saves it as a text file in Downloads instead.
 
 ### Friends
 

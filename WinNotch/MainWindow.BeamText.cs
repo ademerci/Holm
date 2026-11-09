@@ -100,6 +100,7 @@ public partial class MainWindow
         string kept = Path.Combine(Native.DownloadsFolder(), Path.GetFileName(path));
         try { File.Move(path, kept, overwrite: false); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { kept = path; }
         EndTask("", GreenBrush, $"Text from {sender} saved", "The clipboard was busy · in Downloads",
+                ("Open", () => { HideTask(); TryOpen(kept); }),
                 ("Show", () => { HideTask(); try { Shell.Reveal(kept); } catch (Exception ex) { Diag.Error(ex); } }));
     }
 

@@ -771,8 +771,11 @@ public partial class MainWindow
         }
         if (saved == null) { EndTask("", RedBrush, "Declined", $"Nothing was saved from {sender}"); return; }
         string first = saved[0];
+        // Same as a finished browser download: open the file, or show it in Explorer – no trip through Downloads by hand.
         EndTask("", GreenBrush, saved.Count == 1 ? $"Saved {Path.GetFileName(first)}" : $"Saved {saved.Count} files",
-                $"From {sender} · in Downloads", ("Show", () => { HideTask(); try { Shell.Reveal(first); } catch (Exception ex) { Diag.Error(ex); } }));
+                $"From {sender} · in Downloads",
+                ("Open", () => { HideTask(); TryOpen(first); }),
+                ("Show", () => { HideTask(); try { Shell.Reveal(first); } catch (Exception ex) { Diag.Error(ex); } }));
         _taskHide.Interval = TimeSpan.FromSeconds(8);
         _taskHide.Start();
     }
@@ -855,10 +858,11 @@ public partial class MainWindow
         ShowTask(sending ? "" : "", ShareBlue, title, $"{subtitle} · {Math.Round(fraction * 100)}%", fraction, null, ("Cancel", CancelTask));
     }
 
-    void EndTask(string icon, Brush circle, string title, string subtitle, (string Label, Action Act)? primary = null)
+    void EndTask(string icon, Brush circle, string title, string subtitle,
+                 (string Label, Action Act)? primary = null, (string Label, Action Act)? secondary = null)
     {
         _busy = false;
-        ShowTask(icon, circle, title, subtitle, null, primary, ("OK", HideTask));
+        ShowTask(icon, circle, title, subtitle, null, primary, secondary ?? ("OK", HideTask));
         _taskHide.Interval = TimeSpan.FromSeconds(5);
         _taskHide.Start();
     }

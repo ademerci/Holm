@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.9 – 2026-11-09
+
+### Added
+- **Open a beamed file from the notch.** After you accept a Beam transfer, the saved pop-out offers *Open* as well as *Show*, like a finished browser download – so you can open the file without going through Downloads in Explorer.
+
 ## 1.7.8 – 2026-11-04
 
 ### Added
