@@ -47,6 +47,29 @@ public partial class MainWindow
         Diag.Log("Profile saved");
     }
 
+    /// <summary>Your face, name and status for the top of the Holm window's sidebar.</summary>
+    FrameworkElement MeCard(ProfileDraft profile)
+    {
+        string name = FriendProfile.CleanText(profile.Name, FriendProfile.MaxName) ?? Native.DisplayName();
+        var picture = ProfilePicture.BrushOf(profile.Picture);
+        Brush fill = picture ?? (FriendProfile.CleanColor(profile.Color) is { } color
+            ? Frozen((Color)ColorConverter.ConvertFromString(color)) : AvatarColor(name));
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.Children.Add(HubTheme.Face(picture != null ? "" : Initials(name), fill, 36));
+        var words = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        words.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+        words.Children.Add(new TextBlock
+        {
+            Text = FriendProfile.CleanText(profile.Status, FriendProfile.MaxStatus) ?? "Set a status", FontSize = 11,
+            Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        Grid.SetColumn(words, 1);
+        row.Children.Add(words);
+        return row;
+    }
+
     /// <summary>Friends › each friend with their picture and status, and the way to your own profile.</summary>
     void AddFriendProfiles()
     {

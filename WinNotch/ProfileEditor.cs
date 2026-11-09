@@ -53,7 +53,8 @@ internal sealed class ProfileEditor : Border
         Background = Card;
         CornerRadius = new CornerRadius(10);
         Padding = new Thickness(14);
-        Margin = new Thickness(0, 6, 0, 10);
+        Padding = new Thickness(18);
+        VerticalAlignment = VerticalAlignment.Top;
 
         // Picture | name and status side by side, then the colors and the picture buttons in one row.
         var grid = new Grid();

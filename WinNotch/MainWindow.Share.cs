@@ -966,7 +966,7 @@ public partial class MainWindow
         add.Click += (_, _) => AddFriendFromClipboard();
         MenuFriends.Items.Add(add);
         var profile = new MenuItem { Header = "Edit my profile…" };
-        profile.Click += MenuSettings_Click;
+        profile.Click += MenuProfile_Click;
         MenuFriends.Items.Add(profile);
         foreach (var card in _addBack.ToList())
         {
