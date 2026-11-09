@@ -1837,7 +1837,7 @@ public partial class MainWindow : Window
         HideTask();
 
         // 1.7: a text beamed by a friend
-        ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Text from Lena Hoffmann", "Copy it to your clipboard?", null,
+        ShowTask(FaceText("Lena Hoffmann"), FaceBrush("Lena Hoffmann"), "Text from Lena Hoffmann", "Copy it to your clipboard?", null,
                  ("Copy", () => { }), ("Decline", () => { }), textIcon: true);
         await Snap(dir, "beam-text", 70);
         EndTask("\uE77F", GreenBrush, "Text from Lena Hoffmann copied", "Paste it with Ctrl+V");
@@ -1959,7 +1959,9 @@ public partial class MainWindow : Window
         SetExpanded(false);
         CancelSleep();
 
-        _demoFriends = new List<WinNotch.Sharing.Friend> { new() { Name = "Lena Hoffmann", Key = "demo-lena" }, new() { Name = "Jonas", Key = "demo-jonas" } };
+        // 1.8: Lena sent a picture and a status, Jonas chose a color
+        var lena = new WinNotch.Sharing.Friend { Name = "Lena Hoffmann", Key = "demo-lena", Picture = DemoFace(), Status = "Back at 3" };
+        _demoFriends = new List<WinNotch.Sharing.Friend> { lena, new() { Name = "Jonas", Key = "demo-jonas", Color = "#5E5CE6" } };
         _demoPeers = new List<NearbyPeer>
         {
             new(Guid.NewGuid(), "Tim", new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 2), DateTime.UtcNow),
@@ -1974,11 +1976,12 @@ public partial class MainWindow : Window
         await Snap(dir, "airdrop-share", 140);
         _sharing = false;
         _demoPeers = null;
-        _demoFriends = null;
+        _demoFriends = new List<WinNotch.Sharing.Friend> { lena };
 
-        ShowTask(Initials("Lena Hoffmann"), AvatarColor("Lena Hoffmann"), "Lena Hoffmann wants to send you", "Holiday photos.zip · 48.2 MB", null,
+        ShowTask(FaceText("Lena Hoffmann"), FaceBrush("Lena Hoffmann"), "Lena Hoffmann wants to send you", "Holiday photos.zip · 48.2 MB", null,
                  ("Accept", () => { }), ("Decline", () => { }), textIcon: true);
         await Snap(dir, "airdrop-ask", 70);
+        _demoFriends = null;
 
         _busy = true;
         ShowProgress("Sending to Lena Hoffmann", "Holiday photos.zip · 48.2 MB", 0.42, sending: true);
@@ -2097,7 +2100,7 @@ public partial class MainWindow : Window
         HideTask();
 
         // 1.7.1: the settings window, off screen (snapshot settings, never saved)
-        var settings = MakeSettingsWindow();
+        var settings = MakeSettingsWindow(new ProfileDraft("Alex Muster", "Working on Holm", null, DemoFace(Colors.MediumSeaGreen, Colors.SteelBlue)));
         settings.WindowStartupLocation = WindowStartupLocation.Manual;
         settings.Left = -5000;
         settings.ShowActivated = false;
@@ -2118,6 +2121,22 @@ public partial class MainWindow : Window
             png.Save(file);
         }
         settings.Close();
+    }
+
+    /// <summary>A made-up face for snapshots: a head and shoulders on a gradient, as a profile picture.</summary>
+    static string DemoFace(Color? top = null, Color? bottom = null)
+    {
+        var target = new RenderTargetBitmap(256, 256, 96, 96, PixelFormats.Pbgra32);
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(top ?? Color.FromRgb(0xFF, 0xB3, 0x47), bottom ?? Color.FromRgb(0xFF, 0x5F, 0x6D), 90), null, new Rect(0, 0, 256, 256));
+            var skin = new SolidColorBrush(Color.FromRgb(0xF2, 0xD0, 0xB0));
+            dc.DrawEllipse(skin, null, new Point(128, 108), 52, 58);
+            dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(0x2B, 0x2B, 0x40)), null, new Point(128, 270), 110, 90);
+        }
+        target.Render(visual);
+        return Convert.ToBase64String(ProfilePicture.Encode(target)!);
     }
 
     static MediaInfo DemoMedia()

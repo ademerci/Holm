@@ -132,6 +132,13 @@ internal sealed class AppSettings
         set => _legacyScale = value ?? 1;
     }
 
+    // Your profile, as friends see it (see FriendProfile): null name for the Windows account's, null color for the
+    // one the name gives, and the picture as the small JPEG that goes to friends (base64).
+    public string? ProfileName { get; set; }
+    public string? ProfileStatus { get; set; }
+    public string? ProfileColor { get; set; }
+    public string? ProfilePicture { get; set; }
+
     // Friends (see Sharing/Friends.cs)
     public List<Friend> Friends { get; set; } = new();
     public string? FriendsTopic { get; set; }

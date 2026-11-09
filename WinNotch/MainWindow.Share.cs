@@ -51,7 +51,7 @@ public partial class MainWindow
 
     static readonly Brush ShareBlue = Frozen(Color.FromRgb(0x0A, 0x84, 0xFF));
     static readonly Brush ChipBrush = Frozen(Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
-    static readonly Color[] AvatarColors =
+    internal static readonly Color[] AvatarColors =
     {
         Color.FromRgb(0xFF, 0x7A, 0x59), Color.FromRgb(0x34, 0xC7, 0x59), Color.FromRgb(0x5E, 0x5C, 0xE6),
         Color.FromRgb(0xFF, 0x2D, 0x55), Color.FromRgb(0x32, 0xAD, 0xE6), Color.FromRgb(0xFF, 0x9F, 0x0A),
@@ -100,6 +100,7 @@ public partial class MainWindow
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.Waved += OnWaved;
+        _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
 
@@ -108,7 +109,7 @@ public partial class MainWindow
         if (!_settings.Beam || _installingUpdate) return;
         _friends.Restart();
         if (_nearby != null) return;
-        var nearby = new NearbyService(Native.DisplayName()) { Incoming = OnNearbyIncoming };
+        var nearby = new NearbyService(_friends.MyName) { Incoming = OnNearbyIncoming };
         nearby.PeersChanged += () => Dispatcher.InvokeAsync(() => { if (_sharing) { RefreshShareTargets(); ApplyState(); } });
         try
         {
@@ -294,7 +295,7 @@ public partial class MainWindow
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
         // Online dots change in place, for the same reason.
-        string shown = beam + "|" + string.Join("|", friends.Take(8).Select(f => f.Key).Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
+        string shown = beam + "|" + string.Join("|", friends.Take(8).Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}").Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && ShareTargets.Children.Count > 0)
         {
             ShowOnlineDots();
@@ -306,9 +307,13 @@ public partial class MainWindow
         ShareTargets.Children.Clear();
         _onlineDots.Clear();
         foreach (var friend in friends.Take(8))
-            ShareTargets.Children.Add(Chip(Avatar(Initials(friend.Name), AvatarColor(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true));
+        {
+            var chip = Chip(Avatar(FaceText(friend.Name), FaceBrush(friend.Name)), friend.Name, new ShareTarget(null, friend), isFriend: true);
+            if (friend.Status != null) chip.ToolTip = friend.Status;
+            ShareTargets.Children.Add(chip);
+        }
         foreach (var peer in peers.Take(6))
-            ShareTargets.Children.Add(Chip(Avatar(Initials(peer.Name), AvatarColor(peer.Name)), peer.Name, new ShareTarget(peer)));
+            ShareTargets.Children.Add(Chip(Avatar(FaceText(peer.Name), FaceBrush(peer.Name)), peer.Name, new ShareTarget(peer)));
         if (beam) ShareTargets.Children.Add(Chip(Avatar("\uE8EA", PhoneIndigo, icon: true), "Phone", new ShareTarget(null, Place: ShareTarget.PhonePlace)));
         ShareTargets.Children.Add(Chip(Avatar("", ShelfGray, icon: true), "Shelf", new ShareTarget(null, Place: ShareTarget.ShelfPlace)));
         if (beam) ShareTargets.Children.Add(Chip(Avatar("", ShareBlue, icon: true), "Code", new ShareTarget(null)));
@@ -381,7 +386,7 @@ public partial class MainWindow
     };
 
     /// <summary>"LH" for Lena Hoffmann; whole letters, so an emoji or accented letter isn't cut in half.</summary>
-    static string Initials(string name)
+    internal static string Initials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         static string First(string word) => new System.Globalization.StringInfo(word).SubstringByTextElements(0, 1);
@@ -394,7 +399,7 @@ public partial class MainWindow
         return initials.ToUpperInvariant();
     }
 
-    static Brush AvatarColor(string name)
+    internal static Brush AvatarColor(string name)
     {
         int hash = 0;
         foreach (char c in name) hash = hash * 31 + c;
@@ -425,7 +430,7 @@ public partial class MainWindow
             await using (channel)
             {
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
-                bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
+                bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                     new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token, text);
                 if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
@@ -448,7 +453,7 @@ public partial class MainWindow
             await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), TimeSpan.FromMinutes(15), cts.Token);
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
-            bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
+            bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) EndTask("", GreenBrush, "Sent", Summary(paths));
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
@@ -467,17 +472,17 @@ public partial class MainWindow
     async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null)
     {
         var cts = BeginTask();
-        ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
+        ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
         try
         {
             byte[] secret = ShareCode.NewSecret();
             await _friends.InviteAsync(friend, secret, cts.Token);
-            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"Checking if {friend.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask), textIcon: true);
+            ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Checking if {friend.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask), textIcon: true);
             var (host, port) = RelayEndpoint();
             await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.Patience, cts.Token);
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
-            ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
-            bool accepted = await FileTransfer.SendAsync(channel, Native.DisplayName(), paths,
+            ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
+            bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
             else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
@@ -524,7 +529,7 @@ public partial class MainWindow
     async Task ReceiveFromFriendAsync(Friend friend, byte[] secret)
     {
         var cts = BeginTask();
-        ShowTask(Initials(friend.Name), AvatarColor(friend.Name), $"{friend.Name} is sending you something", "Connecting…", null, null, ("Cancel", CancelTask), textIcon: true);
+        ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name} is sending you something", "Connecting…", null, null, ("Cancel", CancelTask), textIcon: true);
         try
         {
             var (host, port) = RelayEndpoint();
@@ -564,7 +569,7 @@ public partial class MainWindow
             ShowPeek("\uE8FA", $"{card.Name} added you", "", null, false, null);
             return;
         }
-        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"{card.Name} added you as a friend", "Add them back to send each other files",
+        ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"{card.Name} added you as a friend", "Add them back to send each other files",
                  null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", () => { _addBack.Add(card); HideTask(); }), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(30);
         _taskHide.Start();
@@ -587,7 +592,7 @@ public partial class MainWindow
     void ShowFriendRequest(Friend card, string requestId)
     {
         _shownFriendRequestId = requestId;
-        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"{card.Name} wants to be your friend", "Accept to add each other to your lists",
+        ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"{card.Name} wants to be your friend", "Accept to add each other to your lists",
             null, ("Accept", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: true)),
             ("Decline", () => _ = AnswerFriendRequestAsync(card, requestId, accepted: false)), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(30);
@@ -637,7 +642,7 @@ public partial class MainWindow
         }
 
         var cts = BeginTask();
-        ShowTask(Initials(card.Name), AvatarColor(card.Name), $"Asking {card.Name}…", "Waiting for them to accept or decline",
+        ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"Asking {card.Name}…", "Waiting for them to accept or decline",
             null, null, ("Cancel", CancelTask), textIcon: true);
         try
         {
@@ -707,7 +712,7 @@ public partial class MainWindow
             {
                 if (_friends.IsMe(card) || _friends.Find(card.Key) != null || card.Key == _lastOfferedFriend) return;
                 _lastOfferedFriend = card.Key;
-                ShowTask(Initials(card.Name), AvatarColor(card.Name), $"Add {card.Name} as a friend?", "Then you can beam each other files, anywhere",
+                ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"Add {card.Name} as a friend?", "Then you can beam each other files, anywhere",
                          null, ("Add", () => { HideTask(); _ = AddFriendAsync(card, tellThem: true); }), ("Not now", HideTask), textIcon: true);
                 _taskHide.Interval = TimeSpan.FromSeconds(20);
                 _taskHide.Start();
@@ -785,7 +790,7 @@ public partial class MainWindow
     {
         var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         bool text = offer.IsText && _settings.BeamText;
-        ShowTask(Initials(offer.Sender), AvatarColor(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
+        ShowTask(FaceText(offer.Sender), FaceBrush(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
                  text ? "Copy it to your clipboard?" : Summary(offer), null,
                  (text ? "Copy" : "Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
         PlayIncomingFileSound();
@@ -960,6 +965,9 @@ public partial class MainWindow
         var add = new MenuItem { Header = "Add friend from clipboard" };
         add.Click += (_, _) => AddFriendFromClipboard();
         MenuFriends.Items.Add(add);
+        var profile = new MenuItem { Header = "Edit my profile…" };
+        profile.Click += MenuSettings_Click;
+        MenuFriends.Items.Add(profile);
         foreach (var card in _addBack.ToList())
         {
             var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
@@ -978,6 +986,8 @@ public partial class MainWindow
             MenuFriends.Items.Add(answer);
         }
         if (_friends.Friends.Count == 0) return;
+        MenuFriends.Items.Add(new Separator());
+        AddFriendProfiles();
         MenuFriends.Items.Add(new Separator());
         FillWaveMenu();
         var remove = new MenuItem { Header = "Remove friend" };
