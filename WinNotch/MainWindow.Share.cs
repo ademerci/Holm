@@ -101,6 +101,7 @@ public partial class MainWindow
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.Waved += OnWaved;
         InitChat();
+        InitActivity();
         _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }

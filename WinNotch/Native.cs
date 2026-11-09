@@ -81,6 +81,21 @@ internal static class Native
     static string _lastExe = "";
 
     /// <summary>File name (without .exe) of the program that owns a window; remembers the last answer.</summary>
+    /// <summary>The full path of the program that owns the window, or null.</summary>
+    public static string? ProcessPathOf(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || GetWindowThreadProcessId(hwnd, out uint pid) == 0 || pid == 0) return null;
+        IntPtr process = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, pid);
+        if (process == IntPtr.Zero) return null;
+        try
+        {
+            var buffer = new char[1024];
+            int size = buffer.Length;
+            return QueryFullProcessImageName(process, 0, buffer, ref size) ? new string(buffer, 0, size) : null;
+        }
+        finally { CloseHandle(process); }
+    }
+
     public static string ProcessNameOf(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero || GetWindowThreadProcessId(hwnd, out uint pid) == 0 || pid == 0) return "";
