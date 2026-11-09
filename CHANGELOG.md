@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **The Holm window.** Settings… and Friends and chat… open one window with a sidebar instead of two long columns of switches: your profile card, Active now, Chat and Achievements on top, then the settings one page at a time. Each switch has an icon and a line of help; the Apply flow is unchanged.
+- **Chat.** Messages with friends, each a sealed friend note (new kind `chat`, ignored by Holm before 1.9), with an id so a repeated note shows once. The text travels as base64 of its UTF-8 so 1500 bytes, emoji included, fit ntfy's 4 KB limit; longer texts are split between words. History stays on this PC in chats.json (300 messages per friend). A message pops out of the notch with Reply (switchable); the sidebar counts unread ones.
+- **Active now.** Your activity (a stream, a call, a fullscreen game, the song that plays, a running timer) and how many achievements you have ride in the ping and here notes friends exchange anyway; older Holm ignores the new fields. A card per friend with what they do and for how long, then online and offline friends. Share my activity turns it off.
+- **Streaming.** Invite a friend to watch your screen: a sealed `stream` note with a fresh secret, Watch / Not now in their notch, then JPEG frames over the transit relay and a SecureChannel, up to 8 a second, the newest to each viewer when they're ready. The notch, the LIVE badge and the Holm window are excluded from capture. Viewers get a window with full screen; the stream ends on Stop, 20 seconds of silence or closing the window.
+- **Achievements.** 21 achievements with counters where things happen, a trophy pop-out on unlock (switchable), and a page with progress. Kept in achievements.json, in memory only under the test runner and in snapshots.
+
+### Changed
+- The right-click menu has *Friends and chat…*; Friends has *Chat…* and *Stream my screen to*.
+
 ## 1.8.0 – 2026-11-09
 
 ### Added
