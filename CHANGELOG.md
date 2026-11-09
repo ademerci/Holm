@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.0 – 2026-11-09
 
 ### Added
 - **The Holm window.** Settings… and Friends and chat… open one window with a sidebar instead of two long columns of switches: your profile card, Active now, Chat and Achievements on top, then the settings one page at a time. Each switch has an icon and a line of help; the Apply flow is unchanged.
