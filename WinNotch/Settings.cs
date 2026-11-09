@@ -95,6 +95,8 @@ internal sealed class AppSettings
     public bool Beam { get; set; } = true;
     /// <summary>Relay for sending over the internet, "host:port".</summary>
     public string? Relay { get; set; }
+    /// <summary>A friend's chat message pops out of the notch with Reply (it's in the Holm window's Chat either way).</summary>
+    public bool ChatPopups { get; set; } = true;
     /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
     public bool Waves { get; set; } = true;
     /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>

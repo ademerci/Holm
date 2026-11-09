@@ -53,6 +53,8 @@ internal sealed class FriendsService
     public event Action<Friend>? Waved;
     /// <summary>A friend sent a new name, status, color or picture, already saved (UI thread).</summary>
     public event Action<Friend>? ProfileReceived;
+    /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
+    public event Action<Friend, string, string, long>? ChatReceived;
 
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
     /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
@@ -350,6 +352,15 @@ internal sealed class FriendsService
         return true;
     }
 
+    /// <summary>Sends one chat message (<see cref="ChatText.MaxBytes"/> at most).</summary>
+    /// <exception cref="IOException">The note couldn't be delivered to their inbox.</exception>
+    public Task SendChatAsync(Friend to, string id, string text, long sent, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Chat, me.Name, sent, Text: text, MessageId: id);
+        return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
+    }
+
     /// <summary>Asks one friend whether their Holm runs (if not asked a minute ago); <see cref="FriendOnline"/> follows if so.</summary>
     public void AskIfHere(Friend friend)
     {
@@ -504,6 +515,13 @@ internal sealed class FriendsService
             case FriendNoteKind.Wave:
                 SawOnline(friend);
                 if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
+                break;
+            case FriendNoteKind.Chat when friend == null:
+                Diag.Log("Friends: a chat message from someone who isn't a friend");
+                break;
+            case FriendNoteKind.Chat:
+                if (age <= FreshSeconds) SawOnline(friend);
+                ChatReceived?.Invoke(friend, note.MessageId!, note.Text!, note.Sent);
                 break;
             case FriendNoteKind.Profile when friend == null || note.Profile == null:
                 break; // only friends show up with a picture

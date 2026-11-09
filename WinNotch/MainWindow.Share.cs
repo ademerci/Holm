@@ -100,6 +100,7 @@ public partial class MainWindow
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.Waved += OnWaved;
+        InitChat();
         _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
@@ -965,6 +966,9 @@ public partial class MainWindow
         var add = new MenuItem { Header = "Add friend from clipboard" };
         add.Click += (_, _) => AddFriendFromClipboard();
         MenuFriends.Items.Add(add);
+        var chat = new MenuItem { Header = "Chat…" };
+        chat.Click += MenuFriendsHub_Click;
+        MenuFriends.Items.Add(chat);
         var profile = new MenuItem { Header = "Edit my profile…" };
         profile.Click += MenuProfile_Click;
         MenuFriends.Items.Add(profile);
@@ -997,6 +1001,7 @@ public partial class MainWindow
             item.Click += async (_, _) =>
             {
                 bool notified = await _friends.RemoveAsync(friend);
+                _chats.Forget(friend.Key);
                 ShowPeek("\uE8FA", $"{friend.Name} removed", "", null, false, null);
                 if (!notified)
                     ShowPeek("\uE783", $"Couldn't notify {friend.Name}", "They may still have you as a friend", null, false, RedBrush, seconds: 5);

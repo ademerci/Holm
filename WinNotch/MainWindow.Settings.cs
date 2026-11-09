@@ -57,6 +57,10 @@ public partial class MainWindow
             new(MenuSendFolders, "", "Folders are packed as a ZIP before they're sent."),
             new(MenuSendLater, "", "Files for an offline friend wait and go once they're back."),
         }),
+        new SettingsGroup("friends", "Friends", "", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new SettingsSwitch[]
+        {
+            new(MenuChatPopups, "", "A friend's message pops out of the notch with Reply. It's in Chat either way."),
+        }),
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
         {
             new(MenuWeatherAutoLocation, ""),
@@ -94,6 +98,7 @@ public partial class MainWindow
         MenuConnectivity.IsChecked = _settings.Connectivity;
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
+        MenuChatPopups.IsChecked = _settings.ChatPopups;
     }
 
     // After the menu has closed: a window opened from inside the click would lose the focus to the closing menu.
