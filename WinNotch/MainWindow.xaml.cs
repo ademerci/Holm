@@ -1988,7 +1988,8 @@ public partial class MainWindow : Window
         await Snap(dir, "airdrop-code", 70);
 
         _busy = false;
-        EndTask("\uE73E", GreenBrush, "Saved Holiday photos.zip", "From Lena Hoffmann · in Downloads", ("Show", () => { }));
+        EndTask("\uE73E", GreenBrush, "Saved Holiday photos.zip", "From Lena Hoffmann · in Downloads",
+                ("Open", () => { }), ("Show", () => { }));
         await Snap(dir, "airdrop-saved", 70);
         HideTask();
 
