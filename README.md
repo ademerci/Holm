@@ -109,6 +109,10 @@ Both notches have to be running for a friend request or file transfer. If your f
 
 **Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
 
+**Profiles.** At the top of *Settings…* (or Friends › *Edit my profile…*) you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in their Friends menu (and as a tooltip on your chip). The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
+
+  ![Friends with a picture and a color](docs/profiles.png)
+
 How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
 
 How it stays safe:
