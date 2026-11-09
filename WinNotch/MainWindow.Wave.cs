@@ -25,7 +25,7 @@ public partial class MainWindow
 
     void ShowWaveFrom(string name, Action waveBack)
     {
-        ShowTask(Initials(name), AvatarColor(name), $"{name} waves at you", "Just saying hi", null,
+        ShowTask(FaceText(name), FaceBrush(name), $"{name} waves at you", "Just saying hi", null,
                  ("Wave back", () => { HideTask(); waveBack(); }), ("OK", HideTask), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(12);
         _taskHide.Start();

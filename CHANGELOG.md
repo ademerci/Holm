@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 – 2026-11-09
+
+### Added
+- **Profiles.** Choose a picture, a name, a status line and a color for your initials, at the top of *Settings…* or with Friends › *Edit my profile…*. Your friends see your picture wherever they used to see your initials (sharing, file offers, waves), and your status in their Friends menu. The profile goes to each friend in one sealed note when it changes or when you become friends; friends you already have get it once on the first start. The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the note fits the inbox server's 4 KB limit. Holm before 1.8 leaves the note unopened and keeps showing initials.
+- **Friends in the Friends menu.** Each friend with their picture, status and whether their Holm is online.
+
+### Changed
+- The name you type in your profile is also the one people nearby and friends see when you send files; empty means your Windows name, as before.
+- The settings window scrolls when it would be taller than the screen.
+
 ## 1.7.9 – 2026-11-09
 
 ### Added

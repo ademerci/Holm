@@ -51,8 +51,12 @@ internal sealed class FriendsService
     public event Action<Friend>? FriendOnline;
     /// <summary>A friend waved (UI thread); already limited to one per friend every 30 seconds.</summary>
     public event Action<Friend>? Waved;
+    /// <summary>A friend sent a new name, status, color or picture, already saved (UI thread).</summary>
+    public event Action<Friend>? ProfileReceived;
 
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
+    /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
+    readonly Dictionary<string, string> _profilesOut = new(StringComparer.Ordinal);
 
     public FriendsService(AppSettings settings, Dispatcher ui)
     {
@@ -104,7 +108,7 @@ internal sealed class FriendsService
             var key = ECDiffieHellman.Create();
             key.ImportPkcs8PrivateKey(pkcs8, out _);
             CryptographicOperations.ZeroMemory(pkcs8);
-            return new FriendIdentity(Native.DisplayName(), _settings.FriendsTopic, _settings.FriendsServer, key);
+            return new FriendIdentity(MyName, _settings.FriendsTopic, _settings.FriendsServer, key);
         }
         catch (Exception ex)
         {
@@ -118,7 +122,7 @@ internal sealed class FriendsService
     public FriendIdentity EnsureMe()
     {
         if (Me is { } me) return me;
-        me = FriendIdentity.Create(Native.DisplayName(), _settings.FriendsServer);
+        me = FriendIdentity.Create(MyName, _settings.FriendsServer);
         byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
         _settings.FriendsKey = Convert.ToBase64String(ProtectedData.Protect(pkcs8, KeyEntropy, DataProtectionScope.CurrentUser));
         CryptographicOperations.ZeroMemory(pkcs8);
@@ -130,6 +134,65 @@ internal sealed class FriendsService
         _me = me;
         Restart();
         return me;
+    }
+
+    /// <summary>The name in our profile, or the Windows account's.</summary>
+    public string MyName => FriendProfile.CleanText(_settings.ProfileName, FriendProfile.MaxName) ?? Native.DisplayName();
+
+    /// <summary>Our profile as friends get it.</summary>
+    public FriendProfile MyProfile()
+    {
+        byte[]? picture = null;
+        if (_settings.ProfilePicture != null)
+        {
+            try { picture = Convert.FromBase64String(_settings.ProfilePicture); } catch (FormatException) { }
+        }
+        return new FriendProfile(MyName, FriendProfile.CleanText(_settings.ProfileStatus, FriendProfile.MaxStatus),
+                                 FriendProfile.CleanColor(_settings.ProfileColor), FriendProfile.IsPicture(picture) ? picture : null);
+    }
+
+    /// <summary>The profile was edited: our notes carry the new name, and friends get the new profile.</summary>
+    public void ProfileChanged()
+    {
+        if (_me is { } me && me.Name != MyName)
+        {
+            _me = me.WithName(MyName); // the same key and inbox
+            if (_follow != null) Restart(); // the inbox answers with our name too
+        }
+        SyncProfiles();
+    }
+
+    /// <summary>
+    /// Sends our profile to each friend who doesn't have this version yet: after an edit, to a new friend, and to friends
+    /// made before profiles existed. Nothing goes out before we have a friend code. A friend on a Holm before 1.8 leaves
+    /// the note unopened.
+    /// </summary>
+    public void SyncProfiles()
+    {
+        if (!_settings.Beam || Me is not { } me) return;
+        var profile = MyProfile();
+        string version = profile.Version;
+        foreach (var friend in _settings.Friends.ToList())
+        {
+            if (friend.ProfileSent == version) continue;
+            if (_profilesOut.TryGetValue(friend.Key, out var sending) && sending == version) continue;
+            _profilesOut[friend.Key] = version;
+            string text = FriendNotes.Seal(me, friend, new FriendNote(FriendNoteKind.Profile, profile.Name,
+                                                                      DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Profile: profile));
+            _ = Task.Run(async () =>
+            {
+                bool sent = false;
+                try { await FriendInbox.PostAsync(friend, text, CancellationToken.None); sent = true; }
+                catch (IOException ex) { Diag.Log($"Friends: couldn't send the profile to {friend.Name}: {ex.Message}"); }
+                await _ui.InvokeAsync(() =>
+                {
+                    if (_profilesOut.TryGetValue(friend.Key, out var v) && v == version) _profilesOut.Remove(friend.Key);
+                    if (!sent || Find(friend.Key) is not { } current) return;
+                    current.ProfileSent = version;
+                    _settings.Save();
+                });
+            });
+        }
     }
 
     public Friend? Find(string publicKey) => _settings.Friends.FirstOrDefault(f => f.Key == publicKey);
@@ -146,6 +209,7 @@ internal sealed class FriendsService
         var me = EnsureMe();
         _settings.Friends.Add(friend);
         _settings.Save();
+        SyncProfiles();
         if (!tellThem) return true;
         try
         {
@@ -225,6 +289,7 @@ internal sealed class FriendsService
             card.AddedByRequestId = requestId;
             _settings.Friends.Add(card);
             _settings.Save();
+            SyncProfiles();
         }
     }
 
@@ -233,6 +298,7 @@ internal sealed class FriendsService
         int at = _settings.Friends.IndexOf(existing);
         if (at < 0) return;
         card.AddedByRequestId ??= existing.AddedByRequestId;
+        card.KeepProfileOf(existing);
         _settings.Friends[at] = card;
         _settings.Save();
     }
@@ -316,6 +382,7 @@ internal sealed class FriendsService
             (id, age, text) => _ui.InvokeAsync(() => { if (_follow == cts) Handle(me, id, age, text); }).Task,
             time => _ui.InvokeAsync(() => { if (_follow == cts) { _settings.FriendsSince = time; _settings.Save(); } }),
             Diag.Log, cts.Token));
+        SyncProfiles();
     }
 
     public void Stop()
@@ -383,6 +450,7 @@ internal sealed class FriendsService
                 {
                     // Already friends: keep their name and inbox current.
                     int at = _settings.Friends.IndexOf(friend);
+                    card.KeepProfileOf(friend);
                     _settings.Friends[at] = card;
                     _settings.Save();
                 }
@@ -436,6 +504,14 @@ internal sealed class FriendsService
             case FriendNoteKind.Wave:
                 SawOnline(friend);
                 if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
+                break;
+            case FriendNoteKind.Profile when friend == null || note.Profile == null:
+                break; // only friends show up with a picture
+            case FriendNoteKind.Profile:
+                friend.TakeProfile(note.Profile);
+                _settings.Save();
+                ProfileReceived?.Invoke(friend);
+                SyncProfiles(); // they may not have ours yet, e.g. added before profiles existed
                 break;
         }
     }

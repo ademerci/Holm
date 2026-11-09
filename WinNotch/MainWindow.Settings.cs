@@ -72,9 +72,13 @@ public partial class MainWindow
         _settingsWindow.Activate();
     }
 
-    SettingsWindow MakeSettingsWindow()
+    /// <param name="demo">For snapshots: a made-up profile in place of yours, and Apply saves nothing.</param>
+    SettingsWindow MakeSettingsWindow(ProfileDraft? demo = null)
     {
         var version = RunningVersion;
-        return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches);
+        var profile = demo != null
+            ? new ProfileEditor("Alex", () => demo, _ => { }, SettingsWindow.ActionButtonStyle)
+            : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, SettingsWindow.ActionButtonStyle);
+        return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile);
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -31,15 +32,18 @@ internal sealed class SettingsWindow : Window
     readonly DockPanel _body;
     readonly Border _dialog, _surface;
     IInputElement? _previousFocus;
-    bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn);
+    bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn) || _profile?.HasChanges == true;
     readonly Action _sync;
+    readonly ProfileEditor? _profile;
     readonly List<(MenuItem Item, ToggleSwitch Switch)> _rows = new();
 
     /// <param name="sync">Checks the menu entries as the settings stand, before the switches are shown.</param>
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync)
+    /// <param name="profile">Your profile, shown above the switches and saved with them.</param>
+    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync, ProfileEditor? profile = null)
     {
         _animate = animate;
         _sync = sync;
+        _profile = profile;
         sync();
         Title = "Holm settings";
         WindowStyle = WindowStyle.None;
@@ -76,6 +80,15 @@ internal sealed class SettingsWindow : Window
         var header = Header(version);
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
+        if (profile != null)
+        {
+            var section = new StackPanel();
+            section.Children.Add(Caption("Profile"));
+            section.Children.Add(profile);
+            DockPanel.SetDock(section, Dock.Top);
+            body.Children.Add(section);
+            profile.Changed += RefreshApplyState;
+        }
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
         var actionStyle = ActionButtonStyle();
         var reset = new Button { Style = actionStyle, Content = "Reset to defaults", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 10, 0) };
@@ -87,7 +100,13 @@ internal sealed class SettingsWindow : Window
         footer.Children.Add(apply);
         DockPanel.SetDock(footer, Dock.Bottom);
         body.Children.Add(footer);
-        body.Children.Add(columns);
+        // The switches scroll when the window would be taller than the screen (the profile takes room too).
+        body.Children.Add(new ScrollViewer
+        {
+            Content = columns, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Resources = { { typeof(ScrollBar), ThinScrollBar() } }, Padding = new Thickness(0, 0, 4, 0),
+        });
+        MaxHeight = SystemParameters.WorkArea.Height - 24;
 
         var layers = new Grid();
         _surface = new Border
@@ -138,6 +157,7 @@ internal sealed class SettingsWindow : Window
     public void Refresh()
     {
         _sync();
+        _profile?.Reload();
         foreach (var (item, toggle) in _rows)
         {
             toggle.Set(item.IsChecked, animate: false);
@@ -190,7 +210,32 @@ internal sealed class SettingsWindow : Window
         if (_previousFocus != null) Keyboard.Focus(_previousFocus);
     }
 
-    static Style ActionButtonStyle() => (Style)System.Windows.Markup.XamlReader.Parse(@"
+    /// <summary>A thin, dark scroll bar: the standard one is a light gray block in this dark window.</summary>
+    static Style ThinScrollBar() => (Style)System.Windows.Markup.XamlReader.Parse(@"
+        <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+               xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ScrollBar'>
+            <Setter Property='Width' Value='6'/>
+            <Setter Property='MinWidth' Value='6'/>
+            <Setter Property='Template'>
+                <Setter.Value>
+                    <ControlTemplate TargetType='ScrollBar'>
+                        <Track x:Name='PART_Track' IsDirectionReversed='True'>
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType='Thumb'>
+                                            <Border Background='#55FFFFFF' CornerRadius='3'/>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>");
+
+    internal static Style ActionButtonStyle() => (Style)System.Windows.Markup.XamlReader.Parse(@"
         <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
                xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'>
             <Setter Property='Foreground' Value='White'/>
@@ -262,11 +307,7 @@ internal sealed class SettingsWindow : Window
     FrameworkElement Group(SettingsGroup group)
     {
         var panel = new StackPanel { Margin = new Thickness(0, 6, 0, 10) };
-        panel.Children.Add(new TextBlock
-        {
-            Text = group.Title.ToUpperInvariant(), Foreground = Dim, FontSize = 11, FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(4, 0, 0, 6),
-        });
+        panel.Children.Add(Caption(group.Title));
         var rows = new StackPanel();
         for (int i = 0; i < group.Switches.Count; i++)
         {
@@ -276,6 +317,12 @@ internal sealed class SettingsWindow : Window
         panel.Children.Add(new Border { Background = Card, CornerRadius = new CornerRadius(10), Child = rows, ClipToBounds = true });
         return panel;
     }
+
+    static TextBlock Caption(string title) => new()
+    {
+        Text = title.ToUpperInvariant(), Foreground = Dim, FontSize = 11, FontWeight = FontWeights.SemiBold,
+        Margin = new Thickness(4, 0, 0, 6),
+    };
 
     FrameworkElement Row(MenuItem item, bool first, bool last)
     {
@@ -322,6 +369,8 @@ internal sealed class SettingsWindow : Window
 
     void ApplyChanges()
     {
+        try { _profile?.Apply(); }
+        catch (Exception ex) { Diag.Error(ex); }
         foreach (var (item, toggle) in _rows)
         {
             if (item.IsChecked == toggle.IsOn) continue;

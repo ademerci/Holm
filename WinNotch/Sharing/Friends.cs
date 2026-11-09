@@ -36,6 +36,74 @@ public sealed class Friend
     public string? Server { get; set; }
     /// <summary>Local request id for a newly accepted friend; lets a later cancellation undo that addition.</summary>
     public string? AddedByRequestId { get; set; }
+    /// <summary>Their profile picture as they sent it (a small JPEG or PNG, base64); null shows their initials.</summary>
+    public string? Picture { get; set; }
+    /// <summary>Their status line ("🎧 in focus"), as they sent it.</summary>
+    public string? Status { get; set; }
+    /// <summary>The color they chose for their initials, "#RRGGBB"; null for the one their name gives.</summary>
+    public string? Color { get; set; }
+    /// <summary><see cref="FriendProfile.Version"/> of our profile they last received; a different one goes out again.</summary>
+    public string? ProfileSent { get; set; }
+
+    /// <summary>Keeps what a friend told us about themselves when their card is replaced by a newer one.</summary>
+    public void KeepProfileOf(Friend older)
+    {
+        Picture ??= older.Picture;
+        Status ??= older.Status;
+        Color ??= older.Color;
+        ProfileSent ??= older.ProfileSent;
+    }
+
+    public void TakeProfile(FriendProfile profile)
+    {
+        if (profile.Name.Length > 0) Name = profile.Name;
+        Status = profile.Status;
+        Color = profile.Color;
+        Picture = profile.Picture == null ? null : Convert.ToBase64String(profile.Picture);
+    }
+}
+
+/// <summary>
+/// How we show ourselves to friends: a name, a status line, a color and a small picture. It travels in one sealed
+/// note, so the picture is kept small enough for the note to fit the inbox server's 4 KB message.
+/// </summary>
+public sealed record FriendProfile(string Name, string? Status, string? Color, byte[]? Picture)
+{
+    public const int MaxName = 40, MaxStatus = 60;
+    /// <summary>The largest picture a note carries; <see cref="ProfilePicture"/> encodes below it.</summary>
+    public const int MaxPictureBytes = 1500;
+    static readonly Regex ColorPattern = new("^#[0-9A-Fa-f]{6}$");
+
+    /// <summary>Changes whenever anything in the profile does: friends who have an older one get it again.</summary>
+    public string Version
+    {
+        get
+        {
+            using var sha = SHA256.Create();
+            byte[] text = Encoding.UTF8.GetBytes($"{Name}\n{Status}\n{Color}\n");
+            sha.TransformBlock(text, 0, text.Length, null, 0);
+            sha.TransformFinalBlock(Picture ?? Array.Empty<byte>(), 0, Picture?.Length ?? 0);
+            return FriendIdentity.Base64Url(sha.Hash!)[..22];
+        }
+    }
+
+    /// <summary>One line of plain text: no control characters, cut to <paramref name="max"/> whole characters.</summary>
+    public static string? CleanText(string? text, int max)
+    {
+        if (text == null) return null;
+        string clean = new string(text.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        var elements = new System.Globalization.StringInfo(clean);
+        if (elements.LengthInTextElements > max) clean = elements.SubstringByTextElements(0, max).Trim();
+        return clean.Length == 0 ? null : clean;
+    }
+
+    public static string? CleanColor(string? color) => color != null && ColorPattern.IsMatch(color) ? color.ToUpperInvariant() : null;
+
+    /// <summary>A JPEG or PNG no larger than <see cref="MaxPictureBytes"/>; anything else isn't taken.</summary>
+    public static bool IsPicture(byte[]? bytes)
+        => bytes is { Length: > 8 and <= MaxPictureBytes }
+           && (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF
+               || bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47);
 }
 
 /// <summary>Who we are to our friends: a name, an inbox and a key pair.</summary>
@@ -142,8 +210,9 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="RequestId">For friend requests, responses and cancellations: the request to which the note belongs.</param>
 /// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
+/// <param name="Profile">For <see cref="FriendNoteKind.Profile"/>: the sender's status, color and picture (the name is <paramref name="From"/>).</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
-                                string? RequestId = null, bool? Accepted = null);
+                                string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null);
 
 public enum FriendNoteKind
 {
@@ -167,6 +236,8 @@ public enum FriendNoteKind
     Wave,
     /// <summary>"I have something for you": a Holm 1.7 answers with <see cref="Here"/> once it runs. Older ones leave it unopened.</summary>
     Waiting,
+    /// <summary>"This is me now": name, status, color and picture. Holm before 1.8 leaves it unopened.</summary>
+    Profile,
 }
 
 public static class FriendNotes
@@ -175,6 +246,11 @@ public static class FriendNotes
     public const string Prefix = "wnf1 ";
     static readonly byte[] KeyLabel = "WinNotch friends v1"u8.ToArray(); // former name, kept for friends on older versions
     const int NonceSize = 12, TagSize = 16;
+    /// <summary>
+    /// Letters and emoji as UTF-8, not as escapes: a status of emoji would otherwise triple in size. The JSON is sealed
+    /// and only ever read back by Holm, never put in a web page, so the relaxed escaping is safe.
+    /// </summary>
+    static readonly JsonSerializerOptions NoteJson = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     sealed class NoteDto
     {
@@ -185,6 +261,9 @@ public static class FriendNotes
         public string? C { get; set; }
         public string? R { get; set; }
         public bool? A { get; set; }
+        public string? U { get; set; }
+        public string? O { get; set; }
+        public string? P { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -211,6 +290,7 @@ public static class FriendNotes
                 FriendNoteKind.Here => "here",
                 FriendNoteKind.Wave => "wave",
                 FriendNoteKind.Waiting => "waiting",
+                FriendNoteKind.Profile => "profile",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -219,8 +299,25 @@ public static class FriendNotes
             C = note.Code,
             R = note.RequestId,
             A = note.Accepted,
+            U = note.Profile?.Status,
+            O = note.Profile?.Color,
+            P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
         };
         return SealDto(me, to, dto);
+    }
+
+    /// <summary>What a profile note says, checked: a picture that isn't a small JPEG or PNG is left out.</summary>
+    static FriendProfile ProfileOf(string from, NoteDto dto)
+    {
+        byte[]? picture = null;
+        if (dto.P is { Length: <= (FriendProfile.MaxPictureBytes + 2) / 3 * 4 } p)
+        {
+            try { picture = Convert.FromBase64String(p); } catch (FormatException) { }
+        }
+        return new FriendProfile(FriendProfile.CleanText(from, FriendProfile.MaxName) ?? "",
+                                 FriendProfile.CleanText(dto.U, FriendProfile.MaxStatus),
+                                 FriendProfile.CleanColor(dto.O),
+                                 FriendProfile.IsPicture(picture) ? picture : null);
     }
 
     /// <summary>Seals a note of any kind, also one this version doesn't know (to test how unknown kinds are met).</summary>
@@ -229,7 +326,7 @@ public static class FriendNotes
 
     static string SealDto(FriendIdentity me, Friend to, NoteDto dto)
     {
-        byte[] plain = JsonSerializer.SerializeToUtf8Bytes(dto);
+        byte[] plain = JsonSerializer.SerializeToUtf8Bytes(dto, NoteJson);
         var sealedNote = new byte[NonceSize + TagSize + plain.Length];
         RandomNumberGenerator.Fill(sealedNote.AsSpan(0, NonceSize));
         using (var aes = new AesGcm(SharedKey(me.Key, to.Key), TagSize))
@@ -277,6 +374,7 @@ public static class FriendNotes
                 "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
+                "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];
