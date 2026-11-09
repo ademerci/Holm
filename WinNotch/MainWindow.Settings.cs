@@ -61,6 +61,7 @@ public partial class MainWindow
         {
             new(MenuShareActivity, "", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note."),
             new(MenuChatPopups, "", "A friend's message pops out of the notch with Reply. It's in Chat either way."),
+            new(MenuAchievementPopups, "", "A trophy pops out of the notch when you unlock an achievement."),
         }),
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
         {
@@ -101,6 +102,7 @@ public partial class MainWindow
         MenuBeam.IsChecked = _settings.Beam;
         MenuChatPopups.IsChecked = _settings.ChatPopups;
         MenuShareActivity.IsChecked = _settings.ShareActivity;
+        MenuAchievementPopups.IsChecked = _settings.AchievementPopups;
     }
 
     // After the menu has closed: a window opened from inside the click would lose the focus to the closing menu.

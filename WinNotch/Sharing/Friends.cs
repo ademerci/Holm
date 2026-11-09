@@ -216,7 +216,7 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
                                 string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
-                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null);
+                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null);
 
 /// <summary>
 /// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
@@ -296,6 +296,8 @@ public static class FriendNotes
         public string? V { get; set; }
         public string? W { get; set; }
         public long? Z { get; set; }
+        /// <summary>How many achievements the sender has, in "ping" and "here".</summary>
+        public int? Q { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -342,9 +344,12 @@ public static class FriendNotes
             V = note.Activity?.Title,
             W = note.Activity?.Detail,
             Z = note.Activity?.Since,
+            Q = note.Trophies,
         };
         return SealDto(me, to, dto);
     }
+
+    static int? Trophies(int? count) => count is >= 0 and <= 10_000 ? count : null;
 
     /// <summary>What a profile note says, checked: a picture that isn't a small JPEG or PNG is left out.</summary>
     static FriendProfile ProfileOf(string from, NoteDto dto)
@@ -410,8 +415,8 @@ public static class FriendNotes
                 "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
                     => new FriendNote(FriendNoteKind.FriendRequestCancelled, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
-                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0)),
-                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0)),
+                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0), Trophies: Trophies(dto.Q)),
+                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0), Trophies: Trophies(dto.Q)),
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),

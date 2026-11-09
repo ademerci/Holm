@@ -33,7 +33,11 @@ public partial class MainWindow
 
     void WaveAt(Friend friend)
     {
-        if (_friends.Wave(friend)) ShowPeek(null, $"You waved at {friend.Name}", "", null, false, null);
+        if (_friends.Wave(friend))
+        {
+            ShowPeek(null, $"You waved at {friend.Name}", "", null, false, null);
+            Achieve(AchievementBook.Waves);
+        }
         else ShowPeek(null, $"You just waved at {friend.Name}", $"again in {Math.Ceiling(_friends.WaveWait(friend).TotalSeconds)} s", null, false, DimBrush);
     }
 
