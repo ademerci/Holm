@@ -68,9 +68,6 @@ public partial class MainWindow
         return char.ToUpper(exe[0]) + exe[1..];
     }
 
-    /// <summary>Who we stream to, while streaming (see the streaming feature); null otherwise.</summary>
-    string? StreamingTo() => null;
-
     void MenuShareActivity_Click(object sender, RoutedEventArgs e)
     {
         _settings.ShareActivity = MenuShareActivity.IsChecked;

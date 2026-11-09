@@ -103,6 +103,7 @@ public partial class MainWindow
         InitChat();
         InitActivity();
         InitAchievements();
+        InitStreaming();
         _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
@@ -995,6 +996,7 @@ public partial class MainWindow
         MenuFriends.Items.Add(new Separator());
         AddFriendProfiles();
         MenuFriends.Items.Add(new Separator());
+        FillStreamMenu();
         FillWaveMenu();
         var remove = new MenuItem { Header = "Remove friend" };
         foreach (var friend in _friends.Friends.ToList())

@@ -57,10 +57,10 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
-- **Right-click menu** – short again: timer, sleep timer, beam text, receive with a copied code, friends (waves too), **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
-- **Settings window** – *Settings…* opens every on/off switch in a window of its own, in groups: general (animations, minimize when idle, start with Windows), pop-outs (downloads, screenshots and their text, Caps Lock, low disk space, USB drives, internet connection), the open notch's tools (notes, reminders, calculator, clipboard history, volume per app, color picker), calls and privacy (calls, pausing music for calls, microphone and camera dot, VPN, clearing copied passwords) and Beam (Beam, sending folders, sending later). Esc closes it.
+- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
+- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends and weather. Every switch has an icon and a line saying what it does; changes wait for *Apply*. Esc closes it.
 
-  ![Settings window](docs/settings.png)
+  ![The Holm window](docs/settings.png)
 
 <p align="center">
   <img src="docs/notes.png" width="480" alt="The note in the open notch">
@@ -108,6 +108,22 @@ Received files land in your **Downloads** folder; when they're in, the notch off
 Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer within 15 seconds, the files wait (*Send later*, shown in the open notch with *Don't send*) and go as soon as their Holm is back: Holm asks every 15 minutes for two hours, then hourly, and every six hours leaves a sealed "something waits" note that their Holm answers when it starts. After a week it gives up. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
 
 **Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
+
+**Chat.** *Friends and chat…* (or *Reply* on a message that pops out of the notch) opens the conversations with your friends: bubbles, days and times, *Sending…* until the message is in their inbox and *Not sent · Click to try again* if it couldn't go. Each message is one sealed note like a file offer, so only the two of you can read it, and a friend whose Holm is closed gets it when it starts (the inbox keeps notes for about 12 hours). A long text goes as several messages. The history stays on your PC (the last 300 messages per friend, in `chats.json`).
+
+  ![Chat](docs/chat.png)
+
+**Active now.** What your friends are up to, like in a chat app: the song they listen to, a call, the game they play, a timer, or that they're live, and for how long, with *Message*, *Wave* and *Stream to*. Below, who's online and who isn't. It rides along in the "is your Holm running?" notes friends exchange anyway, so it costs nothing extra; Holm asks when the page opens and every three minutes while it's open. On top you see what friends see of you. *Settings › Friends › Share my activity* turns it off.
+
+  ![Active now](docs/activity.png)
+
+**Streaming.** Friends › *Stream my screen to*, *Stream my screen* in a chat, or *Stream to* on a friend's card invites them to watch your screen. Their notch pops out *Watch* / *Not now*; *Watch* opens a window with your screen (double-click for full screen). Your notch sends up to 8 pictures a second through the same relay and encryption as Beam; a slower connection gets fewer pictures instead of falling behind. While you're live a red badge sits under the notch with who's watching and *Stop*. The notch, the badge and the Holm window stay out of the picture, so the messages it pops out and your chats don't go along.
+
+  ![Watching a friend's stream](docs/stream.png)
+
+**Achievements.** 21 of them for using Holm: your first friend and a squad of five, files beamed (and a whole gigabyte), chat messages, waves, going live and an hour of streaming, watching a stream, timers, reminders, a note, screenshots, colors picked, songs played, a profile picture, the night owl and days in a row. A trophy pops out of the notch when one unlocks. Your progress stays on your PC (`achievements.json`); friends only see how many you have, on *Active now*.
+
+  ![Achievements](docs/achievements.png)
 
 **Profiles.** At the top of *Settings…* (or Friends › *Edit my profile…*) you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in their Friends menu (and as a tooltip on your chip). The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
 
