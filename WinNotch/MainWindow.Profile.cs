@@ -36,6 +36,7 @@ public partial class MainWindow
         _settings.ProfileColor = FriendProfile.CleanColor(profile.Color);
         _settings.ProfilePicture = profile.Picture;
         _settings.Save();
+        if (profile.Picture != null) _achievements.Set(AchievementBook.ProfilePicture, 1);
         _friends.ProfileChanged();
         if (_friends.MyName != oldName && _nearby != null)
         {

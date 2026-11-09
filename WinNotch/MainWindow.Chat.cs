@@ -64,6 +64,7 @@ public partial class MainWindow
             var message = new FriendMessage { Id = Guid.NewGuid().ToString("N"), Mine = true, Text = part, Sent = now, State = ChatState.Sending };
             _chats.Add(friend.Key, message, unread: false);
             _ = DeliverAsync(friend, message);
+            Achieve(AchievementBook.Messages);
         }
     }
 

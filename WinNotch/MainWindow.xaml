@@ -284,6 +284,7 @@
                             <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
                             <MenuItem x:Name="MenuChatPopups" Header="Chat pop-outs" IsCheckable="True" Click="MenuChatPopups_Click"/>
                             <MenuItem x:Name="MenuShareActivity" Header="Share my activity" IsCheckable="True" Click="MenuShareActivity_Click"/>
+                            <MenuItem x:Name="MenuAchievementPopups" Header="Achievement pop-outs" IsCheckable="True" Click="MenuAchievementPopups_Click"/>
                         </MenuItem>
                         <MenuItem x:Name="MenuUpdates">
                             <MenuItem.Header>

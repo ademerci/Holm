@@ -393,6 +393,7 @@ public partial class MainWindow : Window
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
         _expanded = expand;
+        if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
         if (expand)
         {
@@ -838,6 +839,7 @@ public partial class MainWindow : Window
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
         _latestMediaInfo = info;
+        if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
         if (!_settings.MediaControls) info = null;
         var oldAccent = _info?.Accent;
         // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.

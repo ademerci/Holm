@@ -57,12 +57,17 @@ internal sealed class FriendsService
     public event Action<Friend>? ActivityChanged;
     /// <summary>What we're doing, for the friends who ask; null when there's nothing or we don't share it.</summary>
     public Func<FriendActivity?>? MyActivity { get; set; }
+    /// <summary>How many achievements we have, for the friends who ask; null to keep it to ourselves.</summary>
+    public Func<int?>? MyTrophies { get; set; }
+    /// <summary>A friend was added or removed (UI thread).</summary>
+    public event Action? ListChanged;
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
     /// <summary>What friends told us they're doing, by key; only shown while they count as online.</summary>
     readonly Dictionary<string, FriendActivity?> _activities = new(StringComparer.Ordinal);
+    readonly Dictionary<string, int> _trophies = new(StringComparer.Ordinal);
     /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
     readonly Dictionary<string, string> _profilesOut = new(StringComparer.Ordinal);
 
@@ -217,6 +222,7 @@ internal sealed class FriendsService
         var me = EnsureMe();
         _settings.Friends.Add(friend);
         _settings.Save();
+        ListChanged?.Invoke();
         SyncProfiles();
         if (!tellThem) return true;
         try
@@ -297,6 +303,7 @@ internal sealed class FriendsService
             card.AddedByRequestId = requestId;
             _settings.Friends.Add(card);
             _settings.Save();
+            ListChanged?.Invoke();
             SyncProfiles();
         }
     }
@@ -321,6 +328,7 @@ internal sealed class FriendsService
     {
         if (_settings.Friends.RemoveAll(f => f.Key == friend.Key) == 0) return true;
         _settings.Save();
+        ListChanged?.Invoke();
 
         if (Me is not { } me)
         {
@@ -412,6 +420,9 @@ internal sealed class FriendsService
     public FriendActivity? ActivityOf(Friend friend)
         => IsOnline(friend) && _activities.TryGetValue(friend.Key, out var activity) ? activity : null;
 
+    /// <summary>How many achievements the friend has, as their notch last said; null if it never said.</summary>
+    public int? TrophiesOf(Friend friend) => _trophies.TryGetValue(friend.Key, out int n) ? n : null;
+
     /// <summary>Whether the friend's Holm answered or asked in the last two minutes.</summary>
     public bool IsOnline(Friend friend) => _presence.IsOnline(friend.Key, DateTime.UtcNow);
 
@@ -430,8 +441,10 @@ internal sealed class FriendsService
     void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
     {
         // Asking or answering "are you there?" carries what we're doing, like a status in a chat app.
-        var activity = kind is FriendNoteKind.Ping or FriendNoteKind.Here ? MyActivity?.Invoke() : null;
-        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity));
+        bool presence = kind is FriendNoteKind.Ping or FriendNoteKind.Here;
+        var activity = presence ? MyActivity?.Invoke() : null;
+        int? trophies = presence ? MyTrophies?.Invoke() : null;
+        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity, Trophies: trophies));
         _ = Task.Run(async () =>
         {
             try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
@@ -502,6 +515,7 @@ internal sealed class FriendsService
                 _settings.Save();
                 Diag.Log($"Friends: {friend.Name} removed us");
                 RemovedUs?.Invoke(friend);
+                ListChanged?.Invoke();
                 break;
             case FriendNoteKind.RemovedYou:
                 Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
@@ -509,12 +523,12 @@ internal sealed class FriendsService
             case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds:
                 break; // strangers don't learn whether we're online; old ones came while Holm wasn't running
             case FriendNoteKind.Ping:
-                Took(friend, note.Activity);
+                Took(friend, note.Activity, note.Trophies);
                 SawOnline(friend);
                 if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
                 break;
             case FriendNoteKind.Here:
-                Took(friend, note.Activity);
+                Took(friend, note.Activity, note.Trophies);
                 SawOnline(friend);
                 break;
             case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds:
@@ -548,11 +562,13 @@ internal sealed class FriendsService
         }
     }
 
-    void Took(Friend friend, FriendActivity? activity)
+    void Took(Friend friend, FriendActivity? activity, int? trophies)
     {
         bool had = _activities.TryGetValue(friend.Key, out var before);
         _activities[friend.Key] = activity;
-        if (!had || before != activity) ActivityChanged?.Invoke(friend);
+        bool more = trophies is { } n && (!_trophies.TryGetValue(friend.Key, out int was) || was != n);
+        if (trophies is { } count) _trophies[friend.Key] = count;
+        if (!had || before != activity || more) ActivityChanged?.Invoke(friend);
     }
 
     async Task ReplyToRequestAsync(FriendIdentity me, Friend card, string requestId, bool accepted)

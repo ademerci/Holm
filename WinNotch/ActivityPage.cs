@@ -147,7 +147,7 @@ internal sealed class ActivityPage : HubView
         top.ColumnDefinitions.Add(new ColumnDefinition());
         top.Children.Add(Face(friend, 44));
         var who = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-        who.Children.Add(new TextBlock { Text = friend.Name, FontSize = 15, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+        who.Children.Add(NameLine(friend, 15));
         who.Children.Add(new TextBlock { Text = friend.Status ?? "Online", FontSize = 12, Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
         Grid.SetColumn(who, 1);
         top.Children.Add(who);
@@ -205,7 +205,7 @@ internal sealed class ActivityPage : HubView
             face.Opacity = dim ? 0.55 : 1;
             row.Children.Add(face);
             var words = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Opacity = dim ? 0.6 : 1 };
-            words.Children.Add(new TextBlock { Text = friend.Name, FontWeight = FontWeights.SemiBold });
+            words.Children.Add(NameLine(friend, 13));
             words.Children.Add(new TextBlock { Text = friend.Status ?? (dim ? "Offline" : "Online"), FontSize = 12, Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
             Grid.SetColumn(words, 1);
             row.Children.Add(words);
@@ -220,6 +220,26 @@ internal sealed class ActivityPage : HubView
             rows.Children.Add(row);
         }
         return new Border { Background = HubTheme.Card, CornerRadius = new CornerRadius(12), Child = rows };
+    }
+
+    /// <summary>The name, and how many achievements they have if their notch said.</summary>
+    FrameworkElement NameLine(Friend friend, double size)
+    {
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(new TextBlock { Text = friend.Name, FontSize = size, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 });
+        if (_social.TrophiesOf(friend) is int trophies and > 0)
+        {
+            var pill = new StackPanel { Orientation = Orientation.Horizontal };
+            pill.Children.Add(HubTheme.Glyph("", 10, HubTheme.Gold));
+            pill.Children.Add(new TextBlock { Text = trophies.ToString(), FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = HubTheme.Gold, Margin = new Thickness(4, 0, 0, 0) });
+            line.Children.Add(new Border
+            {
+                Background = HubTheme.Frozen(Color.FromArgb(0x26, 0xFF, 0xC4, 0x3D)), CornerRadius = new CornerRadius(8), Padding = new Thickness(6, 1, 7, 1),
+                Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = pill,
+                ToolTip = $"{friend.Name} has {trophies} achievements",
+            });
+        }
+        return line;
     }
 
     FrameworkElement Face(Friend friend, double size)

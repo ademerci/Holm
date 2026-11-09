@@ -47,6 +47,7 @@ public partial class MainWindow
         if (text == _settings.NoteText) return;
         _settings.NoteText = text;
         _settings.Save();
+        if (text.Trim().Length > 0 && _achievements?.Value(AchievementBook.Notes) == 0) Achieve(AchievementBook.Notes);
         ShowToday();
     }
 

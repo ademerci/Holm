@@ -102,6 +102,7 @@ public partial class MainWindow
         _friends.Waved += OnWaved;
         InitChat();
         InitActivity();
+        InitAchievements();
         _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
@@ -434,7 +435,7 @@ public partial class MainWindow
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
                 bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                     new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token, text);
-                if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
+                if (accepted) { EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths)); CountSent(paths); }
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
             }
         }
@@ -457,7 +458,7 @@ public partial class MainWindow
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token, text);
-            if (accepted) EndTask("", GreenBrush, "Sent", Summary(paths));
+            if (accepted) { EndTask("", GreenBrush, "Sent", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
@@ -486,7 +487,7 @@ public partial class MainWindow
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
-            if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
+            if (accepted) { EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths)); CountSent(paths); }
             else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
             if (queued != null) Unqueue(queued); // delivered, or they said no
         }

@@ -19,8 +19,10 @@ public partial class MainWindow
     {
 #if DEBUG
         var social = demo ? DemoSocial() : Social();
+        var achievements = demo ? DemoAchievements() : _achievements;
 #else
         var social = Social();
+        var achievements = _achievements;
 #endif
         return new List<HubPage>
         {
@@ -29,6 +31,8 @@ public partial class MainWindow
             new("chat", "", "Chat", "Messages with your friends, sealed so only you two can read them",
                 () => { var page = new ChatPage(social, _hubFriend); _hubFriend = null; return page; },
                 () => social.Chats.UnreadTotal),
+            new("achievements", "", "Achievements", "What you've done with Holm",
+                () => new AchievementsPage(achievements)),
         };
     }
 
@@ -39,6 +43,7 @@ public partial class MainWindow
         Mine = MyActivity,
         Sharing = () => _settings.ShareActivity,
         Ping = () => _friends.PingAll(30),
+        TrophiesOf = _friends.TrophiesOf,
         Wave = WaveAt,
         Chats = _chats,
         Face = name => (FaceText(name), FaceBrush(name)),
@@ -49,6 +54,22 @@ public partial class MainWindow
     };
 
 #if DEBUG
+    /// <summary>Made-up progress for the snapshots, in memory only.</summary>
+    static AchievementBook DemoAchievements()
+    {
+        long day = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 86400;
+        var unlocked = new Dictionary<string, long>();
+        foreach (var (id, daysAgo) in new[] { ("friend-1", 20), ("beam-1", 19), ("chat-1", 3), ("wave-1", 3), ("profile", 2), ("timer-10", 1), ("streak-7", 0), ("color-10", 6) })
+            unlocked[id] = day - daysAgo * 86400L;
+        var counters = new Dictionary<string, long>
+        {
+            [AchievementBook.Friends] = 4, [AchievementBook.FilesSent] = 17, [AchievementBook.MegabytesSent] = 610, [AchievementBook.Messages] = 64,
+            [AchievementBook.Waves] = 5, [AchievementBook.Timers] = 12, [AchievementBook.Screenshots] = 11, [AchievementBook.Colors] = 13,
+            [AchievementBook.Songs] = 82, [AchievementBook.ProfilePicture] = 1, [AchievementBook.Streak] = 9, [AchievementBook.Reminders] = 4,
+        };
+        return new AchievementBook(counters, unlocked);
+    }
+
     /// <summary>Made-up friends and a conversation for the snapshots; nothing of yours.</summary>
     SocialContext DemoSocial()
     {
@@ -85,6 +106,7 @@ public partial class MainWindow
             },
             Mine = () => new FriendActivity(FriendActivity.Timer, "On a timer", "24:10 left", DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 300),
             Sharing = () => true,
+            TrophiesOf = f => f.Key switch { "demo-lena" => 14, "demo-mia" => 9, "demo-jonas" => 3, _ => null },
             Send = (_, _) => { },
             Retry = (_, _) => { },
         };

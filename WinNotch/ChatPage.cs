@@ -34,6 +34,8 @@ internal sealed class SocialContext
     /// <summary>Asks friends whether their Holm runs; the answers bring what they're doing.</summary>
     public Action Ping { get; init; } = () => { };
     public Action<Friend> Wave { get; init; } = _ => { };
+    /// <summary>How many achievements a friend has, if their notch said.</summary>
+    public Func<Friend, int?> TrophiesOf { get; init; } = _ => null;
 
     /// <summary>A friend came online, went quiet, changed their profile or what they're doing.</summary>
     public event Action? Changed;
