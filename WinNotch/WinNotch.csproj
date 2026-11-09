@@ -11,7 +11,7 @@
     <RootNamespace>WinNotch</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Holm</Product>
-    <Version>1.7.8</Version>
+    <Version>1.7.9</Version>
     <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
     <!-- No compression in the single exe: a compressed bundle unpacks every assembly it loads into private memory.
          Measured idle on Windows (tools/Measure-Footprint.ps1): 148 MB private and a 256 MB peak compressed, 42 MB
