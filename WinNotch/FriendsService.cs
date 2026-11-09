@@ -53,10 +53,16 @@ internal sealed class FriendsService
     public event Action<Friend>? Waved;
     /// <summary>A friend sent a new name, status, color or picture, already saved (UI thread).</summary>
     public event Action<Friend>? ProfileReceived;
+    /// <summary>A friend's notch told us what they're doing, or that they stopped (UI thread).</summary>
+    public event Action<Friend>? ActivityChanged;
+    /// <summary>What we're doing, for the friends who ask; null when there's nothing or we don't share it.</summary>
+    public Func<FriendActivity?>? MyActivity { get; set; }
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
+    /// <summary>What friends told us they're doing, by key; only shown while they count as online.</summary>
+    readonly Dictionary<string, FriendActivity?> _activities = new(StringComparer.Ordinal);
     /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
     readonly Dictionary<string, string> _profilesOut = new(StringComparer.Ordinal);
 
@@ -402,6 +408,10 @@ internal sealed class FriendsService
         _follow = null;
     }
 
+    /// <summary>What the friend is doing, as their notch last said; null when they're offline, idle or don't share it.</summary>
+    public FriendActivity? ActivityOf(Friend friend)
+        => IsOnline(friend) && _activities.TryGetValue(friend.Key, out var activity) ? activity : null;
+
     /// <summary>Whether the friend's Holm answered or asked in the last two minutes.</summary>
     public bool IsOnline(Friend friend) => _presence.IsOnline(friend.Key, DateTime.UtcNow);
 
@@ -417,9 +427,11 @@ internal sealed class FriendsService
             if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
     }
 
-    static void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
+    void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
     {
-        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        // Asking or answering "are you there?" carries what we're doing, like a status in a chat app.
+        var activity = kind is FriendNoteKind.Ping or FriendNoteKind.Here ? MyActivity?.Invoke() : null;
+        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity));
         _ = Task.Run(async () =>
         {
             try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
@@ -497,10 +509,12 @@ internal sealed class FriendsService
             case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds:
                 break; // strangers don't learn whether we're online; old ones came while Holm wasn't running
             case FriendNoteKind.Ping:
+                Took(friend, note.Activity);
                 SawOnline(friend);
                 if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
                 break;
             case FriendNoteKind.Here:
+                Took(friend, note.Activity);
                 SawOnline(friend);
                 break;
             case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds:
@@ -532,6 +546,13 @@ internal sealed class FriendsService
                 SyncProfiles(); // they may not have ours yet, e.g. added before profiles existed
                 break;
         }
+    }
+
+    void Took(Friend friend, FriendActivity? activity)
+    {
+        bool had = _activities.TryGetValue(friend.Key, out var before);
+        _activities[friend.Key] = activity;
+        if (!had || before != activity) ActivityChanged?.Invoke(friend);
     }
 
     async Task ReplyToRequestAsync(FriendIdentity me, Friend card, string requestId, bool accepted)

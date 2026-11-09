@@ -283,6 +283,7 @@
                             <MenuItem x:Name="MenuSendFolders" Header="Send folders as ZIP" IsCheckable="True" Click="MenuSendFolders_Click"/>
                             <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
                             <MenuItem x:Name="MenuChatPopups" Header="Chat pop-outs" IsCheckable="True" Click="MenuChatPopups_Click"/>
+                            <MenuItem x:Name="MenuShareActivity" Header="Share my activity" IsCheckable="True" Click="MenuShareActivity_Click"/>
                         </MenuItem>
                         <MenuItem x:Name="MenuUpdates">
                             <MenuItem.Header>

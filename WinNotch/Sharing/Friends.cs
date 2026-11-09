@@ -211,11 +211,31 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
 /// <param name="Profile">For <see cref="FriendNoteKind.Profile"/>: the sender's status, color and picture (the name is <paramref name="From"/>).</param>
+/// <param name="Activity">For <see cref="FriendNoteKind.Ping"/> and <see cref="FriendNoteKind.Here"/>: what the sender is doing, if they share it.</param>
 /// <param name="Text">For <see cref="FriendNoteKind.Chat"/>: the message.</param>
 /// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
                                 string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
-                                string? Text = null, string? MessageId = null);
+                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null);
+
+/// <summary>
+/// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
+/// on a timer or streaming. <see cref="Since"/> is a Unix time.
+/// </summary>
+public sealed record FriendActivity(string Kind, string Title, string? Detail, long Since)
+{
+    public const string Music = "music", Call = "call", Game = "game", Timer = "timer", Stream = "stream";
+    static readonly string[] Kinds = { Music, Call, Game, Timer, Stream };
+    const int MaxText = 80;
+
+    /// <summary>An activity as a note brings it, checked; null for a kind this version doesn't know or no title.</summary>
+    public static FriendActivity? From(string? kind, string? title, string? detail, long since)
+    {
+        if (kind == null || Array.IndexOf(Kinds, kind) < 0) return null;
+        if (FriendProfile.CleanText(title, MaxText) is not { } cleanTitle) return null;
+        return new FriendActivity(kind, cleanTitle, FriendProfile.CleanText(detail, MaxText), Math.Max(0, since));
+    }
+}
 
 public enum FriendNoteKind
 {
@@ -271,6 +291,11 @@ public static class FriendNotes
         public string? P { get; set; }
         public string? M { get; set; }
         public string? I { get; set; }
+        // Activity, in "ping" and "here": kind, title, detail, since. Holm before 1.9 ignores these.
+        public string? Y { get; set; }
+        public string? V { get; set; }
+        public string? W { get; set; }
+        public long? Z { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -313,6 +338,10 @@ public static class FriendNotes
             // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
             M = note.Text == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(note.Text)),
             I = note.MessageId,
+            Y = note.Activity?.Kind,
+            V = note.Activity?.Title,
+            W = note.Activity?.Detail,
+            Z = note.Activity?.Since,
         };
         return SealDto(me, to, dto);
     }
@@ -381,8 +410,8 @@ public static class FriendNotes
                 "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
                     => new FriendNote(FriendNoteKind.FriendRequestCancelled, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
-                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T),
-                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
+                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0)),
+                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0)),
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),

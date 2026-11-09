@@ -25,6 +25,20 @@ internal sealed class SocialContext
     public required Action<Friend, FriendMessage> Retry { get; init; }
     /// <summary>Opens another page of the Holm window, with a friend chosen (the chat with them, say).</summary>
     public Action<string, Friend?>? Open { get; init; }
+    /// <summary>What a friend is doing, if they're online and share it.</summary>
+    public Func<Friend, FriendActivity?> ActivityOf { get; init; } = _ => null;
+    /// <summary>What we're doing, as friends see it (null: nothing, or sharing is off).</summary>
+    public Func<FriendActivity?> Mine { get; init; } = () => null;
+    /// <summary>Whether we share our activity at all.</summary>
+    public Func<bool> Sharing { get; init; } = () => false;
+    /// <summary>Asks friends whether their Holm runs; the answers bring what they're doing.</summary>
+    public Action Ping { get; init; } = () => { };
+    public Action<Friend> Wave { get; init; } = _ => { };
+
+    /// <summary>A friend came online, went quiet, changed their profile or what they're doing.</summary>
+    public event Action? Changed;
+
+    public void Raise() => Changed?.Invoke();
 }
 
 /// <summary>Chat: your friends on the left, the conversation with one of them on the right.</summary>
@@ -104,6 +118,7 @@ internal sealed class ChatPage : HubView
         Child = layout;
 
         social.Chats.Changed += OnChanged;
+        social.Changed += OnFriendsChanged;
         // Unread first, then whoever wrote last.
         Select(with ?? friends.OrderByDescending(f => social.Chats.Unread(f.Key)).ThenByDescending(f => social.Chats.Last(f.Key)?.Sent ?? 0).First());
         Loaded += (_, _) => _input.Focus();
@@ -112,7 +127,18 @@ internal sealed class ChatPage : HubView
     /// <summary>The friend whose conversation is shown.</summary>
     public Friend? Friend => _friend;
 
-    public override void Detach() => _social.Chats.Changed -= OnChanged;
+    public override void Detach()
+    {
+        _social.Chats.Changed -= OnChanged;
+        _social.Changed -= OnFriendsChanged;
+    }
+
+    /// <summary>Someone came online or changed their picture or status.</summary>
+    void OnFriendsChanged()
+    {
+        ShowHeader();
+        ShowList();
+    }
 
     /// <summary>Marks the shown conversation read when the window comes forward.</summary>
     public void Seen()

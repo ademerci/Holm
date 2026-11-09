@@ -59,6 +59,7 @@ public partial class MainWindow
         }),
         new SettingsGroup("friends", "Friends", "", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new SettingsSwitch[]
         {
+            new(MenuShareActivity, "", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note."),
             new(MenuChatPopups, "", "A friend's message pops out of the notch with Reply. It's in Chat either way."),
         }),
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
@@ -99,6 +100,7 @@ public partial class MainWindow
         MenuScreenshots.IsChecked = _settings.Screenshots;
         MenuBeam.IsChecked = _settings.Beam;
         MenuChatPopups.IsChecked = _settings.ChatPopups;
+        MenuShareActivity.IsChecked = _settings.ShareActivity;
     }
 
     // After the menu has closed: a window opened from inside the click would lose the focus to the closing menu.
