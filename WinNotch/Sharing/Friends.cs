@@ -211,8 +211,11 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
 /// <param name="Profile">For <see cref="FriendNoteKind.Profile"/>: the sender's status, color and picture (the name is <paramref name="From"/>).</param>
+/// <param name="Text">For <see cref="FriendNoteKind.Chat"/>: the message.</param>
+/// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
-                                string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null);
+                                string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
+                                string? Text = null, string? MessageId = null);
 
 public enum FriendNoteKind
 {
@@ -238,6 +241,8 @@ public enum FriendNoteKind
     Waiting,
     /// <summary>"This is me now": name, status, color and picture. Holm before 1.8 leaves it unopened.</summary>
     Profile,
+    /// <summary>A chat message. Holm before 1.9 leaves it unopened.</summary>
+    Chat,
 }
 
 public static class FriendNotes
@@ -264,6 +269,8 @@ public static class FriendNotes
         public string? U { get; set; }
         public string? O { get; set; }
         public string? P { get; set; }
+        public string? M { get; set; }
+        public string? I { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -291,6 +298,7 @@ public static class FriendNotes
                 FriendNoteKind.Wave => "wave",
                 FriendNoteKind.Waiting => "waiting",
                 FriendNoteKind.Profile => "profile",
+                FriendNoteKind.Chat => "chat",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -302,6 +310,9 @@ public static class FriendNotes
             U = note.Profile?.Status,
             O = note.Profile?.Color,
             P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
+            // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
+            M = note.Text == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(note.Text)),
+            I = note.MessageId,
         };
         return SealDto(me, to, dto);
     }
@@ -375,6 +386,8 @@ public static class FriendNotes
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),
+                "chat" when ChatText.Clean(ChatText.FromNote(dto.M)) is { } message && Guid.TryParseExact(dto.I, "N", out _)
+                    => new FriendNote(FriendNoteKind.Chat, from, dto.T, Text: message, MessageId: dto.I),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];

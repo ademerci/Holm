@@ -238,6 +238,7 @@
                         <!-- Copy my friend code / Add friend from clipboard / Remove friend, filled when the menu opens -->
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
                         <Separator/>
+                        <MenuItem x:Name="MenuFriendsHub" Header="Friends and chat…" Click="MenuFriendsHub_Click"/>
                         <MenuItem x:Name="MenuSettings" Header="Settings…" Click="MenuSettings_Click"/>
                         <MenuItem x:Name="MenuCustomize" Header="Customize">
                             <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -281,6 +282,7 @@
                             <MenuItem x:Name="MenuBeam" Header="Beam (drop files on the notch)" IsCheckable="True" Click="MenuBeam_Click"/>
                             <MenuItem x:Name="MenuSendFolders" Header="Send folders as ZIP" IsCheckable="True" Click="MenuSendFolders_Click"/>
                             <MenuItem x:Name="MenuSendLater" Header="Send later when a friend is offline" IsCheckable="True" Click="MenuSendLater_Click"/>
+                            <MenuItem x:Name="MenuChatPopups" Header="Chat pop-outs" IsCheckable="True" Click="MenuChatPopups_Click"/>
                         </MenuItem>
                         <MenuItem x:Name="MenuUpdates">
                             <MenuItem.Header>
