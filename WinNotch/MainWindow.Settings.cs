@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace WinNotch;
@@ -14,12 +15,52 @@ public partial class MainWindow
 
     SettingsGroup[] SettingsGroups() => new[]
     {
-        new SettingsGroup("General", new[] { MenuAnim, MenuMini, MenuAutostart, MenuHideOverBrowsers }),
-        new SettingsGroup("Pop-outs", new[] { MenuDownloads, MenuScreenshots, MenuScreenshotText, MenuCapsLock, MenuDiskWarning, MenuUsbDrives, MenuConnectivity }),
-        new SettingsGroup("Open notch", new[] { MenuMediaControls, MenuNotes, MenuReminders, MenuCalculator, MenuClipboardHistory, MenuAppVolume, MenuColorPicker, MenuFocumon }),
-        new SettingsGroup("Weather", new[] { MenuWeatherAutoLocation }),
-        new SettingsGroup("Calls and privacy", new[] { MenuCalls, MenuPauseForCalls, MenuPrivacy, MenuVpn, MenuClearPasswords }),
-        new SettingsGroup("Beam", new[] { MenuBeam, MenuSendFolders, MenuSendLater }),
+        new SettingsGroup("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new SettingsSwitch[]
+        {
+            new(MenuAnim, "", "Smooth transitions and the moving equalizer."),
+            new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
+            new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
+            new(MenuHideOverBrowsers, ""),
+        }),
+        new SettingsGroup("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new SettingsSwitch[]
+        {
+            new(MenuMediaControls, ""),
+            new(MenuNotes, "", "A small note in the open notch, kept on this PC."),
+            new(MenuReminders, "", "Type “20 min laundry” and the notch rings on time."),
+            new(MenuCalculator, "", "Type a sum; the result is ready to copy."),
+            new(MenuClipboardHistory, "", "Your last 20 copied texts and pictures, in memory only."),
+            new(MenuAppVolume, "", "A volume slider for every app that plays sound."),
+            new(MenuColorPicker, "", "Pick any pixel's color and copy its hex code."),
+            new(MenuFocumon, ""),
+        }),
+        new SettingsGroup("popouts", "Pop-outs", "", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", new SettingsSwitch[]
+        {
+            new(MenuDownloads, "", "A finished download pops out with Open and Show."),
+            new(MenuScreenshots, "", "A new screenshot pops out with Send and Shelf."),
+            new(MenuScreenshotText, "", "Read the text in a screenshot with Windows' own OCR."),
+            new(MenuCapsLock, "", "The notch says when Caps Lock goes on or off."),
+            new(MenuDiskWarning, "", "One warning when the system drive runs low."),
+            new(MenuUsbDrives, "", "USB sticks pop out with Open and Eject."),
+            new(MenuConnectivity, "", "Says when the internet drops and when it's back."),
+        }),
+        new SettingsGroup("privacy", "Calls and privacy", "", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new SettingsSwitch[]
+        {
+            new(MenuCalls, "", "Shows a call with its time and a mute button."),
+            new(MenuPauseForCalls, "", "Music pauses when a call starts and plays on after."),
+            new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
+            new(MenuVpn, "", "A small lock while a VPN is connected."),
+            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds."),
+        }),
+        new SettingsGroup("beam", "Beam", "", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new SettingsSwitch[]
+        {
+            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat."),
+            new(MenuSendFolders, "", "Folders are packed as a ZIP before they're sent."),
+            new(MenuSendLater, "", "Files for an offline friend wait and go once they're back."),
+        }),
+        new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
+        {
+            new(MenuWeatherAutoLocation, ""),
+        }),
     };
 
     /// <summary>Checks the switches as the settings stand.</summary>
@@ -56,19 +97,22 @@ public partial class MainWindow
     }
 
     // After the menu has closed: a window opened from inside the click would lose the focus to the closing menu.
-    void MenuSettings_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(ShowSettings, DispatcherPriority.Background);
+    void MenuSettings_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub("general"), DispatcherPriority.Background);
 
-    void ShowSettings()
+    void MenuProfile_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub("profile"), DispatcherPriority.Background);
+
+    /// <summary>Opens the Holm window (or brings it forward) at <paramref name="page"/>.</summary>
+    void ShowHub(string? page = null)
     {
         SetExpanded(false);
-        if (_settingsWindow != null)
+        if (_settingsWindow == null)
         {
-            _settingsWindow.Activate();
-            return;
+            _settingsWindow = MakeSettingsWindow();
+            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Show();
         }
-        _settingsWindow = MakeSettingsWindow();
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.Show();
+        if (page != null) _settingsWindow.Navigate(page);
+        if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
         _settingsWindow.Activate();
     }
 
@@ -77,8 +121,10 @@ public partial class MainWindow
     {
         var version = RunningVersion;
         var profile = demo != null
-            ? new ProfileEditor("Alex", () => demo, _ => { }, SettingsWindow.ActionButtonStyle)
-            : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, SettingsWindow.ActionButtonStyle);
-        return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile);
+            ? new ProfileEditor("Alex", () => demo, _ => { }, HubTheme.ActionButtonStyle)
+            : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, HubTheme.ActionButtonStyle);
+        Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
+        return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
+                                  HubPages(demo != null), () => MeCard(current()));
     }
 }

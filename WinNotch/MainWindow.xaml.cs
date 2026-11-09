@@ -2106,9 +2106,14 @@ public partial class MainWindow : Window
         settings.ShowActivated = false;
         settings.Show();
         await Task.Delay(400);
-        settings.UpdateLayout();
-        if (settings.Content is FrameworkElement settingsPage)
+        // 1.9: one picture per page of the Holm window
+        foreach (var (page, name) in SnapshotHubPages)
         {
+            settings.Navigate(page);
+            if (settings.Page != page) continue; // not in this version
+            await Task.Delay(300);
+            settings.UpdateLayout();
+            if (settings.Content is not FrameworkElement settingsPage) break;
             var shot = new RenderTargetBitmap((int)(settingsPage.ActualWidth + 32) * 2, (int)(settingsPage.ActualHeight + 32) * 2, 192, 192, PixelFormats.Pbgra32);
             var desk = new DrawingVisual();
             using (var dc = desk.RenderOpen())
@@ -2117,11 +2122,18 @@ public partial class MainWindow : Window
             shot.Render(settingsPage);
             var png = new PngBitmapEncoder();
             png.Frames.Add(BitmapFrame.Create(shot));
-            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, "settings.png"));
+            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, name + ".png"));
             png.Save(file);
         }
         settings.Close();
     }
+
+    /// <summary>The Holm window's pages in the snapshots, and their file names.</summary>
+    static readonly (string Page, string Name)[] SnapshotHubPages =
+    {
+        ("general", "settings"), ("profile", "settings-profile"), ("popouts", "settings-popouts"),
+        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"),
+    };
 
     /// <summary>A made-up face for snapshots: a head and shoulders on a gradient, as a profile picture.</summary>
     static string DemoFace(Color? top = null, Color? bottom = null)
