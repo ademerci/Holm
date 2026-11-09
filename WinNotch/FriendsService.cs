@@ -23,6 +23,8 @@ internal sealed class FriendsService
 
     /// <summary>How long the sender waits for the friend's notch to answer; older invitations are stale.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+    /// <summary>How long a stream invitation waits for the friend to click Watch.</summary>
+    public static readonly TimeSpan StreamPatience = TimeSpan.FromSeconds(60);
     /// <summary>An older "are you there?" or answer is history: it came in while Holm wasn't running.</summary>
     const long FreshSeconds = 30;
     /// <summary>A "something waits for you" note is answered this long after it was left.</summary>
@@ -53,6 +55,8 @@ internal sealed class FriendsService
     public event Action<Friend>? Waved;
     /// <summary>A friend sent a new name, status, color or picture, already saved (UI thread).</summary>
     public event Action<Friend>? ProfileReceived;
+    /// <summary>A friend wants to stream their screen to us; meet them on the relay with the secret (UI thread).</summary>
+    public event Action<Friend, byte[]>? StreamOffered;
     /// <summary>A friend's notch told us what they're doing, or that they stopped (UI thread).</summary>
     public event Action<Friend>? ActivityChanged;
     /// <summary>What we're doing, for the friends who ask; null when there's nothing or we don't share it.</summary>
@@ -358,6 +362,15 @@ internal sealed class FriendsService
         return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
     }
 
+    /// <summary>Leaves a note asking the friend's notch to watch our stream, meeting on the relay with <paramref name="secret"/>.</summary>
+    /// <exception cref="IOException">The note couldn't be delivered.</exception>
+    public Task InviteToStreamAsync(Friend to, byte[] secret, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Stream, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Secret: secret);
+        return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
+    }
+
     /// <summary>Waves at a friend. False when it's too soon after the last wave (see <see cref="WaveLimit"/>).</summary>
     public bool Wave(Friend to)
     {
@@ -543,6 +556,12 @@ internal sealed class FriendsService
             case FriendNoteKind.Wave:
                 SawOnline(friend);
                 if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
+                break;
+            case FriendNoteKind.Stream when friend == null || age > StreamPatience.TotalSeconds:
+                break; // strangers can't stream to us; an old invitation came while Holm wasn't running
+            case FriendNoteKind.Stream:
+                SawOnline(friend);
+                StreamOffered?.Invoke(friend, note.Secret!);
                 break;
             case FriendNoteKind.Chat when friend == null:
                 Diag.Log("Friends: a chat message from someone who isn't a friend");

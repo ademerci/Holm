@@ -45,6 +45,7 @@ public partial class MainWindow
         Ping = () => _friends.PingAll(30),
         TrophiesOf = _friends.TrophiesOf,
         Wave = WaveAt,
+        Stream = StreamTo,
         Chats = _chats,
         Face = name => (FaceText(name), FaceBrush(name)),
         IsOnline = _friends.IsOnline,

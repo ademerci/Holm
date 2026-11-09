@@ -263,6 +263,8 @@ public enum FriendNoteKind
     Profile,
     /// <summary>A chat message. Holm before 1.9 leaves it unopened.</summary>
     Chat,
+    /// <summary>"Watch my screen": meet me on the relay with this secret. Holm before 1.9 leaves it unopened.</summary>
+    Stream,
 }
 
 public static class FriendNotes
@@ -326,6 +328,7 @@ public static class FriendNotes
                 FriendNoteKind.Waiting => "waiting",
                 FriendNoteKind.Profile => "profile",
                 FriendNoteKind.Chat => "chat",
+                FriendNoteKind.Stream => "stream",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -420,6 +423,8 @@ public static class FriendNotes
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),
+                "stream" when dto.S != null && Convert.FromBase64String(dto.S) is { Length: ShareCode.SecretLength } streamSecret
+                    => new FriendNote(FriendNoteKind.Stream, from, dto.T, Secret: streamSecret),
                 "chat" when ChatText.Clean(ChatText.FromNote(dto.M)) is { } message && Guid.TryParseExact(dto.I, "N", out _)
                     => new FriendNote(FriendNoteKind.Chat, from, dto.T, Text: message, MessageId: dto.I),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"

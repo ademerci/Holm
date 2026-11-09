@@ -34,6 +34,8 @@ internal sealed class SocialContext
     /// <summary>Asks friends whether their Holm runs; the answers bring what they're doing.</summary>
     public Action Ping { get; init; } = () => { };
     public Action<Friend> Wave { get; init; } = _ => { };
+    /// <summary>Invites a friend to watch our screen; null where streaming isn't offered (snapshots).</summary>
+    public Action<Friend>? Stream { get; init; }
     /// <summary>How many achievements a friend has, if their notch said.</summary>
     public Func<Friend, int?> TrophiesOf { get; init; } = _ => null;
 
@@ -223,7 +225,15 @@ internal sealed class ChatPage : HubView
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(FaceWithDot(_friend, 40));
+        var friend = _friend;
+        var stream = HubTheme.Action("Stream my screen");
+        stream.VerticalAlignment = VerticalAlignment.Center;
+        stream.ToolTip = $"Invite {friend.Name} to watch your screen";
+        stream.Click += (_, _) => _social.Stream?.Invoke(friend);
+        Grid.SetColumn(stream, 2);
+        row.Children.Add(stream);
         var words = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = _friend.Name, FontSize = 16, FontWeight = FontWeights.SemiBold });
         bool online = _social.IsOnline(_friend);
