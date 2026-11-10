@@ -40,6 +40,8 @@ jobs:
 
       - name: Self-contained zip
         shell: pwsh
+        env:
+          GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }} # built in for GIF search; empty is fine
         run: |
           dotnet publish WinNotch -c Release -r win-x64 -p:SelfContained=true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -p:IncludeNativeLibrariesForSelfExtract=true -o out/sc
           New-Item -ItemType Directory -Force assets | Out-Null

@@ -12,3 +12,6 @@ TestResults/
 .vs/
 .vscode/
 *.user
+
+# The GIPHY API key built into local release builds (WinNotch.csproj)
+giphy.key

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -361,13 +362,14 @@ internal static class GifPlayer
 internal sealed record GifResult(string Preview, string Url, double Width, double Height);
 
 /// <summary>
-/// Searching GIFs on GIPHY. It needs an API key: one built into Holm (<see cref="BuiltInKey"/>, empty in the open
-/// source code) or one you add in the GIF picker. Without a key, GIF links can still be pasted and sent.
+/// Searching GIFs on GIPHY. It needs an API key: one built into Holm (<see cref="BuiltInKey"/>, put in at build time
+/// and never in the open source code) or one you add in the GIF picker. Without a key, GIF links can still be pasted and sent.
 /// </summary>
 internal static class GifSearch
 {
-    /// <summary>A GIPHY API key the release is built with; empty means everyone adds their own.</summary>
-    public const string BuiltInKey = "";
+    /// <summary>A GIPHY API key the release is built with (see WinNotch.csproj); empty means everyone adds their own.</summary>
+    public static readonly string BuiltInKey = typeof(GifSearch).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(a => a.Key == "GiphyKey")?.Value?.Trim() ?? "";
 
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(12), DefaultRequestHeaders = { { "User-Agent", "Holm-Chat/1" } } };
 

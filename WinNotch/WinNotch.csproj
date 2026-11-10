@@ -27,6 +27,17 @@
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
 
+  <!-- A GIPHY API key for GIF search, built into the app but never into the public source: from -p:GiphyKey=…, the
+       GIPHY_API_KEY environment variable (the release workflow's secret) or a giphy.key file next to the solution
+       (git ignores it). Without one, people add their own key in the GIF picker. -->
+  <PropertyGroup>
+    <GiphyKey Condition="'$(GiphyKey)' == ''">$(GIPHY_API_KEY)</GiphyKey>
+    <GiphyKey Condition="'$(GiphyKey)' == '' and Exists('$(MSBuildProjectDirectory)\..\giphy.key')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\..\giphy.key').Trim())</GiphyKey>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(GiphyKey)' != ''">
+    <AssemblyMetadata Include="GiphyKey" Value="$(GiphyKey)" />
+  </ItemGroup>
+
   <PropertyGroup Condition="Exists('notch.ico')">
     <ApplicationIcon>notch.ico</ApplicationIcon>
   </PropertyGroup>
