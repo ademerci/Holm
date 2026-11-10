@@ -159,6 +159,37 @@ public class MediaUpdateTests
     /// When music stops, the equalizer's endless clocks have to stop too: only taking them off the bars left them
     /// ticking (and allocating) until a garbage collection, as expensive as playing.
     /// </summary>
+    /// <summary>The reactive equalizer (the default) runs its frame timer only while music plays, and no bounce clocks.</summary>
+    [Fact]
+    public void TheReactiveEqualizerRunsOnlyWhileMusicPlays()
+    {
+        OnSta(() =>
+        {
+            var window = new MainWindow();
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var settings = (AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!;
+            settings.Animations = true;
+            settings.MediaControls = true;
+            Assert.True(settings.ReactiveEqualizer);
+            var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
+            var settled = typeof(MainWindow).GetMethod("OnShapeSettled", flags)!;
+            var clocks = (System.Windows.Media.Animation.AnimationClock?[])typeof(MainWindow).GetField("_barClocks", flags)!.GetValue(window)!;
+            System.Windows.Threading.DispatcherTimer? Timer() => (System.Windows.Threading.DispatcherTimer?)typeof(MainWindow).GetField("_eqTimer", flags)!.GetValue(window);
+
+            var playing = Paused();
+            playing.IsPlaying = true;
+            changed.Invoke(window, new object?[] { playing, true });
+            settled.Invoke(window, null);
+            Assert.True(Timer()?.IsEnabled);
+            Assert.All(clocks, Assert.Null);
+
+            changed.Invoke(window, new object?[] { Paused(), false });
+            Assert.False(Timer()!.IsEnabled);
+            var meter = (AudioMeter)typeof(MainWindow).GetField("_meter", flags)!.GetValue(window)!;
+            Assert.False(meter.Working);
+        });
+    }
+
     [Fact]
     public void StoppingMusicStopsTheEqualizersClocks()
     {
@@ -178,6 +209,7 @@ public class MediaUpdateTests
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
                 ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).Animations = true;
                 ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).MediaControls = true;
+                ((AppSettings)typeof(MainWindow).GetField("_settings", flags)!.GetValue(window)!).ReactiveEqualizer = false; // the bounce
                 var changed = typeof(MainWindow).GetMethod("OnMediaChanged", flags)!;
                 var settled = typeof(MainWindow).GetMethod("OnShapeSettled", flags)!;
                 var clocks = (System.Windows.Media.Animation.AnimationClock?[])typeof(MainWindow).GetField("_barClocks", flags)!.GetValue(window)!;

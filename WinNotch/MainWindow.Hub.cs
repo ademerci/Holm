@@ -51,6 +51,14 @@ public partial class MainWindow
         IsOnline = _friends.IsOnline,
         Send = SendChat,
         Retry = RetryChat,
+        SendGif = SendGif,
+        React = ReactTo,
+        QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
+        SetQuickReactions = list => { _settings.QuickReactions = ChatReaction.Quick(list); _settings.Save(); },
+        RecentGifs = () => _settings.RecentGifs,
+        GifKey = () => GifSearch.Key(_settings),
+        SetGifKey = key => { _settings.GifSearchKey = string.IsNullOrWhiteSpace(key) ? null : key.Trim(); _settings.Save(); },
+        Animate = () => _settings.Animations,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
     };
 
@@ -91,6 +99,8 @@ public partial class MainWindow
         chats.Add(lena.Key, new FriendMessage { Id = "demo-lena-1", Text = "Perfect 👍 I'll bring snacks", Sent = now + 400, State = ChatState.Received }, unread: true);
         Say(jonas, false, "Can you beam me the slides?", now - 7200);
         Say(mia, false, "Are you coming to the concert?", now - 600);
+        chats.SetReaction(lena.Key, chats.With(lena.Key)[1].Id, mine: false, "😂");
+        chats.SetReaction(lena.Key, chats.With(lena.Key)[3].Id, mine: true, "❤️");
         return new SocialContext
         {
             Friends = () => friends,
@@ -110,6 +120,7 @@ public partial class MainWindow
             TrophiesOf = f => f.Key switch { "demo-lena" => 14, "demo-mia" => 9, "demo-jonas" => 3, _ => null },
             Send = (_, _) => { },
             Retry = (_, _) => { },
+            React = (f, m, emoji) => chats.SetReaction(f.Key, m.Id, mine: true, m.MyReaction == emoji ? null : emoji),
         };
     }
 #endif

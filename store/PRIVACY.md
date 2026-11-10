@@ -1,6 +1,6 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 10, 2026**
+**Effective date: November 10, 2026** (updated for Holm 1.9.1)
 
 Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
 
@@ -14,7 +14,7 @@ Holm stores settings and feature data locally. Depending on the features you use
 
 If enabled, clipboard history keeps recent text in memory and temporarily saves clipboard images as PNG files in Holm's temporary folder. Holm attempts to remove these files when they are no longer needed, but they may remain if cleanup fails or the app stops unexpectedly. Received text may also be placed on the clipboard. Clipboard history is processed locally; if you choose to Beam copied text, Holm temporarily saves it as a file and sends it to the recipient or service you select. Holm attempts to delete the temporary text file after sending, cancellation, or the phone link closes; it may remain if cleanup fails or the app stops unexpectedly. Holm attempts to exclude content marked private by other apps, but not all sensitive content is marked. Screenshot text recognition uses Windows OCR on your device. Holm can watch your Downloads and Screenshots folders to show activity. You can disable these features in Holm's settings.
 
-With your permission, Holm reads and processes Windows notifications locally to show message previews and counts; it does not automatically send notification content to the Holm Team. You can revoke notification access in Windows. Holm also reads information about media, devices, batteries, network connections and camera and microphone activity for its controls and indicators. The camera and microphone indicators detect activity; they do not read audio or video content. Relevant controls are available in Holm and Windows settings.
+With your permission, Holm reads and processes Windows notifications locally to show message previews and counts; it does not automatically send notification content to the Holm Team. You can revoke notification access in Windows. Holm also reads information about media, devices, batteries, network connections and camera and microphone activity for its controls and indicators. While music plays and the equalizer is shown, Holm reads only the loudness of the sound coming out of your default speakers or headphones to move the equalizer bars; the sound itself is not recorded, stored or sent, and the microphone is not used. Turn this off with Equalizer follows the music in the General settings. The camera and microphone indicators detect activity; they do not read audio or video content. Relevant controls are available in Holm and Windows settings.
 
 Holm can write error logs locally; optional diagnostic logging can write additional information locally when enabled. Logs may contain technical details and potentially sensitive information, so review them before sharing them with anyone.
 
@@ -35,7 +35,9 @@ For friends, Holm sends a fresh transfer secret in an encrypted friend message r
 **Storage and controls.** Before sending, folders may be packed as temporary ZIP files and copied text may be saved as a temporary text file. If Send later is used, Holm keeps queued paths and may retain its temporary files across restarts until the send is completed, declined, cancelled or expires. Holm attempts to clean up temporary and incomplete files, but they can remain if cleanup fails or the app stops unexpectedly; completed files and copies received by others can remain. Turn Beam off in Holm's settings to stop nearby discovery and the friend inbox. See the [Holm README](https://github.com/ademerci/Holm#beam) for further details.
 ## Profiles, chat, activity and screen streaming
 
-Your profile picture, name, status and color are sent to your friends in encrypted friend messages. Chat messages use the same encrypted friend messaging service described above; message history is stored on each participant's PC. Recipients can retain or share what they receive.
+Your profile picture, name, status and color are sent to your friends in encrypted friend messages. Chat messages and reactions to them use the same encrypted friend messaging service described above; message history is stored on each participant's PC.
+
+**GIFs.** If you open the GIF picker and have added a GIPHY API key, the words you search for, the key and your network information are sent to [GIPHY](https://support.giphy.com/hc/en-us/articles/360032872931-GIPHY-Privacy-Policy). A GIF message carries the GIF's link; each PC that shows it downloads the picture from that link over HTTPS, so the hosting service (such as GIPHY or Tenor) receives that PC's network information. Downloaded GIFs and links of recently used GIFs are kept on your PC. The GIPHY API key is stored in Holm's settings on your PC. Recipients can retain or share what they receive.
 
 When Share my activity is enabled (on by default), friends receive your current activity, which may include the playing song, a call, fullscreen game, timer or stream, and your achievement count. Activity travels in encrypted presence messages through the configured friend inbox service. Turn Share my activity off under Friends settings to stop sharing it. Achievement progress is stored locally.
 

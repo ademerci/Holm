@@ -7,7 +7,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using WinNotch.Sharing;
+using EmojiText = Emoji.Wpf.TextBlock;
 
 namespace WinNotch;
 
@@ -36,6 +38,22 @@ internal sealed class SocialContext
     public Action<Friend> Wave { get; init; } = _ => { };
     /// <summary>Invites a friend to watch our screen; null where streaming isn't offered (snapshots).</summary>
     public Action<Friend>? Stream { get; init; }
+    /// <summary>Sends a GIF (its link).</summary>
+    public Action<Friend, string> SendGif { get; init; } = (_, _) => { };
+    /// <summary>Reacts to a message with an emoji, or takes our reaction away (null).</summary>
+    public Action<Friend, FriendMessage, string?> React { get; init; } = (_, _, _) => { };
+    /// <summary>The quick reactions in the reaction bar, in order.</summary>
+    public Func<IReadOnlyList<string>> QuickReactions { get; init; } = () => ChatReaction.Defaults;
+    /// <summary>Saves new quick reactions.</summary>
+    public Action<IReadOnlyList<string>> SetQuickReactions { get; init; } = _ => { };
+    /// <summary>GIFs sent or received lately, newest first.</summary>
+    public Func<IReadOnlyList<string>> RecentGifs { get; init; } = () => Array.Empty<string>();
+    /// <summary>The key GIF search uses; null when there is none.</summary>
+    public Func<string?> GifKey { get; init; } = () => null;
+    /// <summary>Saves a GIPHY key typed into the picker.</summary>
+    public Action<string?> SetGifKey { get; init; } = _ => { };
+    /// <summary>Whether GIFs move (off with Animations).</summary>
+    public Func<bool> Animate { get; init; } = () => true;
     /// <summary>How many achievements a friend has, if their notch said.</summary>
     public Func<Friend, int?> TrophiesOf { get; init; } = _ => null;
 
@@ -56,6 +74,8 @@ internal sealed class ChatPage : HubView
     readonly TextBox _input = null!;
     readonly TextBlock _counter = null!;
     Friend? _friend;
+    /// <summary>The message just reacted to here: its reaction pops in, like Instagram's heart.</summary>
+    string? _justReacted;
 
     public ChatPage(SocialContext social, Friend? with)
     {
@@ -89,6 +109,7 @@ internal sealed class ChatPage : HubView
         var inputRow = new Grid { Margin = new Thickness(12, 0, 12, 12) };
         inputRow.ColumnDefinitions.Add(new ColumnDefinition());
         inputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        inputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _input = HubTheme.Field("Message", out var host, multiline: true);
         _input.MaxHeight = 110;
         _input.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
@@ -107,11 +128,22 @@ internal sealed class ChatPage : HubView
             _counter.Text = parts > 1 ? $"{parts} messages" : "";
         };
         inputRow.Children.Add(host);
+        var gifButton = HubTheme.Action("GIF");
+        gifButton.Margin = new Thickness(10, 0, 0, 0);
+        gifButton.VerticalAlignment = VerticalAlignment.Bottom;
+        gifButton.ToolTip = "Send a GIF";
+        gifButton.Click += (_, _) =>
+        {
+            if (_friend is not { } to) return;
+            ChatExtras.ShowGifPicker(gifButton, _social, url => { _social.SendGif(to, url); _input.Focus(); });
+        };
+        Grid.SetColumn(gifButton, 1);
+        inputRow.Children.Add(gifButton);
         var send = HubTheme.Action("Send", primary: true);
-        send.Margin = new Thickness(10, 0, 0, 0);
+        send.Margin = new Thickness(8, 0, 0, 0);
         send.VerticalAlignment = VerticalAlignment.Bottom;
         send.Click += (_, _) => SendInput();
-        Grid.SetColumn(send, 1);
+        Grid.SetColumn(send, 2);
         inputRow.Children.Add(send);
         Grid.SetRow(inputRow, 2);
         _conversation.Children.Add(inputRow);
@@ -154,7 +186,11 @@ internal sealed class ChatPage : HubView
     {
         if (_friend?.Key == key)
         {
-            ShowMessages();
+            // A reaction to an older message mustn't jump to the end; a new message at the end does.
+            bool atEnd = _scroll.VerticalOffset >= _scroll.ScrollableHeight - 24;
+            double offset = _scroll.VerticalOffset;
+            ShowMessages(scrollToEnd: atEnd);
+            if (!atEnd) _scroll.ScrollToVerticalOffset(offset);
             Seen();
         }
         ShowList();
@@ -191,8 +227,23 @@ internal sealed class ChatPage : HubView
             int unread = _social.Chats.Unread(friend.Key);
             words.Children.Add(new TextBlock { Text = friend.Name, FontWeight = unread > 0 ? FontWeights.Bold : FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
             var last = _social.Chats.Last(friend.Key);
-            string preview = last == null ? friend.Status ?? "Say hi" : (last.Mine ? "You: " : "") + last.Text.Replace('\n', ' ');
-            words.Children.Add(new TextBlock { Text = preview, FontSize = 12, Foreground = unread > 0 ? Brushes.White : HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (last?.Gif is { } gif)
+            {
+                // A GIF shows as a small moving picture in the list, like a preview should.
+                var line = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
+                line.Children.Add(GifPlayer.View(gif, 28, 20, 4, _social.Animate(), maxSide: 64));
+                line.Children.Add(new TextBlock
+                {
+                    Text = (last.Mine ? "You: " : "") + "GIF", FontSize = 12, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = unread > 0 ? Brushes.White : HubTheme.Dim,
+                });
+                words.Children.Add(line);
+            }
+            else
+            {
+                string preview = last == null ? friend.Status ?? "Say hi" : (last.Mine ? "You: " : "") + last.Text.Replace('\n', ' ');
+                words.Children.Add(new TextBlock { Text = preview, FontSize = 12, Foreground = unread > 0 ? Brushes.White : HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
+            }
             Grid.SetColumn(words, 1);
             row.Children.Add(words);
             if (unread > 0)
@@ -228,7 +279,7 @@ internal sealed class ChatPage : HubView
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(FaceWithDot(_friend, 40));
         var friend = _friend;
-        var stream = HubTheme.Action("Stream my screen");
+        var stream = HubTheme.Action("Share my screen");
         stream.VerticalAlignment = VerticalAlignment.Center;
         stream.ToolTip = $"Invite {friend.Name} to watch your screen";
         stream.Click += (_, _) => _social.Stream?.Invoke(friend);
@@ -245,7 +296,7 @@ internal sealed class ChatPage : HubView
         _header.Child = row;
     }
 
-    void ShowMessages()
+    void ShowMessages(bool scrollToEnd = true)
     {
         _messages.Children.Clear();
         if (_friend == null) return;
@@ -279,32 +330,118 @@ internal sealed class ChatPage : HubView
             _messages.Children.Add(Bubble(message, at, grouped));
             previous = message;
         }
+        _justReacted = null;
         _scroll.UpdateLayout();
-        _scroll.ScrollToEnd();
+        if (scrollToEnd) _scroll.ScrollToEnd();
+    }
+
+    /// <summary>Our reaction to a message: given, changed or (null) taken away.</summary>
+    void React(FriendMessage message, string? emoji)
+    {
+        if (_friend == null) return;
+        _justReacted = emoji == null ? null : message.Id;
+        _social.React(_friend, message, emoji);
+    }
+
+    /// <summary>
+    /// The reactions under a bubble, as on Instagram: a small pill over its lower edge with both sides' emoji (and a 2
+    /// when both reacted). A click on it takes ours away.
+    /// </summary>
+    FrameworkElement? Reactions(FriendMessage message)
+    {
+        var emoji = new[] { message.TheirReaction, message.MyReaction }.Where(e => e != null).Distinct().ToList();
+        if (emoji.Count == 0) return null;
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (string e in emoji!) row.Children.Add(ChatExtras.Emoji(e!, 13));
+        int count = (message.TheirReaction != null ? 1 : 0) + (message.MyReaction != null ? 1 : 0);
+        if (count > 1) row.Children.Add(new TextBlock { Text = count.ToString(), FontSize = 11, Foreground = HubTheme.Dim, Margin = new Thickness(3, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        var who = new List<string>();
+        if (message.MyReaction != null) who.Add($"You {message.MyReaction} · click to remove");
+        if (message.TheirReaction != null) who.Add($"{_friend?.Name} {message.TheirReaction}");
+        var scale = new ScaleTransform(1, 1);
+        var pill = new Border
+        {
+            Background = HubTheme.Frozen(Color.FromRgb(0x2C, 0x2C, 0x2E)), BorderBrush = HubTheme.Frozen(Color.FromRgb(0x1E, 0x1E, 0x20)),
+            BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(11), Padding = new Thickness(5, 1, 6, 2), Child = row,
+            HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            Margin = message.Mine ? new Thickness(0, -9, 8, 0) : new Thickness(8, -9, 0, 0),
+            Cursor = message.MyReaction != null ? Cursors.Hand : Cursors.Arrow, ToolTip = string.Join("\n", who),
+            RenderTransform = scale, RenderTransformOrigin = new Point(0.5, 0.5),
+        };
+        pill.MouseLeftButtonUp += (_, e) =>
+        {
+            if (message.MyReaction == null) return;
+            e.Handled = true;
+            React(message, null);
+        };
+        if (_justReacted == message.Id && _social.Animate())
+        {
+            var pop = new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = new BackEase { Amplitude = 0.6, EasingMode = EasingMode.EaseOut } };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+        }
+        return pill;
     }
 
     FrameworkElement Bubble(FriendMessage message, DateTime at, bool grouped)
     {
-        var text = new TextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5 };
+        FrameworkElement content;
+        bool gif = message.Gif != null;
+        if (gif)
+            content = GifPlayer.View(message.Gif!, 220, 160, 14, _social.Animate(), maxSide: 320, fitHeight: true);
+        else
+            content = new EmojiText { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5 };
         var bubble = new Border
         {
-            Background = message.Mine ? HubTheme.Accent : HubTheme.CardStrong,
+            Background = gif ? Brushes.Transparent : message.Mine ? HubTheme.Accent : HubTheme.CardStrong,
             CornerRadius = message.Mine ? new CornerRadius(16, 16, 4, 16) : new CornerRadius(16, 16, 16, 4),
-            Padding = new Thickness(12, 7, 12, 8), MaxWidth = 420, Child = text,
+            Padding = gif ? new Thickness(0) : new Thickness(12, 7, 12, 8), MaxWidth = 420, Child = content,
             Opacity = message.State == ChatState.Sending ? 0.6 : 1,
             ToolTip = at.ToString("g", CultureInfo.CurrentCulture),
         };
-        // Copy, as from any chat.
-        var copy = new MenuItem { Header = "Copy" };
-        copy.Click += (_, _) => { try { Clipboard.SetText(message.Text); } catch (System.Runtime.InteropServices.COMException) { } };
-        bubble.ContextMenu = new ContextMenu { Items = { copy } };
+        // A double click gives a heart (or takes it away), like a double tap on Instagram.
+        bubble.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount != 2) return;
+            e.Handled = true;
+            React(message, message.MyReaction == ChatReaction.DoubleClick ? null : ChatReaction.DoubleClick);
+        };
+        // Copy, as from any chat, and React.
+        var copy = new MenuItem { Header = gif ? "Copy GIF link" : "Copy" };
+        copy.Click += (_, _) => { try { Clipboard.SetText(message.Gif ?? message.Text); } catch (System.Runtime.InteropServices.COMException) { } };
+        var reactItem = new MenuItem { Header = "React…" };
+        reactItem.Click += (_, _) => ChatExtras.ShowReactionBar(bubble, _social, message.MyReaction, emoji => React(message, emoji));
+        bubble.ContextMenu = new ContextMenu { Items = { reactItem, copy } };
+
+        // The smiley beside the bubble on hover opens the reaction bar.
+        var smiley = new Border
+        {
+            Width = 28, Height = 28, CornerRadius = new CornerRadius(14), Cursor = Cursors.Hand, Background = HubTheme.Card,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0), Opacity = 0, ToolTip = "React",
+            Child = HubTheme.Glyph("\uE76E", 14, HubTheme.Dim),
+        };
+        smiley.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            ChatExtras.ShowReactionBar(bubble, _social, message.MyReaction, emoji => React(message, emoji));
+        };
+
+        var withReactions = new StackPanel();
+        withReactions.Children.Add(bubble);
+        if (Reactions(message) is { } pill) withReactions.Children.Add(pill);
+
+        var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left, Background = Brushes.Transparent };
+        if (message.Mine) { line.Children.Add(smiley); line.Children.Add(withReactions); }
+        else { line.Children.Add(withReactions); line.Children.Add(smiley); }
+        line.MouseEnter += (_, _) => smiley.Opacity = 1;
+        line.MouseLeave += (_, _) => smiley.Opacity = 0;
 
         var stack = new StackPanel
         {
             HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left,
             Margin = new Thickness(0, grouped ? 2 : 8, 0, 0),
         };
-        stack.Children.Add(bubble);
+        stack.Children.Add(line);
         if (message.State == ChatState.Failed)
         {
             var retry = new TextBlock

@@ -67,6 +67,100 @@ public static class ChatText
     }
 }
 
+/// <summary>
+/// Reactions to a message, as on Instagram: each side has at most one emoji on a message, a double click gives a heart,
+/// and the quick reactions in the bar can be changed.
+/// </summary>
+public static class ChatReaction
+{
+    /// <summary>Instagram's quick reactions, in its order.</summary>
+    public static readonly IReadOnlyList<string> Defaults = new[] { "❤️", "😂", "😮", "😢", "😡", "👍" };
+
+    /// <summary>How many quick reactions the bar has.</summary>
+    public const int QuickCount = 6;
+
+    /// <summary>What a double click on a message gives.</summary>
+    public const string DoubleClick = "❤️";
+
+    /// <summary>More emoji to pick from with “+”, and to choose quick reactions from.</summary>
+    public static readonly IReadOnlyList<string> Picker = new[]
+    {
+        "❤️", "😂", "😮", "😢", "😡", "👍", "🔥", "😍", "🥰", "😘", "😊", "😁", "🤣", "😅", "😭", "🥺",
+        "😎", "🤔", "🙄", "😴", "🤯", "😱", "🥳", "😇", "😈", "💀", "🤡", "👀", "👏", "🙌", "🙏", "💪",
+        "👎", "👌", "✌️", "🤝", "💯", "✨", "🎉", "💔", "💕", "💙", "💚", "💜", "🖤", "🤍", "⭐", "⚡",
+        "✅", "❌", "❓", "‼️", "😬", "🫠", "🫡", "🤗", "🤩", "😤", "🤤", "🤪", "😜", "🐐", "🍕", "⚽",
+    };
+
+    /// <summary>One emoji as a reaction may carry it; null if it isn't a single short emoji.</summary>
+    public static string? Clean(string? emoji)
+    {
+        if (emoji == null) return null;
+        string text = emoji.Trim();
+        if (text.Length is 0 or > 16 || text.Any(c => char.IsControl(c) || char.IsWhiteSpace(c))) return null;
+        if (new StringInfo(text).LengthInTextElements != 1) return null;
+        // Letters and digits aren't reactions (a keycap emoji starts with a digit but goes on with a combining mark).
+        if (text.Length == 1 && char.IsLetterOrDigit(text[0])) return null;
+        if (char.IsLetter(text, 0)) return null;
+        return text;
+    }
+
+    /// <summary>The quick reactions as saved, cleaned and filled up to <see cref="QuickCount"/> with the defaults.</summary>
+    public static List<string> Quick(IEnumerable<string>? saved)
+    {
+        var quick = new List<string>();
+        foreach (string emoji in saved ?? Enumerable.Empty<string>())
+            if (Clean(emoji) is { } clean && !quick.Contains(clean) && quick.Count < QuickCount) quick.Add(clean);
+        foreach (string emoji in Defaults)
+            if (quick.Count < QuickCount && !quick.Contains(emoji)) quick.Add(emoji);
+        return quick;
+    }
+}
+
+/// <summary>GIFs in the chat: a message carries the link to the GIF, its picture is fetched by whoever shows it.</summary>
+public static class ChatGif
+{
+    /// <summary>The longest link a GIF message may have.</summary>
+    public const int MaxUrl = 600;
+
+    /// <summary>The link as it may travel: https, no spaces or control characters, not too long; null otherwise.</summary>
+    public static string? Clean(string? url)
+    {
+        if (url == null) return null;
+        string text = url.Trim();
+        if (text.Length is 0 or > MaxUrl || text.Any(c => char.IsControl(c) || char.IsWhiteSpace(c))) return null;
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.HostNameType != UriHostNameType.Dns) return null;
+        if (!string.IsNullOrEmpty(uri.UserInfo) || IsLocal(uri.Host)) return null;
+        return uri.AbsoluteUri;
+    }
+
+    /// <summary>
+    /// Whether a typed or pasted text is a link to a GIF, so it goes as one: a link ending in .gif, or a page on
+    /// GIPHY or Tenor (turned into the link of the picture where that is possible).
+    /// </summary>
+    public static string? FromTyped(string? text)
+    {
+        if (Clean(text) is not { } url) return null;
+        var uri = new Uri(url);
+        string host = uri.Host.ToLowerInvariant();
+        string path = uri.AbsolutePath;
+        if (path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)) return url;
+        // giphy.com/gifs/some-words-ID  or  giphy.com/gifs/ID  →  the picture itself
+        if (host is "giphy.com" or "www.giphy.com" && path.StartsWith("/gifs/", StringComparison.Ordinal))
+        {
+            string last = path.TrimEnd('/').Split('/')[^1];
+            string id = last.Contains('-') ? last[(last.LastIndexOf('-') + 1)..] : last;
+            if (id.Length is > 4 and < 40 && id.All(char.IsLetterOrDigit)) return $"https://media.giphy.com/media/{id}/giphy.gif";
+        }
+        if (host is "media.giphy.com" or "i.giphy.com" || host.EndsWith(".giphy.com") && path.Contains("/media/")) return url;
+        if (host is "media.tenor.com" or "c.tenor.com") return url;
+        return null;
+    }
+
+    static bool IsLocal(string host)
+        => host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
+           || host.EndsWith(".lan", StringComparison.OrdinalIgnoreCase) || !host.Contains('.');
+}
+
 public enum ChatState { Sending, Sent, Failed, Received }
 
 /// <summary>One message in a conversation. <see cref="Sent"/> is a Unix time.</summary>
@@ -77,6 +171,12 @@ public sealed class FriendMessage
     public string Text { get; set; } = "";
     public long Sent { get; set; }
     public ChatState State { get; set; }
+    /// <summary>Our reaction to the message (an emoji), if any.</summary>
+    public string? MyReaction { get; set; }
+    /// <summary>The friend's reaction to the message, if any.</summary>
+    public string? TheirReaction { get; set; }
+    /// <summary>The link to the GIF this message is; <see cref="Text"/> holds it too, for Holm before 1.9.1.</summary>
+    public string? Gif { get; set; }
 }
 
 /// <summary>The conversations with friends, by their public key, and which have unread messages. UI thread only.</summary>
@@ -134,6 +234,24 @@ public sealed class ChatStore
         Save();
         Changed?.Invoke(key);
     }
+
+    /// <summary>
+    /// Sets our reaction (<paramref name="mine"/>) or the friend's on a message; null takes it away. False if there is
+    /// no such message or nothing changed.
+    /// </summary>
+    public bool SetReaction(string key, string id, bool mine, string? emoji)
+    {
+        if (With(key).FirstOrDefault(m => m.Id == id) is not { } message) return false;
+        string? clean = ChatReaction.Clean(emoji);
+        if ((mine ? message.MyReaction : message.TheirReaction) == clean) return false;
+        if (mine) message.MyReaction = clean;
+        else message.TheirReaction = clean;
+        Save();
+        Changed?.Invoke(key);
+        return true;
+    }
+
+    public FriendMessage? Find(string key, string id) => With(key).FirstOrDefault(m => m.Id == id);
 
     public void MarkRead(string key)
     {
