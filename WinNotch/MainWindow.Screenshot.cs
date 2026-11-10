@@ -123,6 +123,7 @@ public partial class MainWindow
         if (Thumbnail(path) is not { } thumbnail) return;
         _lastShotAt = DateTime.UtcNow;
         _shotPath = path;
+        Achieve(AchievementBook.Screenshots);
         Diag.Log("Screenshot taken");
         ShowTask("", ShareBlue, "Screenshot", saved ? "Saved in Screenshots" : "Copied – a copy is kept for two days", null,
                  ("Send", () => { if (_shotPath is { } shot) PickTarget(new[] { shot }); }),

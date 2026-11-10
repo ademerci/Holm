@@ -23,6 +23,8 @@ internal sealed class FriendsService
 
     /// <summary>How long the sender waits for the friend's notch to answer; older invitations are stale.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+    /// <summary>How long a stream invitation waits for the friend to click Watch.</summary>
+    public static readonly TimeSpan StreamPatience = TimeSpan.FromSeconds(60);
     /// <summary>An older "are you there?" or answer is history: it came in while Holm wasn't running.</summary>
     const long FreshSeconds = 30;
     /// <summary>A "something waits for you" note is answered this long after it was left.</summary>
@@ -53,8 +55,23 @@ internal sealed class FriendsService
     public event Action<Friend>? Waved;
     /// <summary>A friend sent a new name, status, color or picture, already saved (UI thread).</summary>
     public event Action<Friend>? ProfileReceived;
+    /// <summary>A friend wants to stream their screen to us; meet them on the relay with the secret (UI thread).</summary>
+    public event Action<Friend, byte[]>? StreamOffered;
+    /// <summary>A friend's notch told us what they're doing, or that they stopped (UI thread).</summary>
+    public event Action<Friend>? ActivityChanged;
+    /// <summary>What we're doing, for the friends who ask; null when there's nothing or we don't share it.</summary>
+    public Func<FriendActivity?>? MyActivity { get; set; }
+    /// <summary>How many achievements we have, for the friends who ask; null to keep it to ourselves.</summary>
+    public Func<int?>? MyTrophies { get; set; }
+    /// <summary>A friend was added or removed (UI thread).</summary>
+    public event Action? ListChanged;
+    /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
+    public event Action<Friend, string, string, long>? ChatReceived;
 
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
+    /// <summary>What friends told us they're doing, by key; only shown while they count as online.</summary>
+    readonly Dictionary<string, FriendActivity?> _activities = new(StringComparer.Ordinal);
+    readonly Dictionary<string, int> _trophies = new(StringComparer.Ordinal);
     /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
     readonly Dictionary<string, string> _profilesOut = new(StringComparer.Ordinal);
 
@@ -209,6 +226,7 @@ internal sealed class FriendsService
         var me = EnsureMe();
         _settings.Friends.Add(friend);
         _settings.Save();
+        ListChanged?.Invoke();
         SyncProfiles();
         if (!tellThem) return true;
         try
@@ -289,6 +307,7 @@ internal sealed class FriendsService
             card.AddedByRequestId = requestId;
             _settings.Friends.Add(card);
             _settings.Save();
+            ListChanged?.Invoke();
             SyncProfiles();
         }
     }
@@ -313,6 +332,7 @@ internal sealed class FriendsService
     {
         if (_settings.Friends.RemoveAll(f => f.Key == friend.Key) == 0) return true;
         _settings.Save();
+        ListChanged?.Invoke();
 
         if (Me is not { } me)
         {
@@ -342,12 +362,30 @@ internal sealed class FriendsService
         return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
     }
 
+    /// <summary>Leaves a note asking the friend's notch to watch our stream, meeting on the relay with <paramref name="secret"/>.</summary>
+    /// <exception cref="IOException">The note couldn't be delivered.</exception>
+    public Task InviteToStreamAsync(Friend to, byte[] secret, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Stream, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Secret: secret);
+        return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
+    }
+
     /// <summary>Waves at a friend. False when it's too soon after the last wave (see <see cref="WaveLimit"/>).</summary>
     public bool Wave(Friend to)
     {
         if (!_wavesOut.Allow(to.Key, DateTime.UtcNow)) return false;
         Tell(EnsureMe(), to, FriendNoteKind.Wave);
         return true;
+    }
+
+    /// <summary>Sends one chat message (<see cref="ChatText.MaxBytes"/> at most).</summary>
+    /// <exception cref="IOException">The note couldn't be delivered to their inbox.</exception>
+    public Task SendChatAsync(Friend to, string id, string text, long sent, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Chat, me.Name, sent, Text: text, MessageId: id);
+        return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
     }
 
     /// <summary>Asks one friend whether their Holm runs (if not asked a minute ago); <see cref="FriendOnline"/> follows if so.</summary>
@@ -391,6 +429,13 @@ internal sealed class FriendsService
         _follow = null;
     }
 
+    /// <summary>What the friend is doing, as their notch last said; null when they're offline, idle or don't share it.</summary>
+    public FriendActivity? ActivityOf(Friend friend)
+        => IsOnline(friend) && _activities.TryGetValue(friend.Key, out var activity) ? activity : null;
+
+    /// <summary>How many achievements the friend has, as their notch last said; null if it never said.</summary>
+    public int? TrophiesOf(Friend friend) => _trophies.TryGetValue(friend.Key, out int n) ? n : null;
+
     /// <summary>Whether the friend's Holm answered or asked in the last two minutes.</summary>
     public bool IsOnline(Friend friend) => _presence.IsOnline(friend.Key, DateTime.UtcNow);
 
@@ -406,9 +451,13 @@ internal sealed class FriendsService
             if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
     }
 
-    static void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
+    void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
     {
-        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        // Asking or answering "are you there?" carries what we're doing, like a status in a chat app.
+        bool presence = kind is FriendNoteKind.Ping or FriendNoteKind.Here;
+        var activity = presence ? MyActivity?.Invoke() : null;
+        int? trophies = presence ? MyTrophies?.Invoke() : null;
+        string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity, Trophies: trophies));
         _ = Task.Run(async () =>
         {
             try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
@@ -479,6 +528,7 @@ internal sealed class FriendsService
                 _settings.Save();
                 Diag.Log($"Friends: {friend.Name} removed us");
                 RemovedUs?.Invoke(friend);
+                ListChanged?.Invoke();
                 break;
             case FriendNoteKind.RemovedYou:
                 Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
@@ -486,10 +536,12 @@ internal sealed class FriendsService
             case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds:
                 break; // strangers don't learn whether we're online; old ones came while Holm wasn't running
             case FriendNoteKind.Ping:
+                Took(friend, note.Activity, note.Trophies);
                 SawOnline(friend);
                 if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
                 break;
             case FriendNoteKind.Here:
+                Took(friend, note.Activity, note.Trophies);
                 SawOnline(friend);
                 break;
             case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds:
@@ -505,6 +557,19 @@ internal sealed class FriendsService
                 SawOnline(friend);
                 if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
                 break;
+            case FriendNoteKind.Stream when friend == null || age > StreamPatience.TotalSeconds:
+                break; // strangers can't stream to us; an old invitation came while Holm wasn't running
+            case FriendNoteKind.Stream:
+                SawOnline(friend);
+                StreamOffered?.Invoke(friend, note.Secret!);
+                break;
+            case FriendNoteKind.Chat when friend == null:
+                Diag.Log("Friends: a chat message from someone who isn't a friend");
+                break;
+            case FriendNoteKind.Chat:
+                if (age <= FreshSeconds) SawOnline(friend);
+                ChatReceived?.Invoke(friend, note.MessageId!, note.Text!, note.Sent);
+                break;
             case FriendNoteKind.Profile when friend == null || note.Profile == null:
                 break; // only friends show up with a picture
             case FriendNoteKind.Profile:
@@ -514,6 +579,15 @@ internal sealed class FriendsService
                 SyncProfiles(); // they may not have ours yet, e.g. added before profiles existed
                 break;
         }
+    }
+
+    void Took(Friend friend, FriendActivity? activity, int? trophies)
+    {
+        bool had = _activities.TryGetValue(friend.Key, out var before);
+        _activities[friend.Key] = activity;
+        bool more = trophies is { } n && (!_trophies.TryGetValue(friend.Key, out int was) || was != n);
+        if (trophies is { } count) _trophies[friend.Key] = count;
+        if (!had || before != activity || more) ActivityChanged?.Invoke(friend);
     }
 
     async Task ReplyToRequestAsync(FriendIdentity me, Friend card, string requestId, bool accepted)

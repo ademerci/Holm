@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-if ($Store -and -not $Version) { $Version = '1.8.0.0' }
+if ($Store -and -not $Version) { $Version = '1.9.0.0' }
 if (-not $Version) {
     [xml]$project = Get-Content (Join-Path $root 'WinNotch\WinNotch.csproj') -Raw
     $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText

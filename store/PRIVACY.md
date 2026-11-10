@@ -1,6 +1,6 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 4, 2026**
+**Effective date: November 10, 2026**
 
 Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
 
@@ -10,7 +10,7 @@ Holm keeps its settings and most feature data on your device. Its current code d
 
 ## Information on your device
 
-Holm stores settings and feature data locally. Depending on the features you use, this can include notes, reminders, shelf items, the selected weather location, friends, a protected friend key and queued file paths. Windows may store data for the packaged app separately from the portable version. Uninstalling the Store app may remove its app data; files saved to your Downloads folder remain there.
+Holm stores settings and feature data locally. Depending on the features you use, this can include notes, reminders, shelf items, the selected weather location, friends, a protected friend key, profile information and pictures, local chat history (up to 300 messages per friend), achievement progress and queued file paths. Windows may store data for the packaged app separately from the portable version. Uninstalling the Store app may remove its app data; files saved to your Downloads folder remain there.
 
 If enabled, clipboard history keeps recent text in memory and temporarily saves clipboard images as PNG files in Holm's temporary folder. Holm attempts to remove these files when they are no longer needed, but they may remain if cleanup fails or the app stops unexpectedly. Received text may also be placed on the clipboard. Clipboard history is processed locally; if you choose to Beam copied text, Holm temporarily saves it as a file and sends it to the recipient or service you select. Holm attempts to delete the temporary text file after sending, cancellation, or the phone link closes; it may remain if cleanup fails or the app stops unexpectedly. Holm attempts to exclude content marked private by other apps, but not all sensitive content is marked. Screenshot text recognition uses Windows OCR on your device. Holm can watch your Downloads and Screenshots folders to show activity. You can disable these features in Holm's settings.
 
@@ -33,6 +33,14 @@ For friends, Holm sends a fresh transfer secret in an encrypted friend message r
 **Phone.** Holm serves selected files and text directly from your PC to a browser over the local network using a temporary link with a random token. This connection uses HTTP, not HTTPS: the contents and link can be visible to someone able to observe the network, and anyone who obtains the link while it is active can access the offered files. The link closes when you choose Done, after ten minutes, or shortly after all files are delivered. Use a trusted network and do not share the link with others.
 
 **Storage and controls.** Before sending, folders may be packed as temporary ZIP files and copied text may be saved as a temporary text file. If Send later is used, Holm keeps queued paths and may retain its temporary files across restarts until the send is completed, declined, cancelled or expires. Holm attempts to clean up temporary and incomplete files, but they can remain if cleanup fails or the app stops unexpectedly; completed files and copies received by others can remain. Turn Beam off in Holm's settings to stop nearby discovery and the friend inbox. See the [Holm README](https://github.com/ademerci/Holm#beam) for further details.
+## Profiles, chat, activity and screen streaming
+
+Your profile picture, name, status and color are sent to your friends in encrypted friend messages. Chat messages use the same encrypted friend messaging service described above; message history is stored on each participant's PC. Recipients can retain or share what they receive.
+
+When Share my activity is enabled (on by default), friends receive your current activity, which may include the playing song, a call, fullscreen game, timer or stream, and your achievement count. Activity travels in encrypted presence messages through the configured friend inbox service. Turn Share my activity off under Friends settings to stop sharing it. Achievement progress is stored locally.
+
+Screen streaming starts when you choose to invite a friend, and the viewer must accept the invitation. Holm captures screen images and sends JPEG frames through an encrypted SecureChannel over the transit relay described above. The relay can observe addresses, timing and traffic sizes but does not receive the stream secret or unencrypted frames. The Holm window, notch and LIVE badge are excluded from capture; other visible screen content may contain personal information. Review your screen before inviting viewers. Use Stop to end sharing, or close the viewer window to stop watching. Viewers can capture or retain what is displayed.
+
 ## Other services
 
 If you use Focumon integration, its browser extension sends Focumon status to Holm on your PC; Holm may fetch artwork from the relevant service. Opening an AI assistant or another linked app takes you to that service, whose own privacy terms apply. The portable GitHub version can check GitHub for updates; the Microsoft Store version receives updates through Microsoft Store infrastructure. These services receive the network information needed to respond to requests. See the [GitHub privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Microsoft privacy statement](https://privacy.microsoft.com/privacystatement).

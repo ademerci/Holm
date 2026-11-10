@@ -32,6 +32,7 @@ public partial class MainWindow
             _picker = null;
             if (hex == null) return;
             ShowPickedColor(TrySetClipboard(hex) ? hex : hex + " (clipboard busy)", color);
+            Achieve(AchievementBook.Colors);
         };
         try
         {

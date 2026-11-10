@@ -129,8 +129,8 @@ public class UpdateMenuTests
             bool applied = true;
             int clicks = 0;
             item.Click += (_, _) => { applied = item.IsChecked; clicks++; };
-            var settings = new SettingsWindow(new[] { new SettingsGroup("General", new[] { item }) }, "test", true,
-                () => item.IsChecked = applied);
+            var settings = new SettingsWindow(new[] { new SettingsGroup("general", "General", "", System.Windows.Media.Colors.Gray, "",
+                new[] { new SettingsSwitch(item, "") }) }, "test", true, () => item.IsChecked = applied);
             var apply = (Button)typeof(SettingsWindow).GetField("_apply", Private)!.GetValue(settings)!;
             Assert.False(apply.IsEnabled);
             var rows = (System.Collections.IEnumerable)typeof(SettingsWindow).GetField("_rows", Private)!.GetValue(settings)!;
@@ -152,16 +152,14 @@ public class UpdateMenuTests
             var choices = new (string, Action)[] { ("Cancel", () => { }) };
             typeof(SettingsWindow).GetMethod("ShowDialog", Private)!.Invoke(settings, new object[] { "Reset settings?", "Confirmation", choices });
             var dialog = (Border)typeof(SettingsWindow).GetField("_dialog", Private)!.GetValue(settings)!;
-            var body = (DockPanel)typeof(SettingsWindow).GetField("_body", Private)!.GetValue(settings)!;
-            Assert.Equal(Visibility.Visible, dialog.Visibility);
-            Assert.False(body.IsEnabled);
             var surface = (Border)typeof(SettingsWindow).GetField("_surface", Private)!.GetValue(settings)!;
+            Assert.Equal(Visibility.Visible, dialog.Visibility);
+            Assert.False(surface.IsEnabled); // sidebar and page alike
             Assert.IsType<System.Windows.Media.Effects.BlurEffect>(surface.Effect);
-            Assert.Same(body, surface.Child);
             Assert.Null(dialog.Effect);
             typeof(SettingsWindow).GetMethod("HideDialog", Private)!.Invoke(settings, null);
             Assert.Equal(Visibility.Collapsed, dialog.Visibility);
-            Assert.True(body.IsEnabled);
+            Assert.True(surface.IsEnabled);
             Assert.IsType<System.Windows.Media.Effects.DropShadowEffect>(surface.Effect);
             Assert.False(applied);
             typeof(SettingsWindow).GetMethod("ApplyChanges", Private)!.Invoke(settings, null);

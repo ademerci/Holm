@@ -117,6 +117,7 @@ public partial class MainWindow
         _timer = null;
         ShowTimer();
         Diag.Log("Timer done");
+        Achieve(AchievementBook.Timers);
         PlayAlarm();
         string length = Countdown.Describe(timer.Length);
         if (_busy)

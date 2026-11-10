@@ -393,6 +393,7 @@ public partial class MainWindow : Window
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
         _expanded = expand;
+        if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
         if (expand)
         {
@@ -838,6 +839,7 @@ public partial class MainWindow : Window
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
         _latestMediaInfo = info;
+        if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
         if (!_settings.MediaControls) info = null;
         var oldAccent = _info?.Accent;
         // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
@@ -2118,9 +2120,14 @@ public partial class MainWindow : Window
         settings.ShowActivated = false;
         settings.Show();
         await Task.Delay(400);
-        settings.UpdateLayout();
-        if (settings.Content is FrameworkElement settingsPage)
+        // 1.9: one picture per page of the Holm window
+        foreach (var (page, name) in SnapshotHubPages)
         {
+            settings.Navigate(page);
+            if (settings.Page != page) continue; // not in this version
+            await Task.Delay(300);
+            settings.UpdateLayout();
+            if (settings.Content is not FrameworkElement settingsPage) break;
             var shot = new RenderTargetBitmap((int)(settingsPage.ActualWidth + 32) * 2, (int)(settingsPage.ActualHeight + 32) * 2, 192, 192, PixelFormats.Pbgra32);
             var desk = new DrawingVisual();
             using (var dc = desk.RenderOpen())
@@ -2129,11 +2136,94 @@ public partial class MainWindow : Window
             shot.Render(settingsPage);
             var png = new PngBitmapEncoder();
             png.Frames.Add(BitmapFrame.Create(shot));
-            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, "settings.png"));
+            using var file = System.IO.File.Create(System.IO.Path.Combine(dir, name + ".png"));
             png.Save(file);
         }
         settings.Close();
+
+        // 1.9: a friend's stream: the invitation, the window with their (made-up) screen, and your LIVE badge
+        var streamer = new WinNotch.Sharing.Friend { Name = "Lena Hoffmann", Key = "demo-lena", Picture = DemoFace() };
+        _demoFriends = new List<WinNotch.Sharing.Friend> { streamer };
+        ShowTask(FaceText(streamer.Name), FaceBrush(streamer.Name), $"{streamer.Name} is streaming", "Watch their screen?", null,
+                 ("Watch", () => { }), ("Not now", () => { }), textIcon: true);
+        await Snap(dir, "stream-invite", 70);
+        HideTask();
+        var viewer = new StreamViewerWindow(streamer.Name, (FaceText(streamer.Name), FaceBrush(streamer.Name)))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual, Left = -5000, ShowActivated = false, Width = 960, Height = 600,
+        };
+        _demoFriends = null;
+        viewer.Show();
+        viewer.Show(DemoScreen());
+        await Task.Delay(500);
+        SnapWindow(viewer, dir, "stream-viewer");
+        viewer.Close();
+        var badge = new StreamBadge(() => { }) { WindowStartupLocation = WindowStartupLocation.Manual, Left = -5000 };
+        badge.Show();
+        badge.ShowViewers(new[] { "Lena Hoffmann" });
+        await Task.Delay(300);
+        SnapWindow(badge, dir, "stream-badge");
+        badge.Close();
     }
+
+    /// <summary>A window's content on the snapshot backdrop, at twice the size.</summary>
+    static void SnapWindow(Window window, string dir, string name)
+    {
+        window.UpdateLayout();
+        if (window.Content is not FrameworkElement page) return;
+        double w = page.ActualWidth + 32, h = page.ActualHeight + 32;
+        var shot = new RenderTargetBitmap((int)w * 2, (int)h * 2, 192, 192, PixelFormats.Pbgra32);
+        var desk = new DrawingVisual();
+        using (var dc = desk.RenderOpen())
+            dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0x5B, 0x7F, 0xC9), Color.FromRgb(0x1D, 0x2B, 0x4F), 90), null, new Rect(0, 0, w, h));
+        shot.Render(desk);
+        var frame = new DrawingVisual();
+        using (var dc = frame.RenderOpen())
+            dc.DrawRectangle(new VisualBrush(page), null, new Rect(16, 16, page.ActualWidth, page.ActualHeight));
+        shot.Render(frame);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(shot));
+        using var file = System.IO.File.Create(System.IO.Path.Combine(dir, name + ".png"));
+        png.Save(file);
+    }
+
+    /// <summary>A made-up desktop for the stream snapshot: a photo slideshow on a wallpaper. Nothing of the real screen.</summary>
+    static byte[] DemoScreen()
+    {
+        var target = new RenderTargetBitmap(1600, 900, 96, 96, PixelFormats.Pbgra32);
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0x23, 0x4E, 0x8C), Color.FromRgb(0x7A, 0x3E, 0x9D), 30), null, new Rect(0, 0, 1600, 900));
+            dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x20)), null, new Rect(200, 90, 1200, 720), 12, 12);
+            dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(0x87, 0xCE, 0xEB), Color.FromRgb(0x2E, 0x8B, 0x57), 90), null, new Rect(240, 150, 1120, 600));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x5E)), null, new Point(1180, 260), 60, 60);
+            var hill = new StreamGeometry();
+            using (var g = hill.Open())
+            {
+                g.BeginFigure(new Point(240, 750), true, true);
+                g.BezierTo(new Point(500, 450), new Point(800, 620), new Point(1360, 520), true, true);
+                g.LineTo(new Point(1360, 750), true, true);
+            }
+            dc.DrawGeometry(new SolidColorBrush(Color.FromRgb(0x2F, 0x6B, 0x3A)), null, hill);
+            var title = new FormattedText("Holiday photos · 12 / 48", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                                          new Typeface("Segoe UI"), 22, Brushes.White, 1);
+            dc.DrawText(title, new Point(240, 108));
+        }
+        target.Render(visual);
+        var jpeg = new JpegBitmapEncoder { QualityLevel = 80 };
+        jpeg.Frames.Add(BitmapFrame.Create(target));
+        using var stream = new System.IO.MemoryStream();
+        jpeg.Save(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>The Holm window's pages in the snapshots, and their file names.</summary>
+    static readonly (string Page, string Name)[] SnapshotHubPages =
+    {
+        ("general", "settings"), ("profile", "settings-profile"), ("popouts", "settings-popouts"),
+        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"),
+    };
 
     /// <summary>A made-up face for snapshots: a head and shoulders on a gradient, as a profile picture.</summary>
     static string DemoFace(Color? top = null, Color? bottom = null)

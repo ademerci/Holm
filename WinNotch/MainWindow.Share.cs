@@ -100,6 +100,10 @@ public partial class MainWindow
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.Waved += OnWaved;
+        InitChat();
+        InitActivity();
+        InitAchievements();
+        InitStreaming();
         _friends.ProfileReceived += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(); } };
     }
@@ -432,7 +436,7 @@ public partial class MainWindow
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
                 bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                     new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token, text);
-                if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
+                if (accepted) { EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths)); CountSent(paths); }
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
             }
         }
@@ -455,7 +459,7 @@ public partial class MainWindow
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token, text);
-            if (accepted) EndTask("", GreenBrush, "Sent", Summary(paths));
+            if (accepted) { EndTask("", GreenBrush, "Sent", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
@@ -484,7 +488,7 @@ public partial class MainWindow
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
-            if (accepted) EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
+            if (accepted) { EndTask("\uE73E", GreenBrush, $"Sent to {friend.Name}", Summary(paths)); CountSent(paths); }
             else EndTask("\uE711", RedBrush, $"{friend.Name} declined", Summary(paths));
             if (queued != null) Unqueue(queued); // delivered, or they said no
         }
@@ -965,8 +969,11 @@ public partial class MainWindow
         var add = new MenuItem { Header = "Add friend from clipboard" };
         add.Click += (_, _) => AddFriendFromClipboard();
         MenuFriends.Items.Add(add);
+        var chat = new MenuItem { Header = "Chat…" };
+        chat.Click += MenuFriendsHub_Click;
+        MenuFriends.Items.Add(chat);
         var profile = new MenuItem { Header = "Edit my profile…" };
-        profile.Click += MenuSettings_Click;
+        profile.Click += MenuProfile_Click;
         MenuFriends.Items.Add(profile);
         foreach (var card in _addBack.ToList())
         {
@@ -989,6 +996,7 @@ public partial class MainWindow
         MenuFriends.Items.Add(new Separator());
         AddFriendProfiles();
         MenuFriends.Items.Add(new Separator());
+        FillStreamMenu();
         FillWaveMenu();
         var remove = new MenuItem { Header = "Remove friend" };
         foreach (var friend in _friends.Friends.ToList())
@@ -997,6 +1005,7 @@ public partial class MainWindow
             item.Click += async (_, _) =>
             {
                 bool notified = await _friends.RemoveAsync(friend);
+                _chats.Forget(friend.Key);
                 ShowPeek("\uE8FA", $"{friend.Name} removed", "", null, false, null);
                 if (!notified)
                     ShowPeek("\uE783", $"Couldn't notify {friend.Name}", "They may still have you as a friend", null, false, RedBrush, seconds: 5);

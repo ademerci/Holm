@@ -211,8 +211,31 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="Accepted">For friend responses: whether the request was accepted.</param>
 /// <param name="Kind">The action being sent: file offer, friend addition, or friend removal.</param>
 /// <param name="Profile">For <see cref="FriendNoteKind.Profile"/>: the sender's status, color and picture (the name is <paramref name="From"/>).</param>
+/// <param name="Activity">For <see cref="FriendNoteKind.Ping"/> and <see cref="FriendNoteKind.Here"/>: what the sender is doing, if they share it.</param>
+/// <param name="Text">For <see cref="FriendNoteKind.Chat"/>: the message.</param>
+/// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice.</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
-                                string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null);
+                                string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
+                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null);
+
+/// <summary>
+/// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
+/// on a timer or streaming. <see cref="Since"/> is a Unix time.
+/// </summary>
+public sealed record FriendActivity(string Kind, string Title, string? Detail, long Since)
+{
+    public const string Music = "music", Call = "call", Game = "game", Timer = "timer", Stream = "stream";
+    static readonly string[] Kinds = { Music, Call, Game, Timer, Stream };
+    const int MaxText = 80;
+
+    /// <summary>An activity as a note brings it, checked; null for a kind this version doesn't know or no title.</summary>
+    public static FriendActivity? From(string? kind, string? title, string? detail, long since)
+    {
+        if (kind == null || Array.IndexOf(Kinds, kind) < 0) return null;
+        if (FriendProfile.CleanText(title, MaxText) is not { } cleanTitle) return null;
+        return new FriendActivity(kind, cleanTitle, FriendProfile.CleanText(detail, MaxText), Math.Max(0, since));
+    }
+}
 
 public enum FriendNoteKind
 {
@@ -238,6 +261,10 @@ public enum FriendNoteKind
     Waiting,
     /// <summary>"This is me now": name, status, color and picture. Holm before 1.8 leaves it unopened.</summary>
     Profile,
+    /// <summary>A chat message. Holm before 1.9 leaves it unopened.</summary>
+    Chat,
+    /// <summary>"Watch my screen": meet me on the relay with this secret. Holm before 1.9 leaves it unopened.</summary>
+    Stream,
 }
 
 public static class FriendNotes
@@ -264,6 +291,15 @@ public static class FriendNotes
         public string? U { get; set; }
         public string? O { get; set; }
         public string? P { get; set; }
+        public string? M { get; set; }
+        public string? I { get; set; }
+        // Activity, in "ping" and "here": kind, title, detail, since. Holm before 1.9 ignores these.
+        public string? Y { get; set; }
+        public string? V { get; set; }
+        public string? W { get; set; }
+        public long? Z { get; set; }
+        /// <summary>How many achievements the sender has, in "ping" and "here".</summary>
+        public int? Q { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -291,6 +327,8 @@ public static class FriendNotes
                 FriendNoteKind.Wave => "wave",
                 FriendNoteKind.Waiting => "waiting",
                 FriendNoteKind.Profile => "profile",
+                FriendNoteKind.Chat => "chat",
+                FriendNoteKind.Stream => "stream",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -302,9 +340,19 @@ public static class FriendNotes
             U = note.Profile?.Status,
             O = note.Profile?.Color,
             P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
+            // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
+            M = note.Text == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(note.Text)),
+            I = note.MessageId,
+            Y = note.Activity?.Kind,
+            V = note.Activity?.Title,
+            W = note.Activity?.Detail,
+            Z = note.Activity?.Since,
+            Q = note.Trophies,
         };
         return SealDto(me, to, dto);
     }
+
+    static int? Trophies(int? count) => count is >= 0 and <= 10_000 ? count : null;
 
     /// <summary>What a profile note says, checked: a picture that isn't a small JPEG or PNG is left out.</summary>
     static FriendProfile ProfileOf(string from, NoteDto dto)
@@ -370,11 +418,15 @@ public static class FriendNotes
                 "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
                     => new FriendNote(FriendNoteKind.FriendRequestCancelled, from, dto.T, Code: dto.C, RequestId: dto.R),
                 "removed" => new FriendNote(FriendNoteKind.RemovedYou, from, dto.T),
-                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T),
-                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T),
+                "ping" => new FriendNote(FriendNoteKind.Ping, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0), Trophies: Trophies(dto.Q)),
+                "here" => new FriendNote(FriendNoteKind.Here, from, dto.T, Activity: FriendActivity.From(dto.Y, dto.V, dto.W, dto.Z ?? 0), Trophies: Trophies(dto.Q)),
                 "wave" => new FriendNote(FriendNoteKind.Wave, from, dto.T),
                 "waiting" => new FriendNote(FriendNoteKind.Waiting, from, dto.T),
                 "profile" => new FriendNote(FriendNoteKind.Profile, from, dto.T, Profile: ProfileOf(from, dto)),
+                "stream" when dto.S != null && Convert.FromBase64String(dto.S) is { Length: ShareCode.SecretLength } streamSecret
+                    => new FriendNote(FriendNoteKind.Stream, from, dto.T, Secret: streamSecret),
+                "chat" when ChatText.Clean(ChatText.FromNote(dto.M)) is { } message && Guid.TryParseExact(dto.I, "N", out _)
+                    => new FriendNote(FriendNoteKind.Chat, from, dto.T, Text: message, MessageId: dto.I),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];
