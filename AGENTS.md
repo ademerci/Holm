@@ -2,6 +2,10 @@
 
 - When committing changes, preserve the configured Git author and add the AI assistant used as a co-author in the commit message.
 
+## Test builds
+
+- Name test executables `Holm-<version>-test-build.<number>.exe`, with an incrementing build number and an explicit test label. Reserve `Holm.exe` for release assets.
+
 ## Release packaging
 
 - Publish Windows x64 releases as self-contained, single-file builds so users do not need to install .NET.
