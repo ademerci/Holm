@@ -84,14 +84,21 @@ public partial class MainWindow
     /// <summary>The GIF moves in the notification's picture, small, while the notification shows.</summary>
     async Task ShowTaskGifAsync(string url, string messageId)
     {
-        var gif = await GifCache.LoadAsync(url, 96);
-        if (gif == null || !_taskVisible || _taskGif?.Id != messageId) return; // the notification is gone or another one shows
-        var brush = new System.Windows.Media.ImageBrush(gif.Frames[0]) { Stretch = System.Windows.Media.Stretch.UniformToFill };
-        if (_settings.Animations && gif.Frames.Count > 1)
-            brush.BeginAnimation(System.Windows.Media.ImageBrush.ImageSourceProperty, GifPlayer.Animation(gif));
-        TaskThumb.Background = brush;
-        TaskThumb.Visibility = Visibility.Visible;
-        TaskIconCircle.Visibility = Visibility.Collapsed;
+        try
+        {
+            var gif = await GifCache.LoadAsync(url, 96);
+            if (gif == null || gif.Frames.Count == 0 || !_taskVisible || _taskGif?.Id != messageId) return; // gone, or another one shows
+            var brush = new System.Windows.Media.ImageBrush(gif.Frames[0]) { Stretch = System.Windows.Media.Stretch.UniformToFill };
+            if (_settings.Animations && gif.Frames.Count > 1 && gif.Duration > TimeSpan.Zero)
+                brush.BeginAnimation(System.Windows.Media.ImageBrush.ImageSourceProperty, GifPlayer.Animation(gif));
+            TaskThumb.Background = brush;
+            TaskThumb.Visibility = Visibility.Visible;
+            TaskIconCircle.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex) when (ex is not (StackOverflowException or AccessViolationException))
+        {
+            Diag.Log("GIF not shown in the notch: " + ex.GetType().Name + ": " + ex.Message); // the notification shows without it
+        }
     }
 
     /// <summary>The GIF message the notification is about; a click on its picture opens the chat.</summary>
