@@ -175,7 +175,7 @@ public sealed class FriendMessage
     public string? MyReaction { get; set; }
     /// <summary>The friend's reaction to the message, if any.</summary>
     public string? TheirReaction { get; set; }
-    /// <summary>The link to the GIF this message is; <see cref="Text"/> holds it too, for Holm before 1.9.1.</summary>
+    /// <summary>The link to the GIF this message is; <see cref="Text"/> holds it too, for Holm before 1.9.2.</summary>
     public string? Gif { get; set; }
 }
 

@@ -1,11 +1,15 @@
 # Changelog
 
+## 1.9.2 – 2026-11-10
+
+### Added
+- **Reactions in the chat, like on Instagram.** A smiley beside each bubble opens the quick reactions (❤️ 😂 😮 😢 😡 👍) and *+* every emoji; a double click gives a heart. One reaction per side and message, shown on both PCs in a pill under the bubble (new sealed note kind `react`, ignored before 1.9.2). The notch's message pop-out offers the first two quick reactions next to *Reply*; *Customize reactions* changes them (saved as `QuickReactions`). Emoji in the chat are drawn in color (Emoji.Wpf, with Windows' Segoe UI Emoji).
+- **GIFs in the chat.** A GIF picker with GIPHY search (needs a GIPHY API key) and recent GIFs; a pasted GIF link goes as a GIF. A GIF is a chat note with its link and a new flag (`G`), so Holm 1.9.1 and older show the link. GIFs are fetched over https (10 MB at most, checked to be a GIF), cached in `gifs` next to the settings, decoded with their frames put together like a browser does (disposal, delays, at most 120 frames) and play in the bubble, as a small preview in the conversation list and in the notch's pop-out.
+- **Equalizer that follows the music.** The four bars react to the sound from the default output (WASAPI loopback, only while they show): RMS every 10 ms, attack 0.7 and release 0.15 as in the Dynamic Island Windhawk mod, the bars reading the history 40 ms apart, plus an automatic gain. On by default; *Settings › General › Equalizer follows the music* brings back the bounce, which also stands in while the sound can't be read.
+
 ## 1.9.1 – 2026-11-10
 
 ### Added
-- **Reactions in the chat, like on Instagram.** A smiley beside each bubble opens the quick reactions (❤️ 😂 😮 😢 😡 👍) and *+* every emoji; a double click gives a heart. One reaction per side and message, shown on both PCs in a pill under the bubble (new sealed note kind `react`, ignored before 1.9.1). The notch's message pop-out offers the first two quick reactions next to *Reply*; *Customize reactions* changes them (saved as `QuickReactions`). Emoji in the chat are drawn in color (Emoji.Wpf, with Windows' Segoe UI Emoji).
-- **GIFs in the chat.** A GIF picker with GIPHY search (needs a GIPHY API key) and recent GIFs; a pasted GIF link goes as a GIF. A GIF is a chat note with its link and a new flag (`G`), so Holm 1.9.0 shows the link. GIFs are fetched over https (10 MB at most, checked to be a GIF), cached in `gifs` next to the settings, decoded with their frames put together like a browser does (disposal, delays, at most 120 frames) and play in the bubble, as a small preview in the conversation list and in the notch's pop-out.
-- **Equalizer that follows the music.** The four bars react to the sound from the default output (WASAPI loopback, only while they show): RMS every 10 ms, attack 0.7 and release 0.15 as in the Dynamic Island Windhawk mod, the bars reading the history 40 ms apart, plus an automatic gain. On by default; *Settings › General › Equalizer follows the music* brings back the bounce, which also stands in while the sound can't be read.
 - **Weather during playback.** The open media notch keeps the weather icon and temperature at the top right. Hover for conditions and click anywhere in the weather area to change the city.
 
 ### Changed
