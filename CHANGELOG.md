@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.4 – 2026-11-10
+
+### Changed
+- **The chat, redesigned.** One card split in two: searchable conversations with the time of the last message and a blue unread count, and the conversation with a header (*Active now*, wave, share screen), bubbles that run together with joined corners and a blue-to-purple gradient for yours, their face beside their last bubble, times only after a pause of 15 minutes, one to three emoji shown big without a bubble, *Sent* under your last message, and a round message box with *GIF* and a send button that lights up. An empty chat greets with their face and *Say hi 👋*.
+- **A click outside Holm closes the notch.** While the notch is open, or a pop-out that goes away on its own shows (a message, the volume, a screenshot), a press on any window that isn't Holm's closes it at once. Holm's own windows and menus don't count; pop-outs that wait for an answer stay. A timer checks the mouse buttons every 35 ms only while something is open.
+
+### Fixed
+- **GIFs can't take Holm down.** Every GIF is walked block by block in safe code (`GifInspector`) before Windows' decoder sees it: an absurd canvas or frame (over 2048 px) is turned away, a cut-off or junk-filled file is cut back to its whole frames and closed properly, and very long GIFs are cut to what Holm draws. Decoding catches everything a broken file can throw, two GIFs decode at a time, decoded GIFs together stay under 96 MB (16 MB each), a cached file that doesn't decode is fetched again, and loading or showing a GIF in the chat or the notch can't throw. A test feeds 3000 damaged GIFs through it.
+
 ## 1.9.3 – 2026-11-10
 
 ### Changed
