@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.3 – 2026-11-10
+
+### Changed
+- **GIF search works out of the box.** Release builds carry a GIPHY API key, built in at build time from the `GIPHY_API_KEY` secret or an ignored `giphy.key` file and never in the source; a key added in the GIF picker still comes first.
+
 ## 1.9.2 – 2026-11-10
 
 ### Added
