@@ -825,6 +825,7 @@ public partial class MainWindow
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
         TaskThumb.Visibility = Visibility.Collapsed; // a screenshot puts its picture back afterwards
+        _taskGif = null; // and a chat GIF
         TaskExtra.Visibility = Visibility.Collapsed; // and its third button
         _extraAction = null;
         TaskIconCircle.Visibility = Visibility.Visible;

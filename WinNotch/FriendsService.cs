@@ -68,6 +68,12 @@ internal sealed class FriendsService
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
+    /// <summary>A GIF from a friend: the message's id, the GIF's link and when it was sent (UI thread).</summary>
+    public event Action<Friend, string, string, long>? GifReceived;
+
+    /// <summary>A friend reacted to a chat message: its id and the emoji, or null when they took it away (UI thread).</summary>
+    public event Action<Friend, string, string?>? ReactionReceived;
+
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
     /// <summary>What friends told us they're doing, by key; only shown while they count as online.</summary>
     readonly Dictionary<string, FriendActivity?> _activities = new(StringComparer.Ordinal);
@@ -381,10 +387,19 @@ internal sealed class FriendsService
 
     /// <summary>Sends one chat message (<see cref="ChatText.MaxBytes"/> at most).</summary>
     /// <exception cref="IOException">The note couldn't be delivered to their inbox.</exception>
-    public Task SendChatAsync(Friend to, string id, string text, long sent, CancellationToken ct)
+    public Task SendChatAsync(Friend to, string id, string text, long sent, CancellationToken ct, string? gif = null)
     {
         var me = EnsureMe();
-        var note = new FriendNote(FriendNoteKind.Chat, me.Name, sent, Text: text, MessageId: id);
+        var note = new FriendNote(FriendNoteKind.Chat, me.Name, sent, Text: gif ?? text, MessageId: id, Gif: gif);
+        return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
+    }
+
+    /// <summary>Reacts to a chat message with an emoji, or takes the reaction away (null).</summary>
+    /// <exception cref="IOException">The note couldn't be delivered to their inbox.</exception>
+    public Task SendReactionAsync(Friend to, string messageId, string? emoji, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Reaction, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Text: emoji, MessageId: messageId);
         return FriendInbox.PostAsync(to, FriendNotes.Seal(me, to, note), ct);
     }
 
@@ -568,7 +583,14 @@ internal sealed class FriendsService
                 break;
             case FriendNoteKind.Chat:
                 if (age <= FreshSeconds) SawOnline(friend);
-                ChatReceived?.Invoke(friend, note.MessageId!, note.Text!, note.Sent);
+                if (note.Gif != null) GifReceived?.Invoke(friend, note.MessageId!, note.Gif, note.Sent);
+                else ChatReceived?.Invoke(friend, note.MessageId!, note.Text!, note.Sent);
+                break;
+            case FriendNoteKind.Reaction when friend == null:
+                break; // only friends react
+            case FriendNoteKind.Reaction:
+                if (age <= FreshSeconds) SawOnline(friend);
+                ReactionReceived?.Invoke(friend, note.MessageId!, note.Text);
                 break;
             case FriendNoteKind.Profile when friend == null || note.Profile == null:
                 break; // only friends show up with a picture

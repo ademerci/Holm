@@ -40,6 +40,8 @@
 
   <ItemGroup>
     <PackageReference Include="QRCoder" Version="1.7.0" />
+    <!-- Color emoji in the chat (WPF draws emoji in black and white); it uses Windows' own Segoe UI Emoji. -->
+    <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
   </ItemGroup>
 
 </Project>
