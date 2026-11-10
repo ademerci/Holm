@@ -228,7 +228,7 @@ internal sealed class ChatPage : HubView
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(FaceWithDot(_friend, 40));
         var friend = _friend;
-        var stream = HubTheme.Action("Stream my screen");
+        var stream = HubTheme.Action("Share my screen");
         stream.VerticalAlignment = VerticalAlignment.Center;
         stream.ToolTip = $"Invite {friend.Name} to watch your screen";
         stream.Click += (_, _) => _social.Stream?.Invoke(friend);
