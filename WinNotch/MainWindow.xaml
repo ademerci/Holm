@@ -572,6 +572,7 @@
                             </StackPanel>
                                         <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
                                             <StackPanel x:Name="MediaWeatherHeader" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,8,0"
+                                                        Background="Transparent" MinHeight="30"
                                                         Visibility="Collapsed" Cursor="Hand" MouseLeftButtonUp="WeatherLine_Click">
                                                 <Border x:Name="MediaWeatherIcon" VerticalAlignment="Center"/>
                                                 <TextBlock x:Name="MediaWeatherTemp" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
