@@ -158,7 +158,7 @@ internal static class GifDecoder
             if (decoder.Frames.Count == 0) return null;
 
             int width = checkedGif.Width, height = checkedGif.Height;
-            maxSide = Math.Clamp(maxSide, 16, 1024);
+            maxSide = Math.Clamp(maxSide, 1, 1024);
 
             double scale = Math.Min(1.0, maxSide / (double)Math.Max(width, height));
             int outW = Math.Max(1, (int)Math.Round(width * scale)), outH = Math.Max(1, (int)Math.Round(height * scale));
