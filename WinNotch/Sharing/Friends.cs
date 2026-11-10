@@ -268,7 +268,7 @@ public enum FriendNoteKind
     Chat,
     /// <summary>"Watch my screen": meet me on the relay with this secret. Holm before 1.9 leaves it unopened.</summary>
     Stream,
-    /// <summary>A reaction to a chat message (an emoji in <c>Text</c>, none to take it away). Holm before 1.9.1 leaves it unopened.</summary>
+    /// <summary>A reaction to a chat message (an emoji in <c>Text</c>, none to take it away). Holm before 1.9.2 leaves it unopened.</summary>
     Reaction,
 }
 
@@ -305,7 +305,7 @@ public static class FriendNotes
         public long? Z { get; set; }
         /// <summary>How many achievements the sender has, in "ping" and "here".</summary>
         public int? Q { get; set; }
-        /// <summary>In "chat": the text is the link to a GIF. Holm before 1.9.1 shows the link.</summary>
+        /// <summary>In "chat": the text is the link to a GIF. Holm before 1.9.2 shows the link.</summary>
         public bool? G { get; set; }
     }
 
