@@ -436,6 +436,7 @@ public partial class MainWindow : Window
     void ApplyState(bool animate = true)
     {
         animate &= _settings.Animations;
+        WatchClicksAway();
         var target = _expanded ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : TaskShowing ? NotchState.Task
