@@ -133,8 +133,20 @@ public partial class MainWindow
             RainText.Visibility = weather.RainNote != null ? Visibility.Visible : Visibility.Collapsed;
             if (weather.RainNote != null) IdleWeatherIcon.Child = WeatherIcons.Make(WeatherKind.Rain, weather.IsDay, 12, DimBrush);
         }
+        RefreshMediaWeather();
         ShowIdle(); // the weather takes the clock's place
         if (_expanded && _state == NotchState.Expanded) ApplyState();
+    }
+
+    void RefreshMediaWeather()
+    {
+        var weather = _settings.Weather ? _weather : null;
+        MediaWeatherHeader.Visibility = weather != null && _settings.MediaControls && _info != null && !_choosingPlace
+            ? Visibility.Visible : Visibility.Collapsed;
+        if (weather == null) return;
+        MediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, System.Windows.Media.Brushes.White);
+        MediaWeatherTemp.Text = weather.Degrees;
+        MediaWeatherHeader.ToolTip = $"{weather.Summary} · {_settings.WeatherPlace}" + (weather.RainNote != null ? $"\n{weather.RainNote}" : "");
     }
 
     // ───────────── choosing the place ─────────────

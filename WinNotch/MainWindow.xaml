@@ -1,4 +1,4 @@
-﻿<Window x:Class="WinNotch.MainWindow"
+<Window x:Class="WinNotch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Holm" Width="560" Height="250" Left="0" Top="0"
@@ -540,11 +540,16 @@
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
                             <Grid Margin="0,0,0,12" MinHeight="32" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                             <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" IsHitTestVisible="False">
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
-                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
+                            <StackPanel x:Name="ToolBar" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
@@ -565,7 +570,12 @@
                                     <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
-                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
+                                            <StackPanel x:Name="MediaWeatherHeader" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,8,0"
+                                                        Visibility="Collapsed" Cursor="Hand" MouseLeftButtonUp="WeatherLine_Click">
+                                                <Border x:Name="MediaWeatherIcon" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="MediaWeatherTemp" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <!-- Your Focumon and its timer, from the Focumon browser extension; click to open Focumon -->
                                             <Button x:Name="FocumonChip" Style="{StaticResource NotchButton}" Height="30" Margin="0,0,2,0" Visibility="Collapsed"
                                                     ToolTip="Open Focumon" Click="FocumonChip_Click">
