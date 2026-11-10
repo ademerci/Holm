@@ -101,6 +101,7 @@ public partial class MainWindow
         Say(mia, false, "Are you coming to the concert?", now - 600);
         chats.SetReaction(lena.Key, chats.With(lena.Key)[1].Id, mine: false, "😂");
         chats.SetReaction(lena.Key, chats.With(lena.Key)[3].Id, mine: true, "❤️");
+        Say(lena, true, "🙌🔥", now + 430);
         return new SocialContext
         {
             Friends = () => friends,
