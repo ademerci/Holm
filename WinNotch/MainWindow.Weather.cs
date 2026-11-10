@@ -141,7 +141,7 @@ public partial class MainWindow
     void RefreshMediaWeather()
     {
         var weather = _settings.Weather ? _weather : null;
-        MediaWeatherHeader.Visibility = weather != null && _settings.MediaControls && _info != null && !_choosingPlace
+        MediaWeatherHeader.Visibility = weather != null && _settings.MediaControls && _info != null
             ? Visibility.Visible : Visibility.Collapsed;
         if (weather == null) return;
         MediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, System.Windows.Media.Brushes.White);

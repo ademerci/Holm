@@ -549,7 +549,7 @@
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
-                            <StackPanel x:Name="ToolBar" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <StackPanel x:Name="ToolBar" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
@@ -663,7 +663,7 @@
     
                                 <!-- No music: time and date stay at the top of home, directly below the shared toolbar. -->
                                 <StackPanel x:Name="ClockPanel" Margin="2,0,2,0" VerticalAlignment="Top">
-                                    <Grid>
+                                    <Grid x:Name="HomeClockHeader">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
