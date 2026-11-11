@@ -52,6 +52,7 @@ public partial class MainWindow
         Send = SendChat,
         Retry = RetryChat,
         SendGif = SendGif,
+        SendFiles = SendChatFiles,
         React = ReactTo,
         QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
         SetQuickReactions = list => { _settings.QuickReactions = ChatReaction.Quick(list); _settings.Save(); },
@@ -61,6 +62,21 @@ public partial class MainWindow
         Animate = () => _settings.Animations,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
     };
+
+    void SendChatFiles(Friend friend, string[] paths)
+    {
+        if (!_settings.Beam)
+        {
+            ShowPeek("", "Turn on Beam to send files", "", null, false, null);
+            return;
+        }
+        if (_busy || _installingUpdate || _draggingOut)
+        {
+            ShowPeek("", "Wait until the current task finishes", "", null, false, null);
+            return;
+        }
+        SendTo(new ShareTarget(null, friend), paths);
+    }
 
 #if DEBUG
     /// <summary>Made-up progress for the snapshots, in memory only.</summary>

@@ -136,6 +136,6 @@ public partial class MainWindow
             : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, HubTheme.ActionButtonStyle);
         Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
-                                  HubPages(demo != null), () => MeCard(current()));
+                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage());
     }
 }

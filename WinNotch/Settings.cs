@@ -18,7 +18,7 @@ internal sealed class AppSettings
     public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
     public bool MediaControls { get; set; } = true;
-    /// <summary>Check GitHub for a newer stable release at startup and every six hours.</summary>
+    /// <summary>Check GitHub for a newer stable release periodically.</summary>
     public bool CheckForUpdatesAutomatically { get; set; } = true;
     /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
     public string? Monitor { get; set; }

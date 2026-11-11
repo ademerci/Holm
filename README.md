@@ -58,7 +58,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
-- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
+- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…** (including Updates), *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), pick a screen, quit.
 - **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends and weather. Every switch has an icon and a line saying what it does; changes wait for *Apply*. Esc closes it.
 
   ![The Holm window](docs/settings.png)

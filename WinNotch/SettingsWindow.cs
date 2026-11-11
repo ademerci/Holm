@@ -49,7 +49,7 @@ internal sealed class SettingsWindow : Window
     /// <param name="social">Friends, chat and achievements: the pages above the settings.</param>
     /// <param name="me">Your face and name for the top of the sidebar; clicking it opens the profile.</param>
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync, ProfileEditor? profile = null,
-                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null)
+                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null, FrameworkElement? updates = null)
     {
         _animate = animate;
         _sync = sync;
@@ -121,6 +121,13 @@ internal sealed class SettingsWindow : Window
             _titles[group.Key] = (group.Title, group.Subtitle);
             _nav.Children.Add(NavItem(group.Key, group.Glyph, group.Title));
             _settingsPages[group.Key] = GroupPage(group);
+        }
+
+        if (updates != null)
+        {
+            _titles["updates"] = ("Updates", "Check for a new version of Holm");
+            _nav.Children.Add(NavItem("updates", "", "Updates"));
+            _settingsPages["updates"] = updates;
         }
 
         var sideBorder = new Border
@@ -238,7 +245,7 @@ internal sealed class SettingsWindow : Window
         }
         _pageHost.Child = page;
         (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
-        _footer.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        _footer.Visibility = settings && key != "updates" ? Visibility.Visible : Visibility.Collapsed;
         foreach (var (k, nav) in _navItems)
         {
             bool on = k == key;

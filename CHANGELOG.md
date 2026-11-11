@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.5 – 2026-11-11
+
+### Added
+- **Send files from chat.** The plus button opens a file picker and sends the chosen files to the current friend with Beam, including its existing transfer and send-later behavior.
+- **Updates in Settings.** Check for updates, install an available update, and turn automatic checks on or off from the new Updates page. Automatic checks remain on by default; update notifications stay in the notch.
+
+### Changed
+- The GIF picker sits beside the send button, and the file button has a circular hover highlight. The old Updates submenu has been removed from the right-click menu.
+
 ## 1.9.4 – 2026-11-10
 
 ### Changed

@@ -3,6 +3,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using WinNotch.Updates;
 
@@ -11,26 +13,28 @@ namespace WinNotch;
 public partial class MainWindow
 {
     static readonly Version RunningVersion = typeof(App).Assembly.GetName().Version ?? new Version(1, 0, 0);
-    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(2);
     readonly CancellationTokenSource _updateLifetime = new();
     DispatcherTimer _updateTimer = null!;
+    bool _trimmedAfterFirstCheck;
     UpdateService? _updates;
     UpdateRelease? _availableUpdate;
-    bool _checkingUpdates, _installingUpdate, _updatesClosing, _trimmedAfterFirstCheck;
+    bool _checkingUpdates, _installingUpdate, _updatesClosing;
     string? _updateStatus;
     Version? _notifiedUpdateVersion;
     bool _updateNotification;
     Version? _dismissedUpdateVersion;
     bool HasUpdateNotification => _availableUpdate is { } update && update.Version != _dismissedUpdateVersion;
 
+    TextBlock? _updatesStatusText;
+    Button? _checkUpdatesButton, _installUpdateButton;
+
     void InitUpdates()
     {
         _updateTimer = MakeTimer(20_000, () =>
         {
-            _updateTimer.Interval = UpdateCheckInterval;
+            _updateTimer.Interval = TimeSpan.FromHours(2);
             _ = CheckForUpdatesAsync(manual: false);
         });
-        RefreshUpdateMenu(refreshNotification: false);
     }
 
     void StartUpdates()
@@ -38,6 +42,14 @@ public partial class MainWindow
         if (_updatesClosing || !_settings.CheckForUpdatesAutomatically) return;
         _updateTimer.Interval = TimeSpan.FromSeconds(20);
         _updateTimer.Start();
+    }
+
+    void SetAutomaticUpdateChecks(bool enabled)
+    {
+        _settings.CheckForUpdatesAutomatically = enabled;
+        _settings.Save();
+        _updateTimer.Stop();
+        if (enabled) StartUpdates();
     }
 
     void StopUpdates()
@@ -48,6 +60,36 @@ public partial class MainWindow
         _updates?.Dispose();
     }
 
+    FrameworkElement UpdatesPage()
+    {
+        var content = new StackPanel { Margin = new Thickness(20) };
+        content.Children.Add(new TextBlock { Text = $"Holm {RunningVersion.ToString(3)}", FontSize = 17, FontWeight = FontWeights.SemiBold });
+        content.Children.Add(new TextBlock { Text = "Check for a new release and update Holm when you're ready.", Foreground = HubTheme.Dim, Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
+        var automatic = new CheckBox
+        {
+            Content = "Check for updates automatically", IsChecked = _settings.CheckForUpdatesAutomatically,
+            Foreground = Brushes.White, Margin = new Thickness(0, 18, 0, 0),
+            ToolTip = "Checks shortly after Holm starts and every two hours. Updates are installed only when you choose."
+        };
+        automatic.Checked += (_, _) => SetAutomaticUpdateChecks(true);
+        automatic.Unchecked += (_, _) => SetAutomaticUpdateChecks(false);
+        content.Children.Add(automatic);
+        _updatesStatusText = new TextBlock { Margin = new Thickness(0, 22, 0, 16), TextWrapping = TextWrapping.Wrap };
+        content.Children.Add(_updatesStatusText);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal };
+        _checkUpdatesButton = HubTheme.Action("Check for updates", primary: true);
+        _checkUpdatesButton.Click += async (_, _) => await CheckForUpdatesAsync(manual: true);
+        actions.Children.Add(_checkUpdatesButton);
+        _installUpdateButton = HubTheme.Action("Update and restart");
+        _installUpdateButton.Margin = new Thickness(10, 0, 0, 0);
+        _installUpdateButton.Click += async (_, _) => await InstallUpdateAsync();
+        actions.Children.Add(_installUpdateButton);
+        content.Children.Add(actions);
+        var page = new Border { Background = HubTheme.Card, CornerRadius = new CornerRadius(12), VerticalAlignment = VerticalAlignment.Top, Child = content };
+        RefreshUpdateMenu(refreshNotification: false);
+        return page;
+    }
+
     void RefreshUpdateMenu(bool refreshNotification = true)
     {
         if (refreshNotification)
@@ -55,34 +97,17 @@ public partial class MainWindow
             RefreshMessages();
             ApplyState();
         }
-        MenuAutoUpdates.IsChecked = _settings.CheckForUpdatesAutomatically;
-        MenuUpdatesLabel.Text = _installingUpdate ? "Updating…"
-            : _availableUpdate is { } available ? $"Updates · {available.Version.ToString(3)} available" : "Updates";
-        MenuUpdateIcon.Visibility = _availableUpdate != null && !_installingUpdate ? Visibility.Visible : Visibility.Collapsed;
-        MenuUpdateStatus.Header = _updateStatus ?? $"Current version: {RunningVersion.ToString(3)}";
-        MenuCheckUpdates.Header = _checkingUpdates ? "Checking for updates…" : "Check for updates";
-        MenuCheckUpdates.IsEnabled = !_checkingUpdates && !_installingUpdate;
-        MenuAutoUpdates.IsEnabled = !_installingUpdate;
-        MenuInstallUpdate.Visibility = _availableUpdate != null ? Visibility.Visible : Visibility.Collapsed;
-        MenuInstallUpdate.Header = _installingUpdate ? "Updating…"
-            : _availableUpdate is { } release ? $"Update to {release.Version.ToString(3)} and restart" : "Update and restart";
+        if (_updatesStatusText == null || _checkUpdatesButton == null || _installUpdateButton == null) return;
         string? unavailable = UpdateInstaller.UnavailableReason;
-        bool activity = _busy || _sharing || TaskShowing;
-        MenuInstallUpdate.IsEnabled = !_checkingUpdates && !_installingUpdate && !activity && unavailable == null;
-        MenuInstallUpdate.ToolTip = unavailable ?? (activity ? "Finish or dismiss the current activity before restarting." : "Downloads the update and restarts Holm. Your settings stay.");
+        _updatesStatusText.Text = _updateStatus ?? "Check for updates when you want to see if a new version is available.";
+        _checkUpdatesButton.Content = _checkingUpdates ? "Checking…" : "Check for updates";
+        _checkUpdatesButton.IsEnabled = !_checkingUpdates && !_installingUpdate;
+        _installUpdateButton.Visibility = _availableUpdate != null ? Visibility.Visible : Visibility.Collapsed;
+        _installUpdateButton.Content = _installingUpdate ? "Updating…" : _availableUpdate is { } release ? $"Update to {release.Version.ToString(3)} and restart" : "Update and restart";
+        _installUpdateButton.IsEnabled = !_checkingUpdates && !_installingUpdate && unavailable == null;
+        _installUpdateButton.ToolTip = unavailable ?? "Downloads the update and restarts Holm. Your settings stay.";
+        if (unavailable != null && _availableUpdate != null) _updatesStatusText.Text += "\n" + unavailable;
     }
-
-    void MenuAutoUpdates_Click(object sender, RoutedEventArgs e)
-    {
-        _settings.CheckForUpdatesAutomatically = MenuAutoUpdates.IsChecked;
-        _settings.Save();
-        _updateTimer.Stop();
-        if (_settings.CheckForUpdatesAutomatically) StartUpdates();
-        RefreshUpdateMenu();
-    }
-
-    async void MenuCheckUpdates_Click(object sender, RoutedEventArgs e)
-        => await CheckForUpdatesAsync(manual: true);
 
     async Task CheckForUpdatesAsync(bool manual)
     {
@@ -113,7 +138,6 @@ public partial class MainWindow
                 RefreshUpdateMenu();
                 NotifyAvailableUpdate();
             }
-            // The check 20 s after start pulls the network and TLS code back in right after the startup trim.
             if (!manual && !_updatesClosing && !_trimmedAfterFirstCheck)
             {
                 _trimmedAfterFirstCheck = true;
@@ -197,9 +221,6 @@ public partial class MainWindow
             ApplyState();
         }));
     }
-
-    async void MenuInstallUpdate_Click(object sender, RoutedEventArgs e)
-        => await InstallUpdateAsync();
 
     async Task InstallUpdateAsync()
     {

@@ -39,6 +39,8 @@ internal sealed class SocialContext
     public Action<Friend>? Stream { get; init; }
     /// <summary>Sends a GIF (its link).</summary>
     public Action<Friend, string> SendGif { get; init; } = (_, _) => { };
+    /// <summary>Sends selected files to a friend using Beam.</summary>
+    public Action<Friend, string[]> SendFiles { get; init; } = (_, _) => { };
     /// <summary>Reacts to a message with an emoji, or takes our reaction away (null).</summary>
     public Action<Friend, FriendMessage, string?> React { get; init; } = (_, _, _) => { };
     /// <summary>The quick reactions in the reaction bar, in order.</summary>
@@ -151,29 +153,48 @@ internal sealed class ChatPage : HubView
         Grid.SetRow(_scroll, 1);
         conversation.Children.Add(_scroll);
 
-        // The message box: a round field with GIF on the left and a round send button on the right.
+        // The message box: attachments on the left, GIF and send on the right.
         var box = new Grid();
         box.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         box.ColumnDefinitions.Add(new ColumnDefinition());
         box.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        box.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var attach = new Border
+        {
+            Width = 30, Height = 30, Margin = new Thickness(5, 0, 0, 0), CornerRadius = new CornerRadius(15),
+            Background = Brushes.Transparent, Cursor = Cursors.Hand, ToolTip = "Send files",
+            VerticalAlignment = VerticalAlignment.Center, Child = HubTheme.Glyph("\uE710", 14, HubTheme.Dim),
+        };
+        attach.MouseEnter += (_, _) => attach.Background = HubTheme.Hover;
+        attach.MouseLeave += (_, _) => attach.Background = Brushes.Transparent;
+        attach.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            if (_friend is not { } to) return;
+            var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Choose files to send", Multiselect = true };
+            if (dialog.ShowDialog(Window.GetWindow(this)) == true) _social.SendFiles(to, dialog.FileNames);
+            _input.Focus();
+        };
+        box.Children.Add(attach);
         var gif = Chip("GIF", "Send a GIF");
-        gif.Margin = new Thickness(6, 0, 2, 6);
-        gif.VerticalAlignment = VerticalAlignment.Bottom;
+        gif.Margin = new Thickness(2, 0, 2, 0);
+        gif.VerticalAlignment = VerticalAlignment.Center;
         gif.MouseLeftButtonUp += (_, e) =>
         {
             e.Handled = true;
             if (_friend is not { } to) return;
             ChatExtras.ShowGifPicker(gif, _social, url => { _social.SendGif(to, url); _input.Focus(); });
         };
+        Grid.SetColumn(gif, 2);
         box.Children.Add(gif);
         _input = HubTheme.Field("Message…", out var inputHost, multiline: true);
         _input.Background = Brushes.Transparent;
         _input.BorderThickness = new Thickness(0);
-        _input.Padding = new Thickness(4, 3, 4, 3);
+        _input.Padding = new Thickness(2, 3, 4, 3);
         _input.FontSize = 13.5;
         _input.MaxHeight = 120;
         _input.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-        ((TextBlock)inputHost.Children[1]).Margin = new Thickness(8, 0, 0, 0);
+        ((TextBlock)inputHost.Children[1]).Margin = new Thickness(2, 0, 0, 0);
         _input.PreviewKeyDown += (_, e) =>
         {
             // Enter sends, Shift+Enter starts a new line.
@@ -191,7 +212,7 @@ internal sealed class ChatPage : HubView
             Background = HubTheme.Accent, Cursor = Cursors.Hand, ToolTip = "Send (Enter)", Child = HubTheme.Glyph("", 13),
         };
         _send.MouseLeftButtonUp += (_, e) => { e.Handled = true; SendInput(); };
-        Grid.SetColumn(_send, 2);
+        Grid.SetColumn(_send, 3);
         box.Children.Add(_send);
         _input.TextChanged += (_, _) => RefreshComposer();
         var composer = new Border

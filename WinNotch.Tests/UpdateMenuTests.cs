@@ -17,16 +17,14 @@ public class UpdateMenuTests
     public void Manual_check_works_with_automatic_checks_disabled_and_exposes_new_release()
         => WithWindow(async window =>
         {
-            var settings = Field<AppSettings>(window, "_settings");
-            settings.CheckForUpdatesAutomatically = false;
+            Field<AppSettings>(window, "_settings").CheckForUpdatesAutomatically = false;
+            typeof(MainWindow).GetMethod("UpdatesPage", Private)!.Invoke(window, null);
             using var http = new HttpClient(new ResponseHandler(ReleaseJson("99.0.0")));
             Set(window, "_updates", new UpdateService(http));
             await Check(window, manual: true);
-            Assert.Equal(Visibility.Visible, Item(window, "MenuInstallUpdate").Visibility);
-            Assert.Contains("99.0.0", Item(window, "MenuInstallUpdate").Header.ToString());
-            Assert.Contains("available", ((TextBlock)((StackPanel)Item(window, "MenuUpdates").Header).Children[0]).Text);
-            Assert.Equal(Visibility.Visible, ((Border)((StackPanel)Item(window, "MenuUpdates").Header).Children[1]).Visibility);
-            Assert.False(Item(window, "MenuAutoUpdates").IsChecked);
+            Assert.Equal(Visibility.Visible, Field<Button>(window, "_installUpdateButton").Visibility);
+            Assert.Contains("99.0.0", Field<Button>(window, "_installUpdateButton").Content.ToString());
+            Assert.Contains("99.0.0", Field<TextBlock>(window, "_updatesStatusText").Text);
         });
 
     [Fact]
@@ -72,31 +70,46 @@ public class UpdateMenuTests
     public void Automatic_check_does_not_contact_GitHub_when_disabled()
         => WithWindow(async window =>
         {
+            typeof(MainWindow).GetMethod("UpdatesPage", Private)!.Invoke(window, null);
             Field<AppSettings>(window, "_settings").CheckForUpdatesAutomatically = false;
             var handler = new ResponseHandler(ReleaseJson("99.0.0"));
             using var http = new HttpClient(handler);
             Set(window, "_updates", new UpdateService(http));
             await Check(window, manual: false);
             Assert.Equal(0, handler.Requests);
-            Assert.Equal(Visibility.Collapsed, Item(window, "MenuInstallUpdate").Visibility);
-            Assert.Equal(Visibility.Collapsed, ((Border)((StackPanel)Item(window, "MenuUpdates").Header).Children[1]).Visibility);
+            Assert.Equal(Visibility.Collapsed, Field<Button>(window, "_installUpdateButton").Visibility);
+        });
+
+    [Fact]
+    public void Enabled_automatic_check_contacts_GitHub_and_shows_notification()
+        => WithWindow(async window =>
+        {
+            Field<AppSettings>(window, "_settings").CheckForUpdatesAutomatically = true;
+            var handler = new ResponseHandler(ReleaseJson("99.0.0"));
+            using var http = new HttpClient(handler);
+            Set(window, "_updates", new UpdateService(http));
+            await Check(window, manual: false);
+            Assert.True(handler.Requests > 0);
+            Assert.True(Field<bool>(window, "_updateNotification"));
         });
 
     [Fact]
     public void Current_release_shows_up_to_date_without_install_option()
         => WithWindow(async window =>
         {
+            typeof(MainWindow).GetMethod("UpdatesPage", Private)!.Invoke(window, null);
             using var http = new HttpClient(new ResponseHandler(ReleaseJson("1.0.0")));
             Set(window, "_updates", new UpdateService(http));
             await Check(window, manual: true);
-            Assert.Contains("up to date", Item(window, "MenuUpdateStatus").Header.ToString());
-            Assert.Equal(Visibility.Collapsed, Item(window, "MenuInstallUpdate").Visibility);
+            Assert.Contains("up to date", Field<TextBlock>(window, "_updatesStatusText").Text);
+            Assert.Equal(Visibility.Collapsed, Field<Button>(window, "_installUpdateButton").Visibility);
         });
 
     [Fact]
     public void Failed_check_keeps_known_update_and_reenables_retry()
         => WithWindow(async window =>
         {
+            typeof(MainWindow).GetMethod("UpdatesPage", Private)!.Invoke(window, null);
             var known = new UpdateRelease(new Version(99, 0, 0), "v99.0.0",
                 new Uri("https://github.com/ademerci/Holm/releases/tag/v99.0.0"),
                 new Uri("https://github.com/ademerci/Holm/releases/download/v99.0.0/Holm-99.0.0-win-x64.zip"), 100, new string('a', 64));
@@ -105,8 +118,8 @@ public class UpdateMenuTests
             Set(window, "_updates", new UpdateService(http));
             await Check(window, manual: true);
             Assert.Same(known, Field<UpdateRelease>(window, "_availableUpdate"));
-            Assert.Contains("Couldn't check", Item(window, "MenuUpdateStatus").Header.ToString());
-            Assert.True(Item(window, "MenuCheckUpdates").IsEnabled);
+            Assert.Contains("Couldn't check", Field<TextBlock>(window, "_updatesStatusText").Text);
+            Assert.True(Field<Button>(window, "_checkUpdatesButton").IsEnabled);
         });
 
     [Fact]

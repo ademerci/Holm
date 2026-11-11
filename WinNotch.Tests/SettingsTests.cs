@@ -5,10 +5,11 @@ namespace WinNotch.Tests;
 public class SettingsTests
 {
     [Fact]
-    public void Automatic_update_checks_default_on_and_can_be_disabled_persistently()
+    public void Automatic_update_preference_defaults_on_and_round_trips()
     {
-        var settings = Read("{}");
-        Assert.True(settings.CheckForUpdatesAutomatically);
+        Assert.True(Read("{}").CheckForUpdatesAutomatically);
+        var settings = new AppSettings { CheckForUpdatesAutomatically = true };
+        Assert.True(Read(JsonSerializer.Serialize(settings)).CheckForUpdatesAutomatically);
         settings.CheckForUpdatesAutomatically = false;
         Assert.False(Read(JsonSerializer.Serialize(settings)).CheckForUpdatesAutomatically);
     }
