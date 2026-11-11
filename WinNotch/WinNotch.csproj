@@ -25,6 +25,8 @@
     <!-- Run the precompiled (ReadyToRun) code as it is instead of compiling timer code again in the background:
          measured idle, that halves the CPU and saves the 3–5 MB steps every time a method gets recompiled. -->
     <TieredCompilation>false</TieredCompilation>
+    <!-- With -p:HolmBench=true, a Release build with the dev benchmark in MainWindow.Bench.cs (the bench switch). -->
+    <DefineConstants Condition="'$(HolmBench)' == 'true'">$(DefineConstants);BENCH</DefineConstants>
   </PropertyGroup>
 
   <!-- A GIPHY API key for GIF search, built into the app but never into the public source: from -p:GiphyKey=…, the

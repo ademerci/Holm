@@ -47,6 +47,20 @@ public partial class App : Application
         }
 #endif
 
+#if DEBUG || BENCH
+        // Dev helper: open and close the notch a number of times, write how smooth and costly that was, and quit.
+        int bench = Array.IndexOf(e.Args, "--bench");
+        if (bench >= 0 && bench + 1 < e.Args.Length)
+        {
+            AppSettings.ReadOnly = true; // your settings stay as they are
+            int rounds = bench + 2 < e.Args.Length && int.TryParse(e.Args[bench + 2], out int n) ? n : 10;
+            var window = new MainWindow();
+            window.Loaded += async (_, _) => { await window.BenchAsync(e.Args[bench + 1], rounds); Shutdown(); };
+            window.Show();
+            return;
+        }
+#endif
+
         Diag.Enabled = e.Args.Contains("--diag");
         FormerName.Migrate(); // before the window reads the settings
         new MainWindow().Show();
