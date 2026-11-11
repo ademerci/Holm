@@ -164,6 +164,10 @@ internal sealed class AppSettings
     public long? FriendsSince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
+    /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
+    public List<OwnInvite> FriendInvites { get; set; } = new();
+    /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
+    public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 
