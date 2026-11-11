@@ -9,6 +9,9 @@
 - **Updates have a page in Settings.** *Settings › Updates* shows the current version, checks for a new stable release and offers *Update and restart* when one is available. Automatic checks remain on by default, shortly after startup and every two hours; the switch on the page turns them off or back on immediately. Existing update notifications remain in the notch. The old right-click *Updates* submenu is gone.
 - **The message box.** *GIF* sits next to the send arrow; the file *+* sits on the left and shows a round highlight on hover.
 
+### Fixed
+- **GIF search in the 1.9.5 download.** The release assets now include the GIPHY key; the original 1.9.5 files were published without it. If you already downloaded 1.9.5, download the replacement to get the fix.
+
 ## 1.9.4 – 2026-11-10
 
 ### Changed

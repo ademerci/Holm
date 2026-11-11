@@ -17,3 +17,6 @@ Holm is not code-signed. Windows SmartScreen may warn on first launch; Smart App
 ### Changed
 - **Updates in Settings.** *Settings › Updates* shows your version and lets you check for a release, update and restart, or turn automatic checks on or off. Checks are on by default; the existing update notifications stay in the notch. The old right-click submenu is gone.
 - **The message box.** The GIF picker is beside the send arrow, and the file button has a round hover highlight.
+
+### Fixed
+- **GIF search.** The 1.9.5 downloads now include the GIPHY key. If you downloaded 1.9.5 before this fix, download it again to get the corrected app.
