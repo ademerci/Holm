@@ -1,0 +1,26 @@
+/* Keep global navigation usable when JavaScript is disabled. */
+@media (max-width: 760px) {
+  .nav {
+    flex-wrap: wrap;
+    padding-block: 16px;
+  }
+  .menu-toggle {
+    display: none;
+  }
+  .nav-links {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    order: 4;
+    width: 100%;
+    padding: 5px 0 0;
+    border: 0;
+    box-shadow: none;
+    gap: 2px 8px;
+  }
+  .nav-links a {
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+}

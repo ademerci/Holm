@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.10.0 – 2026-11-11
+
+### Added
+- **Invite codes.** *Add a friend* (in the Holm window, the *+* beside the chat search, or Friends › *Add a friend…* in the right-click menu) shows a short code like `HOLM-7KQ2X-9XF4M` to copy, send or read out; a friend who types or pastes it in their *Add a friend* page is your friend at once, nobody has to accept anything. The code works for everyone you give it to for 12 hours; *New code* makes another. It leads to your friend card, left sealed on the server with a key from the code (`holm-inv-…` topic, HKDF-SHA256, AES-GCM), and the request it sends carries a proof only the code gives (new note field `X`), which your notch accepts on its own. A copied invite code pops out of the notch with *Add*. The long friend code still works in the same box, for friends on Holm 1.9.5 and older.
+- **Requests in the Holm window.** *Add a friend* lists requests to answer (*Accept*, *Decline*; the page shows how many in the sidebar) and the ones you sent (*Withdraw*).
+
+### Fixed
+- **Friends no longer disappear.** A friend request that wasn't answered within 2 minutes used to be withdrawn, and a withdrawal that arrived after the other person had said yes took you off their list again. Requests now stay open until they're answered (kept in the settings for 2 days), a late yes still makes you friends (with a pop-out), and only *Withdraw* takes one back.
+
+## 1.9.5 – 2026-11-11
+
+### Added
+- **Send files from a chat.** The *+* at the left of the message box opens a file picker for one or more files and sends them to the friend whose chat is open. It uses Beam: the friend is asked to accept, progress shows in the notch, and, if *Send later* is on, files for an offline friend wait until their Holm is back. Beam must be on.
+
+### Changed
+- **Updates have a page in Settings.** *Settings › Updates* shows the current version, checks for a new stable release and offers *Update and restart* when one is available. Automatic checks remain on by default, shortly after startup and every two hours; the switch on the page turns them off or back on immediately. Existing update notifications remain in the notch. The old right-click *Updates* submenu is gone.
+- **The message box.** *GIF* sits next to the send arrow; the file *+* sits on the left and shows a round highlight on hover.
+
+### Fixed
+- **GIF search in the 1.9.5 download.** The release assets now include the GIPHY key; the original 1.9.5 files were published without it. If you already downloaded 1.9.5, download the replacement to get the fix.
+
+## 1.9.4 – 2026-11-10
+
+### Changed
+- **The chat, redesigned.** One card split in two: searchable conversations with the time of the last message and a blue unread count, and the conversation with a header (*Active now*, wave, share screen), bubbles that run together with joined corners and a blue-to-purple gradient for yours, their face beside their last bubble, times only after a pause of 15 minutes, one to three emoji shown big without a bubble, *Sent* under your last message, and a round message box with *GIF* and a send button that lights up. An empty chat greets with their face and *Say hi 👋*.
+- **A click outside Holm closes the notch.** While the notch is open, or a pop-out that goes away on its own shows (a message, the volume, a screenshot), a press on any window that isn't Holm's closes it at once. Holm's own windows and menus don't count; pop-outs that wait for an answer stay. A timer checks the mouse buttons every 35 ms only while something is open.
+
+### Fixed
+- **GIFs can't take Holm down.** Every GIF is walked block by block in safe code (`GifInspector`) before Windows' decoder sees it: an absurd canvas or frame (over 2048 px) is turned away, a cut-off or junk-filled file is cut back to its whole frames and closed properly, and very long GIFs are cut to what Holm draws. Decoding catches everything a broken file can throw, two GIFs decode at a time, decoded GIFs together stay under 96 MB (16 MB each), a cached file that doesn't decode is fetched again, and loading or showing a GIF in the chat or the notch can't throw. A test feeds 3000 damaged GIFs through it.
+
+## 1.9.3 – 2026-11-10
+
+### Changed
+- **GIF search works out of the box.** Release builds carry a GIPHY API key, built in at build time from the `GIPHY_API_KEY` secret or an ignored `giphy.key` file and never in the source; a key added in the GIF picker still comes first.
+
+## 1.9.2 – 2026-11-10
+
+### Added
+- **Reactions in the chat, like on Instagram.** A smiley beside each bubble opens the quick reactions (❤️ 😂 😮 😢 😡 👍) and *+* every emoji; a double click gives a heart. One reaction per side and message, shown on both PCs in a pill under the bubble (new sealed note kind `react`, ignored before 1.9.2). The notch's message pop-out offers the first two quick reactions next to *Reply*; *Customize reactions* changes them (saved as `QuickReactions`). Emoji in the chat are drawn in color (Emoji.Wpf, with Windows' Segoe UI Emoji).
+- **GIFs in the chat.** A GIF picker with GIPHY search (needs a GIPHY API key) and recent GIFs; a pasted GIF link goes as a GIF. A GIF is a chat note with its link and a new flag (`G`), so Holm 1.9.1 and older show the link. GIFs are fetched over https (10 MB at most, checked to be a GIF), cached in `gifs` next to the settings, decoded with their frames put together like a browser does (disposal, delays, at most 120 frames) and play in the bubble, as a small preview in the conversation list and in the notch's pop-out.
+- **Equalizer that follows the music.** The four bars react to the sound from the default output (WASAPI loopback, only while they show): RMS every 10 ms, attack 0.7 and release 0.15 as in the Dynamic Island Windhawk mod, the bars reading the history 40 ms apart, plus an automatic gain. On by default; *Settings › General › Equalizer follows the music* brings back the bounce, which also stands in while the sound can't be read.
+
+## 1.9.1 – 2026-11-10
+
+### Added
+- **Weather during playback.** The open media notch keeps the weather icon and temperature at the top right. Hover for conditions and click anywhere in the weather area to change the city.
+
+### Changed
+- **Screen sharing.** The button in a chat now says *Share my screen*.
+- **Holm icon.** The settings and friends sidebar uses the same white Holm icon as the app.
+
+### Fixed
+- **Text fields.** The cursor sits to the left of the placeholder in chat, profile and other Holm window inputs.
+- **Changing the weather city.** During media playback, the small clock and weather stay visible while choosing a city, without a second large clock. The top toolbar stays centered.
+
 ## 1.9.0 – 2026-11-09
 
 ### Added

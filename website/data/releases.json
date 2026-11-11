@@ -1,0 +1,605 @@
+{
+  "fetched_at": "2026-11-11T11:56:01.218Z",
+  "releases": [
+    {
+      "tag_name": "v1.10.0",
+      "name": "Holm 1.10.0",
+      "published_at": "2026-11-11T10:59:40Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.10.0",
+      "prerelease": false,
+      "body": "Holm 1.10.0 makes adding friends as easy as sharing a short code, and stops friends from disappearing.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.10.0-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's updater. |\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\nHolm is not code-signed. Windows SmartScreen may warn on first launch; Smart App Control may block an unsigned app.\n\n### Added\n- **Invite codes.** Open *Add a friend* (in the Holm window, the *+* beside the chat search, or Friends › *Add a friend…* in the right-click menu) and you get a short code like `HOLM-7KQ2X-9XF4M`. Send it, paste it into a chat or read it out. A friend who types it into their *Add a friend* page is your friend right away: nobody has to accept anything. A code works for everyone you give it to for 12 hours; *New code* makes another.\n- **Copied codes pop out.** Copy someone's invite code from a chat and the notch offers to add them.\n- **Requests in one place.** *Add a friend* lists the requests you can accept or decline, and the ones you sent (*Withdraw*).\n\n### Fixed\n- **Friends no longer disappear.** A friend request that wasn't answered within 2 minutes used to be withdrawn, and could take a friend who had already said yes off their list again. Requests now stay open until they're answered, and a late yes still makes you friends.\n\nInvite codes need your friend on Holm 1.10 too. A friend on an older Holm can still use your long friend code: *Add a friend* › *Copy my long friend code*, and their long code works in the same box.\n",
+      "assets": [
+        {
+          "name": "Holm-1.10.0-win-x64.zip",
+          "size": 82330819,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.10.0/Holm-1.10.0-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 222995989,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.10.0/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.5",
+      "name": "Holm 1.9.5",
+      "published_at": "2026-11-11T07:55:29Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.5",
+      "prerelease": false,
+      "body": "Holm 1.9.5 lets you send files from a chat and brings update controls into Settings.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.9.5-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed. Windows SmartScreen may warn on first launch; Smart App Control may block an unsigned app.\r\n\r\n### Added\r\n- **Files in chat.** Click *+* at the left of the message box and choose one or more files to send to that friend. Beam asks them to accept and shows progress in the notch. If *Send later* is on, files for an offline friend wait until their Holm is back. Beam must be on.\r\n\r\n### Changed\r\n- **Updates in Settings.** *Settings › Updates* shows your version and lets you check for a release, update and restart, or turn automatic checks on or off. Checks are on by default; the existing update notifications stay in the notch. The old right-click submenu is gone.\r\n- **The message box.** The GIF picker is beside the send arrow, and the file button has a round hover highlight.\r\n\r\n### Fixed\r\n- **GIF search.** The 1.9.5 downloads now include the GIPHY key. If you downloaded 1.9.5 before this fix, download it again to get the corrected app.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.5-win-x64.zip",
+          "size": 85811521,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.5/Holm-1.9.5-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 222832147,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.5/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.4",
+      "name": "Holm 1.9.4",
+      "published_at": "2026-11-10T14:58:40Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.4",
+      "prerelease": false,
+      "body": "Holm 1.9.4 brings a redesigned chat, makes GIFs crash-proof and closes the notch when you click somewhere else.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.9.4-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Changed\r\n- **A new chat.** Search your conversations, see when the last message came, and chat in bubbles that run together like in the messengers you know. Your messages get a blue-to-purple gradient, a few emoji alone show big, and the message box is round with *GIF* and a send button. Wave at a friend or share your screen right from the top of the chat.\r\n- **Click away to close.** A click anywhere outside Holm closes the open notch and pop-outs like messages or the volume right away. Pop-outs that wait for your answer, like an incoming file, stay.\r\n\r\n### Fixed\r\n- **GIFs can't crash Holm any more.** Holm checks every GIF itself before showing it. A broken or oversized GIF just shows as *GIF unavailable*, and GIFs use less memory.\r\n\r\n![Chat](https://raw.githubusercontent.com/ademerci/Holm/main/docs/chat.png)\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.4-win-x64.zip",
+          "size": 82266054,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.4/Holm-1.9.4-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 222828051,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.4/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.3",
+      "name": "Holm 1.9.3",
+      "published_at": "2026-11-10T14:31:19Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.3",
+      "prerelease": false,
+      "body": "Holm 1.9.3 makes GIF search work right away: no GIPHY key to set up any more.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.9.3-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\n\n### Changed\n- **GIF search out of the box.** *GIF* next to *Send* searches GIPHY straight away; you no longer need to paste an API key first. A key you added yourself keeps working.\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.3-win-x64.zip",
+          "size": 82244720,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.3/Holm-1.9.3-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 222791187,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.3/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.2",
+      "name": "Holm 1.9.2",
+      "published_at": "2026-11-10T14:09:31Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.2",
+      "prerelease": false,
+      "body": "Holm 1.9.2 brings Instagram-style reactions and GIFs to the chat and an equalizer that dances to your music.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.9.2-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nReactions and GIFs need your friends on Holm 1.9.2 too; on older versions a GIF shows as its link and reactions don't show.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Reactions.** Hover a message and click the smiley for ❤️ 😂 😮 😢 😡 👍, or *+* for every emoji; double-click a message for a heart. You and your friend both see the reactions. React right from the notch when a message pops out, and change your quick reactions with *Customize reactions*.\r\n- **GIFs.** *GIF* next to *Send*: search GIPHY or pick a recent GIF, or paste any GIF link. GIFs play in the chat, in the conversation list and in the notch. (Search needs a free GIPHY API key, pasted into the picker once.)\r\n- **Equalizer that follows the music.** The bars in the closed notch now move with the beat of what plays. Only the loudness is read, nothing is recorded. *Settings › General* switches back to the classic bounce.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.2-win-x64.zip",
+          "size": 85789257,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.2/Holm-1.9.2-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 222787091,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.2/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.1",
+      "name": "Holm 1.9.1",
+      "published_at": "2026-11-10T10:17:18Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.1",
+      "prerelease": false,
+      "body": "Holm 1.9.1 keeps the weather visible during playback and tidies up text fields, the Holm icon and screen sharing.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.9.1-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Weather during playback.** The open media notch keeps the weather icon and temperature at the top right. Hover for conditions and click anywhere in the weather area to change the city.\r\n\r\n### Changed\r\n- **Screen sharing.** The button in a chat now says *Share my screen*.\r\n- **Holm icon.** The settings and friends sidebar uses the same white Holm icon as the app.\r\n\r\n### Fixed\r\n- **Text fields.** The cursor sits to the left of the placeholder in chat, profile and other Holm window inputs.\r\n- **Changing the weather city.** During media playback, the small clock and weather stay visible while choosing a city, without a second large clock. The top toolbar stays centered.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.1-win-x64.zip",
+          "size": 84589607,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.1/Holm-1.9.1-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 219660284,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.1/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.9.0",
+      "name": "Holm 1.9.0",
+      "published_at": "2026-11-09T18:14:04Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.9.0",
+      "prerelease": false,
+      "body": "Holm 1.9.0 brings chat, Active now, screen streaming and achievements for you and your friends, in a redesigned Holm window.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.9.0-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **The Holm window.** *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card, **Active now**, **Chat** and **Achievements** on top, then the settings one page at a time, each switch with an icon and a line of help.\r\n- **Chat.** Message your friends from the Holm window. Messages are sealed so only the two of you can read them, and reach a friend whose Holm is closed when it starts (within about 12 hours). A new message pops out of the notch with *Reply*.\r\n- **Active now.** See what your friends are up to: the song they listen to, a call, the game they play, a timer, or that they're live, with *Message*, *Wave* and *Stream to*. *Settings › Friends › Share my activity* turns sharing yours off.\r\n- **Streaming.** Invite a friend to watch your screen (Friends › *Stream my screen to*, or from a chat). They click *Watch* and see your screen in a window; you see a LIVE badge with *Stop*. Your notch, the badge and the Holm window stay out of the stream, so your messages and chats don't go along.\r\n- **Achievements.** 21 of them, from your first friend to 30 days in a row, with a trophy in the notch when one unlocks. Friends only see how many you have.\r\n\r\nChat, activity and streaming need your friends on Holm 1.9 too; older versions simply ignore them.\r\n\r\n![Active now](https://raw.githubusercontent.com/ademerci/Holm/main/docs/activity.png)\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.9.0-win-x64.zip",
+          "size": 81082651,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.0/Holm-1.9.0-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 219275260,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.9.0/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.8.0",
+      "name": "Holm 1.8.0",
+      "published_at": "2026-11-09T15:27:26Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.8.0",
+      "prerelease": false,
+      "body": "Holm 1.8.0 adds profiles: a picture, a name, a status and a color that your friends see.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.8.0-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Profiles.** Choose a picture, a name, a status line and a color for your initials, at the top of *Settings…* or with Friends › *Edit my profile…*. Your friends see your picture wherever they used to see your initials (sharing, file offers, waves), and your status in their Friends menu. It goes only to your friends, sealed like every friend note. Friends on an older Holm keep seeing your initials until they update.\r\n- **Friends in the Friends menu.** Each friend with their picture, status and whether their Holm is online.\r\n\r\n### Changed\r\n- The name in your profile is also the one people nearby and friends see when you send files; empty means your Windows name, as before.\r\n- The settings window scrolls when it would be taller than the screen.\r\n\r\n![Friends with a picture and a color](https://raw.githubusercontent.com/ademerci/Holm/main/docs/profiles.png)\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.8.0-win-x64.zip",
+          "size": 80900835,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.8.0/Holm-1.8.0-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 218845180,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.8.0/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.9",
+      "name": "Holm 1.7.9",
+      "published_at": "2026-11-09T09:16:37Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.9",
+      "prerelease": false,
+      "body": "Holm 1.7.9 lets you open a beamed file straight from the notch.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.9-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Open a beamed file from the notch.** After you accept a Beam transfer, the saved pop-out offers *Open* as well as *Show*, like a finished browser download – so you can open the file without going through Downloads in Explorer.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.9-win-x64.zip",
+          "size": 84366399,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.9/Holm-1.7.9-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 218767356,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.9/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.8",
+      "name": "Holm 1.7.8",
+      "published_at": "2026-11-04T09:00:13Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.8",
+      "prerelease": false,
+      "body": "Holm 1.7.8 uses about 106 MB less memory, can step aside over browser tabs and makes color picking pixel-exact.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.7.8-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\n\n### Added\n- **Hide over browser tabs.** A new switch in *Settings › General*: while a maximized browser is in front on the notch's screen, the resting notch (idle, music, unread badge, a timer) steps aside so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once; unlike fullscreen, nothing is declined meanwhile. Off by default. Knows Chrome, Edge, Firefox, Brave, Opera (GX), Vivaldi, LibreWolf, Waterfox, Floorp, Zen, Thorium, Chromium and Arc.\n- **Pixel-exact color picking.** While the color picker is out, the arrow keys move the cursor one pixel (ten with Shift) and Enter picks the color under it.\n\n### Changed\n- **About 106 MB less memory.** The release exe is no longer a compressed single file, so Windows reads the parts of .NET and WPF straight from the exe instead of Holm unpacking them into its own memory. Measured idle on a clean Windows, three runs each: 148 MB private memory before, 42 MB now; the peak while starting drops from 256 to 130 MB, and starting takes about a third less CPU. On a PC in daily use the totals are higher, but the saving is the same: about 260 MB before, 150 MB now. The exe on disk grows from 86 to 219 MB; the download (the zip) only from 79.6 to 80.9 MB.\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.8-win-x64.zip",
+          "size": 80864766,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.8/Holm-1.7.8-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 218767356,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.8/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.7",
+      "name": "Holm 1.7.7",
+      "published_at": "2026-11-02T12:49:58Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.7",
+      "prerelease": false,
+      "body": "Holm 1.7.7 shows your Focumon in the closed notch and picks the right monster.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.7-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Focumon in the closed notch.** While you focus or take a break, the closed bar shows your monster and timer instead of the weather. Needs the companion extension in `extension/focumon` (load unpacked in Chrome/Edge).\r\n- **Focumon for Holm browser extension.** Reads your blue *Productive Me!* floor bubble and tells Holm on this PC only (`127.0.0.1`).\r\n\r\n### Fixed\r\n- **Wrong Focumon sprite.** The extension now selects your monster, not another trainer's from the party row or floor.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.7-win-x64.zip",
+          "size": 79906980,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.7/Holm-1.7.7-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 86499227,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.7/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.6",
+      "name": "Holm 1.7.6",
+      "published_at": "2026-11-01T17:06:57Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.6",
+      "prerelease": false,
+      "body": "Holm 1.7.6 shows your Focumon monster and timer in the open notch.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.6-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n\r\n### Added\r\n- **Focumon in the open notch.** With the Focumon browser extension installed and talking to Holm on this PC, your monster and focus/break timer appear in the open notch's top bar (next to the sleep timer). A click opens Focumon. Toggle it under *Settings › Open notch*; on by default. Without the extension, nothing is shown.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.6-win-x64.zip",
+          "size": 79904274,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.6/Holm-1.7.6-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 86496641,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.6/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.5",
+      "name": "Holm 1.7.5",
+      "published_at": "2026-10-30T09:38:32Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.5",
+      "prerelease": false,
+      "body": "Holm 1.7.5 adds regression coverage for the privacy indicator. There are no user-facing changes from 1.7.4.\r\n\r\nThe new test checks that an active camera indication clears when Windows reports that camera use has stopped, even if Holm misses the stop notification. The privacy-monitoring behavior itself is unchanged.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.5-win-x64.zip** | Unzip and run `Holm.exe`; also used by Holm's automatic updater. |\r\n| **Holm.exe** | Run the self-contained app directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\nHolm is not code-signed, so Windows SmartScreen may warn on first launch. Click **More info → Run anyway** to launch it.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.5-win-x64.zip",
+          "size": 79871147,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.5/Holm-1.7.5-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 86465239,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.5/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.4",
+      "name": "Holm 1.7.4",
+      "published_at": "2026-10-28T21:18:35Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.4",
+      "prerelease": false,
+      "body": "Holm 1.7.4 brings the privacy dots inside the notch and restores live call detection when Windows' older microphone records stop updating.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.4-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. Also used by Holm's automatic updater. |\r\n| **Holm.exe** | The same self-contained app as a single download. Run it directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n### Added\r\n- **Live microphone monitoring.** Holm now listens to Windows audio-session events on every recording device, so microphone use and calls can be detected even when the older privacy records have no current entry. Muted recording sessions still count as microphone use. The monitor reads activity metadata, never audio samples.\r\n- **Live camera monitoring.** Holm also listens to Windows' Media Foundation camera-activity reports, without opening a camera or reading frames. Privacy records remain a fallback for other capture paths. Some legacy DirectShow virtual cameras may not be reported by Windows.\r\n\r\n### Changed\r\n- **Privacy dots inside the notch.** The orange microphone dot and green camera dot now sit inside the closed notch. With unread messages they appear immediately before the count; idle, call and media views reserve their own space so the dots stay clear of the content.\r\n\r\n### Fixed\r\n- **Real Discord calls going undetected.** The old privacy record could remain stale while a new call was active, leaving both the call indicator and microphone dot off. Live recording activity now supplies the missing signal without bringing back calls from old executable versions.\r\n- **Call duration during activity updates.** Repeated reports keep the original start time while recording continues; stopping and starting again gives the new call its own timer.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.4-win-x64.zip",
+          "size": 79867643,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.4/Holm-1.7.4-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 86465238,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.4/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.3",
+      "name": "Holm 1.7.3",
+      "published_at": "2026-10-28T20:02:12Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.3",
+      "prerelease": false,
+      "body": "Holm 1.7.3 keeps the open notch familiar with or without music, makes settings easier to apply, and fixes calls that stayed on after they ended.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.3-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. Also used by Holm's automatic updater. |\r\n| **Holm.exe** | The same self-contained app as a single download. Run it directly; no .NET installation needed. |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n### Added\r\n- **Updates in the notch.** A new version gets a clickable notification to update and restart Holm. It stays in the notification list and on the closed notch's badges until dismissed, and the same version does not keep popping out.\r\n- **Dismiss notifications.** Close individual message or update rows, or use *Clear all* above the message list. Dismissing an update notification still leaves the update available in the menu.\r\n- **Media controls switch.** *Settings › Open notch › Media controls* is on by default. Turn it off to keep the clock and today card even while Spotify, YouTube or another player is playing, without track details, artwork or album backgrounds. Music pausing for calls and the sleep timer are also inactive while it is off; saved choices are preserved.\r\n- **Weather without typing a city.** If no location is saved, Holm tries Windows approximate location once at startup. Coordinates are rounded to one decimal place before being saved or sent to Open-Meteo, then reused; there is no separate IP lookup service or continuous location tracking. Windows location services must be on. Otherwise, choose a city manually. Automatic setup has its own Settings switch, and *Customize › Weather › Use approximate Windows location* detects again when you want it to.\r\n\r\n### Changed\r\n- **One toolbar in the same place.** The top tool buttons stay put with or without music and while a tool page is open. The duplicate calculator, color picker, clipboard and app-volume buttons are gone from the idle card. Idle time and date stay at the top below the toolbar; with media controls on, a smaller time and date remain at the upper left. The sleep timer stays aligned at the right.\r\n- **Apply settings when ready.** Switches stage changes until you click *Apply*. *Reset to defaults* prepares the default choices, and closing with unsaved changes offers to apply or discard them. Confirmation dialogs stay inside Settings and blur the whole surface behind them; action buttons have clearer hover, press and keyboard-focus states.\r\n\r\n### Fixed\r\n- **Discord calls that never ended.** An old Discord version could leave a microphone record marked active, and Holm mistook any running Discord process for that old call. Desktop sensor records now have to match the executable path and a process that was already running when recording began. Active records are rechecked so exited apps clear even if Windows never writes a stop time; a new call in the same app also gets its own start time.\r\n- **Menus reopening on a second click.** Clicking the Bluetooth, audio-output or sleep-timer button again now closes its menu instead of immediately opening it again.\r\n- **Animations really turn off.** Disabling animations also stops notch shape transitions and view fades, including transitions that were already running.\r\n- **Weather setup during playback.** Choosing a weather city opens the setup even while media is playing, then returns to the player. Loading and failed forecasts are visible, with a way to choose another city instead of leaving an empty space.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.3-win-x64.zip",
+          "size": 79849966,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.3/Holm-1.7.3-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 86440962,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.3/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.2",
+      "name": "Holm 1.7.2",
+      "published_at": "2026-10-27T15:51:19Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.2",
+      "prerelease": false,
+      "body": "Holm 1.7.2 lets you close the screenshot pop-out with a click.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.2-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\r\n| Holm-1.7.2-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n### Changed\r\n- **Screenshot pop-out.** A click on its empty space (not on *Send*, *Shelf*, *Copy text* or the picture) closes it. Other pop-outs are unchanged.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.2-win-x64.zip",
+          "size": 79818538,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.2/Holm-1.7.2-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 28493734,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.2/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.1",
+      "name": "Holm 1.7.1",
+      "published_at": "2026-10-27T12:25:57Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.1",
+      "prerelease": false,
+      "body": "Holm 1.7.1 gives the right-click menu its size back: the on/off switches moved into a settings window of their own.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.1-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\r\n| Holm-1.7.1-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n### Changed\r\n- **Settings window.** The right-click menu had grown taller than the screen. Its on/off switches now live in a window of their own (right-click › *Settings…*), grouped and with real switches; Esc closes it. The menu keeps the timer, sleep timer, Beam text, receiving, friends and updates; messages, quiet hours, weather, the AI button and the sizes are under *Customize*.\r\n\r\n![Settings window](https://raw.githubusercontent.com/ademerci/Holm/main/docs/settings.png)\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.1-win-x64.zip",
+          "size": 79482894,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.1/Holm-1.7.1-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 28493734,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.1/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.7.0",
+      "name": "Holm 1.7.0",
+      "published_at": "2026-10-27T09:46:35Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.7.0",
+      "prerelease": false,
+      "body": "Holm 1.7.0 turns the quiet notch into today at a glance and adds twenty features: notes, reminders in plain words, a calculator, a clipboard history, a color picker, text from screenshots, volume per app, weather, quiet hours and more, plus waves, folders, text and \"send later\" for Beam.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.7.0-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\r\n| Holm-1.7.0-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n### Added\r\n- **Today at a glance.** The idle notch shows the time (or the weather) and, on its right, the one thing that matters most: the next reminder within 12 hours, else what's on the shelf. Open without music, the notch is a card for today: time and date, the weather, the next reminder and your note (each opens its tool), and chips for the calculator, the color picker, the clipboard and the mixer. The player and the card cross-fade when music starts or stops; with *Animations* off it's instant.\r\n- **Tools in the open notch.** A tool bar under the player opens a page in place of home; click it again to go back. The notch takes the keyboard only while you type into one of its fields, and gives it back as soon as you click elsewhere, press Esc or it closes.\r\n- **Notes.** A small note in the open notch, saved as you type and kept after a restart. It stays on this PC.\r\n- **Reminders in plain words.** \"20 min laundry\", \"14:30 dentist\", \"tomorrow 9:00 call\", \"1h30m tea\" (German works too: \"morgen 9 Uhr\"). On time the notch rings with *+10 min* and *OK*; reminders survive a restart, and one missed while the PC was off or asleep shows as soon as it's back.\r\n- **Calculator.** Type a sum, the result is there at once; click it or press Enter to copy. + − × ÷ ^ %, brackets, comma or point, sqrt, sin, cos, tan, ln, log, abs, pi and e; \"50 + 15%\" adds 15 % of 50, as on any calculator. Its own small parser: nothing typed is run as code.\r\n- **Clipboard history.** The last 20 texts and pictures you copied; a click puts one back. What password managers mark as private (ExcludeClipboardContentFromMonitorProcessing, Clipboard Viewer Ignore, or kept out of Windows' own history) is never read or kept. The list lives in memory only, pictures in a temp folder emptied when Holm starts and quits; nothing is saved, logged or sent.\r\n- **Copied passwords are wiped.** A password copied from a password manager leaves the clipboard after 30 seconds, but only if nothing else was copied since (Holm compares the clipboard's sequence number and never reads the password).\r\n- **Color picker.** The eyedropper closes the notch; the next click anywhere copies that pixel's hex code, and the notch shows the color. A magnifier follows the cursor; Esc or a right click cancels. There is no overlay, so the color read is exactly what the screen shows.\r\n- **Text from screenshots.** The screenshot pop-out has *Copy text*: Windows' own OCR reads the picture on this PC and the text goes on the clipboard. The button shows when Windows has an OCR language installed.\r\n- **Volume per app.** A mixer page with a slider for each app that plays sound (all of an app's sessions under one slider); its icon mutes it. It follows Windows' audio session events while the page is open.\r\n- **Sleep timer.** The moon in the open player stops the music after 15, 30 or 60 minutes (also in the right-click menu).\r\n- **Pause for calls.** Music pauses when a call starts and plays on when it ends, if Holm paused it.\r\n- **Weather.** Temperature and a symbol in the idle notch, the sky and the next hour's rain (\"Rain in 20 min · 0.6 mm\") in the open one. From Open-Meteo, without a key, for the city you type in the open notch, and asked at most every 30 minutes; only the city name and its coordinates leave the PC.\r\n- **Quiet hours.** From one time of day to another (22:00 to 07:00 by default) messages don't pop out; they still count on the badge, and the open notch says it's quiet. Apps or people you choose still pop out. Off by default.\r\n- **Caps Lock.** The notch says when Caps Lock goes on or off. A low-level keyboard hook compares each key with Caps Lock only; no key is stored or logged.\r\n- **Low disk space.** One warning when the system drive gets under 10 % or 10 GB free, with *Clean up* (Storage Sense); again only after it had room in between.\r\n- **USB drives.** A USB stick or SD card pops out with *Open* and *Eject*, and stays in the open notch while plugged in. *Eject* works like Safely Remove Hardware and says so when a program still uses the drive.\r\n- **Internet connection.** \"No internet\" the moment it drops, \"Back online · after 3 min\" when it returns, from Windows' Network List Manager events. Drops shorter than two seconds and those around sleep don't count.\r\n- **Wave at a friend.** Friends › *Wave at* pops up on their notch with *Wave back*. At most once per friend every 30 seconds each way.\r\n- **Send folders.** A folder dropped on a person is packed as a ZIP, sent, and the ZIP deleted afterwards.\r\n- **Beam text.** Send copied text to a friend, someone nearby, your phone or a code (*Beam text* in the menu, or the arrow next to a text in the clipboard history). It lands on their clipboard.\r\n- **Send later.** When a friend's Holm isn't running, what you dropped on them waits and goes once their Holm is back; *Don't send* takes it back. Holm asks every 15 minutes for two hours, then hourly, and leaves a \"waiting\" note every six hours, which a Holm 1.7 answers as soon as it starts. After a week it gives up.\r\n\r\n### Changed\r\n- Every new feature has its own switch in the right-click menu, and settings files from older versions load as before.\r\n- New friend notes (*wave*, *waiting*) and the text mark on beamed files are ignored by older Holm versions: they leave unknown notes unopened and save a beamed text as an ordinary file in Downloads.\r\n- The right-click menu's *Animate equalizer* is now *Animations*; it also covers the new cross-fades.\r\n\r\n### Fixed\r\n- The open notch could come out too short or too tall right after its content changed (a longer note, new rows), because it was measured before the layout caught up.\r\n\r\n## Tested\r\n\r\n727 automated tests. 680 passed on the Release build under Wine; the other 47 need Windows parts Wine doesn't have (ECDH in bcrypt, audio devices, the notification database, the update installer's process handling), and the friend-note ones among them passed on .NET with real cryptography. Hardware-bound features (USB eject, Caps Lock hook, OCR, color picker, per-app volume, network events) were checked as far as Wine allows and still need a run on Windows.\r\n\r\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.7.0/CHANGELOG.md). Open source under the MIT license.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.7.0-win-x64.zip",
+          "size": 79467699,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.0/Holm-1.7.0-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 28469158,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.7.0/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.6.1",
+      "name": "Holm 1.6.1",
+      "published_at": "2026-10-23T16:44:45Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.6.1",
+      "prerelease": false,
+      "body": "Holm 1.6.1 makes available updates easier to spot and gives incoming file requests their own notification sound.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.6.1-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\r\n| Holm-1.6.1-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n## Changed\r\n\r\n- **A clearer update indicator.** When an update is available, a white download arrow in a blue circle appears immediately after the Updates text in the right-click menu.\r\n- **Incoming file notification sound.** A short chime plays alongside the accept/decline prompt. The sound is bundled with Holm, so it works independently of the Windows system sound scheme.\r\n- **Both privacy dots stay visible.** When the microphone and camera are active together, separate orange and green dots appear side by side.\r\n\r\n## Tested\r\n\r\n405 automated tests passed on the Release build, including checks for the update menu and the features introduced in 1.6.0.\r\n\r\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.6.1/CHANGELOG.md). Open source under the MIT license.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.6.1-win-x64.zip",
+          "size": 62655091,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.6.1/Holm-1.6.1-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 27042726,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.6.1/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.6.0",
+      "name": "Holm 1.6.0",
+      "published_at": "2026-10-23T16:28:25Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.6.0",
+      "prerelease": false,
+      "body": "Holm 1.6.0 brings six new features: Beam to your phone with a QR code, a shelf for files, screenshots that pop out, calls in the notch, a microphone and camera dot, and a timer.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.6.0-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.6.0-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64. Holm 1.5.0 and newer offer this update in the app (right-click › **Updates**).\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it so your phone and friends on your network can reach Holm.\n\n## New\n\n- **Beam to your phone.** Drag files onto the notch and drop them on *Phone*: the notch shows a QR code, and your phone's camera opens a page with the files – download them, or open photos, videos and PDFs right away. No app, no cable, no cloud: the files come straight from your PC over the Wi-Fi, from a link with 128 random bits that serves only those files and closes when you're done.\n- **Shelf.** Drop files or folders on *Shelf* to park them in the notch, go to where they belong, and drag them out of the open notch – one by one, or all at once. The idle notch shows how many are waiting. Works with Beam off too.\n- **Screenshots pop out.** After Win+Shift+S or Print Screen, the notch shows the picture with *Send* (click a friend, your phone or *Code*) and *Shelf*; click the picture to open it.\n- **Calls in the notch.** While you're in a Discord, Teams, Zoom, WhatsApp, Slack or browser call, the notch shows the app and how long the call runs, with a red mark when your microphone is muted. Open it to mute or unmute; a pop-out says how long the call was.\n- **Microphone and camera dot.** Like on a phone: an orange dot beside the notch while an app uses the microphone, a green one for the camera. The notch names the app when it starts, and the open notch lists them with a button that mutes the microphone for every app.\n- **Timer.** Right-click › *Timer*, 1 minute to 1 hour. It counts down in the notch (in place of the equalizer while music plays), with pause and stop, and rings when it's up.\n\nEach can be switched off in the right-click menu. Everything is event-driven – Windows reports the changes, nothing is polled.\n\n## Tested\n\n396 automated tests passed on the Release build, among them real downloads from the phone server (ranges, wrong links, path tricks), the registry notifications behind the microphone dot, the screenshot folder watcher, and the QR code checked module for module. Both downloads were started once before publishing.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.6.0/CHANGELOG.md). Open source under the MIT license; QR codes by [QRCoder](https://github.com/codebude/QRCoder) (MIT).\n",
+      "assets": [
+        {
+          "name": "Holm-1.6.0-win-x64.zip",
+          "size": 79192211,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.6.0/Holm-1.6.0-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 27998118,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.6.0/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.8",
+      "name": "Holm 1.5.8",
+      "published_at": "2026-10-23T13:38:19Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.8",
+      "prerelease": false,
+      "body": "Holm 1.5.8 improves responsiveness while keeping resource use low.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.8-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.8-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **Smoother Bluetooth scans.** Battery device enumeration now runs in the background, so it cannot stall the notch. Holm skips a scan if the previous one is still running.\n- **Fewer unnecessary redraws.** The open notch updates its clock only when the minute changes and volume visuals only when their displayed values change.\n- **Updated lightweight documentation.** The README explains these changes and identifies the CPU and memory figures as measurements from before this release.\n\n## Tested\n\n310 automated tests passed on the Release build. No new CPU or memory benchmark was taken for this release.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.8/CHANGELOG.md). Open source under the MIT license.\n",
+      "assets": [
+        {
+          "name": "Holm-1.5.8-win-x64.zip",
+          "size": 62512310,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.8/Holm-1.5.8-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 26748846,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.8/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.7",
+      "name": "Holm 1.5.7",
+      "published_at": "2026-10-23T13:22:13Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.7",
+      "prerelease": false,
+      "body": "Holm 1.5.7 makes room for the Bluetooth controls, checks for updates more often, and reduces the size of the single-file downloads.\r\n\r\n## Download\r\n\r\n| File | For whom |\r\n| --- | --- |\r\n| **Holm-1.5.7-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\r\n| Holm-1.5.7-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\r\n\r\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\r\n\r\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\r\n\r\n## Changed\r\n\r\n- **More room in the open notch.** The expanded notch is wider and device badges wrap when needed, keeping Bluetooth, sound, and volume controls visible.\r\n- **More frequent update checks.** Automatic checks run 20 seconds after startup and every two hours after that. Manual checks remain available in the Updates menu.\r\n- **Smaller downloads.** The self-contained single-file build uses compression. Its executable measured 26.1 MB, compared with 212 MB for the same source without compression.\r\n- **Simpler Bluetooth menu.** The redundant *Add a device…* entry is gone. *Bluetooth settings* remains available for pairing new devices.\r\n\r\n## Tested\r\n\r\n310 automated tests passed on the Release build.\r\n\r\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.7/CHANGELOG.md). Open source under the MIT license.\r\n",
+      "assets": [
+        {
+          "name": "Holm-1.5.7-win-x64.zip",
+          "size": 62511871,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.7/Holm-1.5.7-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 26748846,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.7/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.6",
+      "name": "Holm 1.5.6",
+      "published_at": "2026-10-23T12:51:48Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.6",
+      "prerelease": false,
+      "body": "Holm 1.5.6 adds Bluetooth control to the open notch.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.6-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.6-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64. Holm 1.5.0 and newer offer this update in the app (right-click › **Updates**).\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Added\n\n- **Bluetooth in the notch.** A Bluetooth button next to the output device button opens a list: a switch that turns Bluetooth on and off (like the one in Settings), your paired devices with a tick at the connected ones and their battery level, then *Add a device…* and *Bluetooth settings*.\n- **Connect headphones with one click.** Picking headphones, earbuds or a speaker connects or disconnects them – music and calls alike – with the same request Windows' Bluetooth settings send. Mice, keyboards and phones are listed but greyed out: they connect by themselves, and Windows has no way for an app to do it.\n- The button is dimmed while Bluetooth is off and only shows on a PC with Bluetooth.\n\n## Tested\n\n301 automated tests passed on the Release build; both downloads were started once before publishing.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.6/CHANGELOG.md). Open source under the MIT license.\n",
+      "assets": [
+        {
+          "name": "Holm-1.5.6-win-x64.zip",
+          "size": 79967833,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.6/Holm-1.5.6-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 27374974,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.6/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.5",
+      "name": "Holm 1.5.5",
+      "published_at": "2026-10-23T12:05:11Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.5",
+      "prerelease": false,
+      "body": "Holm 1.5.5 adds output device switching, friends online status, and a VPN indicator.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.5-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.5-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **Switch output devices.** Choose speakers, headphones, headsets, or HDMI audio from the open notch when more than one device is available. Holm shows which device is active and sets the selected device for music, games, and calls.\n- **See which friends are online.** When you drag a file onto the notch, friends running Holm show a green dot on their avatar. Presence requests are limited to reduce notification traffic.\n- **See VPN connection status.** A lock appears while a VPN is connected, with connection and disconnection notices. The indicator can be turned off from the right-click menu.\n- **Safer README snapshots.** Debug snapshot mode clears earlier messages and does not save its temporary layout to your settings.\n\n## Tested\n\n302 automated tests passed on the Release build.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.5/CHANGELOG.md). Open source under the MIT license.\n",
+      "assets": [
+        {
+          "name": "Holm-1.5.5-win-x64.zip",
+          "size": 64805054,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.5/Holm-1.5.5-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 26732462,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.5/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.4",
+      "name": "Holm 1.5.4 - Friend requests and sync",
+      "published_at": "2026-10-23T09:35:13Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.4",
+      "prerelease": false,
+      "body": "Holm 1.5.4 makes friend requests wait for a response and keeps both friends' lists in sync, including when a request is cancelled. It also fixes the overlapping removal notice and ensures Holm exits fully after an update.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.4-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.4-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **Friend requests now wait for an answer.** The requester is added only after acceptance, which synchronizes both lists and repairs an older one-sided friend entry. Declines leave both lists unchanged.\n- **Cancellation works on both ends.** The Cancel button closes the recipient's pending prompt and undoes an addition if acceptance and cancellation cross. An unanswered request is cancelled on both ends after two minutes.\n- **Friend removal notice no longer overlaps.** The notification displays as one concise message.\n- **Holm exits fully after updates.** If an old process remains alive 10 seconds after quitting, it ends itself; normally this check is not needed.\n- **Updated README branding.** The README uses the new Holm logo and current friend request instructions.\n\n## Tested\n\n271 automated non-network tests passed, including friend request, response and cancellation note coverage.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.4/CHANGELOG.md). Open source under the MIT license.",
+      "assets": [
+        {
+          "name": "Holm-1.5.4-win-x64.zip",
+          "size": 83388197,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.4/Holm-1.5.4-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 26716078,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.4/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.3",
+      "name": "Holm 1.5.3 - Friend list sync and new icon",
+      "published_at": "2026-10-23T08:57:32Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.3",
+      "prerelease": false,
+      "body": "Holm 1.5.3 keeps friend lists in sync when someone removes a friend and cleans up duplicate entries from older versions.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.3-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.3-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **Friend removal syncs both sides.** Removing someone sends a sealed notice to their inbox, and their Holm removes you from its friends list too. Holm says if it cannot deliver the notice.\n- **Older duplicate entries are cleaned up.** On startup, Holm removes repeated or invalid saved friend cards and keeps the latest card for each public key.\n- **Updated app icon.** Holm now uses the new logo.\n\n## Tested\n\n267 automated tests passed, including the new migration check that removes duplicate saved cards while keeping the latest one.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.3/CHANGELOG.md). Open source under the MIT license.",
+      "assets": [
+        {
+          "name": "Holm-1.5.3-win-x64.zip",
+          "size": 83356382,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.3/Holm-1.5.3-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 26699694,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.3/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.2",
+      "name": "Holm 1.5.2 - More reliable Beam transfers",
+      "published_at": "2026-10-23T08:03:48Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.2",
+      "prerelease": false,
+      "body": "Beam file offers now give both people clearer feedback, and friends cannot be added twice.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.2-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.2-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **Check whether a friend is ready before sending.** Holm waits up to 15 seconds for their notch to answer. If they are offline or Holm is closed, you are told before an offer is sent.\n- **Hear when someone wants to send you a file.** An incoming offer plays a sound as well as showing the existing prompt.\n- **See when a sender cancels.** If they cancel while your accept prompt is open, the prompt closes and tells you they cancelled before you choose.\n- **Add each friend only once.** Trying to add someone already in your friends list now shows a message and does not add or notify them again.\n- **Less background work.** The periodic new-message check reads notification data only after its change marker moves. Equalizer animations stop when music stops or the equalizer pauses, and Holm returns memory to Windows after music stops and after its first update check.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/v1.5.2/CHANGELOG.md). Open source under the MIT license.",
+      "assets": [
+        {
+          "name": "Holm-1.5.2-win-x64.zip",
+          "size": 83334363,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.2/Holm-1.5.2-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 25950126,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.2/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.1",
+      "name": "Holm 1.5.1 - WinNotch is now Holm",
+      "published_at": "2026-10-23T05:57:50Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.1",
+      "prerelease": false,
+      "body": "**WinNotch is now Holm.** A holm is a small island – fitting for a Dynamic Island on Windows – and plenty of other projects already go by WinNotch. Same app, new name, new icon.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **Holm-1.5.1-win-x64.zip** | Everyone. Unzip and run `Holm.exe`, nothing to install. |\n| Holm-1.5.1-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64.\n\n**Coming from WinNotch?** Quit it (right-click the notch › Quit), then start Holm. On its first start Holm takes over your settings, friends and *Start with Windows* – the old app won't start any more, and you can delete `WinNotch.exe`. WinNotch 1.5.0 can't update itself to Holm because the release has a new name, so download it once here; from now on Holm updates itself.\n\n> **\"Windows protected your PC\"?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## Changed\n\n- **New name: Holm** – app, window, menus, release files and the repository (github.com/ademerci/Holm; old links still lead here).\n- **New icon:** the notch as a little island – a black pill on the horizon between sky and sea.\n- **Teams is no longer part of messages.** Its notifications and its unread number stay out of the notch. WhatsApp, Discord, Outlook, Telegram, Signal and Slack remain.\n- **Beam still works with friends on WinNotch:** codes, friend codes and the encryption are unchanged.\n\n- **Unread messages from every supported app:** the expanded notch groups messages by app and shows a separate row and badge count for each one.\n- **Discord messages stay available:** they remain in the expanded notch after their Windows toast expires, and Discord uses its installed app icon.\n- **One Holm instance at a time:** launching Holm while it is already running displays an error and prevents a second instance from opening.\n\n## Tested\n\n255 automated tests, including that Teams notifications, Teams' web app and Teams' taskbar number are ignored. Both downloads were started on Windows 11 before publishing.\n\nFull list in the [CHANGELOG](https://github.com/ademerci/Holm/blob/main/CHANGELOG.md). Open source under the MIT license.\n",
+      "assets": [
+        {
+          "name": "Holm-1.5.1-win-x64.zip",
+          "size": 83263315,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.1/Holm-1.5.1-win-x64.zip"
+        },
+        {
+          "name": "Holm.exe",
+          "size": 25946030,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.1/Holm.exe"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.5.0",
+      "name": "WinNotch 1.5.0",
+      "published_at": "2026-10-22T13:21:38Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.5.0",
+      "prerelease": false,
+      "body": "WinNotch 1.5.0 adds **in-app updates**, improves **message alerts** and reduces repeated Spotify updates.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **WinNotch-1.5.0-win-x64.zip** | Unzip and run `WinNotch.exe`. Requires the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n| WinNotch-1.5.0-win-x64.exe | Run directly. Also requires the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64. To upgrade, use **Updates** in WinNotch or quit the old version and run the new one; your settings stay.\n\n> **“Windows protected your PC”?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## New\n\n- **Updates in the app:** check for stable releases automatically or on demand, then download a verified update and restart in place. Settings and friends stay in place; WinNotch restores the previous executable if the update cannot start.\n- **Message alerts:** WhatsApp and Teams updates can pop out even when the unread conversation count stays the same. WinNotch also catches notifications that reuse an id and checks every five seconds if Windows misses a database change event.\n\n## Fixed\n\n- **Missing message badges and pop-outs:** numeric badge fallback covers WhatsApp and supported messengers when Windows provides no readable toast.\n- **Repeated Spotify updates:** unchanged timeline pings no longer trigger a full player refresh.\n\nFull history in the [CHANGELOG](https://github.com/ademerci/WinNotch/blob/v1.5.0/CHANGELOG.md). Open source under the MIT license.",
+      "assets": [
+        {
+          "name": "Holm.exe",
+          "size": 25978822,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.0/Holm.exe"
+        },
+        {
+          "name": "WinNotch-1.5.0-win-x64.zip",
+          "size": 6910845,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.5.0/WinNotch-1.5.0-win-x64.zip"
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.4.0",
+      "name": "WinNotch 1.4.0 - Messages, Teams fix and downloads",
+      "published_at": "2026-10-22T12:16:21Z",
+      "html_url": "https://github.com/ademerci/Holm/releases/tag/v1.4.0",
+      "prerelease": false,
+      "body": "WinNotch 1.4.0 shows **messages from WhatsApp, Discord, Outlook and more**, finally gets **Teams** messages through, and shows your **downloads**.\n\n## Download\n\n| File | For whom |\n| --- | --- |\n| **WinNotch-1.4.0-win-x64.zip** | Everyone. Unzip and run `WinNotch.exe`, nothing to install. |\n| WinNotch-1.4.0-win-x64-dotnet10.exe | Smaller single exe if you already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |\n\nRequires Windows 10 (2004 or newer) or Windows 11, x64. Running an older version? Quit it (right-click the notch › Quit) and start the new one; your settings stay.\n\n> **\"Windows protected your PC\"?** The app is not code-signed, so SmartScreen warns on first launch. Click **More info → Run anyway**. Windows Firewall may also ask once – allow it if friends on your network should find you for Beam.\n\n## New\n\n- **Messages from more apps:** WhatsApp, Discord, Outlook (new, classic and the old Mail app), Telegram, Signal and Slack pop out of the notch like Teams messages – also when they run in Chrome, Edge or Firefox. The unread badge takes the app's colour, clicking the message opens the app, and looking at the app clears it. Right-click › *Messages* switches single apps off.\n- **Downloads:** while your browser saves a file to Downloads, the notch shows its name, size and speed. When it's done: *Open* or *Show* in Explorer.\n\n## Fixed\n\n- **Teams messages never showed up** when Teams uses its own notification style – then Teams sends nothing to Windows. WinNotch now also reads the number on Teams' taskbar icon, which works in every style, and shows *Microsoft Teams · 2 unread messages*. To see who wrote what, set Teams › *Settings › Notifications and activity › Notification style* to **Windows**; the right-click menu reminds you.\n\n## Tested\n\n160 automated tests, among them: recognising the apps (also in the browser), reading badges from a database laid out like Windows' notification database, the unread count, the browsers' download steps (Chrome, Firefox, cancelled, copied), and real silent notifications in Teams' name through the notification center, read back the way the notch does. Same CPU and memory as 1.3.0 in a side-by-side measurement.\n\nAlso includes the separate collapsed and expanded sizes from [1.3.1](https://github.com/ademerci/WinNotch/releases/tag/v1.3.1). Full list in the [CHANGELOG](https://github.com/ademerci/WinNotch/blob/main/CHANGELOG.md). Open source under the MIT license.\n",
+      "assets": [
+        {
+          "name": "WinNotch-1.4.0-win-x64-dotnet10.exe",
+          "size": 26355094,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.4.0/WinNotch-1.4.0-win-x64-dotnet10.exe"
+        },
+        {
+          "name": "WinNotch-1.4.0-win-x64.zip",
+          "size": 79761800,
+          "browser_download_url": "https://github.com/ademerci/Holm/releases/download/v1.4.0/WinNotch-1.4.0-win-x64.zip"
+        }
+      ]
+    }
+  ]
+}

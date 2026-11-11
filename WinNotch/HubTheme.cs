@@ -145,7 +145,7 @@ internal static class HubTheme
         {
             Foreground = Brushes.White, CaretBrush = Brushes.White, Background = Frozen(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)),
             BorderBrush = Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)), BorderThickness = new Thickness(1),
-            Padding = new Thickness(8, 6, 8, 6), FontSize = 13, Template = FieldTemplate(),
+            Padding = new Thickness(6, 6, 6, 6), FontSize = 13, Template = FieldTemplate(),
             AcceptsReturn = multiline, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
         };
         var placeholder = new TextBlock
@@ -165,7 +165,7 @@ internal static class HubTheme
                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'>
             <Border x:Name='Box' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}'
                     BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='8'>
-                <ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/>
+                <ScrollViewer x:Name='PART_ContentHost' Margin='0,6' VerticalAlignment='Center'/>
             </Border>
             <ControlTemplate.Triggers>
                 <Trigger Property='IsKeyboardFocused' Value='True'>

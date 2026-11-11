@@ -206,6 +206,12 @@ public partial class MainWindow
     void TaskThumb_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_taskGif is { } gif)
+        {
+            HideTask();
+            OpenChat(gif.Friend);
+            return;
+        }
         if (_shotPath is not { } path) return;
         HideTask();
         if (!TryOpen(path)) ShowPeek("", "Can't open the screenshot", "", null, false, null);

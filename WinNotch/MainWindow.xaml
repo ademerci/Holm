@@ -1,4 +1,4 @@
-﻿<Window x:Class="WinNotch.MainWindow"
+<Window x:Class="WinNotch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Holm" Width="560" Height="250" Left="0" Top="0"
@@ -257,6 +257,7 @@
                             <MenuItem x:Name="MenuMediaControls" Header="Media controls" ToolTip="Show music and video controls, artwork and track details. On by default." IsCheckable="True" Click="MenuMediaControls_Click"/>
                             <MenuItem x:Name="MenuWeatherAutoLocation" Header="Set up weather using approximate location" ToolTip="If no city is saved, use Windows location once. Rounded coordinates go to Open-Meteo. Respects Windows location services; no IP lookup service." IsCheckable="True" Click="MenuWeatherAutoLocation_Click"/>
                             <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
+                            <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>
                             <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                             <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
                             <MenuItem x:Name="MenuHideOverBrowsers" Header="Hide over browser tabs" ToolTip="While a maximized browser is in front on the notch's screen, the notch steps aside so the tabs under it can be clicked. Off by default." IsCheckable="True" Click="MenuHideOverBrowsers_Click"/>
@@ -285,26 +286,6 @@
                             <MenuItem x:Name="MenuChatPopups" Header="Chat pop-outs" IsCheckable="True" Click="MenuChatPopups_Click"/>
                             <MenuItem x:Name="MenuShareActivity" Header="Share my activity" IsCheckable="True" Click="MenuShareActivity_Click"/>
                             <MenuItem x:Name="MenuAchievementPopups" Header="Achievement pop-outs" IsCheckable="True" Click="MenuAchievementPopups_Click"/>
-                        </MenuItem>
-                        <MenuItem x:Name="MenuUpdates">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock x:Name="MenuUpdatesLabel" Text="Updates" VerticalAlignment="Center"/>
-                                    <Border x:Name="MenuUpdateIcon" Width="19" Height="19" CornerRadius="9.5"
-                                            Background="#FF0A84FF" Margin="7,0,0,0" Visibility="Collapsed">
-                                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </StackPanel>
-                            </MenuItem.Header>
-                            <MenuItem x:Name="MenuUpdateStatus" IsEnabled="False"/>
-                            <Separator/>
-                            <MenuItem x:Name="MenuAutoUpdates" Header="Check automatically" IsCheckable="True"
-                                      StaysOpenOnClick="True" Click="MenuAutoUpdates_Click"/>
-                            <MenuItem x:Name="MenuCheckUpdates" Header="Check for updates" StaysOpenOnClick="True"
-                                      Click="MenuCheckUpdates_Click"/>
-                            <MenuItem x:Name="MenuInstallUpdate" Header="Update and restart" Visibility="Collapsed"
-                                      Click="MenuInstallUpdate_Click"/>
                         </MenuItem>
                         <Separator x:Name="MonitorSeparator"/>
                         <!-- one entry per display is inserted here when the menu opens -->
@@ -540,11 +521,16 @@
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
                             <Grid Margin="0,0,0,12" MinHeight="32" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                             <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" IsHitTestVisible="False">
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
-                            <StackPanel x:Name="ToolBar" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
+                            <StackPanel x:Name="ToolBar" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
@@ -565,7 +551,13 @@
                                     <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
-                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal">
+                                            <StackPanel x:Name="MediaWeatherHeader" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,8,0"
+                                                        Background="Transparent" MinHeight="30"
+                                                        Visibility="Collapsed" Cursor="Hand" MouseLeftButtonUp="WeatherLine_Click">
+                                                <Border x:Name="MediaWeatherIcon" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="MediaWeatherTemp" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <!-- Your Focumon and its timer, from the Focumon browser extension; click to open Focumon -->
                                             <Button x:Name="FocumonChip" Style="{StaticResource NotchButton}" Height="30" Margin="0,0,2,0" Visibility="Collapsed"
                                                     ToolTip="Open Focumon" Click="FocumonChip_Click">
@@ -652,7 +644,7 @@
     
                                 <!-- No music: time and date stay at the top of home, directly below the shared toolbar. -->
                                 <StackPanel x:Name="ClockPanel" Margin="2,0,2,0" VerticalAlignment="Top">
-                                    <Grid>
+                                    <Grid x:Name="HomeClockHeader">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>

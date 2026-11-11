@@ -49,7 +49,7 @@ internal sealed class SettingsWindow : Window
     /// <param name="social">Friends, chat and achievements: the pages above the settings.</param>
     /// <param name="me">Your face and name for the top of the sidebar; clicking it opens the profile.</param>
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync, ProfileEditor? profile = null,
-                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null)
+                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null, FrameworkElement? updates = null)
     {
         _animate = animate;
         _sync = sync;
@@ -73,16 +73,10 @@ internal sealed class SettingsWindow : Window
         _nav = new StackPanel();
         var sidebar = new DockPanel();
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
-        // The logo: a notch, a black pill at the top of a blue screen.
-        brand.Children.Add(new Border
+        brand.Children.Add(new Image
         {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(8),
-            Background = new LinearGradientBrush(Color.FromRgb(0x3A, 0xA0, 0xFF), Color.FromRgb(0x0A, 0x60, 0xE0), 90),
-            Child = new Border
-            {
-                Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Brushes.Black,
-                VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 4, 0, 0),
-            },
+            Width = 30, Height = 30,
+            Source = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Holm;component/notch.ico")),
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeights.SemiBold });
@@ -127,6 +121,13 @@ internal sealed class SettingsWindow : Window
             _titles[group.Key] = (group.Title, group.Subtitle);
             _nav.Children.Add(NavItem(group.Key, group.Glyph, group.Title));
             _settingsPages[group.Key] = GroupPage(group);
+        }
+
+        if (updates != null)
+        {
+            _titles["updates"] = ("Updates", "Check for a new version of Holm");
+            _nav.Children.Add(NavItem("updates", "", "Updates"));
+            _settingsPages["updates"] = updates;
         }
 
         var sideBorder = new Border
@@ -244,7 +245,7 @@ internal sealed class SettingsWindow : Window
         }
         _pageHost.Child = page;
         (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
-        _footer.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        _footer.Visibility = settings && key != "updates" ? Visibility.Visible : Visibility.Collapsed;
         foreach (var (k, nav) in _navItems)
         {
             bool on = k == key;

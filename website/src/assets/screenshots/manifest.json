@@ -1,0 +1,355 @@
+{
+  "method": "native-capture-background-extraction",
+  "screenshots": [
+    {
+      "name": "achievements.png",
+      "width": 2024,
+      "height": 1520,
+      "source_sha256": "c4083f535f06b5d35a0c13b694482add32d03ac58ae697605c4089d1c3336567",
+      "output_sha256": "9a581de602449b6f1c16f1808ed45dee6b8d417a26374b5ca84fdc122c368d46",
+      "transparent_pixels": 424897,
+      "opaque_pixels": 2628771,
+      "edge_pixels": 22812
+    },
+    {
+      "name": "activity.png",
+      "width": 2024,
+      "height": 1520,
+      "source_sha256": "e2f7a6c4a5b078292d034125cd217e3c5291db5123f70ddfca7c57da2b1784c1",
+      "output_sha256": "487907771beb6ca94ddd2828c641017297769ee6d1bd89def2ee9f2ae326ddd5",
+      "transparent_pixels": 424897,
+      "opaque_pixels": 2628771,
+      "edge_pixels": 22812
+    },
+    {
+      "name": "airdrop-ask.png",
+      "width": 960,
+      "height": 140,
+      "source_sha256": "d9a0c3294bccf898eb9b62909af100058f0617bb0ae0ed40aa25a2846b63ea85",
+      "output_sha256": "8477103430c047aabffa9c0005505c488cff3a0e93d65c64b28fde78331dc457",
+      "transparent_pixels": 34453,
+      "opaque_pixels": 99672,
+      "edge_pixels": 275
+    },
+    {
+      "name": "airdrop-share.png",
+      "width": 1120,
+      "height": 344,
+      "source_sha256": "0059d6d64132a6b9dccfc72b064600b7d14498c3817d2d1abab7cffa522314ef",
+      "output_sha256": "c1a57faef195cc948ac54a5797e2346231253e9020d6a2aff247ff08b4a220d0",
+      "transparent_pixels": 139920,
+      "opaque_pixels": 245038,
+      "edge_pixels": 322
+    },
+    {
+      "name": "beam-text.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "da8d2fdafb82cf700a86358e6663f05407bbac409c8899a2ceaf666e56f65a25",
+      "output_sha256": "90579cf332fbbcb1c7a96eaee888fbe1f23c8e9394a8a2d83fece5ef66d64cf6",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    },
+    {
+      "name": "calculator.png",
+      "width": 1120,
+      "height": 564,
+      "source_sha256": "e6d2703b11fbfbae2317929e98ccfaf9c345d0ef5c7526d5740a2401ce5cb66f",
+      "output_sha256": "3055ab1b62c49e89d830668f24ac9455b898c366d60812997c8dd446332b28ad",
+      "transparent_pixels": 83993,
+      "opaque_pixels": 547240,
+      "edge_pixels": 447
+    },
+    {
+      "name": "call.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "422c7d61136a9408a9dcce657814e73cd0221c1969fc8d0112029f45e4fe5063",
+      "output_sha256": "85f7e19b26c7846938e8443b70e9f853a34c362ba18edf744feae20520fd0321",
+      "transparent_pixels": 90882,
+      "opaque_pixels": 24134,
+      "edge_pixels": 184
+    },
+    {
+      "name": "caps.png",
+      "width": 1120,
+      "height": 120,
+      "source_sha256": "116a4932c2a7c72a343497353323b3e9d139ca8bd2e82bf363313eadc4248860",
+      "output_sha256": "f1644e86e19fdec09cf754f017796606b690df82ae048d7e19cb1b3c544fbf94",
+      "transparent_pixels": 86110,
+      "opaque_pixels": 48088,
+      "edge_pixels": 202
+    },
+    {
+      "name": "chat.png",
+      "width": 2024,
+      "height": 1520,
+      "source_sha256": "92f78e37bfd032ab52c398c4a581a4181007d114f2c59264ac50d878f9b77627",
+      "output_sha256": "74328b8b86fbf096e1dd23063ae485c8bd0e885a469417573c15b5cc1b274714",
+      "transparent_pixels": 424897,
+      "opaque_pixels": 2628771,
+      "edge_pixels": 22812
+    },
+    {
+      "name": "clipboard.png",
+      "width": 1120,
+      "height": 788,
+      "source_sha256": "00b8deec894f5eaf0cf9bc7450cba8bcdacc7f290d0aae3cb0ccd742592b5310",
+      "output_sha256": "d7f1bdcae3d44219c22029b96c2011eb7ba7f7671d5627fcc1db61e51304d7e0",
+      "transparent_pixels": 101913,
+      "opaque_pixels": 780159,
+      "edge_pixels": 488
+    },
+    {
+      "name": "color.png",
+      "width": 1120,
+      "height": 120,
+      "source_sha256": "c0d17c4705f79872dd891d73afc3cbba0ce7d0e1c212ccd2ce475ea79573ed01",
+      "output_sha256": "4b8921415c61e4f3a306ca5677cd72b16302fb94c079891e47438da32b7254a7",
+      "transparent_pixels": 86110,
+      "opaque_pixels": 48088,
+      "edge_pixels": 202
+    },
+    {
+      "name": "compact.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "e8fdf850a4ed083d1ee89e7712b9b103f0b56a40444e3e6956f89cc0a0b3e95f",
+      "output_sha256": "ab8d2dd5d3e887e4b8c88b658b5a286abb9f02256b794b854edb3ef5d5fc3401",
+      "transparent_pixels": 87219,
+      "opaque_pixels": 27806,
+      "edge_pixels": 175
+    },
+    {
+      "name": "disk.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "10ebc671e12822043aef601ef97b8c7770a8efeb79ca517c62cca649c5b2fd25",
+      "output_sha256": "f865d5d43b7a90f1a297d195f221215f0708708a0bdbbdad068efe6b64945874",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    },
+    {
+      "name": "expanded.png",
+      "width": 1120,
+      "height": 594,
+      "source_sha256": "7e2bdb8194b928fa9582d90fbd9f5131348b5a3f6764136fdb1c0a66a1fdab43",
+      "output_sha256": "d301d3cc56f5ab241c2e215ba4c4f4ac4bd02ae4a40fab1edaceb955d99553be",
+      "transparent_pixels": 86393,
+      "opaque_pixels": 578444,
+      "edge_pixels": 443
+    },
+    {
+      "name": "idle-redesign.png",
+      "width": 1180,
+      "height": 412,
+      "source_sha256": "44e3da1b8726d9ee6eb6af317ca9a22f7b83d23d9734800c60fe9e815c7ea15c",
+      "output_sha256": "3086c16a35d343c44881e00adadafe83f5bc2229bcd9e33089bfa51174055278",
+      "transparent_pixels": 206616,
+      "opaque_pixels": 277431,
+      "edge_pixels": 2113
+    },
+    {
+      "name": "idle.png",
+      "width": 1120,
+      "height": 100,
+      "source_sha256": "2f11fedf45005e89b4f719bfdc97685c97575ce513c0d7b60b064c2a2cd170d9",
+      "output_sha256": "5bb87ceb3063125a94d4182a7e7aa79376e8cd89f8c22fba03ddb9a5ff39e6e4",
+      "transparent_pixels": 94129,
+      "opaque_pixels": 17722,
+      "edge_pixels": 149
+    },
+    {
+      "name": "mixer.png",
+      "width": 1120,
+      "height": 612,
+      "source_sha256": "ab836a1a28ebeefbf2df61814ddc755d40fa2c8137590741dd52efef94f9f1e6",
+      "output_sha256": "9e1824f1dc6fe290345cc6e7f4f1e7f46bfd6a4a83b875e867e6a6414fa9a46a",
+      "transparent_pixels": 87833,
+      "opaque_pixels": 597162,
+      "edge_pixels": 445
+    },
+    {
+      "name": "notes.png",
+      "width": 1120,
+      "height": 600,
+      "source_sha256": "a915df2608d54e7ca42d436bda499e11971c24b6b2f43986e7f6bb92b9f92d5a",
+      "output_sha256": "61c934a9dfcd2d8e37eeddca07ae8b9d310ad491ec0459f7e70ab13ae2936846",
+      "transparent_pixels": 165913,
+      "opaque_pixels": 505699,
+      "edge_pixels": 388
+    },
+    {
+      "name": "online.png",
+      "width": 1120,
+      "height": 120,
+      "source_sha256": "0f5ee8e99763c352e4e80cb10ce08efc627cbb6e31e1b024560d436e160c14f0",
+      "output_sha256": "cd629bb4f6f2cfa4d824b21583d4e9e3f938c71581b066b734ed8f1c6f6f90c9",
+      "transparent_pixels": 86110,
+      "opaque_pixels": 48088,
+      "edge_pixels": 202
+    },
+    {
+      "name": "peek.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "3f89b199b31e9e70362c8c5912554a54683e31586e2ada282bd7d2e8e11ee1d5",
+      "output_sha256": "27e2d39879427de3b255201b5d8718473549f2079476a1a6ff885d2c1d24dcf2",
+      "transparent_pixels": 66910,
+      "opaque_pixels": 48093,
+      "edge_pixels": 197
+    },
+    {
+      "name": "phone.png",
+      "width": 960,
+      "height": 360,
+      "source_sha256": "149295ae3618f28f59e38030b053b8c6b64ecaebf8eb1a5a2a8ff3b362471764",
+      "output_sha256": "b33377f94d6edae64471bdf0381b5b48f9b692c63dd5bc5387345d739a97269f",
+      "transparent_pixels": 83853,
+      "opaque_pixels": 261603,
+      "edge_pixels": 144
+    },
+    {
+      "name": "profiles.png",
+      "width": 1120,
+      "height": 344,
+      "source_sha256": "967af24794e71d57d9cff97e9b661b297c51549497f5f3e65bbe65d086263bc3",
+      "output_sha256": "cf88c559e04181de11551d95664b64ea8f789dafed3754fd4b6f2451d32e37e5",
+      "transparent_pixels": 139920,
+      "opaque_pixels": 245038,
+      "edge_pixels": 322
+    },
+    {
+      "name": "quiet.png",
+      "width": 1120,
+      "height": 724,
+      "source_sha256": "a4824be599e5e79a3f7314c2b776bc3f4ff9f6968a018ecacf8fec49a2c77952",
+      "output_sha256": "187469be1b7363df470bd8e898dfd147509b3ae1f111b353de8d017f4c34e31f",
+      "transparent_pixels": 96793,
+      "opaque_pixels": 713829,
+      "edge_pixels": 258
+    },
+    {
+      "name": "reminder.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "7069162b8a14629e96446b70c70c865232cba970b76bc82b496f721e1e650d07",
+      "output_sha256": "2ce4a06ecf51beca1a347a6894b79bd0b4fe5dd49e089179df56dd31bedcb249",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    },
+    {
+      "name": "reminders.png",
+      "width": 1120,
+      "height": 640,
+      "source_sha256": "c2aad7d08774190adda33cc7850f8e613718c2f1513df5862e51db2458b9f79d",
+      "output_sha256": "7b40228611d8cac18e3e0ea7a2b19ab914f8f5e9ccf81b840e826c7030232501",
+      "transparent_pixels": 146233,
+      "opaque_pixels": 570127,
+      "edge_pixels": 440
+    },
+    {
+      "name": "screenshot.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "6a41e761c965c8d6e4937e7856a21eee2838862f86adc19b1c02eb2ce6c7f249",
+      "output_sha256": "ce584ad249b6d60b854241533945be16ca85eef69ea437b3fa4b03ecded0292d",
+      "transparent_pixels": 57972,
+      "opaque_pixels": 116523,
+      "edge_pixels": 225
+    },
+    {
+      "name": "send-later.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "94c292dc453c57de42693d0e3e62f13fb446e5ea9f16f44cfb07633c2fc4c9fc",
+      "output_sha256": "778b8cc5d0ab80da9c8171a1a186836ff329dbbbeb464e33a077889101988ce8",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    },
+    {
+      "name": "settings.png",
+      "width": 2024,
+      "height": 1520,
+      "source_sha256": "bc63a0e5a1cfb379a0274ba11158f9c9013c81ae97c91b67ed98ab3b037e8ac3",
+      "output_sha256": "71ba777770341acd7974728a710e5842ca0ed8bc4acf90f4893e4da39e4c8dfc",
+      "transparent_pixels": 424897,
+      "opaque_pixels": 2628771,
+      "edge_pixels": 22812
+    },
+    {
+      "name": "stream.png",
+      "width": 1984,
+      "height": 1264,
+      "source_sha256": "cae18f63895c9b0fe732b20df0dbaeaa2b30eed1ab0e77ef24d3f7e69240bfa1",
+      "output_sha256": "4e16f50a961da50cac2785d4bebb0de3accaed10e53ed4def9288ed59bffe801",
+      "transparent_pixels": 191292,
+      "opaque_pixels": 2291540,
+      "edge_pixels": 24944
+    },
+    {
+      "name": "timer.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "bde082bb14ea63a912cdfe202bc0187cfa9b278e094b1e2c79a636523197132a",
+      "output_sha256": "40a011ab512f2f44a2da10bfb2469b29126ea8eb6a1150fb801647fcf9d8ba2b",
+      "transparent_pixels": 87219,
+      "opaque_pixels": 27806,
+      "edge_pixels": 175
+    },
+    {
+      "name": "today.png",
+      "width": 1120,
+      "height": 570,
+      "source_sha256": "f20e97ec528b4d48cb1b990b1abb93b3cfade778591818775184d0c33d1ed4f5",
+      "output_sha256": "feed0d6fbc2f5c7be5a4b29eb24c319b22938f8f8f6749922fafc7a8acd85724",
+      "transparent_pixels": 84473,
+      "opaque_pixels": 553670,
+      "edge_pixels": 257
+    },
+    {
+      "name": "usb.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "561ddff37a3b796d6d9860137b4044b0adee5ab282ec7a3f26aabc68506ec5f1",
+      "output_sha256": "dbdcf0ca7dc161fd251f658cdbc4d8d76fac17958ec4bfe9c706c851e1faf83a",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    },
+    {
+      "name": "volume.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "ac86a0c8fe02e667b6801761953e28d686c5f2dd406973da3f0fa96f91f72bbd",
+      "output_sha256": "378bf6bec0cb866f8068fa6550ab43249e3dd31c4cc85956519de3eae8acf976",
+      "transparent_pixels": 81416,
+      "opaque_pixels": 33572,
+      "edge_pixels": 212
+    },
+    {
+      "name": "vpn.png",
+      "width": 960,
+      "height": 120,
+      "source_sha256": "4a830306909a0085d0316aa833650ac85d42a0eaceacb091438b1a47d95b31fd",
+      "output_sha256": "7c7040a06c747337abb4c71ff55bf725a531a8998b8dafa439939a28599bb306",
+      "transparent_pixels": 66910,
+      "opaque_pixels": 48114,
+      "edge_pixels": 176
+    },
+    {
+      "name": "wave.png",
+      "width": 1120,
+      "height": 156,
+      "source_sha256": "4c66b9fbfd3f0a87b47a97bfa2bc1eceb256ebf463f6c496c8d89ff6e7997a07",
+      "output_sha256": "3b484b27a5d3a6c3cf51dab814aeed619689b4586c1217c174f69a2523532ecd",
+      "transparent_pixels": 74772,
+      "opaque_pixels": 99685,
+      "edge_pixels": 263
+    }
+  ]
+}

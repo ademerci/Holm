@@ -1,6 +1,6 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 10, 2026**
+**Effective date: November 11, 2026**
 
 Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
 
@@ -40,6 +40,14 @@ Your profile picture, name, status and color are sent to your friends in encrypt
 When Share my activity is enabled (on by default), friends receive your current activity, which may include the playing song, a call, fullscreen game, timer or stream, and your achievement count. Activity travels in encrypted presence messages through the configured friend inbox service. Turn Share my activity off under Friends settings to stop sharing it. Achievement progress is stored locally.
 
 Screen streaming starts when you choose to invite a friend, and the viewer must accept the invitation. Holm captures screen images and sends JPEG frames through an encrypted SecureChannel over the transit relay described above. The relay can observe addresses, timing and traffic sizes but does not receive the stream secret or unencrypted frames. The Holm window, notch and LIVE badge are excluded from capture; other visible screen content may contain personal information. Review your screen before inviting viewers. Use Stop to end sharing, or close the viewer window to stop watching. Viewers can capture or retain what is displayed.
+
+## GIFs, reactions and invite codes
+
+Chat reactions are shared in encrypted friend notes. GIF search sends search terms and request metadata to GIPHY using the configured API key. GIF links are included in encrypted chat notes, and displaying a GIF downloads it over HTTPS from its host. GIPHY and GIF hosts can receive your IP address and request information. GIF files are cached locally. See [GIPHY privacy information](https://giphy.com/privacy).
+
+Short friend invite codes provide access to an encrypted friend card stored on the configured inbox server. The card includes the information needed to add you as a friend. Codes last 12 hours and anyone with a valid code can add you automatically. Share them only with intended friends. Pending friend requests are stored locally for up to two days.
+
+The audio-reactive equalizer reads the default audio output locally to animate its bars. These audio samples are not sent to the Holm Team or other services. You can disable this under General settings.
 
 ## Other services
 

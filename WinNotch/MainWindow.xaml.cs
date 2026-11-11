@@ -57,6 +57,11 @@ public partial class MainWindow : Window
     readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
     readonly AnimationClock?[] _barClocks = new AnimationClock?[4];
+    readonly AudioMeter _meter = new();
+    readonly double[] _eqShown = new double[4];
+    DispatcherTimer? _eqTimer;
+    DateTime _eqStarted, _eqLast;
+    bool _eqReactive;
     readonly ScaleTransform _notchScale = new();
     readonly BatteryGlyph PeekBattery = new();
     readonly MiniSlider Progress = new();
@@ -431,6 +436,7 @@ public partial class MainWindow : Window
     void ApplyState(bool animate = true)
     {
         animate &= _settings.Animations;
+        WatchClicksAway();
         var target = _expanded ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : TaskShowing ? NotchState.Task
@@ -710,39 +716,93 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Bouncing bars while music plays. This is the only continuous animation in the app, so it runs
-    /// at a low frame rate: the window is per-pixel transparent and every frame has to be copied
-    /// back from the GPU.
+    /// The bars while music plays. With <see cref="AppSettings.ReactiveEqualizer"/> (the default) they follow the sound
+    /// that plays, read by <see cref="AudioMeter"/>; otherwise, or while the sound can't be read, they bounce as before.
+    /// This is the only continuous animation in the app, so it runs at a low frame rate: the window is per-pixel
+    /// transparent and every frame has to be copied back from the GPU.
     /// </summary>
     void UpdateEqualizer()
     {
         bool run = _state == NotchState.Media && _timer == null && _settings.Animations && !_hiddenForFullscreen && !_shapeAnimating;
-        if (run == _eqRunning) return;
-        _eqRunning = run;
+        bool reactive = run && _settings.ReactiveEqualizer;
+        if (run == _eqRunning && reactive == _eqReactive) return;
 
+        // Whatever ran stops first, then the new way starts.
+        StopBounce();
+        _eqTimer?.Stop();
+        _meter.Stop();
+        _eqRunning = run;
+        _eqReactive = reactive;
+
+        if (!run)
+        {
+            for (int i = 0; i < _bars.Length; i++) _bars[i].ScaleY = BarRest[i];
+            return;
+        }
+        if (!reactive)
+        {
+            StartBounce();
+            return;
+        }
+        _meter.Start();
+        for (int i = 0; i < _bars.Length; i++) _eqShown[i] = _bars[i].ScaleY;
+        _eqStarted = _eqLast = DateTime.UtcNow;
+        if (_eqTimer == null)
+        {
+            _eqTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(40) }; // 25 frames a second
+            _eqTimer.Tick += (_, _) => TickEqualizer();
+        }
+        _eqTimer.Start();
+    }
+
+    /// <summary>The lowest a reactive bar goes, so the four always read as an equalizer.</summary>
+    const double BarFloor = 0.22;
+
+    /// <summary>One frame of the reactive bars: the level each bar reads, smoothed between frames like the mod does.</summary>
+    void TickEqualizer()
+    {
+        var now = DateTime.UtcNow;
+        double dt = Math.Clamp((now - _eqLast).TotalSeconds, 0.001, 0.1);
+        _eqLast = now;
+        double alpha = 1 - Math.Exp(-18 * dt);
+        double t = (now - _eqStarted).TotalSeconds;
+        bool live = _meter.Working;
         for (int i = 0; i < _bars.Length; i++)
         {
-            if (run)
+            double target = live
+                ? BarFloor + (1 - BarFloor) * _meter.Levels.Bar(i, _bars.Length)
+                // The sound can't be read (yet): the bounce, worked out by hand.
+                : BarLow[i] + (1 - BarLow[i]) * (0.5 - 0.5 * Math.Cos(Math.PI * t / BarSeconds[i]));
+            _eqShown[i] += (target - _eqShown[i]) * alpha;
+            _bars[i].ScaleY = Math.Clamp(_eqShown[i], 0.05, 1);
+        }
+    }
+
+    void StartBounce()
+    {
+        for (int i = 0; i < _bars.Length; i++)
+        {
+            var bounce = new DoubleAnimation(BarLow[i], 1.0, TimeSpan.FromSeconds(BarSeconds[i]))
             {
-                var bounce = new DoubleAnimation(BarLow[i], 1.0, TimeSpan.FromSeconds(BarSeconds[i]))
-                {
-                    AutoReverse = true,
-                    RepeatBehavior = RepeatBehavior.Forever,
-                    EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                };
-                Timeline.SetDesiredFrameRate(bounce, 12);
-                _barClocks[i] = bounce.CreateClock();
-                _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, _barClocks[i]);
-            }
-            else
-            {
-                // Taking the animation off the bar isn't enough: its endless clock would keep ticking (and
-                // allocating) until a garbage collection, costing as much CPU as playing. Stop it.
-                _barClocks[i]?.Controller?.Stop();
-                _barClocks[i] = null;
-                _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, null);
-                _bars[i].ScaleY = BarRest[i];
-            }
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            };
+            Timeline.SetDesiredFrameRate(bounce, 12);
+            _barClocks[i] = bounce.CreateClock();
+            _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, _barClocks[i]);
+        }
+    }
+
+    void StopBounce()
+    {
+        for (int i = 0; i < _bars.Length; i++)
+        {
+            // Taking the animation off the bar isn't enough: its endless clock would keep ticking (and
+            // allocating) until a garbage collection, costing as much CPU as playing. Stop it.
+            _barClocks[i]?.Controller?.Stop();
+            _barClocks[i] = null;
+            _bars[i].ApplyAnimationClock(ScaleTransform.ScaleYProperty, null);
         }
     }
 
@@ -1108,6 +1168,8 @@ public partial class MainWindow : Window
     {
         var info = _settings.MediaControls ? _info : null;
         MediaClockHeader.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
+        RefreshMediaWeather();
+        HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();
         var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
@@ -1548,6 +1610,13 @@ public partial class MainWindow : Window
     {
         RememberMenuButtonDismissal(sender as ContextMenu);
         if (_expanded && !Island.IsMouseOver) _collapseDelay.Start();
+    }
+
+    void MenuReactiveEq_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.ReactiveEqualizer = MenuReactiveEq.IsChecked;
+        _settings.Save();
+        UpdateEqualizer();
     }
 
     void MenuAnim_Click(object sender, RoutedEventArgs e)
@@ -2222,7 +2291,7 @@ public partial class MainWindow : Window
     static readonly (string Page, string Name)[] SnapshotHubPages =
     {
         ("general", "settings"), ("profile", "settings-profile"), ("popouts", "settings-popouts"),
-        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"),
+        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"), ("add", "hub-add"),
     };
 
     /// <summary>A made-up face for snapshots: a head and shoulders on a gradient, as a profile picture.</summary>

@@ -19,6 +19,7 @@ public partial class MainWindow
         new SettingsGroup("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new SettingsSwitch[]
         {
             new(MenuAnim, "", "Smooth transitions and the moving equalizer."),
+            new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
             new(MenuHideOverBrowsers, ""),
@@ -74,6 +75,7 @@ public partial class MainWindow
     void SyncSwitches()
     {
         MenuAnim.IsChecked = _settings.Animations;
+        MenuReactiveEq.IsChecked = _settings.ReactiveEqualizer;
         MenuMini.IsChecked = _settings.MiniIdle;
         MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
         MenuMediaControls.IsChecked = _settings.MediaControls;
@@ -142,6 +144,6 @@ public partial class MainWindow
             : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, HubTheme.ActionButtonStyle);
         Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
-                                  HubPages(demo != null), () => MeCard(current()));
+                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage());
     }
 }

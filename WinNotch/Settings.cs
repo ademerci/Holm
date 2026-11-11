@@ -11,12 +11,14 @@ namespace WinNotch;
 internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
+    /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
+    public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
     /// <summary>Step aside while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
     public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
     public bool MediaControls { get; set; } = true;
-    /// <summary>Check GitHub for a newer stable release at startup and every six hours.</summary>
+    /// <summary>Check GitHub for a newer stable release periodically.</summary>
     public bool CheckForUpdatesAutomatically { get; set; } = true;
     /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
     public string? Monitor { get; set; }
@@ -101,6 +103,12 @@ internal sealed class AppSettings
     public bool ShareActivity { get; set; } = true;
     /// <summary>A friend's chat message pops out of the notch with Reply (it's in the Holm window's Chat either way).</summary>
     public bool ChatPopups { get; set; } = true;
+    /// <summary>The quick reactions in the chat's reaction bar, Instagram's by default (see <see cref="ChatReaction"/>).</summary>
+    public List<string> QuickReactions { get; set; } = new(ChatReaction.Defaults);
+    /// <summary>GIFs sent or received lately, newest first, for the GIF picker (links only).</summary>
+    public List<string> RecentGifs { get; set; } = new();
+    /// <summary>A GIPHY API key for searching GIFs, if Holm has none built in.</summary>
+    public string? GifSearchKey { get; set; }
     /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
     public bool Waves { get; set; } = true;
     /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>
@@ -156,6 +164,10 @@ internal sealed class AppSettings
     public long? FriendsSince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
+    /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
+    public List<OwnInvite> FriendInvites { get; set; } = new();
+    /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
+    public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 

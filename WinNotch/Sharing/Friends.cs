@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -213,10 +214,13 @@ public sealed class FriendIdentity : IDisposable
 /// <param name="Profile">For <see cref="FriendNoteKind.Profile"/>: the sender's status, color and picture (the name is <paramref name="From"/>).</param>
 /// <param name="Activity">For <see cref="FriendNoteKind.Ping"/> and <see cref="FriendNoteKind.Here"/>: what the sender is doing, if they share it.</param>
 /// <param name="Text">For <see cref="FriendNoteKind.Chat"/>: the message.</param>
-/// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice.</param>
+/// <param name="MessageId">For <see cref="FriendNoteKind.Chat"/>: the message's id, so a repeat isn't shown twice. For
+/// <see cref="FriendNoteKind.Reaction"/>: the message reacted to.</param>
+/// <param name="Gif">For <see cref="FriendNoteKind.Chat"/>: the message is this GIF (<paramref name="Text"/> holds the link too).</param>
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
                                 string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
-                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null);
+                                string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null,
+                                string? Gif = null, string? Invite = null);
 
 /// <summary>
 /// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
@@ -265,6 +269,8 @@ public enum FriendNoteKind
     Chat,
     /// <summary>"Watch my screen": meet me on the relay with this secret. Holm before 1.9 leaves it unopened.</summary>
     Stream,
+    /// <summary>A reaction to a chat message (an emoji in <c>Text</c>, none to take it away). Holm before 1.9.2 leaves it unopened.</summary>
+    Reaction,
 }
 
 public static class FriendNotes
@@ -300,6 +306,10 @@ public static class FriendNotes
         public long? Z { get; set; }
         /// <summary>How many achievements the sender has, in "ping" and "here".</summary>
         public int? Q { get; set; }
+        /// <summary>In "chat": the text is the link to a GIF. Holm before 1.9.2 shows the link.</summary>
+        public bool? G { get; set; }
+        /// <summary>In "request": the proof of the invite code it was made with (FriendInvite.Proof). Older Holm ignores it.</summary>
+        public string? X { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -329,6 +339,7 @@ public static class FriendNotes
                 FriendNoteKind.Profile => "profile",
                 FriendNoteKind.Chat => "chat",
                 FriendNoteKind.Stream => "stream",
+                FriendNoteKind.Reaction => "react",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -348,6 +359,8 @@ public static class FriendNotes
             W = note.Activity?.Detail,
             Z = note.Activity?.Since,
             Q = note.Trophies,
+            G = note.Gif != null ? true : null,
+            X = note.Invite,
         };
         return SealDto(me, to, dto);
     }
@@ -412,7 +425,8 @@ public static class FriendNotes
                 "added" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0]
                     => new FriendNote(FriendNoteKind.AddedYou, from, dto.T, Code: dto.C),
                 "request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
-                    => new FriendNote(FriendNoteKind.FriendRequest, from, dto.T, Code: dto.C, RequestId: dto.R),
+                    => new FriendNote(FriendNoteKind.FriendRequest, from, dto.T, Code: dto.C, RequestId: dto.R,
+                                      Invite: FriendInvite.IsProof(dto.X) ? dto.X : null),
                 "response" when Guid.TryParseExact(dto.R, "N", out _) && dto.A.HasValue
                     => new FriendNote(FriendNoteKind.FriendResponse, from, dto.T, RequestId: dto.R, Accepted: dto.A),
                 "cancel-request" when FriendIdentity.ParseFriendCode(dto.C) is { } card && card.Key == parts[0] && Guid.TryParseExact(dto.R, "N", out _)
@@ -426,7 +440,11 @@ public static class FriendNotes
                 "stream" when dto.S != null && Convert.FromBase64String(dto.S) is { Length: ShareCode.SecretLength } streamSecret
                     => new FriendNote(FriendNoteKind.Stream, from, dto.T, Secret: streamSecret),
                 "chat" when ChatText.Clean(ChatText.FromNote(dto.M)) is { } message && Guid.TryParseExact(dto.I, "N", out _)
-                    => new FriendNote(FriendNoteKind.Chat, from, dto.T, Text: message, MessageId: dto.I),
+                    => new FriendNote(FriendNoteKind.Chat, from, dto.T, Text: message, MessageId: dto.I,
+                                      Gif: dto.G == true ? ChatGif.Clean(message) : null),
+                // An emoji, or none (the reaction was taken away); anything else in it and the note is left unopened.
+                "react" when Guid.TryParseExact(dto.I, "N", out _) && (dto.M == null || ChatReaction.Clean(ChatText.FromNote(dto.M)) != null)
+                    => new FriendNote(FriendNoteKind.Reaction, from, dto.T, Text: dto.M == null ? null : ChatReaction.Clean(ChatText.FromNote(dto.M)), MessageId: dto.I),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null) senderKey = parts[0];
@@ -473,6 +491,37 @@ public static class FriendInbox
             if (!response.IsSuccessStatusCode)
                 throw new IOException($"{Host(to.Server)} refused the note ({(int)response.StatusCode})");
         }
+    }
+
+    /// <summary>Leaves a sealed invite card at an invite code's inbox on the default server, where it waits 12 hours.</summary>
+    /// <exception cref="IOException">The server couldn't be reached or refused it.</exception>
+    public static Task PublishInviteAsync(string topic, string card, CancellationToken ct)
+        => PostAsync(new Friend { Topic = topic, Server = null }, card, ct);
+
+    /// <summary>The invite cards waiting at an invite code's inbox, newest first.</summary>
+    /// <exception cref="IOException">The server couldn't be reached.</exception>
+    public static async Task<List<string>> FetchInviteAsync(string topic, CancellationToken ct)
+    {
+        var cards = new List<string>();
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(20));
+            string url = InboxUrl(null, topic) + "/json?poll=1&since=12h";
+            using var response = await Http.GetAsync(url, timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) throw new IOException($"{Host(null)} answered {(int)response.StatusCode}");
+            string body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+            foreach (string line in body.Split('\n'))
+                if (TryParse(line, out bool isMessage, out _, out _, out string? text) && isMessage && text != null
+                    && text.StartsWith(FriendInvite.Prefix, StringComparison.Ordinal))
+                    cards.Add(text);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            throw new IOException("Couldn't reach " + Host(null), ex);
+        }
+        cards.Reverse();
+        return cards;
     }
 
     /// <summary>

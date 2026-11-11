@@ -203,7 +203,7 @@ internal sealed class ProfileEditor : Border
         {
             Foreground = Brushes.White, CaretBrush = Brushes.White, Background = Frozen(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)),
             BorderBrush = Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)), BorderThickness = new Thickness(1),
-            Padding = new Thickness(8, 6, 8, 6), FontSize = 13, Template = FieldTemplate(),
+            Padding = new Thickness(6, 6, 6, 6), FontSize = 13, Template = FieldTemplate(),
         };
         // The hint shows while the box is empty.
         var placeholder = new TextBlock
@@ -224,7 +224,7 @@ internal sealed class ProfileEditor : Border
                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'>
             <Border x:Name='Box' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}'
                     BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='7'>
-                <ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/>
+                <ScrollViewer x:Name='PART_ContentHost' Margin='0,6' VerticalAlignment='Center'/>
             </Border>
             <ControlTemplate.Triggers>
                 <Trigger Property='IsKeyboardFocused' Value='True'>

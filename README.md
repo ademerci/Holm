@@ -2,7 +2,7 @@
 
 # Holm
 
-A Dynamic Island–style notch for Windows. It sits at the top of your screen, shows what's playing with full controls, tints itself in the colours of the album cover, pops out your messages and downloads, sends files to your friends AirDrop-style and keeps an eye on your laptop and Bluetooth headphone battery – while using almost no resources.
+Probably the best Dynamic Island–style notch for Windows. It sits at the top of your screen, shows what's playing with full controls, tints itself in the colours of the album cover, pops out your messages and downloads, sends files to your friends AirDrop-style and keeps an eye on your laptop and Bluetooth headphone battery – while using almost no resources.
 
 *Holm was called WinNotch up to version 1.5.0. Your settings carry over when you switch.*
 
@@ -37,6 +37,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Sleep timer** – the moon in the open player stops the music after 15, 30 or 60 minutes. Music also pauses for calls and plays on afterwards.
 - **Heads-ups** – Caps Lock on or off, a USB stick plugged in (*Open*, *Eject*), the internet gone and back (with how long), and once when the system drive runs low.
 - **Media controls** are on by default for Spotify, YouTube in Chrome or Edge, VLC, and other Windows media sessions: cover, title, album, seek bar, play/pause, skip, **shuffle and repeat**, volume. Click the cover to bring the player to the front. Disable *Settings › Open notch › Media controls* to keep Holm's idle view without track details, artwork or album backgrounds; call-driven music pausing and the sleep timer are also inactive when media controls are off.
+- **Equalizer that follows the music** – the four bars in the closed notch move with the sound that plays, beat by beat, instead of a fixed bounce (the logic of the Dynamic Island Windhawk mod: the loudness of every 10 ms, quick to rise, slow to fall, each bar a moment after the next, and an automatic gain so quiet music moves them too). Only the loudness of what comes out of your speakers is read, while the bars show; nothing is recorded or kept, and it isn't the microphone. *Settings › General › Equalizer follows the music* switches back to the bounce.
 - **Album colours** – the notch is washed in a blurred copy of the cover and crossfades when the track changes.
 - **Volume pop-out** – change the volume with your keys or the taskbar and the notch shows it, like a phone does.
 - **Output device** – the button next to the volume lists your speakers, headphones and headsets; pick one and all sound (music, games and calls) goes there, like in Windows' Sound settings. It shows up when there's more than one to choose from.
@@ -49,7 +50,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Timer** – right-click › *Timer* and pick 1 minute to 1 hour. The time left counts down in the notch (in place of the equalizer while music plays), with pause and stop when you open it; when it's up, the notch rings and offers five more minutes.
 - **Beam** (Holm's AirDrop) – drop files or folders on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below). Copied text can be beamed too, and a friend whose Holm isn't running gets the files once it is.
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
-- **Updates in the app** – checks for stable releases shortly after startup and every two hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
+- **Updates in the app** – checks for stable releases shortly after startup and every two hours. Open **Settings › Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
@@ -57,8 +58,8 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
-- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…**, *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), updates, pick a screen, quit.
-- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends and weather. Every switch has an icon and a line saying what it does; changes wait for *Apply*. Esc closes it.
+- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…** (including Updates), *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), pick a screen, quit.
+- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends, weather and updates. Most settings changes wait for *Apply*; the automatic update check setting takes effect immediately. Esc closes it.
 
   ![The Holm window](docs/settings.png)
 
@@ -110,6 +111,10 @@ Both notches have to be running for a friend request or file transfer. If your f
 **Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
 
 **Chat.** *Friends and chat…* (or *Reply* on a message that pops out of the notch) opens the conversations with your friends: bubbles, days and times, *Sending…* until the message is in their inbox and *Not sent · Click to try again* if it couldn't go. Each message is one sealed note like a file offer, so only the two of you can read it, and a friend whose Holm is closed gets it when it starts (the inbox keeps notes for about 12 hours). A long text goes as several messages. The history stays on your PC (the last 300 messages per friend, in `chats.json`).
+
+**Reactions.** React to any message like on Instagram: hover a bubble and click the smiley for the quick reactions (❤️ 😂 😮 😢 😡 👍), or *+* for more emoji; double-click a bubble for a heart. Each of you has one reaction per message, both show in a small pill under the bubble on both PCs, and clicking yours takes it away. A message that pops out of the notch has your first two quick reactions next to *Reply*, to react at once. *+* › *Customize reactions* changes the quick reactions: pick one, then its new emoji. Reactions are sealed notes too; Holm before 1.9.2 ignores them.
+
+**GIFs.** *GIF* next to *Send* opens the GIF picker: search [GIPHY](https://giphy.com) or pick one you sent or got lately. GIFs play in the chat, as a small moving picture in the conversation list and in the notch when one comes in. Search works right away in the downloaded Holm; if you build Holm yourself, add a free GIPHY API key (made at developers.giphy.com) in the picker or as a `giphy.key` file next to the solution. Without a key, paste any GIF link (a link ending in `.gif`, a GIPHY or Tenor link) into the message box and it goes as a GIF. A GIF travels as its link and each PC fetches the picture itself (https only, at most 10 MB, and only if it really is a GIF), kept in a small cache next to the settings. Holm before 1.9.2 shows the link.
 
   ![Chat](docs/chat.png)
 
@@ -175,7 +180,7 @@ Windows 10 (2004 or newer) or Windows 11, x64.
 
 ## Updating
 
-Right-click the notch › **Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
+Open **Settings › Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
 
 Updates work with the published Windows x64 app in a folder your account can write to. Holm waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
 

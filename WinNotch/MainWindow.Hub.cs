@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Media;
 using WinNotch.Sharing;
 
@@ -33,6 +34,8 @@ public partial class MainWindow
                 () => social.Chats.UnreadTotal),
             new("achievements", "", "Achievements", "What you've done with Holm",
                 () => new AchievementsPage(achievements)),
+            new("add", "", "Add a friend", "Share your invite code, or type in a friend's",
+                () => new AddFriendPage(social), () => social.Incoming().Count),
         };
     }
 
@@ -51,8 +54,39 @@ public partial class MainWindow
         IsOnline = _friends.IsOnline,
         Send = SendChat,
         Retry = RetryChat,
+        Invite = GetInviteAsync,
+        AddByCode = AddFriendByCodeAsync,
+        Incoming = () => _friendRequests,
+        Pending = () => _friends.Pending,
+        Answer = (card, id, yes) => _ = AnswerFromHubAsync(card, id, yes),
+        Withdraw = p => _ = WithdrawAsync(p),
+        LongCode = () => _settings.Beam ? _friends.EnsureMe().FriendCode : null,
+        SendGif = SendGif,
+        SendFiles = SendChatFiles,
+        React = ReactTo,
+        QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
+        SetQuickReactions = list => { _settings.QuickReactions = ChatReaction.Quick(list); _settings.Save(); },
+        RecentGifs = () => _settings.RecentGifs,
+        GifKey = () => GifSearch.Key(_settings),
+        SetGifKey = key => { _settings.GifSearchKey = string.IsNullOrWhiteSpace(key) ? null : key.Trim(); _settings.Save(); },
+        Animate = () => _settings.Animations,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
     };
+
+    void SendChatFiles(Friend friend, string[] paths)
+    {
+        if (!_settings.Beam)
+        {
+            ShowPeek("", "Turn on Beam to send files", "", null, false, null);
+            return;
+        }
+        if (_busy || _installingUpdate || _draggingOut)
+        {
+            ShowPeek("", "Wait until the current task finishes", "", null, false, null);
+            return;
+        }
+        SendTo(new ShareTarget(null, friend), paths);
+    }
 
 #if DEBUG
     /// <summary>Made-up progress for the snapshots, in memory only.</summary>
@@ -91,6 +125,9 @@ public partial class MainWindow
         chats.Add(lena.Key, new FriendMessage { Id = "demo-lena-1", Text = "Perfect 👍 I'll bring snacks", Sent = now + 400, State = ChatState.Received }, unread: true);
         Say(jonas, false, "Can you beam me the slides?", now - 7200);
         Say(mia, false, "Are you coming to the concert?", now - 600);
+        chats.SetReaction(lena.Key, chats.With(lena.Key)[1].Id, mine: false, "😂");
+        chats.SetReaction(lena.Key, chats.With(lena.Key)[3].Id, mine: true, "❤️");
+        Say(lena, true, "🙌🔥", now + 430);
         return new SocialContext
         {
             Friends = () => friends,
@@ -110,6 +147,14 @@ public partial class MainWindow
             TrophiesOf = f => f.Key switch { "demo-lena" => 14, "demo-mia" => 9, "demo-jonas" => 3, _ => null },
             Send = (_, _) => { },
             Retry = (_, _) => { },
+            Invite = _ => Task.FromResult<(OwnInvite?, string?)>((new OwnInvite
+            {
+                Code = "HOLM-7KQ2X-9XF4M", Expires = DateTimeOffset.UtcNow.AddHours(11).ToUnixTimeSeconds(),
+            }, null)),
+            AddByCode = _ => Task.FromResult((true, "You and Mia are now friends")),
+            Incoming = () => new List<(Friend, string)> { (new Friend { Name = "Sam Weber", Key = "demo-sam", Color = "#30D158" }, "demo") },
+            Pending = () => new List<PendingFriendRequest> { new() { RequestId = "demo", Card = tim, ByInvite = true } },
+            React = (f, m, emoji) => chats.SetReaction(f.Key, m.Id, mine: true, m.MyReaction == emoji ? null : emoji),
         };
     }
 #endif
