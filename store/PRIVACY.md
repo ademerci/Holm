@@ -37,7 +37,7 @@ For friends, Holm sends a fresh transfer secret in an encrypted friend message r
 
 Your profile picture, name, status and color are sent to your friends in encrypted friend messages. Chat messages and reactions to them use the same encrypted friend messaging service described above; message history is stored on each participant's PC.
 
-**GIFs.** If you open the GIF picker and have added a GIPHY API key, the words you search for, the key and your network information are sent to [GIPHY](https://support.giphy.com/hc/en-us/articles/360032872931-GIPHY-Privacy-Policy). A GIF message carries the GIF's link; each PC that shows it downloads the picture from that link over HTTPS, so the hosting service (such as GIPHY or Tenor) receives that PC's network information. Downloaded GIFs and links of recently used GIFs are kept on your PC. The GIPHY API key is stored in Holm's settings on your PC. Recipients can retain or share what they receive.
+Recipients can retain or share what they receive. GIF handling is described in the GIFs, reactions and invite codes section below.
 
 When Share my activity is enabled (on by default), friends receive your current activity, which may include the playing song, a call, fullscreen game, timer or stream, and your achievement count. Activity travels in encrypted presence messages through the configured friend inbox service. Turn Share my activity off under Friends settings to stop sharing it. Achievement progress is stored locally.
 
