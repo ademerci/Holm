@@ -61,8 +61,8 @@ internal sealed class ActivityPage : HubView
         if (friends.Count == 0)
         {
             _content.Children.Add(new Border { Height = 40 });
-            _content.Children.Add(ChatPage.Empty("", "No friends yet",
-                "Copy your friend code with Friends › Copy my friend code in the notch's right-click menu and send it to a friend. Once they add you, you'll see what they're up to here."));
+            _content.Children.Add(AddFriendPage.EmptyWithAdd(_social, "", "No friends yet",
+                "Send a friend your invite code, or type in theirs. Once you're friends, you'll see what they're up to here."));
             return;
         }
 

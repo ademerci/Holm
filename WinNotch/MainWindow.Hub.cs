@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Media;
 using WinNotch.Sharing;
 
@@ -33,6 +34,8 @@ public partial class MainWindow
                 () => social.Chats.UnreadTotal),
             new("achievements", "", "Achievements", "What you've done with Holm",
                 () => new AchievementsPage(achievements)),
+            new("add", "", "Add a friend", "Share your invite code, or type in a friend's",
+                () => new AddFriendPage(social), () => social.Incoming().Count),
         };
     }
 
@@ -51,6 +54,13 @@ public partial class MainWindow
         IsOnline = _friends.IsOnline,
         Send = SendChat,
         Retry = RetryChat,
+        Invite = GetInviteAsync,
+        AddByCode = AddFriendByCodeAsync,
+        Incoming = () => _friendRequests,
+        Pending = () => _friends.Pending,
+        Answer = (card, id, yes) => _ = AnswerFromHubAsync(card, id, yes),
+        Withdraw = p => _ = WithdrawAsync(p),
+        LongCode = () => _settings.Beam ? _friends.EnsureMe().FriendCode : null,
         SendGif = SendGif,
         SendFiles = SendChatFiles,
         React = ReactTo,
@@ -137,6 +147,13 @@ public partial class MainWindow
             TrophiesOf = f => f.Key switch { "demo-lena" => 14, "demo-mia" => 9, "demo-jonas" => 3, _ => null },
             Send = (_, _) => { },
             Retry = (_, _) => { },
+            Invite = _ => Task.FromResult<(OwnInvite?, string?)>((new OwnInvite
+            {
+                Code = "HOLM-7KQ2X-9XF4M", Expires = DateTimeOffset.UtcNow.AddHours(11).ToUnixTimeSeconds(),
+            }, null)),
+            AddByCode = _ => Task.FromResult((true, "You and Mia are now friends")),
+            Incoming = () => new List<(Friend, string)> { (new Friend { Name = "Sam Weber", Key = "demo-sam", Color = "#30D158" }, "demo") },
+            Pending = () => new List<PendingFriendRequest> { new() { RequestId = "demo", Card = tim, ByInvite = true } },
             React = (f, m, emoji) => chats.SetReaction(f.Key, m.Id, mine: true, m.MyReaction == emoji ? null : emoji),
         };
     }

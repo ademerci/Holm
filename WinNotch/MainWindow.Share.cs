@@ -97,6 +97,7 @@ public partial class MainWindow
         _friends.FilesOffered += OnFriendFiles;
         _friends.AddedUs += OnFriendAddedUs;
         _friends.FriendRequested += OnFriendRequested;
+        InitInvites();
         _friends.FriendRequestCancelled += OnFriendRequestCancelled;
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.Waved += OnWaved;
@@ -660,7 +661,7 @@ public partial class MainWindow
             else if (result == FriendRequestResult.Declined)
                 EndTask("\uE783", RedBrush, $"{card.Name} declined", "They weren't added to your friends list");
             else
-                EndTask("\uE783", RedBrush, $"No answer from {card.Name}", "They may be offline or haven't responded yet");
+                EndTask("\uE8FA", ShareBlue, $"Request sent to {card.Name}", "You'll be friends as soon as they accept");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't add friend"); }
     }
@@ -712,6 +713,7 @@ public partial class MainWindow
             if (!_settings.Beam || _busy || _installingUpdate || _taskVisible || _hiddenForFullscreen) return;
             if (ClipboardVerdict() != ClipVerdict.Keep) return; // a password: not ours to read
             string? text = ReadClipboardText();
+            if (OfferCopiedInvite(text)) return;
             if (FriendIdentity.ParseFriendCode(text) is { } card)
             {
                 if (_friends.IsMe(card) || _friends.Find(card.Key) != null || card.Key == _lastOfferedFriend) return;
@@ -964,11 +966,8 @@ public partial class MainWindow
     {
         MenuFriends.Items.Clear();
         MenuFriends.IsEnabled = _settings.Beam;
-        var copy = new MenuItem { Header = "Copy my friend code" };
-        copy.Click += (_, _) => CopyFriendCode();
-        MenuFriends.Items.Add(copy);
-        var add = new MenuItem { Header = "Add friend from clipboard" };
-        add.Click += (_, _) => AddFriendFromClipboard();
+        var add = new MenuItem { Header = "Add a friend…" };
+        add.Click += (_, _) => Dispatcher.InvokeAsync(() => ShowHub("add"), System.Windows.Threading.DispatcherPriority.Background);
         MenuFriends.Items.Add(add);
         var chat = new MenuItem { Header = "Chat…" };
         chat.Click += MenuFriendsHub_Click;
@@ -1014,30 +1013,6 @@ public partial class MainWindow
             remove.Items.Add(item);
         }
         MenuFriends.Items.Add(remove);
-    }
-
-    void CopyFriendCode()
-    {
-        var me = _friends.EnsureMe();
-        if (TrySetClipboard($"Add me as a friend in Holm: {me.FriendCode}"))
-            ShowPeek("\uE8C8", "Friend code copied – send it to a friend", "", null, false, null, seconds: 4);
-        else
-            ShowPeek("\uE783", "Clipboard busy, try again", "", null, false, RedBrush);
-    }
-
-    void AddFriendFromClipboard()
-    {
-        if (FriendIdentity.ParseFriendCode(ReadClipboardText()) is not { } card)
-        {
-            ShowPeek("\uE77F", "Copy your friend's friend code first", "", null, false, null);
-            return;
-        }
-        if (_friends.IsMe(card))
-        {
-            ShowPeek("\uE77F", "That's your own code – send it to a friend", "", null, false, null);
-            return;
-        }
-        _ = AddFriendAsync(card, tellThem: true);
     }
 
     // ───────────── helpers ─────────────

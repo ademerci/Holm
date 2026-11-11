@@ -13,6 +13,9 @@ namespace WinNotch;
 
 internal enum FriendRequestResult { Accepted, Declined, NoResponse }
 
+/// <summary>What came of using a friend's invite code.</summary>
+internal enum InviteResult { Added, Sent, AlreadyFriends, OwnCode, NotFound }
+
 /// <summary>
 /// Friends on this PC: our identity (the private key is encrypted for this Windows account), the friends list,
 /// and our inbox, followed while Beam is on and we have a friend code. Settings are only touched on the UI thread.
@@ -74,6 +77,13 @@ internal sealed class FriendsService
     /// <summary>A friend reacted to a chat message: its id and the emoji, or null when they took it away (UI thread).</summary>
     public event Action<Friend, string, string?>? ReactionReceived;
 
+    /// <summary>Someone used our invite code and is now a friend, without asking (UI thread).</summary>
+    public event Action<Friend>? InviteAccepted;
+    /// <summary>A request of ours was answered after we stopped waiting for it: yes (true) or no (UI thread).</summary>
+    public event Action<Friend, bool>? LateAnswer;
+    /// <summary>Our invite codes or our unanswered requests changed (UI thread).</summary>
+    public event Action? InvitesChanged;
+
     readonly WaveLimit _wavesOut = new(), _wavesIn = new();
     /// <summary>What friends told us they're doing, by key; only shown while they count as online.</summary>
     readonly Dictionary<string, FriendActivity?> _activities = new(StringComparer.Ordinal);
@@ -91,6 +101,69 @@ internal sealed class FriendsService
             _settings.Save();
             Diag.Log($"Friends: removed {removed} duplicate or invalid saved entries");
         }
+        if (Prune(Now)) _settings.Save();
+    }
+
+    static long Now => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    /// <summary>Invite codes are kept a day past their end, for requests that wait in our inbox while Holm is closed.</summary>
+    const long InviteGrace = 24 * 60 * 60;
+    /// <summary>An unanswered request is forgotten after this long: the note it waits for is long gone from the server.</summary>
+    const long PendingFor = 2 * 24 * 60 * 60;
+
+    bool Prune(long now)
+        => _settings.FriendInvites.RemoveAll(i => i.Expires + InviteGrace < now) + _settings.PendingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now) > 0;
+
+    /// <summary>Our invite codes that still work, newest last.</summary>
+    public IReadOnlyList<OwnInvite> Invites => _settings.FriendInvites.Where(i => i.Expires > Now).ToList();
+
+    /// <summary>Requests we sent that haven't been answered yet.</summary>
+    public IReadOnlyList<PendingFriendRequest> Pending => _settings.PendingFriendRequests;
+
+    /// <summary>
+    /// The invite code to give a friend: the current one while it works for at least another hour, else a new one,
+    /// whose sealed card is left on the server first.
+    /// </summary>
+    /// <exception cref="IOException">The server couldn't be reached.</exception>
+    public async Task<OwnInvite> InviteAsync(bool fresh, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        long now = Now;
+        Prune(now);
+        if (!fresh && _settings.FriendInvites.LastOrDefault(i => i.Expires - now > 3600) is { } current) return current;
+        string code = FriendInvite.New();
+        long expires = now + (long)FriendInvite.Lifetime.TotalSeconds - 120; // a little before the server lets the card go
+        await FriendInbox.PublishInviteAsync(FriendInvite.Topic(code), FriendInvite.Seal(code, me.FriendCode, expires), ct);
+        var invite = new OwnInvite { Code = code, Proof = FriendInvite.Proof(code), Expires = expires };
+        _settings.FriendInvites.Add(invite);
+        _settings.Save();
+        InvitesChanged?.Invoke();
+        return invite;
+    }
+
+    /// <summary>
+    /// Uses a friend's invite code: fetches their card and sends a request that carries the code's proof, which their
+    /// notch accepts without asking. Waits up to <paramref name="wait"/> for that; after it, the request stays open
+    /// and you become friends as soon as their Holm sees it.
+    /// </summary>
+    /// <exception cref="IOException">The server couldn't be reached.</exception>
+    public async Task<(InviteResult Result, Friend? Card)> UseInviteAsync(string code, TimeSpan wait, CancellationToken ct)
+    {
+        if (_settings.FriendInvites.Any(i => i.Code == code)) return (InviteResult.OwnCode, null);
+        Friend? card = null;
+        for (int attempt = 0; attempt < 2 && card == null; attempt++)
+        {
+            // The server stores a new card a moment after it was left: a code made just now may need a second look.
+            if (attempt > 0) await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            var cards = await FriendInbox.FetchInviteAsync(FriendInvite.Topic(code), ct);
+            long now = Now;
+            card = cards.Select(c => FriendInvite.Open(code, c, now)).FirstOrDefault(c => c != null);
+        }
+        if (card == null) return (InviteResult.NotFound, null);
+        if (IsMe(card)) return (InviteResult.OwnCode, card);
+        if (Find(card.Key) != null) return (InviteResult.AlreadyFriends, card);
+        var result = await RequestAddAsync(card, wait, ct, FriendInvite.Proof(code));
+        return (result == FriendRequestResult.Accepted ? InviteResult.Added : InviteResult.Sent, card);
     }
 
     public IReadOnlyList<Friend> Friends => _settings.Friends;
@@ -248,8 +321,13 @@ internal sealed class FriendsService
         }
     }
 
-    /// <summary>Sends a friend request and adds the card only after the other person accepts.</summary>
-    public async Task<FriendRequestResult> RequestAddAsync(Friend friend, TimeSpan timeout, CancellationToken ct)
+    /// <summary>
+    /// Sends a friend request and adds the card only after the other person accepts. The request is kept until it's
+    /// answered: if nobody answers within <paramref name="timeout"/> it stays open (a later yes still makes you friends,
+    /// see <see cref="LateAnswer"/>); only cancelling through <paramref name="ct"/> withdraws it.
+    /// <paramref name="invite"/> is the proof of their invite code, if the request was made with one.
+    /// </summary>
+    public async Task<FriendRequestResult> RequestAddAsync(Friend friend, TimeSpan timeout, CancellationToken ct, string? invite = null)
     {
         if (Find(friend.Key) is { } existing)
         {
@@ -261,30 +339,50 @@ internal sealed class FriendsService
         string requestId = Guid.NewGuid().ToString("N");
         var answer = new TaskCompletionSource<FriendRequestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         if (!_friendRequests.TryAdd(requestId, answer)) throw new InvalidOperationException("Duplicate friend request id");
+        var pending = new PendingFriendRequest { RequestId = requestId, Card = friend, Sent = Now, ByInvite = invite != null };
+        _settings.PendingFriendRequests.RemoveAll(p => p.Card.Key == friend.Key); // the newest request to them counts
+        _settings.PendingFriendRequests.Add(pending);
+        _settings.Save();
+        InvitesChanged?.Invoke();
         try
         {
-            var note = new FriendNote(FriendNoteKind.FriendRequest, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Code: me.FriendCode, RequestId: requestId);
+            var note = new FriendNote(FriendNoteKind.FriendRequest, me.Name, Now, Code: me.FriendCode, RequestId: requestId, Invite: invite);
             await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
             try
             {
                 var result = await answer.Task.WaitAsync(timeout, ct);
                 ct.ThrowIfCancellationRequested();
-                if (result == FriendRequestResult.Accepted) AddOrUpdateFriend(friend, requestId);
-                return result;
+                return result; // the answer itself added them (HandleNote)
             }
-            catch (TimeoutException)
-            {
-                await SendFriendRequestCancellationAsync(me, friend, requestId);
-                return FriendRequestResult.NoResponse;
-            }
+            catch (TimeoutException) { return FriendRequestResult.NoResponse; } // stays open
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            await SendFriendRequestCancellationAsync(me, friend, requestId);
+            await CancelRequestAsync(pending);
+            throw;
+        }
+        catch (IOException)
+        {
+            ForgetPending(requestId); // never got out
             throw;
         }
         finally { _friendRequests.TryRemove(requestId, out _); }
+    }
+
+    void ForgetPending(string requestId)
+    {
+        if (_settings.PendingFriendRequests.RemoveAll(p => p.RequestId == requestId) == 0) return;
+        _settings.Save();
+        InvitesChanged?.Invoke();
+    }
+
+    /// <summary>Withdraws a request we sent: tells them, and forgets it here.</summary>
+    public async Task CancelRequestAsync(PendingFriendRequest pending)
+    {
+        ForgetPending(pending.RequestId);
+        if (Me is not { } me) return;
+        try { await SendFriendRequestCancellationAsync(me, pending.Card, pending.RequestId); }
+        catch (IOException ex) { Diag.Log($"Couldn't withdraw the request to {pending.Card.Name}: {ex.Message}"); }
     }
 
     async Task SendFriendRequestCancellationAsync(FriendIdentity me, Friend friend, string requestId)
@@ -527,12 +625,24 @@ internal sealed class FriendsService
                     UpdateFriendCard(friend, card);
                     _ = ReplyToRequestAsync(me, card, requestId, accepted: true);
                 }
+                else if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
+                    _ = AcceptInviteAsync(card, requestId); // they had our code: no need to ask
                 else FriendRequested?.Invoke(card, requestId);
                 break;
             case FriendNoteKind.FriendResponse when note.RequestId is { } responseId && note.Accepted is { } accepted:
-                if (_friendRequests.TryGetValue(responseId, out var answer))
-                    answer.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
+            {
+                // Only the person we asked can answer, and the answer counts whenever it comes.
+                var pending = _settings.PendingFriendRequests.FirstOrDefault(p => p.RequestId == responseId && p.Card.Key == sender);
+                bool waiting = _friendRequests.TryGetValue(responseId, out var answer);
+                if (pending != null)
+                {
+                    ForgetPending(responseId);
+                    if (accepted) AddOrUpdateFriend(pending.Card, responseId);
+                    if (!waiting) LateAnswer?.Invoke(pending.Card, accepted);
+                }
+                if (waiting) answer!.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
                 break;
+            }
             case FriendNoteKind.FriendRequestCancelled when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } cancelledId:
                 _cancelledFriendRequests.Add(cancelledId);
                 RemoveFriendAddedByRequest(cancelledId);
@@ -610,6 +720,22 @@ internal sealed class FriendsService
         bool more = trophies is { } n && (!_trophies.TryGetValue(friend.Key, out int was) || was != n);
         if (trophies is { } count) _trophies[friend.Key] = count;
         if (!had || before != activity || more) ActivityChanged?.Invoke(friend);
+    }
+
+    /// <summary>Someone who had our invite code asked: say yes and add them.</summary>
+    async Task AcceptInviteAsync(Friend card, string requestId)
+    {
+        try
+        {
+            await RespondToFriendRequestAsync(card, requestId, accepted: true);
+            Diag.Log("Friends: someone joined with our invite code");
+            InviteAccepted?.Invoke(card);
+        }
+        catch (IOException ex)
+        {
+            Diag.Log("Friends: couldn't answer an invite request: " + ex.Message);
+            FriendRequested?.Invoke(card, requestId); // ask the person instead
+        }
     }
 
     async Task ReplyToRequestAsync(FriendIdentity me, Friend card, string requestId, bool accepted)

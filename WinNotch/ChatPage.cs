@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -57,6 +58,18 @@ internal sealed class SocialContext
     public Func<bool> Animate { get; init; } = () => true;
     /// <summary>How many achievements a friend has, if their notch said.</summary>
     public Func<Friend, int?> TrophiesOf { get; init; } = _ => null;
+    /// <summary>Our invite code (a new one with true), or why there's none.</summary>
+    public Func<bool, Task<(OwnInvite? Invite, string? Error)>> Invite { get; init; } = _ => Task.FromResult<(OwnInvite?, string?)>((null, "Not available here"));
+    /// <summary>Adds the friend behind a code someone typed or pasted (an invite code, or an old long friend code).</summary>
+    public Func<string, Task<(bool Ok, string Message)>> AddByCode { get; init; } = _ => Task.FromResult((false, "Not available here"));
+    /// <summary>Friend requests waiting for our answer.</summary>
+    public Func<IReadOnlyList<(Friend Card, string RequestId)>> Incoming { get; init; } = () => Array.Empty<(Friend, string)>();
+    /// <summary>Our requests waiting for theirs.</summary>
+    public Func<IReadOnlyList<PendingFriendRequest>> Pending { get; init; } = () => Array.Empty<PendingFriendRequest>();
+    public Action<Friend, string, bool> Answer { get; init; } = (_, _, _) => { };
+    public Action<PendingFriendRequest> Withdraw { get; init; } = _ => { };
+    /// <summary>Our long friend code, for friends on an older Holm.</summary>
+    public Func<string?> LongCode { get; init; } = () => null;
 
     /// <summary>A friend came online, went quiet, changed their profile or what they're doing.</summary>
     public event Action? Changed;
@@ -101,7 +114,7 @@ internal sealed class ChatPage : HubView
         var friends = social.Friends();
         if (friends.Count == 0)
         {
-            Child = Empty("", "No friends yet", "Add a friend with Friends › Add friend from clipboard in the notch's right-click menu, then chat here.");
+            Child = AddFriendPage.EmptyWithAdd(social, "", "No friends yet", "Send a friend your invite code, or type in theirs. Then chat here.");
             return;
         }
 
@@ -125,9 +138,19 @@ internal sealed class ChatPage : HubView
         magnifier.Margin = new Thickness(12, 0, 0, 0);
         magnifier.IsHitTestVisible = false;
         searchHost.Children.Add(magnifier);
-        searchHost.Margin = new Thickness(12, 12, 12, 8);
+        searchHost.Margin = new Thickness(12, 12, 52, 8);
         _search.TextChanged += (_, _) => ShowList();
         left.Children.Add(searchHost);
+        var addFriend = new Border
+        {
+            Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = HubTheme.Card, Cursor = Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 14, 12, 0),
+            ToolTip = "Add a friend", Child = HubTheme.Glyph("\uE710", 14),
+        };
+        addFriend.MouseEnter += (_, _) => addFriend.Background = HubTheme.Selected;
+        addFriend.MouseLeave += (_, _) => addFriend.Background = HubTheme.Card;
+        addFriend.MouseLeftButtonUp += (_, e) => { e.Handled = true; social.Open?.Invoke("add", null); };
+        left.Children.Add(addFriend);
         _list.Margin = new Thickness(8, 0, 2, 8);
         var listScroll = HubTheme.Scroller(_list);
         Grid.SetRow(listScroll, 1);

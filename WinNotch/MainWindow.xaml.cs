@@ -2279,7 +2279,7 @@ public partial class MainWindow : Window
     static readonly (string Page, string Name)[] SnapshotHubPages =
     {
         ("general", "settings"), ("profile", "settings-profile"), ("popouts", "settings-popouts"),
-        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"),
+        ("activity", "hub-activity"), ("chat", "hub-chat"), ("achievements", "hub-achievements"), ("add", "hub-add"),
     };
 
     /// <summary>A made-up face for snapshots: a head and shoulders on a gradient, as a profile picture.</summary>
