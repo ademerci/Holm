@@ -4,9 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace WinNotch;
 
@@ -69,13 +72,33 @@ public partial class MainWindow
         log.AppendLine(Row("close", closes));
         log.AppendLine($"cpu {cpu.TotalMilliseconds:F0} ms for {rounds} open+close rounds ({cpu.TotalMilliseconds / rounds:F0} ms each)");
 
-        // A quiet half minute closed.
+        // A quiet minute closed: what runs on the notch's thread, and what runs elsewhere.
         await Task.Delay(8000);
+        var work = new Dictionary<string, (int Count, double Ms)>();
+        var started = new Dictionary<DispatcherOperation, long>();
+        void Started(object? sender, DispatcherHookEventArgs e) => started[e.Operation] = Stopwatch.GetTimestamp();
+        void Ended(object? sender, DispatcherHookEventArgs e)
+        {
+            if (!started.Remove(e.Operation, out long at)) return;
+            string name = Describe(e.Operation);
+            var (count, ms) = work.GetValueOrDefault(name);
+            work[name] = (count + 1, ms + Stopwatch.GetElapsedTime(at).TotalMilliseconds);
+        }
+        Dispatcher.Hooks.OperationStarted += Started;
+        Dispatcher.Hooks.OperationCompleted += Ended;
+        Dispatcher.Hooks.OperationAborted += Ended;
         proc.Refresh();
         var idle0 = proc.TotalProcessorTime;
-        await Task.Delay(30_000);
+        long ui0 = ThreadCpu();
+        await Task.Delay(60_000);
         proc.Refresh();
-        log.AppendLine($"idle cpu {(proc.TotalProcessorTime - idle0).TotalMilliseconds * 2:F0} ms/min");
+        Dispatcher.Hooks.OperationStarted -= Started;
+        Dispatcher.Hooks.OperationCompleted -= Ended;
+        Dispatcher.Hooks.OperationAborted -= Ended;
+        double uiMs = (ThreadCpu() - ui0) / 10_000.0;
+        log.AppendLine($"idle cpu {(proc.TotalProcessorTime - idle0).TotalMilliseconds:F0} ms/min, of that the notch's thread {uiMs:F0} ms");
+        foreach (var (name, (count, ms)) in work.OrderByDescending(w => w.Value.Ms).Take(12))
+            log.AppendLine($"  {ms,7:F1} ms  {count,4}x  {name}");
         var gc = GC.GetGCMemoryInfo();
         log.AppendLine($"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, working set {proc.WorkingSet64 / 1048576.0:F1} MB, "
                      + $"gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB");
@@ -106,6 +129,33 @@ public partial class MainWindow
         Time("layout", UpdateLayout);
         return line.ToString();
     }
+
+    static readonly FieldInfo? OperationMethod = typeof(DispatcherOperation).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance);
+    static readonly FieldInfo? TimerTick = typeof(DispatcherTimer).GetField("Tick", BindingFlags.NonPublic | BindingFlags.Instance);
+
+    /// <summary>What a piece of work on the notch's thread is: a timer by what it calls, otherwise the method.</summary>
+    static string Describe(DispatcherOperation operation)
+    {
+        if (OperationMethod?.GetValue(operation) is not Delegate method) return operation.Priority.ToString();
+        if (method.Target is DispatcherTimer timer && TimerTick?.GetValue(timer) is EventHandler tick)
+            return "timer " + string.Join(" + ", tick.GetInvocationList().Select(Name));
+        return Name(method);
+    }
+
+    static string Name(Delegate method)
+    {
+        string own = $"{method.Target?.GetType().Name ?? method.Method.DeclaringType?.Name}.{method.Method.Name}";
+        // A lambda (as in MakeTimer) is named after the delegate it calls.
+        var inner = method.Target?.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Select(f => f.GetValue(method.Target)).OfType<Delegate>().FirstOrDefault(d => d != method);
+        return inner != null ? $"{own} -> {inner.Method.DeclaringType?.Name}.{inner.Method.Name}" : own;
+    }
+
+    [DllImport("kernel32.dll")] static extern IntPtr GetCurrentThread();
+    [DllImport("kernel32.dll")] static extern bool GetThreadTimes(IntPtr thread, out long created, out long exited, out long kernel, out long user);
+
+    /// <summary>CPU time of the calling thread, in 100 ns units.</summary>
+    static long ThreadCpu() => GetThreadTimes(GetCurrentThread(), out _, out _, out long kernel, out long user) ? kernel + user : 0;
 
     static double Median(IEnumerable<double> values)
     {
