@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.10.0 – 2026-11-11
 
 ### Added
 - **Invite codes.** *Add a friend* (in the Holm window, the *+* beside the chat search, or Friends › *Add a friend…* in the right-click menu) shows a short code like `HOLM-7KQ2X-9XF4M` to copy, send or read out; a friend who types or pastes it in their *Add a friend* page is your friend at once, nobody has to accept anything. The code works for everyone you give it to for 12 hours; *New code* makes another. It leads to your friend card, left sealed on the server with a key from the code (`holm-inv-…` topic, HKDF-SHA256, AES-GCM), and the request it sends carries a proof only the code gives (new note field `X`), which your notch accepts on its own. A copied invite code pops out of the notch with *Add*. The long friend code still works in the same box, for friends on Holm 1.9.5 and older.
