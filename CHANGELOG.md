@@ -3,11 +3,11 @@
 ## 1.9.5 – 2026-11-11
 
 ### Added
-- **Send files from chat.** The plus button opens a file picker and sends the chosen files to the current friend with Beam, including its existing transfer and send-later behavior.
-- **Updates in Settings.** Check for updates, install an available update, and turn automatic checks on or off from the new Updates page. Automatic checks remain on by default; update notifications stay in the notch.
+- **Send files from a chat.** The *+* at the left of the message box opens a file picker for one or more files and sends them to the friend whose chat is open. It uses Beam: the friend is asked to accept, progress shows in the notch, and, if *Send later* is on, files for an offline friend wait until their Holm is back. Beam must be on.
 
 ### Changed
-- The GIF picker sits beside the send button, and the file button has a circular hover highlight. The old Updates submenu has been removed from the right-click menu.
+- **Updates have a page in Settings.** *Settings › Updates* shows the current version, checks for a new stable release and offers *Update and restart* when one is available. Automatic checks remain on by default, shortly after startup and every two hours; the switch on the page turns them off or back on immediately. Existing update notifications remain in the notch. The old right-click *Updates* submenu is gone.
+- **The message box.** *GIF* sits next to the send arrow; the file *+* sits on the left and shows a round highlight on hover.
 
 ## 1.9.4 – 2026-11-10
 

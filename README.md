@@ -50,7 +50,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Timer** – right-click › *Timer* and pick 1 minute to 1 hour. The time left counts down in the notch (in place of the equalizer while music plays), with pause and stop when you open it; when it's up, the notch rings and offers five more minutes.
 - **Beam** (Holm's AirDrop) – drop files or folders on the notch and beam them to a friend anywhere, to someone on the same network, or to anyone with a code (see below). Copied text can be beamed too, and a friend whose Holm isn't running gets the files once it is.
 - **Separate sizes** – choose Small, Normal, Large or Extra large independently for the collapsed notch and the expanded panel. Pop-outs and Beam prompts follow the collapsed size.
-- **Updates in the app** – checks for stable releases shortly after startup and every two hours. Right-click › **Updates** to check now, switch automatic checks off, or install an available update and restart.
+- **Updates in the app** – checks for stable releases shortly after startup and every two hours. Open **Settings › Updates** to check now, switch automatic checks off, or install an available update and restart.
 - **Battery levels** for your laptop and Bluetooth devices (the same values Windows Settings shows).
 - **Live activities** – short pop-outs when headphones connect, the charger is plugged in or the battery runs low.
 - **AI button** – one click opens Claude, Gemini or ChatGPT: the desktop app if you have it (also Store apps and web apps installed from Edge or Chrome), the website otherwise. Or pick any app you like.
@@ -59,7 +59,7 @@ A Dynamic Island–style notch for Windows. It sits at the top of your screen, s
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
 - **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…** (including Updates), *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), pick a screen, quit.
-- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends and weather. Every switch has an icon and a line saying what it does; changes wait for *Apply*. Esc closes it.
+- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends, weather and updates. Most settings changes wait for *Apply*; the automatic update check setting takes effect immediately. Esc closes it.
 
   ![The Holm window](docs/settings.png)
 
@@ -180,7 +180,7 @@ Windows 10 (2004 or newer) or Windows 11, x64.
 
 ## Updating
 
-Right-click the notch › **Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
+Open **Settings › Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
 
 Updates work with the published Windows x64 app in a folder your account can write to. Holm waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
 
