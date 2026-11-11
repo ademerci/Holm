@@ -32,6 +32,11 @@ public partial class MainWindow
             last = t;
         }
 
+        // What opening costs, step by step (the steps SetExpanded takes), once before the rounds.
+        log.AppendLine(TimeOpenSteps());
+        SetExpanded(false);
+        await Task.Delay(1500);
+
         var opens = new List<(double Call, double Max, int Skipped)>();
         var closes = new List<(double Call, double Max, int Skipped)>();
         proc.Refresh();
@@ -75,6 +80,31 @@ public partial class MainWindow
         log.AppendLine($"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, working set {proc.WorkingSet64 / 1048576.0:F1} MB, "
                      + $"gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB");
         File.WriteAllText(file, log.ToString());
+    }
+
+    string TimeOpenSteps()
+    {
+        var line = new StringBuilder("open steps (ms):");
+        void Time(string name, Action step)
+        {
+            var watch = Stopwatch.StartNew();
+            step();
+            line.Append($" {name} {watch.Elapsed.TotalMilliseconds:F1}");
+        }
+        _expanded = true;
+        Time("media", RefreshMediaUi);
+        Time("devices", RefreshDevices);
+        Time("output", RefreshOutput);
+        Time("bluetooth", RefreshBluetooth);
+        Time("timer", ShowTimer);
+        Time("focumon", RefreshFocumon);
+        Time("ai", () => ResolveAi(force: false));
+        Time("state", () => ApplyState());
+        Time("backdrop", UpdateBackdrop);
+        Time("privacy", ShowPrivacy);
+        Time("shelf", ShowShelf);
+        Time("layout", UpdateLayout);
+        return line.ToString();
     }
 
     static double Median(IEnumerable<double> values)
