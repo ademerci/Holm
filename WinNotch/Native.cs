@@ -20,6 +20,33 @@ internal static class Native
 
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
+    const uint GW_HWNDPREV = 3;
+    const int DWMWA_CLOAKED = 14;
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hwnd, uint command);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
+
+    /// <summary>
+    /// Whether another app's window lies above ours where ours is, so it covers ours. Hidden windows, cloaked ones
+    /// (on another desktop) and Holm's own (its menus) don't count.
+    /// </summary>
+    public static bool IsCovered(IntPtr hwnd)
+    {
+        if (!GetWindowRect(hwnd, out var mine)) return true;
+        uint own = (uint)Environment.ProcessId;
+        int looked = 0;
+        for (IntPtr above = GetWindow(hwnd, GW_HWNDPREV); above != IntPtr.Zero && looked++ < 1000; above = GetWindow(above, GW_HWNDPREV))
+        {
+            if (!IsWindowVisible(above) || !GetWindowRect(above, out var r)) continue;
+            if (r.Left >= mine.Right || r.Right <= mine.Left || r.Top >= mine.Bottom || r.Bottom <= mine.Top) continue;
+            if (GetWindowThreadProcessId(above, out uint pid) != 0 && pid == own) continue;
+            if (DwmGetWindowAttribute(above, DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) continue;
+            return true;
+        }
+        return false;
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct MONITORINFOEX
     {

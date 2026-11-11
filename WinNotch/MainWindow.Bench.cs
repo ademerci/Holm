@@ -131,18 +131,20 @@ public partial class MainWindow
     }
 
     static readonly FieldInfo? OperationMethod = typeof(DispatcherOperation).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance);
+    static readonly FieldInfo? OperationArgs = typeof(DispatcherOperation).GetField("_args", BindingFlags.NonPublic | BindingFlags.Instance);
     static readonly FieldInfo? TimerTick = typeof(DispatcherTimer).GetField("Tick", BindingFlags.NonPublic | BindingFlags.Instance);
 
     /// <summary>What a piece of work on the notch's thread is: a timer by what it calls, otherwise the method.</summary>
     static string Describe(DispatcherOperation operation)
     {
         if (OperationMethod?.GetValue(operation) is not Delegate method) return operation.Priority.ToString();
-        if (method.Target is DispatcherTimer timer && TimerTick?.GetValue(timer) is EventHandler tick)
-            return "timer " + string.Join(" + ", tick.GetInvocationList().Select(Name));
-        return Name(method);
+        var timer = method.Target as DispatcherTimer ?? OperationArgs?.GetValue(operation) as DispatcherTimer;
+        if (timer != null && TimerTick?.GetValue(timer) is EventHandler tick)
+            return $"timer {timer.Interval.TotalMilliseconds:F0} ms: " + string.Join(" + ", tick.GetInvocationList().Select(DelegateName));
+        return DelegateName(method);
     }
 
-    static string Name(Delegate method)
+    static string DelegateName(Delegate method)
     {
         string own = $"{method.Target?.GetType().Name ?? method.Method.DeclaringType?.Name}.{method.Method.Name}";
         // A lambda (as in MakeTimer) is named after the delegate it calls.
