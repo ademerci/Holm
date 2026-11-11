@@ -1,0 +1,76 @@
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths: ['website/**', 'docs/**', '.github/workflows/website.yml']
+  pull_request:
+    paths: ['website/**', 'docs/**', '.github/workflows/website.yml']
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Publish the verified build to GitHub Pages'
+        type: boolean
+        default: true
+
+# Main and public release updates publish only after all website checks pass.
+# Pull requests validate without publishing.
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+      - name: Install development tools
+        run: npm ci
+      - name: Refresh public release metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run refresh-releases
+      - name: Check JavaScript
+        run: npm run check
+      - name: Check formatting
+        run: npm run lint
+      - name: Build static website
+        env:
+          SITE_URL: ${{ vars.HOLM_SITE_URL || 'https://holmnotch.ch' }}
+          BASE_PATH: ${{ vars.HOLM_SITE_BASE_PATH || '/' }}
+        run: npm run build
+      - name: Test release handling and generated site
+        run: npm test
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+
+  deploy:
+    if: github.event_name == 'push' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

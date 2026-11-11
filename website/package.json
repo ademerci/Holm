@@ -1,0 +1,22 @@
+{
+  "name": "holm-website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && node scripts/serve.mjs",
+    "preview": "node scripts/serve.mjs",
+    "refresh-releases": "node scripts/refresh-releases.mjs",
+    "check": "node --check src/client.js && node --check src/pages.mjs && node --check src/content.mjs && node --check src/releases.mjs && node --check scripts/build.mjs && node --check scripts/serve.mjs && node --check scripts/refresh-releases.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "format": "prettier --write src scripts tests package.json",
+    "lint": "prettier --check src scripts tests package.json"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}
