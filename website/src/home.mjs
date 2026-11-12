@@ -107,7 +107,17 @@ const tiles = [
 const story =
   'Holm puts your music, your messages, your friends and the little tools you reach for every day in one place at the top of your screen. It opens when you need it and steps aside when you don’t.';
 
-export function homePage({ link, win, download, version, store, repo, esc }) {
+export function homePage({
+  link,
+  win,
+  download,
+  version,
+  store,
+  repo,
+  esc,
+  counts,
+  downloadCount,
+}) {
   const words = story
     .split(' ')
     .map((word) => `<span class="w">${esc(word)}</span>`)
@@ -261,14 +271,11 @@ export function homePage({ link, win, download, version, store, repo, esc }) {
     <section class="light" aria-labelledby="light-title">
       <h2 id="light-title" class="reveal-up">Light as air.</h2>
       <div class="facts">
+        <div class="fact reveal-up"><b>⅓ s</b><span>of CPU a minute while it waits.</span></div>
+        <div class="fact reveal-up"><b>20–35</b><span>MB of RAM at idle.</span></div>
         <div class="fact reveal-up">
-          <b>⅓ s</b><span>of CPU a minute while it waits, measured on our test laptop.</span>
-        </div>
-        <div class="fact reveal-up">
-          <b>0</b><span>pop-ups over your fullscreen games and videos.</span>
-        </div>
-        <div class="fact reveal-up">
-          <b>MIT</b><span>Free and open source. Read every line on GitHub.</span>
+          <b data-download-number>${downloadCount.toLocaleString('en-US')}</b
+          ><span data-download-description>downloads</span>
         </div>
       </div>
     </section>
@@ -276,6 +283,7 @@ export function homePage({ link, win, download, version, store, repo, esc }) {
     <section class="get" id="get" aria-labelledby="get-title">
       <p class="kicker reveal-up">Get Holm</p>
       <h2 id="get-title" class="reveal-up">Make yourself at home.</h2>
+      ${counts}
       <div class="ways">
         <article class="way reveal-up">
           <p class="kicker">GitHub</p>

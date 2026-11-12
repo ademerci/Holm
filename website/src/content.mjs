@@ -200,7 +200,7 @@ export const docs = [
       ],
       [
         'Local data and external services',
-        'Notes, chat history and settings stay on your PC. Weather uses Open-Meteo; GIF search uses GIPHY. Beam uses the Holm relay at relay.holmnotch.ch (hosted on Cloudflare) and, for friends on older versions, ntfy.sh for sealed signalling and a magic-wormhole transit relay for encrypted transfers. Service operators can still observe connection metadata. See the repository README for the detailed privacy and network model.',
+        'The app counts active installations by sending a random installation ID, Holm version and GitHub or Store channel to Holm’s counter, at most once per day. It sends no name, friends or usage details. This is on by default and can be switched off immediately in Settings → Calls and privacy. The counter stores a peppered hash of the ID, day, version and channel for at most 400 days. Cloudflare receives connection metadata to deliver requests. Website visits are not tracked. Notes, chat history and settings stay on your PC. Weather uses Open-Meteo; GIF search uses GIPHY. Beam uses the Holm relay at relay.holmnotch.ch (hosted on Cloudflare) and, for friends on older versions, ntfy.sh for sealed signalling and a magic-wormhole transit relay for encrypted transfers. Service operators can still observe connection metadata. See the repository README for the detailed privacy and network model.',
       ],
     ],
   },

@@ -11,6 +11,9 @@ import {
   loadReleaseFeed,
   TTL,
   assetLabel,
+  downloadTotal,
+  combinedDownloads,
+  fetchReleases,
 } from '../src/releases.mjs';
 
 const source = JSON.parse(
@@ -151,4 +154,35 @@ test('release archives for Windows and Linux get a labelled link, other files no
   assert.equal(assetLabel('Holm-1.13.0-linux-x64.tar.gz'), 'Linux x64');
   assert.equal(assetLabel('Holm.exe'), null);
   assert.equal(assetLabel('Holm-1.13.0-test-build.5.exe'), null);
+test('download totals include only the executable and x64 ZIP across all releases', () => {
+  const releases = normalizeReleases([
+    {
+      ...real,
+      assets: [
+        { ...real.assets[0], name: 'Holm.exe', download_count: 7 },
+        { ...real.assets[0], name: 'Holm-1.0-win-x64.zip', download_count: 4 },
+        { ...real.assets[0], name: 'source.zip', download_count: 999 },
+        { ...real.assets[0], name: 'Holm.exe', download_count: -1 },
+      ],
+    },
+  ]);
+  assert.equal(downloadTotal(releases), 11);
+});
+
+test('fetches every release page', async () => {
+  let calls = 0;
+  const releases = await fetchReleases(
+    async () => ({ ok: true, json: async () => (++calls === 1 ? Array(100).fill(real) : [real]) }),
+    {},
+  );
+  assert.equal(calls, 2);
+  assert.equal(releases.length, 101);
+});
+
+test('combined download count uses both sources and identifies an unavailable Store count', () => {
+  assert.deepEqual(combinedDownloads(186, 34), { count: 220, complete: true });
+  assert.deepEqual(combinedDownloads(186, 0), { count: 186, complete: true });
+  assert.deepEqual(combinedDownloads(186, null), { count: 186, complete: false });
+  assert.equal(combinedDownloads(186, -1), null);
+  assert.equal(combinedDownloads(Number.MAX_SAFE_INTEGER, 1), null);
 });

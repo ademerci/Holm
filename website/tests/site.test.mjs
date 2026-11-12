@@ -139,3 +139,27 @@ test('custom-domain root hosting and release outage still render all pages', asy
   assert.ok(generated.get('').includes('https://holm.example/assets/social.png'));
   setSiteOrigin(origin);
 });
+
+test('home and download pages contain the snapshot download count', async () => {
+  const snapshot = JSON.parse(
+    await readFile(new URL('../data/releases.json', import.meta.url), 'utf8'),
+  );
+  const { downloadTotal } = await import('../src/releases.mjs');
+  const number = downloadTotal(snapshot.releases).toLocaleString('en-US');
+  const label = `${number} downloads`;
+  assert.ok(
+    (await readFile(path.join(root, 'index.html'), 'utf8')).includes(
+      `<b data-download-number>${number}</b`,
+    ),
+  );
+  for (const route of ['index.html', 'download/index.html'])
+    assert.ok((await readFile(path.join(root, route), 'utf8')).includes(label), route);
+});
+
+test('download surfaces use one counter', async () => {
+  for (const route of ['index.html', 'download/index.html']) {
+    const html = await readFile(path.join(root, route), 'utf8');
+    assert.ok(html.includes('data-download-total'), route);
+    assert.ok(!html.includes('data-store-total'), route);
+  }
+});

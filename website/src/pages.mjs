@@ -9,6 +9,7 @@ import {
   releaseAsset,
   assetLabel,
   releaseHtml,
+  downloadTotal,
 } from './releases.mjs';
 
 export function createPages({ base, snapshot, store }) {
@@ -158,7 +159,18 @@ export function createPages({ base, snapshot, store }) {
         : ''
     }<span class="channel-foot">Windows x64 and Linux x64 · Self-contained · In-app updates on Windows</span></article><article class="channel store"><div class="channel-top"><span class="store-symbol" aria-hidden="true">${win}</span><span class="tag neutral">${store.url ? 'Available now' : 'Coming soon'}</span></div><h${full ? '2' : '3'}>At the Store’s pace.</h${full ? '2' : '3'}><p>The more conservative channel: less frequent releases, with additional validation before publication. It may be behind GitHub.</p>${store.url ? `${store.version ? `<div class="release-current"><strong>v${esc(store.version)}</strong><span>Microsoft Store release</span><span>Verified ${dateLabel(store.verified_at)}</span></div>` : ''}${button('Get it from Microsoft Store ↗', store.url, true)}` : '<p class="store-state">Microsoft Store<br><span>A verified public listing is not available yet.</span></p><span class="button unavailable">Microsoft Store · Coming soon</span>'}<span class="channel-foot">Store-managed updates · ${store.url ? esc(store.publisher || 'Microsoft Store') : 'No Store version announced'}</span></article></div>`;
 
-  const home = homePage({ link, win, download, version, store, repo: REPO, esc });
+  const counts = `<p class="fine h-fine center"><span data-download-total data-github-count="${downloadTotal(snapshot.releases)}">${downloadTotal(snapshot.releases).toLocaleString('en-US')} downloads</span> · <span data-user-total>Monthly user count unavailable</span><br>Monthly count approximates people using active installations. <a href="${link('docs/privacy/')}">Privacy details</a></p>`;
+  const home = homePage({
+    link,
+    win,
+    download,
+    version,
+    store,
+    repo: REPO,
+    esc,
+    counts,
+    downloadCount: downloadTotal(snapshot.releases),
+  });
   const features = /* HTML */ `${intro('SMALL SPACE. MANY POSSIBILITIES.', 'Little things.<br>Thoughtfully together.', 'A closer look at what fits inside Holm, and how it fits into your day.')}
     <nav class="feature-index wrap" aria-label="Feature categories">
       ${featureGroups.map((g) => `<a href="#${g.id}">${g.label} <span aria-hidden="true">↓</span></a>`).join('')}
@@ -204,7 +216,7 @@ export function createPages({ base, snapshot, store }) {
       data-releases
       data-snapshot-at="${Date.parse(snapshot.fetched_at)}"
     >
-      ${channels(true)}
+      ${counts} ${channels(true)}
       <p class="release-status fine" role="status" data-release-status>
         Release snapshot checked ${dateLabel(snapshot.fetched_at)}.
         <a href="${REPO}/releases/latest">Verify the latest on GitHub ↗</a>
