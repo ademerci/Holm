@@ -102,6 +102,28 @@ public partial class MainWindow
         var gc = GC.GetGCMemoryInfo();
         log.AppendLine($"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, working set {proc.WorkingSet64 / 1048576.0:F1} MB, "
                      + $"gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB");
+
+        // The Holm window opened and closed a few times: does anything of it stay behind?
+        long heap0 = Collected();
+        proc.Refresh();
+        long private0 = proc.PrivateMemorySize64;
+        var windows = new List<WeakReference>();
+        for (int i = 0; i < 5; i++)
+        {
+            ShowHub();
+            windows.Add(new WeakReference(_settingsWindow));
+            await Task.Delay(1800);
+            _settingsWindow?.Close();
+            await Task.Delay(800);
+        }
+        await Task.Delay(2000);
+        long heap1 = Collected();
+        proc.Refresh();
+        log.AppendLine($"holm window 5x: {windows.Count(w => w.IsAlive)} of 5 still alive, gc heap {(heap1 - heap0) / 1048576.0:+0.0;-0.0} MB, "
+                     + $"private {(proc.PrivateMemorySize64 - private0) / 1048576.0:+0.0;-0.0} MB");
+        gc = GC.GetGCMemoryInfo();
+        log.AppendLine($"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, working set {proc.WorkingSet64 / 1048576.0:F1} MB, "
+                     + $"gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB");
         File.WriteAllText(file, log.ToString());
     }
 
@@ -158,6 +180,14 @@ public partial class MainWindow
 
     /// <summary>CPU time of the calling thread, in 100 ns units.</summary>
     static long ThreadCpu() => GetThreadTimes(GetCurrentThread(), out _, out _, out long kernel, out long user) ? kernel + user : 0;
+
+    static long Collected()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        return GC.GetTotalMemory(true);
+    }
 
     static double Median(IEnumerable<double> values)
     {

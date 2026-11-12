@@ -81,7 +81,8 @@ public partial class MainWindow
         bool on = _expanded && !_hiddenForFullscreen && (_settings.MediaControls ? _info : null) == null;
         if (on)
         {
-            var look = Sky.For(DateTime.Now, _weather?.Kind, _weather?.IsDay);
+            var weather = _settings.Weather ? _weather : null;
+            var look = Sky.For(DateTime.Now, weather?.Kind, weather?.IsDay);
             if (look != _skyShown)
             {
                 SkyLayer.Background = Paint(look);
