@@ -3,6 +3,8 @@ bin/
 obj/
 artifacts/
 publish/
+out/
+Holm-*-test-build.*.exe
 share/
 snaps/
 TestResults/
