@@ -53,13 +53,13 @@ public partial class MainWindow
                 frames.Clear();
                 last = TimeSpan.Zero;
                 CompositionTarget.Rendering += OnFrame;
-                long ui0 = ThreadCpu();
+                long threadAt = ThreadCpu();
                 var watch = Stopwatch.StartNew();
                 SetExpanded(open);
                 double call = watch.Elapsed.TotalMilliseconds;
                 await Task.Delay(650);
                 CompositionTarget.Rendering -= OnFrame;
-                (open ? uiOpen : uiClose).Add((ThreadCpu() - ui0) / 10_000.0);
+                (open ? uiOpen : uiClose).Add((ThreadCpu() - threadAt) / 10_000.0);
                 double max = frames.Count > 0 ? frames.Max() : 0;
                 int skipped = frames.Sum(f => (int)Math.Max(0, Math.Round(f / 16.7) - 1));
                 (open ? opens : closes).Add((call, max, skipped));
