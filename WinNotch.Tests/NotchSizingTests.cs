@@ -134,6 +134,79 @@ public class NotchSizingTests
         });
     }
 
+    [Fact]
+    public void BrowserUsesTheExistingMiniPillAndRestoresTheIdleView()
+    {
+        WithWindow(window =>
+        {
+            var settings = Settings(window);
+            settings.CollapsedScale = 1;
+            settings.MiniIdle = true;
+            Invoke(window, "ApplyState", false);
+            var island = (Border)window.FindName("Island");
+            var normalPill = (island.Width, island.Height, window.Radius, window.Ear);
+
+            settings.MiniIdle = false;
+            SetField(window, "_browserInFront", true);
+            Invoke(window, "ApplyState", false);
+            Assert.Equal(normalPill, (island.Width, island.Height, window.Radius, window.Ear));
+            Assert.Equal(0, ((FrameworkElement)window.FindName("IdleView")).Opacity);
+
+            // Opening takes precedence; collapsing returns to the pill while the browser stays in front.
+            SetField(window, "_expanded", true);
+            Invoke(window, "ApplyState", false);
+            Assert.True(island.Height > 6);
+            SetField(window, "_expanded", false);
+            Invoke(window, "ApplyState", false);
+            Assert.Equal(6, island.Height);
+
+            SetField(window, "_browserInFront", false);
+            Invoke(window, "ApplyState", false);
+            Assert.Equal(30, island.Height);
+            Assert.Equal(1, ((FrameworkElement)window.FindName("IdleView")).Opacity);
+        });
+    }
+
+    [Fact]
+    public void BrowserMinimizesPlayingMusicAndRestoresItAfterwards()
+    {
+        WithWindow(window =>
+        {
+            Settings(window).CollapsedScale = 1;
+            SetField(window, "_info", new MediaInfo { IsPlaying = true });
+            SetField(window, "_browserInFront", true);
+            Invoke(window, "ApplyState", false);
+            AssertSize(window, 1, 96);
+            Assert.Equal(0, ((FrameworkElement)window.FindName("CompactView")).Opacity);
+
+            SetField(window, "_browserInFront", false);
+            Invoke(window, "ApplyState", false);
+            AssertSize(window, 1, 220);
+            Assert.Equal(1, ((FrameworkElement)window.FindName("CompactView")).Opacity);
+        });
+    }
+
+    [Theory]
+    [InlineData("_sharing", 400)]
+    [InlineData("_taskVisible", 420)]
+    [InlineData("_volumePeek", 250)]
+    [InlineData("_peekActive", 320)]
+    public void BrowserPillStillAllowsAlerts(string stateField, double logicalWidth)
+    {
+        WithWindow(window =>
+        {
+            Settings(window).CollapsedScale = 1;
+            SetField(window, "_browserInFront", true);
+            SetField(window, stateField, true);
+            Invoke(window, "ApplyState", false);
+            AssertSize(window, 1, logicalWidth);
+
+            SetField(window, stateField, false);
+            Invoke(window, "ApplyState", false);
+            AssertSize(window, 1, 96);
+        });
+    }
+
     static void AssertSize(MainWindow window, double expectedScale, double logicalWidth)
     {
         var transform = (ScaleTransform)((Grid)window.FindName("IslandHost")).LayoutTransform;

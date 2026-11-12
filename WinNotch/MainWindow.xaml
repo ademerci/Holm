@@ -262,7 +262,7 @@
                             <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>
                             <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                             <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
-                            <MenuItem x:Name="MenuHideOverBrowsers" Header="Hide over browser tabs" ToolTip="While a maximized browser is in front on the notch's screen, the notch steps aside so the tabs under it can be clicked. Off by default." IsCheckable="True" Click="MenuHideOverBrowsers_Click"/>
+                            <MenuItem x:Name="MenuHideOverBrowsers" Header="Minimize over browser tabs" ToolTip="While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default." IsCheckable="True" Click="MenuHideOverBrowsers_Click"/>
                             <MenuItem x:Name="MenuNotes" Header="Notes" IsCheckable="True" Click="MenuNotes_Click"/>
                             <MenuItem x:Name="MenuReminders" Header="Reminders" IsCheckable="True" Click="MenuReminders_Click"/>
                             <MenuItem x:Name="MenuCalculator" Header="Calculator" IsCheckable="True" Click="MenuCalculator_Click"/>
