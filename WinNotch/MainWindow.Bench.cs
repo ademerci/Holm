@@ -35,6 +35,14 @@ public partial class MainWindow
             last = t;
         }
 
+        // HOLM_BENCH_HUB=n: only open and close the Holm window n times and watch the memory.
+        if (int.TryParse(Environment.GetEnvironmentVariable("HOLM_BENCH_HUB"), out int hubRounds))
+        {
+            await HubRoundsAsync(log, proc, hubRounds);
+            File.WriteAllText(file, log.ToString());
+            return;
+        }
+
         // What opening costs, step by step (the steps SetExpanded takes), once before the rounds.
         log.AppendLine(TimeOpenSteps());
         SetExpanded(false);
@@ -186,6 +194,34 @@ public partial class MainWindow
 
     /// <summary>CPU time of the calling thread, in 100 ns units.</summary>
     static long ThreadCpu() => GetThreadTimes(GetCurrentThread(), out _, out _, out long kernel, out long user) ? kernel + user : 0;
+
+    async Task HubRoundsAsync(StringBuilder log, Process proc, int count)
+    {
+        var windows = new List<WeakReference>();
+        Collected();
+        log.AppendLine($"start: {Footprint(proc)}");
+        for (int i = 1; i <= count; i++)
+        {
+            var window = MakeSettingsWindow();
+            window.ShowActivated = false; // shows without taking the focus from what you're doing
+            window.Show();
+            windows.Add(new WeakReference(window));
+            await Task.Delay(1500);
+            window.Close();
+            await Task.Delay(500);
+            if (i % 5 != 0) continue;
+            await Task.Delay(1500);
+            Collected();
+            log.AppendLine($"after {i}: {Footprint(proc)}, {windows.Count(w => w.IsAlive)} of {i} windows still alive");
+        }
+    }
+
+    static string Footprint(Process proc)
+    {
+        proc.Refresh();
+        var gc = GC.GetGCMemoryInfo();
+        return $"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB";
+    }
 
     static long Collected()
     {

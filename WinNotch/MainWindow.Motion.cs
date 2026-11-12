@@ -47,8 +47,15 @@ public partial class MainWindow
 {
     const int OpenMs = 520, CloseMs = 400;
 
-    static readonly IEasingFunction FadeOut = new QuadraticEase { EasingMode = EasingMode.EaseIn };
-    static readonly IEasingFunction FadeInEase = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+    // Frozen: shared by every window, whichever thread it runs on.
+    static readonly IEasingFunction FadeOut = Freeze(new QuadraticEase { EasingMode = EasingMode.EaseIn });
+    static readonly IEasingFunction FadeInEase = Freeze(new QuadraticEase { EasingMode = EasingMode.EaseOut });
+
+    static T Freeze<T>(T freezable) where T : Freezable
+    {
+        freezable.Freeze();
+        return freezable;
+    }
 
 #if DEBUG || BENCH
     // Benchmark switches: without the unfolding and popping (HOLM_BENCH_PLAIN=1), and with the open notch drawn as one
