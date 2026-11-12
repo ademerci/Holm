@@ -41,6 +41,8 @@ public partial class MainWindow
         await Task.Delay(1500);
 
         var opens = new List<(double Call, double Max, int Skipped)>();
+        var uiOpen = new List<double>();
+        var uiClose = new List<double>();
         var closes = new List<(double Call, double Max, int Skipped)>();
         proc.Refresh();
         var cpu0 = proc.TotalProcessorTime;
@@ -51,11 +53,13 @@ public partial class MainWindow
                 frames.Clear();
                 last = TimeSpan.Zero;
                 CompositionTarget.Rendering += OnFrame;
+                long ui0 = ThreadCpu();
                 var watch = Stopwatch.StartNew();
                 SetExpanded(open);
                 double call = watch.Elapsed.TotalMilliseconds;
                 await Task.Delay(650);
                 CompositionTarget.Rendering -= OnFrame;
+                (open ? uiOpen : uiClose).Add((ThreadCpu() - ui0) / 10_000.0);
                 double max = frames.Count > 0 ? frames.Max() : 0;
                 int skipped = frames.Sum(f => (int)Math.Max(0, Math.Round(f / 16.7) - 1));
                 (open ? opens : closes).Add((call, max, skipped));
@@ -70,7 +74,9 @@ public partial class MainWindow
              + $"longest frame median {Median(r.Select(x => x.Max)):F1} ms (max {r.Max(x => x.Max):F1}), skipped frames {r.Sum(x => x.Skipped)}";
         log.AppendLine(Row("open ", opens));
         log.AppendLine(Row("close", closes));
-        log.AppendLine($"cpu {cpu.TotalMilliseconds:F0} ms for {rounds} open+close rounds ({cpu.TotalMilliseconds / rounds:F0} ms each)");
+        log.AppendLine($"cpu {cpu.TotalMilliseconds:F0} ms for {rounds} open+close rounds ({cpu.TotalMilliseconds / rounds:F0} ms each); "
+                     + $"the notch's thread: open median {Median(uiOpen):F0} ms, close median {Median(uiClose):F0} ms");
+        if (Environment.GetEnvironmentVariable("HOLM_BENCH_QUICK") == "1") { File.WriteAllText(file, log.ToString()); return; }
 
         // A quiet minute closed: what runs on the notch's thread, and what runs elsewhere.
         await Task.Delay(8000);

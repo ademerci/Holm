@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **A sky when nothing plays.** Open with no music, the notch glows in the colours of the time of day (dawn, day, dusk, night with a few stars) and of the weather (rain, snow, fog, clouds), says *Good morning*/*Good afternoon*/*Good evening* with your first name above the clock, and the clock rolls over to each new minute. All of it is drawn once and stays still, so it costs no CPU while you look at it.
+
+### Changed
+- **Smoother opening and closing.** The notch springs open with a slight bounce and glides shut (a damped spring instead of the old ease curves); the rows of the open notch unfold from under the closed one and the small views pop in. Opening no longer waits for a first layout of everything in it or for the list of audio outputs: the output device, Bluetooth and the AI button are refreshed once the notch has landed. Views out of sight leave the layout, so the moving shape doesn't measure them on every frame.
+
+### Fixed
+- **Idle CPU.** The notch re-asserted *always on top* every 1.5 seconds, which made the window draw itself again about 40 times a minute with nothing changing. It now does so only when another window really covers it. Measured idle: from ~1.3 s to ~0.3 s of CPU per minute.
+
 ## 1.10.0 – 2026-11-11
 
 ### Added

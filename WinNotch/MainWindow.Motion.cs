@@ -50,6 +50,15 @@ public partial class MainWindow
     static readonly IEasingFunction FadeOut = new QuadraticEase { EasingMode = EasingMode.EaseIn };
     static readonly IEasingFunction FadeInEase = new QuadraticEase { EasingMode = EasingMode.EaseOut };
 
+#if DEBUG || BENCH
+    // Benchmark switches: without the unfolding and popping (HOLM_BENCH_PLAIN=1), and with the open notch drawn as one
+    // cached picture while the shape moves (HOLM_BENCH_CACHE=1).
+    static readonly bool BenchPlain = Environment.GetEnvironmentVariable("HOLM_BENCH_PLAIN") == "1";
+    static readonly bool BenchCache = Environment.GetEnvironmentVariable("HOLM_BENCH_CACHE") == "1";
+#else
+    static readonly bool BenchPlain = false, BenchCache = false;
+#endif
+
     /// <summary>Work that opening needs but that doesn't change the open notch's size: done once it has landed.</summary>
     bool _openSettling;
 
@@ -81,7 +90,8 @@ public partial class MainWindow
     {
         bool shown = view.IsHitTestVisible;
         view.IsHitTestVisible = show;
-        var scale = view.RenderTransform as ScaleTransform;
+        var scale = BenchPlain ? null : view.RenderTransform as ScaleTransform;
+        if (BenchCache && view == ExpandedView && animate) view.CacheMode = new BitmapCache { SnapsToDevicePixels = true };
         if (!animate)
         {
             view.BeginAnimation(OpacityProperty, null);
@@ -150,6 +160,7 @@ public partial class MainWindow
     /// </summary>
     void Unfold()
     {
+        if (BenchPlain) return;
         int i = 0;
         foreach (var part in UnfoldingParts())
         {
@@ -192,6 +203,7 @@ public partial class MainWindow
     /// <summary>The open notch has landed: now the work that would have cost frames on the way.</summary>
     void FinishOpening()
     {
+        if (BenchCache) ExpandedView.CacheMode = null;
         if (!_openSettling) return;
         _openSettling = false;
         if (!_expanded) return;
