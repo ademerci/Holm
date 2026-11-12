@@ -214,6 +214,8 @@
                  It reaches 10px past the notch on each side; UpdateShape cuts the outline out of it. -->
             <Grid x:Name="Backdrop" Margin="-10,0,-10,0">
                 <Rectangle Fill="Black"/>
+                <!-- Nothing playing, the open notch's sky: light in the colours of the time of day and the weather -->
+                <Border x:Name="SkyLayer" Opacity="0" IsHitTestVisible="False"/>
                 <Border x:Name="ArtLayerA" Opacity="0">
                     <Border Background="Black" Opacity="0.5"/>
                 </Border>
@@ -515,9 +517,9 @@
                     </Grid>
 
                     <!-- Expanded: hover -->
-                    <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
+                    <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False" Visibility="Hidden"
                           Width="480" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0">
-                        <StackPanel>
+                        <StackPanel x:Name="ExpandedPanel">
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
                             <Grid Margin="0,0,0,12" MinHeight="32" VerticalAlignment="Top">
@@ -650,8 +652,10 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
+                                            <TextBlock x:Name="GreetingText" FontSize="12" FontWeight="SemiBold" Margin="1,-2,0,0"
+                                                       TextTrimming="CharacterEllipsis"/>
                                             <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
-                                                       FontWeight="Light" Margin="0,-6,0,0"/>
+                                                       FontWeight="Light" Margin="0,-5,0,0"/>
                                             <TextBlock x:Name="DateText" FontSize="13" Foreground="{StaticResource Dim}" Margin="1,0,0,0"/>
                                         </StackPanel>
                                         <!-- The weather; a click changes the place -->

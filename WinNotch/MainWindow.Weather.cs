@@ -114,6 +114,7 @@ public partial class MainWindow
 
     void ShowWeather()
     {
+        ShowSky(); // the sky follows the weather
         var weather = _settings.Weather ? _weather : null;
         IdleWeather.Visibility = weather != null ? Visibility.Visible : Visibility.Collapsed;
         WeatherLine.Visibility = weather != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;

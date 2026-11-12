@@ -25,7 +25,7 @@ Probably the best Dynamic Island–style notch for Windows. It sits at the top o
 
 ## Features
 
-- **Today at a glance** – idle, the notch shows the time (or the weather) and the one thing that matters most: the next reminder today, else what's on the shelf. Open without music, it's a card for today: time and date, the weather, the next reminder, your note, and the tools you reach for most.
+- **Today at a glance** – idle, the notch shows the time (or the weather) and the one thing that matters most: the next reminder today, else what's on the shelf. Open without music, it's a card for today under a sky in the colours of the time of day and the weather (stars at night): a greeting, time and date, the weather, the next reminder, your note, and the tools you reach for most.
 - **Tools in the open notch** – notes, reminders, a calculator, the clipboard history, a mixer and a color picker, each a click away in the same top toolbar during idle, playback and tool pages. With media playing, a small clock and date stay at the upper left. The notch only takes the keyboard while you type into one of its fields.
 - **Notes** – a small note that survives a restart and stays on this PC.
 - **Reminders in plain words** – "20 min laundry", "14:30 dentist", "tomorrow 9:00 call" (German works too). The notch rings on time with *+10 min*; reminders survive a restart, and one missed while the PC was off shows when it's back.
