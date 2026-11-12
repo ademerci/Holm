@@ -320,6 +320,22 @@ internal static class GifCache
         }
     }
 
+    /// <summary>
+    /// Lets go of the decoded GIFs (the window that showed them closed). The downloaded files stay, so showing one again
+    /// only decodes it; GIFs that are still loading carry on.
+    /// </summary>
+    public static void ReleaseDecoded()
+    {
+        lock (Gate)
+        {
+            foreach (string key in Loading.Where(p => p.Value.IsCompleted).Select(p => p.Key).ToList())
+            {
+                Loading.Remove(key);
+                Order.Remove(key);
+            }
+        }
+    }
+
     static long KeptBytes()
         => Loading.Values.Where(t => t.IsCompletedSuccessfully && t.Result != null).Sum(t => t.Result!.Bytes);
 

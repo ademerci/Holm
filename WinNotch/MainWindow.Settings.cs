@@ -119,12 +119,36 @@ public partial class MainWindow
         if (_settingsWindow == null)
         {
             _settingsWindow = MakeSettingsWindow();
-            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Closed += OnHubClosed;
             _settingsWindow.Show();
         }
         if (page != null) _settingsWindow.Navigate(page);
         if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
         _settingsWindow.Activate();
+    }
+
+    DispatcherTimer? _handBack;
+
+    /// <summary>
+    /// The Holm window closed. Its pictures and the decoded GIFs of its chats would otherwise stay in memory (some 60–90 MB
+    /// after a few openings); they go, and a moment later Holm hands the memory back to Windows.
+    /// </summary>
+    void OnHubClosed(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(sender, _settingsWindow)) _settingsWindow = null;
+        GifCache.ReleaseDecoded();
+        _handBack ??= MakeTimer(5000, HandMemoryBack, oneShot: true);
+        _handBack.Stop();
+        _handBack.Start();
+    }
+
+    void HandMemoryBack()
+    {
+        if (_settingsWindow != null) return; // opened again meanwhile
+        GC.Collect();
+        GC.WaitForPendingFinalizers(); // the pictures' memory goes with their finalizers
+        GC.Collect();
+        if (!_expanded) Native.TrimWorkingSet();
     }
 
     /// <param name="demo">For snapshots: a made-up profile in place of yours, and Apply saves nothing.</param>

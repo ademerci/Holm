@@ -204,13 +204,14 @@ public partial class MainWindow
         {
             var window = MakeSettingsWindow();
             window.ShowActivated = false; // shows without taking the focus from what you're doing
+            window.Closed += OnHubClosed; // as ShowHub does
             window.Show();
             windows.Add(new WeakReference(window));
             await Task.Delay(1500);
             window.Close();
             await Task.Delay(500);
             if (i % 5 != 0) continue;
-            await Task.Delay(1500);
+            await Task.Delay(6500); // past the hand-back after closing
             Collected();
             log.AppendLine($"after {i}: {Footprint(proc)}, {windows.Count(w => w.IsAlive)} of {i} windows still alive");
         }
@@ -220,7 +221,7 @@ public partial class MainWindow
     {
         proc.Refresh();
         var gc = GC.GetGCMemoryInfo();
-        return $"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB";
+        return $"private {proc.PrivateMemorySize64 / 1048576.0:F1} MB, working set {proc.WorkingSet64 / 1048576.0:F1} MB, gc heap {gc.HeapSizeBytes / 1048576.0:F1} MB, gc committed {gc.TotalCommittedBytes / 1048576.0:F1} MB";
     }
 
     static long Collected()
