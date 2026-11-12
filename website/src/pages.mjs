@@ -1,4 +1,5 @@
 import { docs, featureGroups } from './content.mjs';
+import { homePage } from './home.mjs';
 import {
   REPO,
   escapeHtml as esc,
@@ -49,7 +50,13 @@ export function createPages({ base, snapshot, store }) {
     ['changelog/', 'What’s new'],
     ['about/', 'About'],
   ];
-  const layout = (path, title, description, content, { noindex = false } = {}) => {
+  const layout = (
+    path,
+    title,
+    description,
+    content,
+    { noindex = false, head = '', page = '' } = {},
+  ) => {
     const canonical = `${siteOrigin}${link(path)}`;
     return /* HTML */ `<!doctype html>
       <html lang="en">
@@ -75,8 +82,9 @@ export function createPages({ base, snapshot, store }) {
           <link rel="stylesheet" href="${link('assets/style.css')}" />
           <noscript><link rel="stylesheet" href="${link('assets/noscript.css')}" /></noscript>
           <script type="module" src="${link('assets/client.js')}"></script>
+          ${head}
         </head>
-        <body data-base="${base}">
+        <body data-base="${base}" ${page ? `class="${page}"` : ''}>
           <a class="skip" href="#main">Skip to content</a>
           <header class="site-header">
             <nav class="nav wrap" aria-label="Main navigation">
@@ -149,232 +157,7 @@ export function createPages({ base, snapshot, store }) {
         : ''
     }<span class="channel-foot">Windows x64 · Self-contained · In-app updates</span></article><article class="channel store"><div class="channel-top"><span class="store-symbol" aria-hidden="true">${win}</span><span class="tag neutral">${store.url ? 'Available now' : 'Coming soon'}</span></div><h${full ? '2' : '3'}>At the Store’s pace.</h${full ? '2' : '3'}><p>The more conservative channel: less frequent releases, with additional validation before publication. It may be behind GitHub.</p>${store.url ? `${store.version ? `<div class="release-current"><strong>v${esc(store.version)}</strong><span>Microsoft Store release</span><span>Verified ${dateLabel(store.verified_at)}</span></div>` : ''}${button('Get it from Microsoft Store ↗', store.url, true)}` : '<p class="store-state">Microsoft Store<br><span>A verified public listing is not available yet.</span></p><span class="button unavailable">Microsoft Store · Coming soon</span>'}<span class="channel-foot">Store-managed updates · ${store.url ? esc(store.publisher || 'Microsoft Store') : 'No Store version announced'}</span></article></div>`;
 
-  const home = /* HTML */ `<section class="hero wrap">
-      <a class="announcement" href="${link('changelog/')}"
-        ><span class="status-dot" aria-hidden="true"></span> A little better, with every release
-        <span aria-hidden="true">↗</span></a
-      >
-      <p class="eyebrow">MEET HOLM. FOR WINDOWS.</p>
-      <h1>A little space.<br /><span>For your everyday.</span></h1>
-      <p class="hero-copy">
-        Your music, your people, your little things. <br />A beautifully useful notch, right at the
-        top of your screen.
-      </p>
-      <div class="actions">
-        ${button(`${win} Get Holm for Windows`, link('download/'))}<a
-          class="text-link"
-          href="${link('features/')}"
-          >Find your little things <span aria-hidden="true">→</span></a
-        >
-      </div>
-      <p class="fine">Free & open source. Windows 10 / 11. Made to feel at home.</p>
-    </section>
-    <section class="showcase wrap" aria-label="Explore actual Holm screenshots">
-      <div class="product-stage">
-        <div class="stage-heading">
-          <span>SMALL SPACE. MANY POSSIBILITIES.</span
-          ><span class="stage-counter" aria-hidden="true">01 — 03</span>
-        </div>
-        <div
-          class="capture-frame"
-          id="showcase-panel"
-          role="tabpanel"
-          aria-labelledby="showcase-music"
-          tabindex="0"
-        >
-          <img
-            id="showcase-image"
-            src="${link('assets/expanded.png')}"
-            width="1120"
-            height="594"
-            alt="Actual Holm expanded media player with artwork, playback controls, tools and headphone battery"
-            fetchpriority="high"
-            decoding="async"
-          />
-        </div>
-        <div class="stage-bottom">
-          <span data-showcase-caption>Your soundtrack. Within reach.</span
-          ><span>Actual Holm app captures</span>
-        </div>
-      </div>
-      <div class="showcase-controls" role="tablist" aria-label="Choose an app screenshot">
-        <button
-          id="showcase-music"
-          role="tab"
-          aria-controls="showcase-panel"
-          aria-selected="true"
-          data-showcase="expanded"
-          data-caption="Your soundtrack. Within reach."
-          data-alt="Actual Holm expanded media player with artwork, playback controls, tools and headphone battery"
-        >
-          01 <span>Music</span></button
-        ><button
-          id="showcase-today"
-          role="tab"
-          aria-controls="showcase-panel"
-          aria-selected="false"
-          tabindex="-1"
-          data-showcase="today"
-          data-caption="A little room for today."
-          data-alt="Actual Holm today panel with time, weather, reminder, note and tools"
-        >
-          02 <span>Your day</span></button
-        ><button
-          id="showcase-beam"
-          role="tab"
-          aria-controls="showcase-panel"
-          aria-selected="false"
-          tabindex="-1"
-          data-showcase="airdrop-share"
-          data-caption="From your notch to theirs."
-          data-alt="Actual Holm Beam file-sharing chooser with friends and Code"
-        >
-          03 <span>Beam</span>
-        </button>
-      </div>
-      <noscript
-        ><p class="fine">
-          Explore all screenshots on the <a href="${link('features/')}">features page</a>.
-        </p></noscript
-      >
-    </section>
-    <section class="introduction wrap reveal">
-      <p class="eyebrow">RIGHT THERE. WHEN YOU NEED IT.</p>
-      <h2>A small addition.<br /><span>A surprisingly big part of your day.</span></h2>
-      <p>
-        Some things deserve to be one click away. Holm brings them together in a quiet corner of
-        your desktop, and steps aside when it’s time to focus.
-      </p>
-      <div class="principles">
-        <div>
-          <span aria-hidden="true">⌁</span>
-          <h3>At a glance.</h3>
-          <p>The song, a message, the next reminder. Just look up.</p>
-        </div>
-        <div>
-          <span aria-hidden="true">↗</span>
-          <h3>A click away.</h3>
-          <p>Open the notch. Your everyday tools are already there.</p>
-        </div>
-        <div>
-          <span aria-hidden="true">◌</span>
-          <h3>Out of the way.</h3>
-          <p>Quiet when you need it. Hidden for fullscreen games and videos.</p>
-        </div>
-      </div>
-    </section>
-    <section class="music-story dark-section">
-      <div class="wrap story-copy reveal">
-        <p class="eyebrow">A PLACE FOR YOUR SOUNDTRACK</p>
-        <h2>Good music.<br />Great company.</h2>
-        <p>
-          Play. Pause. Find your next favourite.<br />With artwork, album colours and controls that
-          stay close, your music feels right at home.
-        </p>
-        <a class="text-link" href="${link('features/#music')}"
-          >Meet your new music corner <span aria-hidden="true">→</span></a
-        >
-      </div>
-      <div class="music-capture wrap reveal">
-        ${picture('expanded', 'Actual Holm media panel showing Blinding Lights by The Weeknd')}
-      </div>
-      <div class="compatibility wrap">
-        <span>Works with Windows media sessions</span><span>Spotify</span><span>YouTube</span
-        ><span>VLC</span><span>And more</span>
-      </div>
-    </section>
-    <section class="daily-story wrap">
-      <div class="section-heading reveal">
-        <p class="eyebrow">THE LITTLE THINGS, TOGETHER</p>
-        <h2>Less back and forth.<br /><span>More here and now.</span></h2>
-        <a class="text-link" href="${link('features/')}"
-          >Explore every feature <span aria-hidden="true">→</span></a
-        >
-      </div>
-      <div class="editorial-grid">
-        <article class="editorial-card large reveal">
-          <div>
-            <p class="eyebrow">YOUR DAY, AT A GLANCE</p>
-            <h3>Everything for your<br />next little moment.</h3>
-            <p>A thought to keep. A reminder to set.<br />Or just a quick look at the weather.</p>
-          </div>
-          ${picture('today', 'Actual Holm today view showing weather, reminder and note')}<a
-            class="card-link"
-            href="${link('docs/tools/')}"
-            >Meet your everyday tools <span aria-hidden="true">↗</span></a
-          >
-        </article>
-        <article class="editorial-card beam-card reveal">
-          <div>
-            <p class="eyebrow">MEET BEAM</p>
-            <h3>Sharing.<br />With less in between.</h3>
-            <p>Drop a file on the notch.<br />Send it to someone who needs it.</p>
-          </div>
-          ${picture('airdrop-share', 'Actual Holm Beam chooser with friends and a one-time Code option')}<a
-            class="card-link"
-            href="${link('features/#beam')}"
-            >A closer look at Beam <span aria-hidden="true">↗</span></a
-          >
-        </article>
-        <article class="wide-story reveal">
-          <div>
-            <p class="eyebrow">YOUR PEOPLE, CLOSE BY</p>
-            <h3>A little more connected.</h3>
-            <p>
-              Chat with friends, send a GIF, share a file or invite someone to watch your screen.
-              All from the Holm window.
-            </p>
-            <a class="text-link" href="${link('docs/chat/')}"
-              >Say hello to Holm chat <span aria-hidden="true">→</span></a
-            >
-          </div>
-          <div>${picture('chat', 'Actual Holm chat window with conversations and messages')}</div>
-        </article>
-      </div>
-    </section>
-    <section class="made-for wrap reveal">
-      <p class="eyebrow">THOUGHTFULLY WINDOWS</p>
-      <h2>A natural fit.<br /><span>From the first click.</span></h2>
-      <div class="three-columns">
-        <div>
-          <h3>Native at heart.</h3>
-          <p>
-            Built with WPF and .NET. Holm works with Windows media sessions, notifications and audio
-            devices.
-          </p>
-        </div>
-        <div>
-          <h3>Personal by design.</h3>
-          <p>
-            Choose your sizes, screen and pop-outs. Keep a note on your PC. Decide when messages can
-            interrupt.
-          </p>
-        </div>
-        <div>
-          <h3>Made in the open.</h3>
-          <p>
-            Free to use, with source you can explore. Built by people who care about the little
-            details.
-          </p>
-          <a class="text-link" href="${REPO}">Explore the source ${arrow}</a>
-        </div>
-      </div>
-    </section>
-    <section class="download-story section-tint">
-      <div class="wrap">
-        <div class="section-heading reveal">
-          <p class="eyebrow">YOUR HOLM. YOUR PACE.</p>
-          <h2>Two ways home.</h2>
-          <p>
-            Get new releases first on GitHub.<br />Or choose the more measured Microsoft Store
-            channel.
-          </p>
-        </div>
-        ${channels()}
-      </div>
-    </section>
-    ${closing}`;
-
+  const home = homePage({ link, win, download, version, store, repo: REPO, esc });
   const features = /* HTML */ `${intro('SMALL SPACE. MANY POSSIBILITIES.', 'Little things.<br>Thoughtfully together.', 'A closer look at what fits inside Holm, and how it fits into your day.')}
     <nav class="feature-index wrap" aria-label="Feature categories">
       ${featureGroups.map((g) => `<a href="#${g.id}">${g.label} <span aria-hidden="true">↓</span></a>`).join('')}
@@ -663,6 +446,10 @@ export function createPages({ base, snapshot, store }) {
         'Holm — A little space for your everyday',
         'A beautifully useful notch for Windows. Your music, everyday tools, notifications and Beam file sharing, right at the top of your screen.',
         home,
+        {
+          page: 'is-home',
+          head: `<link rel="stylesheet" href="${link('assets/home.css')}" /><script type="module" src="${link('assets/home.js')}"></script>`,
+        },
       ),
     ],
     [

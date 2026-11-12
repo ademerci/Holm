@@ -55,7 +55,14 @@ for (const size of [96, 192, 512])
     path.join(out, `assets/icon-${size}.png`),
   );
 await copyFile(path.join(screenshotDirectory, 'expanded.png'), path.join(out, 'assets/social.png'));
-for (const name of ['style.css', 'noscript.css', 'client.js', 'releases.mjs'])
+for (const name of [
+  'style.css',
+  'noscript.css',
+  'client.js',
+  'releases.mjs',
+  'home.css',
+  'home.js',
+])
   await copyFile(path.join(root, 'src', name), path.join(out, 'assets', name));
 await writeFile(path.join(out, 'assets/releases.json'), JSON.stringify(snapshot));
 const pages = createPages({ base, snapshot, store });

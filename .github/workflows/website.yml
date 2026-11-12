@@ -61,7 +61,7 @@ jobs:
           path: website/dist
 
   deploy:
-    if: github.event_name == 'push' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main')
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -74,3 +74,17 @@ jobs:
       - name: Publish to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # A release runs on its tag, and the github-pages environment only takes main ("Tag … is not allowed to deploy"):
+  # once the release build has passed, publish the same site again from main.
+  republish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Publish from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run website.yml --repo "$GITHUB_REPOSITORY" --ref main -f deploy=true

@@ -85,13 +85,32 @@ test('Microsoft Store is honest and portable downloads use verified assets', asy
   assert.ok(html.includes('data-release-assets'));
 });
 test('build output stays within practical payload budgets', async () => {
-  for (const name of ['client.js', 'releases.mjs'])
+  for (const name of ['client.js', 'releases.mjs', 'home.js'])
     assert.ok((await stat(path.join(root, 'assets', name))).size < 16000, name);
+  const home = await readFile(path.join(root, 'assets/home.css'));
+  assert.ok(home.length < 40000);
+  assert.ok(gzipSync(home).length < 9000, 'Compressed home CSS must stay under 9 KB');
   const css = await readFile(path.join(root, 'assets/style.css'));
   assert.ok(css.length < 64000);
   assert.ok(gzipSync(css).length < 12000, 'Compressed CSS must stay under 12 KB');
   assert.ok((await stat(path.join(root, 'assets/expanded.png'))).size < 200000);
   for (const [file, html] of textByFile) assert.ok(Buffer.byteLength(html) < 200000, file);
+});
+test('the home page tells the notch as a scroll film that also reads without script', async () => {
+  const html = await readFile(path.join(root, 'index.html'), 'utf8');
+  const steps = [...html.matchAll(/class="chapter" data-step="(\d)"/g)].map((m) => Number(m[1]));
+  assert.deepEqual(steps, [0, 1, 2, 3, 4, 5, 6, 7]);
+  for (const step of steps) assert.ok(html.includes(`class="layer l${step}`), `layer ${step}`);
+  assert.ok(html.includes('data-stage data-step="0"'));
+  assert.ok(html.includes('assets/home.css') && html.includes('assets/home.js'));
+  assert.ok(!/\sstyle="/.test(html), 'no inline styles under the content security policy');
+  const css = await readFile(path.join(root, 'assets/home.css'), 'utf8');
+  assert.ok(css.includes('prefers-reduced-motion'));
+  for (const step of steps)
+    assert.ok(css.includes(`[data-step='${step}'] .l${step}`), `step ${step}`);
+  for (const [file, page] of textByFile)
+    if (!file.endsWith(`${path.sep}index.html`) || file !== path.join(root, 'index.html'))
+      assert.ok(!page.includes('assets/home.js'), `${file} loads only its own script`);
 });
 test('sitemap covers public pages and robots declares its actual origin', async () => {
   const sitemap = await readFile(path.join(root, 'sitemap.xml'), 'utf8');
