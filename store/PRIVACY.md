@@ -1,8 +1,8 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 11, 2026**
+**Effective date: November 13, 2026**
 
-Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com).
+Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [contact@holmnotch.ch](mailto:contact@holmnotch.ch).
 
 ## At a glance
 
@@ -67,4 +67,4 @@ Holm is a general-audience desktop app and can be used by people of different ag
 
 ## Changes and contact
 
-We may update this policy as Holm or our practices change. We will publish the updated policy in the [Holm repository](https://github.com/ademerci/Holm) and update the effective date. For questions or requests, contact the Holm Team at [dursoaleandro@gmail.com](mailto:dursoaleandro@gmail.com) or through [GitHub Issues](https://github.com/ademerci/Holm/issues).
+We may update this policy as Holm or our practices change. We will publish the updated policy in the [Holm repository](https://github.com/ademerci/Holm) and update the effective date. For questions or requests, contact the Holm Team at [contact@holmnotch.ch](mailto:contact@holmnotch.ch) or through [GitHub Issues](https://github.com/ademerci/Holm/issues).

@@ -87,7 +87,7 @@ public partial class MainWindow
         ShowCall();
         UpdateCallPause();
         // The minimized idle bar is too thin to sit beside: it grows back while the dot shows.
-        if (_state == NotchState.Idle && _settings.MiniIdle)
+        if (_state == NotchState.Idle && (_settings.MiniIdle || _browserInFront))
         {
             _state = NotchState.None;
             ApplyState();

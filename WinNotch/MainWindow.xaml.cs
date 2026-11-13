@@ -74,7 +74,7 @@ public partial class MainWindow : Window
     NotchState _state = NotchState.None;
     double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeScale = 1;
     bool _expanded, _peekActive, _peekMessage, _hiddenForFullscreen, _eqRunning, _shapeAnimating;
-    bool _browserInFront, _hiddenForBrowser; // see StepAsideForBrowser
+    bool _browserInFront, _mini;
     MediaInfo? _info;
     MediaInfo? _latestMediaInfo;
     ImageSource? _shownArt, _shownBackdrop;
@@ -102,6 +102,8 @@ public partial class MainWindow : Window
         TaskProgressHost.Child = TaskProgress;
         (_artFront, _artBack) = (ArtLayerA, ArtLayerB);
         _bars = new[] { Bar1, Bar2, Bar3, Bar4 }.Select(b => (ScaleTransform)b.RenderTransform).ToArray();
+        InitMotion();
+        InitSky();
 
         _media = new MediaService(Dispatcher);
         _media.Changed += OnMediaChanged;
@@ -360,13 +362,14 @@ public partial class MainWindow : Window
         IntPtr foreground = Native.GetForegroundWindow();
         bool onOurs = Native.MonitorFromWindow(foreground, 2 /* NEAREST */) == _monitor;
         bool fullscreen = onOurs && Native.SHQueryUserNotificationState(out int state) == 0 && state is 2 or 3 or 4;
+        bool wasFullscreen = _hiddenForFullscreen;
+        bool wasBrowserInFront = _browserInFront;
         _browserInFront = onOurs && _settings.HideOverBrowsers && Native.IsZoomed(foreground) && Browsers.Is(Native.ProcessNameOf(foreground));
         if (fullscreen != _hiddenForFullscreen)
         {
             _hiddenForFullscreen = fullscreen;
             if (fullscreen)
             {
-                _hiddenForBrowser = false; // hidden either way; showing again is up to the fullscreen check
                 _expanded = false;
                 _peekActive = false;
                 _liveTimer.Stop();
@@ -381,9 +384,11 @@ public partial class MainWindow : Window
             }
             UpdateEqualizer();
         }
-        StepAsideForBrowser(_state);
-        // Not while the menu is open: the notch would jump in front of it and the menu flicker.
-        if (!fullscreen && !_hiddenForBrowser && _hwnd != IntPtr.Zero && !MenuOpen)
+        if (_browserInFront != wasBrowserInFront || (wasFullscreen && !fullscreen)) ApplyState();
+        // Not while the menu is open: the notch would jump in front of it and the menu flicker. And only when another
+        // window really covers it: re-ordering the window makes it draw itself again, which cost more CPU than anything
+        // else while idle.
+        if (!fullscreen && _hwnd != IntPtr.Zero && !MenuOpen && Native.IsCovered(_hwnd))
             Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER);
         if (_messages.Count > 0 && AppInFront() is { } front && _messages.Any(m => m.App == front.Key)) _chat.MarkRead(front.Key);
@@ -407,16 +412,12 @@ public partial class MainWindow : Window
             _volumePeek = false;
             _volumeTimer.Stop();
             _trimTimer.Stop();
+            // Only what decides the open notch's size before it moves; the rest once it has landed (FinishOpening).
             RefreshMediaUi();
             RefreshDevices();
-            RefreshOutput();
-            RefreshBluetooth();
             ShowTimer();
             RefreshFocumon();
-            ResolveAi(force: false);
-            // Access may have been granted in Settings since we last asked.
-            if (_settings.Messages && _chat.Access is not (MessagesService.AccessState.Allowed or MessagesService.AccessState.Unavailable))
-                _ = _chat.StartAsync(ask: false);
+            _openSettling = true;
             _liveTimer.Start();
         }
         else
@@ -429,8 +430,11 @@ public partial class MainWindow : Window
         }
         ApplyState();
         UpdateBackdrop();
+        ShowSky();
         ShowPrivacy();
         if (expand) ShowShelf();
+        // Nothing to wait for when the shape didn't move (animations off): finish right after this.
+        if (expand && !_fitTimer.IsEnabled) Dispatcher.InvokeAsync(FinishOpening, DispatcherPriority.Background);
     }
 
     void ApplyState(bool animate = true)
@@ -451,9 +455,13 @@ public partial class MainWindow : Window
                    : HasFocumon ? NotchState.Focumon
                    : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
+        // Reuse the idle pill over browser tabs, keeping the island available to hover or click open.
+        // Alerts, calls and privacy indicators still get their normal space.
+        bool browserMini = _browserInFront && !_hiddenForFullscreen && SensorsInUse.Count == 0
+                           && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
+        if (browserMini) target = NotchState.Idle;
         PlacePrivacyDots(target == NotchState.Badge);
-        StepAsideForBrowser(target);
-        bool mini = target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0;
+        bool mini = browserMini || (target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0);
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
 
         double w, h, r;
@@ -518,13 +526,14 @@ public partial class MainWindow : Window
             {
                 if (needed > Height) Height = needed;
                 _shapeAnimating = true;
-                _fitTimer.Interval = TimeSpan.FromMilliseconds((grow ? 480 : 340) + 60);
+                _fitTimer.Interval = TimeSpan.FromMilliseconds((grow ? OpenMs : CloseMs) + 60);
                 _fitTimer.Start();
             }
         }
 
-        if (target != _state || !animate)
+        if (target != _state || mini != _mini || !animate)
         {
+            if (animate && target == NotchState.Expanded) Unfold();
             bool soft = animate && _settings.Animations; // music coming and going cross-fades, unless animations are off
             SetView(IdleView, target == NotchState.Idle && !mini, soft);
             SetView(CompactView, target == NotchState.Media, soft);
@@ -541,6 +550,7 @@ public partial class MainWindow : Window
             SetView(ShareView, target == NotchState.Share, animate);
             SetView(ExpandedView, target == NotchState.Expanded, animate);
             _state = target;
+            _mini = mini;
         }
         UpdateEqualizer();
     }
@@ -588,6 +598,7 @@ public partial class MainWindow : Window
         FitWindowHeight();
         _shapeAnimating = false;
         UpdateEqualizer();
+        FinishOpening();
     }
 
     static void Animate(IAnimatable target, DependencyProperty property, double to, bool grow, bool animate)
@@ -598,34 +609,12 @@ public partial class MainWindow : Window
             ((DependencyObject)target).SetValue(property, to);
             return;
         }
-        // Growing gets a little spring overshoot like the iPhone; shrinking must not overshoot (height would go negative).
-        var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(grow ? 480 : 340))
+        // Growing springs open with a little overshoot like the iPhone; shrinking glides in without one (height would go negative).
+        var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(grow ? OpenMs : CloseMs))
         {
-            EasingFunction = grow
-                ? new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut }
-                : new CubicEase { EasingMode = EasingMode.EaseOut },
+            EasingFunction = grow ? Spring.Bouncy : Spring.Smooth,
         };
         target.BeginAnimation(property, animation, HandoffBehavior.SnapshotAndReplace);
-    }
-
-    void SetView(UIElement view, bool show, bool animate)
-    {
-        view.IsHitTestVisible = show;
-        if (show) view.Visibility = Visibility.Visible;
-        if (!animate)
-        {
-            view.BeginAnimation(OpacityProperty, null);
-            view.Opacity = show ? 1 : 0;
-            if (!show && view == ExpandedView) view.Visibility = Visibility.Collapsed;
-            return;
-        }
-        var fade = new DoubleAnimation(show ? 1 : 0, TimeSpan.FromMilliseconds(!animate ? 0 : show ? 220 : 110))
-        {
-            BeginTime = TimeSpan.FromMilliseconds(show && animate ? 110 : 0),
-        };
-        if (!show && view == ExpandedView)
-            fade.Completed += (_, _) => { if (_state != NotchState.Expanded) ExpandedView.Visibility = Visibility.Collapsed; };
-        view.BeginAnimation(OpacityProperty, fade);
     }
 
     /// <summary>
@@ -1177,6 +1166,7 @@ public partial class MainWindow : Window
             MediaPanel.Visibility = media;
             ClockPanel.Visibility = media == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
             FadeIn(media == Visibility.Visible ? MediaPanel : ClockPanel);
+            ShowSky();
             RefreshToolBar();
         }
         if (info == null || _choosingPlace) { UpdateClock(); ShowToday(); return; }
@@ -1252,9 +1242,12 @@ public partial class MainWindow : Window
         int minute = now.Hour * 60 + now.Minute;
         if (_shownClockMinute != minute)
         {
+            bool turnedOver = _shownClockMinute >= 0 && _state == NotchState.Expanded && !_shapeAnimating;
             ClockBig.Text = now.ToString("HH:mm");
             MediaClock.Text = ClockBig.Text;
             _shownClockMinute = minute;
+            GreetingText.Text = Sky.Greeting(now, _settings.ProfileName);
+            if (turnedOver) RollClock();
         }
         if (_shownClockDate != now.Date)
         {
@@ -1625,22 +1618,6 @@ public partial class MainWindow : Window
         _settings.Save();
         UpdateBackdrop();
         ApplyState();
-    }
-
-    /// <summary>
-    /// A maximized browser has its tabs right under the notch, so the resting notch (idle, music, unread badge, a timer)
-    /// steps aside. Anything that wants you (a Beam offer, a message, the volume, a download, a call) brings it back at
-    /// once. Unlike fullscreen, nothing is declined meanwhile.
-    /// </summary>
-    void StepAsideForBrowser(NotchState state)
-    {
-        bool hide = _browserInFront && !_hiddenForFullscreen && !_expanded
-                    && state is NotchState.None or NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
-        if (hide == _hiddenForBrowser) return;
-        _hiddenForBrowser = hide;
-        Diag.Log(hide ? "Stepped aside for a browser" : "Back from a browser");
-        if (hide) Hide();
-        else if (!_hiddenForFullscreen) { Show(); PositionWindow(); }
     }
 
     void MenuHideOverBrowsers_Click(object sender, RoutedEventArgs e)
