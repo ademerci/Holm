@@ -4,8 +4,8 @@ using System.Windows;
 namespace WinNotch;
 
 /// <summary>
-/// Pop-outs that would otherwise come twice or somewhere else: every app's notification at the top in the notch, and
-/// Windows' own volume pop-up kept away while the notch shows the volume.
+/// Pop-outs that would otherwise come twice or somewhere else: every app's notification at the top in the notch, and the
+/// volume and media keys handled by Holm, so Windows doesn't open its own pop-up next to the notch's.
 /// </summary>
 public partial class MainWindow
 {
@@ -29,13 +29,46 @@ public partial class MainWindow
         _taskHide.Start();
     }
 
+    MediaKeys? _mediaKeys;
+
     void MenuNotchOnlyPopups_Click(object sender, RoutedEventArgs e)
     {
         _settings.NotchOnlyPopups = MenuNotchOnlyPopups.IsChecked;
         _settings.Save();
-        if (!_settings.NotchOnlyPopups) { NativeOsd.Restore(); return; }
-        // Windows 10 makes its pop-up at the first key press: until then there's nothing to find, and that's fine.
-        if (!NativeOsd.Hide() && Environment.OSVersion.Version.Build >= 22000)
-            ShowPeek("", "Windows 11 keeps its own pop-up", "", null, false, null, seconds: 4);
+        StartMediaKeys();
+    }
+
+    void StartMediaKeys()
+    {
+        _mediaKeys?.Dispose();
+        _mediaKeys = null;
+        if (!_settings.NotchOnlyPopups) return;
+        try { _mediaKeys = new MediaKeys(Dispatcher, TakesKey, PressKey); }
+        catch (System.ComponentModel.Win32Exception ex) { Diag.Log("Media keys hook: " + ex.Message); }
+    }
+
+    /// <summary>
+    /// Volume keys always, while the notch can show the volume; media keys only while something plays that Holm can
+    /// control. In a fullscreen game the notch is away, so Windows gets the keys and shows its own pop-up.
+    /// </summary>
+    bool TakesKey(int vk)
+        => !_hiddenForFullscreen && (vk is MediaKeys.VolumeMute or MediaKeys.VolumeDown or MediaKeys.VolumeUp || _info != null);
+
+    void PressKey(int vk)
+    {
+        switch (vk)
+        {
+            case MediaKeys.VolumeMute:
+                _volume.ToggleMute();
+                break;
+            case MediaKeys.VolumeUp or MediaKeys.VolumeDown when _volume.TryGet(out float level, out bool muted):
+                if (muted) _volume.SetMute(false); // as Windows does: a volume key brings the sound back
+                _volume.SetLevel(MediaKeys.Step(level, vk == MediaKeys.VolumeUp));
+                break;
+            case MediaKeys.PlayPause: _media.PlayPause(); break;
+            case MediaKeys.NextTrack: _media.Next(); break;
+            case MediaKeys.PreviousTrack: _media.Previous(); break;
+            case MediaKeys.StopMedia: _media.Pause(); break;
+        }
     }
 }

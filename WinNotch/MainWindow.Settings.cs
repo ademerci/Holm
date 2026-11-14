@@ -42,7 +42,7 @@ public partial class MainWindow
             new(MenuScreenshotText, "", "Read the text in a screenshot with Windows' own OCR."),
             new(MenuCapsLock, "", "The notch says when Caps Lock goes on or off."),
             new(MenuAllNotifications, "", "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."),
-            new(MenuNotchOnlyPopups, "", "Windows' own volume, brightness and media pop-up stays away. Works where Windows lets an app reach it (Windows 10); Windows 11 keeps its own."),
+            new(MenuNotchOnlyPopups, "", "Holm takes the volume and media keys and changes the volume or track itself, so Windows' own pop-up doesn't show and the notch does. Brightness keys stay with Windows."),
             new(MenuDiskWarning, "", "One warning when the system drive runs low."),
             new(MenuUsbDrives, "", "USB sticks pop out with Open and Eject."),
             new(MenuConnectivity, "", "Says when the internet drops and when it's back."),
