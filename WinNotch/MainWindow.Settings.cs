@@ -40,6 +40,8 @@ public partial class MainWindow
             new(MenuScreenshots, "", "A new screenshot pops out with Send and Shelf."),
             new(MenuScreenshotText, "", "Read the text in a screenshot with Windows' own OCR."),
             new(MenuCapsLock, "", "The notch says when Caps Lock goes on or off."),
+            new(MenuAllNotifications, "", "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."),
+            new(MenuNotchOnlyPopups, "", "Windows' own volume, brightness and media pop-up stays away. Works where Windows lets an app reach it (Windows 10); Windows 11 keeps its own."),
             new(MenuDiskWarning, "", "One warning when the system drive runs low."),
             new(MenuUsbDrives, "", "USB sticks pop out with Open and Eject."),
             new(MenuConnectivity, "", "Says when the internet drops and when it's back."),
@@ -49,6 +51,7 @@ public partial class MainWindow
             new(MenuCalls, "", "Shows a call with its time and a mute button."),
             new(MenuPauseForCalls, "", "Music pauses when a call starts and plays on after."),
             new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
+            new(MenuDictation, "", "Dictate with Handy, free and offline: the notch shows when it listens, and Handy's own overlay stays out of sight. Holm finds Handy or offers to install it."),
             new(MenuVpn, "", "A small lock while a VPN is connected."),
             new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds."),
         }),
@@ -97,6 +100,9 @@ public partial class MainWindow
         MenuFocumon.IsChecked = _settings.Focumon;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuCapsLock.IsChecked = _settings.CapsLock;
+        MenuAllNotifications.IsChecked = _settings.AllNotifications;
+        MenuNotchOnlyPopups.IsChecked = _settings.NotchOnlyPopups;
+        MenuDictation.IsChecked = _settings.Dictation;
         MenuDiskWarning.IsChecked = _settings.DiskWarning;
         MenuUsbDrives.IsChecked = _settings.UsbDrives;
         MenuConnectivity.IsChecked = _settings.Connectivity;
@@ -132,7 +138,7 @@ public partial class MainWindow
         }
         else if (page != null) _settingsWindow.Navigate(page);
         if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
-        _settingsWindow.Activate();
+        _settingsWindow.BringForward();
     }
 
     DispatcherTimer? _handBack;

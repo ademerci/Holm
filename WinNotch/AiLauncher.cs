@@ -55,7 +55,7 @@ internal static class AiLauncher
                 var preset = Presets.First(p => p.Key == key);
                 if (Shell.FindApp(preset.AppNames) is not { } app) return quick;
                 string launch = Shell.AppTarget(app.Id);
-                return quick with { Launch = launch, Web = preset.Web, Icon = Shell.IconOf(launch, 64) };
+                return quick with { Launch = launch, Web = preset.Web }; // presets show their drawn tile, not the app icon
             }
             catch (Exception ex)
             {
@@ -78,29 +78,44 @@ internal static class AiLauncher
         return Path.GetFileNameWithoutExtension(path);
     }
 
-    /// <summary>The app's own icon when we have one, otherwise a drawn mark for the preset.</summary>
+    /// <summary>
+    /// A preset as a favicon-style tile (its mark, light on its brand color, rounded like Holm's messenger tiles) whether
+    /// or not its app is installed: the apps' own icons looked plain and different from everything else in the notch. A
+    /// program you picked shows its own icon.
+    /// </summary>
     public static FrameworkElement IconFor(AiTarget target, double size)
     {
+        if (Tile(target.Key, size) is { } tile) return tile;
         if (target.Icon != null)
         {
             var image = new Image { Source = target.Icon, Width = size, Height = size };
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
             return image;
         }
-        var mark = target.Key switch
-        {
-            "claude" => new System.Windows.Shapes.Path { Data = ClaudeMark.Value, Fill = Brush(0xD9, 0x77, 0x57) },
-            "gemini" => new System.Windows.Shapes.Path { Data = GeminiMark.Value, Fill = GeminiBrush.Value },
-            "chatgpt" => new System.Windows.Shapes.Path { Data = ChatGptMark.Value, Fill = Brushes.White },
-            _ => null,
-        };
-        if (mark == null)
-            return new TextBlock { Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = size * 0.85, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        // The marks are drawn on a 24 × 24 grid.
-        return new Viewbox { Width = size, Height = size, Child = new Canvas { Width = 24, Height = 24, Children = { mark } } };
+        return new TextBlock { Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = size * 0.85, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     }
 
-    // ───────────── marks, used when the app isn't installed (the button then opens the website) ─────────────
+    /// <summary>The tile for a preset, or null for anything else.</summary>
+    internal static Border? Tile(string key, double size)
+    {
+        (Geometry Mark, Brush Fill, Brush Back)? look = key switch
+        {
+            "claude" => (ClaudeMark.Value, Brush(0xFF, 0xF6, 0xEE), Brush(0xD9, 0x77, 0x57)),
+            "gemini" => (GeminiMark.Value, Brushes.White, GeminiBrush.Value),
+            "chatgpt" => (ChatGptMark.Value, Brush(0x0D, 0x0D, 0x0D), Brush(0xF4, 0xF4, 0xF4)),
+            _ => null,
+        };
+        if (look is not { } l) return null;
+        // The mark takes two thirds of the tile, centred: the margin a favicon keeps.
+        var mark = new Viewbox
+        {
+            Width = size * 0.68, Height = size * 0.68, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            Child = new Canvas { Width = 24, Height = 24, Children = { new System.Windows.Shapes.Path { Data = l.Mark, Fill = l.Fill } } },
+        };
+        return new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = l.Back, Child = mark, SnapsToDevicePixels = true };
+    }
+
+    // ───────────── marks, drawn on a 24 × 24 grid ─────────────
 
     static Brush Brush(byte r, byte g, byte b)
     {

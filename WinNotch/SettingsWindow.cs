@@ -254,6 +254,17 @@ internal sealed class SettingsWindow : Window
         Closed += (_, _) => _shownView?.Detach();
     }
 
+    /// <summary>
+    /// In front of every window now, without staying there: the notch never takes the focus, so Windows may refuse to bring
+    /// a window of ours forward. Briefly topmost, then an ordinary window again at the top of the others.
+    /// </summary>
+    public void BringForward()
+    {
+        Topmost = true;
+        Activate();
+        Dispatcher.InvokeAsync(() => Topmost = false, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
     /// <summary>Opens a page: a social one or a tool by its key, "profile", or a group of switches by its key.</summary>
     public void Navigate(string key)
     {

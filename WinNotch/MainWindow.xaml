@@ -273,6 +273,9 @@
                             <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                             <MenuItem x:Name="MenuFocumon" Header="Focumon" ToolTip="Show your Focumon monster and timer in the closed notch (instead of weather) and in the open bar. Needs the Focumon for Holm browser extension (extension/focumon in the repo)." IsCheckable="True" Click="MenuFocumon_Click"/>
                             <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
+                            <MenuItem x:Name="MenuAllNotifications" Header="All notifications in the notch" IsCheckable="True" Click="MenuAllNotifications_Click"/>
+                            <MenuItem x:Name="MenuNotchOnlyPopups" Header="Volume and media only in the notch" IsCheckable="True" Click="MenuNotchOnlyPopups_Click"/>
+                            <MenuItem x:Name="MenuDictation" Header="Dictation with Handy" IsCheckable="True" Click="MenuDictation_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
                             <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
@@ -374,6 +377,17 @@
                                        Foreground="#FFFF453A" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed"/>
                             <TextBlock x:Name="CallTime" FontSize="13" FontWeight="SemiBold" Foreground="#FF30D158" VerticalAlignment="Center"/>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- Dictation: Handy listens (Settings › Calls and privacy › Dictation with Handy) -->
+                    <Grid x:Name="DictationView" Opacity="0" IsHitTestVisible="False" Margin="14,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Ellipse x:Name="DictationDot" Width="8" Height="8" Fill="#FF9B8CFF" VerticalAlignment="Center"/>
+                            <TextBlock Text="&#xE720;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="#FF9B8CFF"
+                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock x:Name="DictationText" Text="Listening" FontSize="13" FontWeight="SemiBold" Foreground="#FFC9C1FF"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Timer: a timer runs and nothing plays -->

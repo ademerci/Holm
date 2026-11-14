@@ -71,7 +71,7 @@ public partial class MainWindow
 
     FrameworkElement[] AllViews => new FrameworkElement[]
     {
-        IdleView, CompactView, BadgeView, TimerView, FocumonView, CallView, PeekView, MessageView,
+        IdleView, CompactView, BadgeView, TimerView, FocumonView, CallView, DictationView, PeekView, MessageView,
         VolumeView, DownloadView, TaskView, PhoneView, ShareView, ExpandedView,
     };
 
