@@ -627,7 +627,7 @@ internal sealed class ChatPage : HubView
         };
         if (_justReacted == message.Id && _social.Animate())
         {
-            var pop = new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = new BackEase { Amplitude = 0.6, EasingMode = EasingMode.EaseOut } };
+            var pop = new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(360)) { EasingFunction = Spring.Snappy };
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
         }

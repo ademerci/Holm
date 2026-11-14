@@ -11,6 +11,10 @@ namespace WinNotch;
 internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
+    /// <summary>The notch and its parts spring into place with a bounce; off, they glide in without overshooting.</summary>
+    public bool Bounce { get; set; } = true;
+    /// <summary>How far the bounce swings: 1 is normal, 0.5 subtle, up to 1.5 lively.</summary>
+    public double BounceLevel { get; set; } = 1;
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
@@ -60,7 +61,17 @@ public partial class MainWindow
     void FadeIn(UIElement panel)
     {
         if (!_settings.Animations || !_expanded) { panel.BeginAnimation(OpacityProperty, null); panel.Opacity = 1; return; }
-        panel.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = new QuadraticEase() });
+        panel.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = FadeInEase });
+        if (panel.RenderTransform is not TranslateTransform move)
+        {
+            if (panel.RenderTransform != null && !panel.RenderTransform.Value.IsIdentity) return;
+            panel.RenderTransform = move = new TranslateTransform();
+        }
+        move.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(360))
+        {
+            EasingFunction = Spring.Bouncy,
+            FillBehavior = FillBehavior.Stop,
+        });
     }
 
     void TodayReminder_Click(object sender, RoutedEventArgs e) => ToggleTool(Tool.Reminders);

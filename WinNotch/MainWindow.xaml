@@ -254,12 +254,15 @@
                             <MenuItem x:Name="MenuAi" Header="AI button"/>
                             <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
                             <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                            <!-- Subtle / Normal / Lively; filled when the menu opens -->
+                            <MenuItem x:Name="MenuBounceLevel" Header="Bounce"/>
                         </MenuItem>
                         <!-- The switches the settings window shows: their handlers apply each setting. Never shown here. -->
                         <MenuItem x:Name="SettingsSwitches" Visibility="Collapsed">
                             <MenuItem x:Name="MenuMediaControls" Header="Media controls" ToolTip="Show music and video controls, artwork and track details. On by default." IsCheckable="True" Click="MenuMediaControls_Click"/>
                             <MenuItem x:Name="MenuWeatherAutoLocation" Header="Set up weather using approximate location" ToolTip="If no city is saved, use Windows location once. Rounded coordinates go to Open-Meteo. Respects Windows location services; no IP lookup service." IsCheckable="True" Click="MenuWeatherAutoLocation_Click"/>
                             <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
+                            <MenuItem x:Name="MenuBounce" Header="Bouncy motion" IsCheckable="True" Click="MenuBounce_Click"/>
                             <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>
                             <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                             <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
