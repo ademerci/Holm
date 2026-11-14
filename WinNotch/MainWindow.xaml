@@ -241,6 +241,7 @@
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
                         <Separator/>
                         <MenuItem x:Name="MenuFriendsHub" Header="Friends and chat…" Click="MenuFriendsHub_Click"/>
+                        <MenuItem x:Name="MenuNetwork" Header="Wi-Fi and speed test…" Click="MenuNetwork_Click"/>
                         <MenuItem x:Name="MenuSettings" Header="Settings…" Click="MenuSettings_Click"/>
                         <MenuItem x:Name="MenuCustomize" Header="Customize">
                             <!-- Show messages, then one switch per app; filled in when the menu opens -->
