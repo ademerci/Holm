@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-if ($Store -and -not $Version) { $Version = '1.11.1.0' }
+if ($Store -and -not $Version) { $Version = '1.12.0.0' }
 if (-not $Version) {
     [xml]$project = Get-Content (Join-Path $root 'WinNotch\WinNotch.csproj') -Raw
     $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
@@ -25,8 +25,10 @@ $out = Join-Path $root 'artifacts\msix'
 $app = Join-Path $out 'layout'
 if (Test-Path -LiteralPath $app) { Remove-Item -LiteralPath $app -Recurse -Force }
 New-Item -ItemType Directory -Force $app, (Join-Path $app 'Assets') | Out-Null
-$makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
-if (!$makeappx) { throw 'Install the Windows SDK including MakeAppx.' }
+$makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+# Without the Windows SDK: Microsoft's SDK build tools from NuGet (Microsoft.Windows.SDK.BuildTools) have it too.
+if (!$makeappx) { $makeappx = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools\*\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 }
+if (!$makeappx) { throw 'Install the Windows SDK including MakeAppx, or the Microsoft.Windows.SDK.BuildTools NuGet package.' }
 dotnet publish (Join-Path $root 'WinNotch\WinNotch.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $app
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 Get-ChildItem -LiteralPath $app -Filter *.pdb | Remove-Item -Force

@@ -79,8 +79,10 @@ public partial class MainWindow
     void OfferHandy()
     {
         if (_busy) return;
+        // The Store app doesn't download and run other apps' installers: it opens Handy's release page instead.
+        Action get = PackageIdentity.IsPackaged ? () => { HideTask(); TryOpen("https://github.com/cjpais/Handy/releases/latest"); } : () => _ = InstallHandyAsync();
         ShowTask("", ShareBlue, "Dictation needs Handy", "Free and offline, by CJ Pais (MIT). Get it from its GitHub releases?", null,
-                 ("Get Handy", () => _ = InstallHandyAsync()), ("Not now", HideTask));
+                 ("Get Handy", get), ("Not now", HideTask));
         _taskHide.Interval = TimeSpan.FromSeconds(15);
         _taskHide.Start();
     }
