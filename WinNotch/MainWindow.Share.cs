@@ -484,7 +484,7 @@ public partial class MainWindow
             await _friends.InviteAsync(friend, secret, cts.Token);
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Checking if {friend.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask), textIcon: true);
             var (host, port) = RelayEndpoint();
-            await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.Patience, cts.Token);
+            await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.SendPatience, cts.Token);
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,

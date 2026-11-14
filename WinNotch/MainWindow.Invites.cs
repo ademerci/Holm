@@ -113,7 +113,12 @@ public partial class MainWindow
         var cts = BeginTask();
         ShowTask("", ShareBlue, "Adding your friend…", "Looking up the invite", null, null, ("Cancel", CancelTask));
         var (ok, message) = await AddFriendByCodeAsync(code);
-        if (cts.IsCancellationRequested) return;
+        if (cts.IsCancellationRequested)
+        {
+            // Without this the notch stayed busy until Holm restarted: Beam refused every file, sent and received.
+            EndTask("", RedBrush, "Cancelled", "");
+            return;
+        }
         if (ok) EndTask("", ShareBlue, message.Split(". ")[0].TrimEnd('.'), message.Contains(". ") ? message[(message.IndexOf(". ") + 2)..] : "");
         else EndTask("", RedBrush, "Couldn't add the friend", message);
     }
