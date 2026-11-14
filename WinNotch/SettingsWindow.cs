@@ -256,14 +256,25 @@ internal sealed class SettingsWindow : Window
 
     /// <summary>
     /// In front of every window now, without staying there: the notch never takes the focus, so Windows may refuse to bring
-    /// a window of ours forward. Briefly topmost, then an ordinary window again at the top of the others.
+    /// a window of ours forward (tried live: a moment of topmost wasn't enough). It stays in front until you first click
+    /// somewhere else, then it's an ordinary window that others can cover.
     /// </summary>
     public void BringForward()
     {
         Topmost = true;
         Activate();
-        Dispatcher.InvokeAsync(() => Topmost = false, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        if (_forward) return;
+        _forward = true;
+        void Release(object? sender, EventArgs e)
+        {
+            Deactivated -= Release;
+            _forward = false;
+            Topmost = false;
+        }
+        Deactivated += Release;
     }
+
+    bool _forward;
 
     /// <summary>Opens a page: a social one or a tool by its key, "profile", or a group of switches by its key.</summary>
     public void Navigate(string key)
