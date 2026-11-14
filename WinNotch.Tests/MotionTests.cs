@@ -9,7 +9,7 @@ public class MotionTests
     [Fact]
     public void Both_springs_start_at_the_start_and_end_at_the_end()
     {
-        foreach (var spring in new[] { Spring.Bouncy, Spring.Smooth })
+        foreach (var spring in new[] { Spring.Bouncy, Spring.Snappy, Spring.Smooth })
         {
             Assert.Equal(0, spring.Ease(0));
             Assert.Equal(1, spring.Ease(1));
@@ -30,11 +30,95 @@ public class MotionTests
     }
 
     [Fact]
-    public void Opening_swings_a_little_past_and_settles()
+    public void Opening_swings_past_and_settles()
     {
-        double peak = Steps().Max(Spring.Bouncy.Ease);
-        Assert.InRange(peak, 1.005, 1.03);
-        Assert.True(Spring.Bouncy.Ease(0.15) > 0.3, "it gets going right away");
+        double bouncyPeak = Steps().Max(Spring.Bouncy.Ease);
+        double snappyPeak = Steps().Max(Spring.Snappy.Ease);
+        Assert.InRange(bouncyPeak, 1.05, 1.09);
+        Assert.InRange(snappyPeak, 1.08, 1.13);
+        Assert.True(snappyPeak > bouncyPeak);
+        Assert.True(Spring.Bouncy.Ease(0.15) > 0.4, "it gets going right away");
+    }
+
+    [Fact]
+    public void Spring_value_overshoots_and_settles()
+    {
+        var spring = new SpringValue(30);
+        spring.Retarget(240, 0.38, 0.60);
+        double peak = 30;
+        bool settled = false;
+        for (int i = 0; i < 80 && !settled; i++)
+        {
+            settled = spring.Step(1.0 / 60);
+            peak = Math.Max(peak, spring.Value);
+        }
+        Assert.True(settled);
+        Assert.Equal(240, spring.Value);
+        Assert.Equal(0, spring.Velocity);
+        Assert.InRange(peak, 255, 265); // ~9.5 % overshoot past 240
+    }
+
+    [Fact]
+    public void Critically_damped_spring_value_settles_without_overshoot()
+    {
+        var spring = new SpringValue(240);
+        spring.Retarget(6, 0.27, 1.0);
+        double last = 240;
+        bool settled = false;
+        for (int i = 0; i < 80 && !settled; i++)
+        {
+            settled = spring.Step(1.0 / 60);
+            Assert.InRange(spring.Value, 6, last);
+            last = spring.Value;
+        }
+        Assert.True(settled);
+        Assert.Equal(6, spring.Value);
+    }
+
+    [Fact]
+    public void Retargeting_mid_flight_preserves_momentum()
+    {
+        var spring = new SpringValue(30);
+        spring.Retarget(240, 0.38, 0.60);
+        for (int i = 0; i < 8; i++) spring.Step(1.0 / 60);
+        double velocityBefore = spring.Velocity;
+        Assert.True(velocityBefore > 400);
+
+        spring.Retarget(150, 0.33, 0.75);
+        Assert.Equal(velocityBefore, spring.Velocity);
+        // Inertia carries it briefly upward before reversing toward 150.
+        double afterOneFrame = spring.Value;
+        spring.Step(1.0 / 120);
+        Assert.True(spring.Value > afterOneFrame);
+    }
+
+    [Fact]
+    public void Kick_adds_velocity_and_bounces_back()
+    {
+        var spring = new SpringValue(250);
+        spring.Kick(40, 0.30, 0.58);
+        Assert.False(spring.IsSettled);
+        spring.Step(0.05);
+        Assert.True(spring.Value > 250);
+        bool settled = false;
+        for (int i = 0; i < 80 && !settled; i++) settled = spring.Step(1.0 / 60);
+        Assert.True(settled);
+        Assert.Equal(250, spring.Value);
+    }
+
+    [Fact]
+    public void Analytical_step_matches_substeps_regardless_of_frame_rate()
+    {
+        var coarse = new SpringValue(30);
+        var fine = new SpringValue(30);
+        coarse.Retarget(240, 0.38, 0.60);
+        fine.Retarget(240, 0.38, 0.60);
+
+        coarse.Step(0.2);
+        for (int i = 0; i < 24; i++) fine.Step(0.2 / 24);
+
+        Assert.InRange(coarse.Value, fine.Value - 1e-9, fine.Value + 1e-9);
+        Assert.InRange(coarse.Velocity, fine.Velocity - 1e-9, fine.Velocity + 1e-9);
     }
 
     [Theory]

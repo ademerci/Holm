@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Physics-based, bouncier motion.** The notch's size, corner radius, shoulders and scale now run on a live damped harmonic oscillator instead of fixed-duration ease curves, so interrupting mid-flight preserves momentum and every refresh rate stays identical. Opening springs further with a softer vertical squash-and-stretch bounce, normal collapses snap back into place gently, hovering the closed notch swells slightly toward the cursor, in-place volume/peek updates give a small physical pulse, open rows cascade out, switching tools or toggling settings switches bounces lightly, and chat reaction hovers/pops use spring curves.
+
 ### Added
 - **Wi-Fi and speed test.** Right-click › *Wi-Fi and speed test…* opens a new *Wi-Fi* page under *Tools* in the Holm window. It measures ping, download and upload against Cloudflare's public speed test, with the Cloudflare location and your public IP once it has run, and shows the connection's details: network name, signal bars, link speed, IPv4 and IPv6 address, gateway, DNS servers, DHCP, DNS suffix, MAC address and adapter. A click copies a value. The test runs only when you press *Start* (about 15 seconds, at most ~600 MB on a very fast line) and stops when you leave the page; the details are read from Windows and refresh when the network changes.
 - **Tailscale in the VPN indicator.** Tailscale counts as a VPN while it's connected to your tailnet (it holds a 100.64.0.0/10 or fd7a:115c:a1e0::/48 address), and says *exit node* when your internet goes through one. Turning an exit node on or off is noticed at once: Holm now also listens for route changes, not only address changes. A VPN that carries all traffic still wins over Tailscale used only for the tailnet.

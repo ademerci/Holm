@@ -54,7 +54,7 @@ public partial class MainWindow : Window
     string? _demoVpn = null; // README screenshots only (set in Debug builds)
 
     string? CurrentVpn => _demoVpn ?? _vpn?.Current;
-    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
+    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
     readonly AnimationClock?[] _barClocks = new AnimationClock?[4];
     readonly AudioMeter _meter = new();
@@ -126,7 +126,6 @@ public partial class MainWindow : Window
         _btLate = MakeTimer(8000, ScanBluetooth, oneShot: true);
         _btPoll = MakeTimer(60_000, ScanBluetooth);
         _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
-        _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
         ForgetLeftoverZips();
@@ -252,6 +251,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopMotion();
         _bluetoothStopped = true;
         _btPoll.Stop();
         _btSoon.Stop();
@@ -402,6 +402,7 @@ public partial class MainWindow : Window
     void SetExpanded(bool expand)
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
+        _hoverBoost = false;
         _expanded = expand;
         if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
@@ -434,7 +435,7 @@ public partial class MainWindow : Window
         ShowPrivacy();
         if (expand) ShowShelf();
         // Nothing to wait for when the shape didn't move (animations off): finish right after this.
-        if (expand && !_fitTimer.IsEnabled) Dispatcher.InvokeAsync(FinishOpening, DispatcherPriority.Background);
+        if (expand && !_shapeAnimating) Dispatcher.InvokeAsync(FinishOpening, DispatcherPriority.Background);
     }
 
     void ApplyState(bool animate = true)
@@ -501,33 +502,24 @@ public partial class MainWindow : Window
         // Media apps report every few seconds; only animate when the shape really changes.
         if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || scale != _shapeScale)
         {
-            double currentScale = _notchScale.ScaleX;
-            bool grow = w * h * scale * scale > Island.ActualWidth * Island.ActualHeight * currentScale * currentScale;
+            double currentScale = _scaleSpring.Value;
+            double currentArea = _wSpring.Value * _hSpring.Value * currentScale * currentScale;
+            bool grow = w * h * scale * scale > currentArea;
+            double ear = mini ? 0 : MaxEar;
             // Reserve room for both the outgoing view and the incoming scale, including spring overshoot.
-            double needed = Math.Ceiling(Math.Max(h, Island.ActualHeight) * Math.Max(scale, currentScale) * 1.12) + 2;
+            double needed = NeededWindowHeight(Math.Max(h, _hSpring.Value), Math.Max(scale, currentScale));
             (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
-            Animate(Island, WidthProperty, w, grow, animate);
-            Animate(Island, HeightProperty, h, grow, animate);
-            Animate(this, RadiusProperty, r, grow, animate);
-            Animate(this, EarProperty, mini ? 0 : MaxEar, grow, animate);
-            Animate(_notchScale, ScaleTransform.ScaleXProperty, scale, grow, animate);
-            Animate(_notchScale, ScaleTransform.ScaleYProperty, scale, grow, animate);
 
-            // The window is a layered (per-pixel alpha) window: every animation frame copies its whole
-            // surface. Keep it only as tall as needed, with a fixed width for both configured sizes
-            // so expanding and collapsing never moves the window's top-left.
-            _fitTimer.Stop();
             if (!animate)
             {
                 _shapeAnimating = false;
+                SnapShape(w, h, r, ear, scale);
                 FitWindowHeight();
             }
             else
             {
                 if (needed > Height) Height = needed;
-                _shapeAnimating = true;
-                _fitTimer.Interval = TimeSpan.FromMilliseconds((grow ? OpenMs : CloseMs) + 60);
-                _fitTimer.Start();
+                MoveShapeTo(w, h, r, ear, scale, grow, mini);
             }
         }
 
@@ -601,29 +593,18 @@ public partial class MainWindow : Window
         FinishOpening();
     }
 
-    static void Animate(IAnimatable target, DependencyProperty property, double to, bool grow, bool animate)
-    {
-        if (!animate)
-        {
-            target.BeginAnimation(property, null);
-            ((DependencyObject)target).SetValue(property, to);
-            return;
-        }
-        // Growing springs open with a little overshoot like the iPhone; shrinking glides in without one (height would go negative).
-        var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(grow ? OpenMs : CloseMs))
-        {
-            EasingFunction = grow ? Spring.Bouncy : Spring.Smooth,
-        };
-        target.BeginAnimation(property, animation, HandoffBehavior.SnapshotAndReplace);
-    }
-
     /// <summary>
     /// Cuts the outline (notch + shoulders) out of the backdrop. Runs on every animation frame,
     /// because the outline follows the animated size, radius and shoulder size.
     /// </summary>
     void UpdateShape()
     {
-        double w = Island.ActualWidth, h = Island.ActualHeight;
+        if (_steppingShape) return;
+        UpdateShape(Island.ActualWidth, Island.ActualHeight);
+    }
+
+    void UpdateShape(double w, double h)
+    {
         if (w <= 0 || h <= 0) return;
         double r = Math.Clamp(Radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(Ear, 0, Math.Min(MaxEar, h - r));
@@ -812,12 +793,14 @@ public partial class MainWindow : Window
         PeekBattery.Level = battery ?? 0;
         PeekBattery.Charging = charging;
 
+        bool wasPeek = _state == NotchState.Peek;
         _peekActive = true;
         _peekMessage = false;
         _peekTimer.Stop();
         _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
         _peekTimer.Start();
         ApplyState();
+        if (wasPeek && _state == NotchState.Peek) PulseNotch();
     }
 
     /// <summary>Pops out a message that just came in. The caller applies the state.</summary>
@@ -1330,12 +1313,17 @@ public partial class MainWindow : Window
     {
         _collapseDelay.Stop();
         _pickClose.Stop();
-        if (!_expanded) _expandDelay.Start();
+        if (!_expanded)
+        {
+            _expandDelay.Start();
+            if (!_hiddenForFullscreen && !TaskShowing && !_sharing && !PhoneShowing) SetHoverBoost(true);
+        }
     }
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
         _expandDelay.Stop();
+        SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
         if (_expanded) _collapseDelay.Start();
     }
@@ -1368,12 +1356,13 @@ public partial class MainWindow : Window
 
     void Play_Click(object sender, RoutedEventArgs e)
     {
+        PulseElement(PlayBtn);
         if (_info != null) SetPlayIcon(!_info.IsPlaying); // feels instant; the real state follows a moment later
         _media.PlayPause();
     }
 
-    void Prev_Click(object sender, RoutedEventArgs e) => _media.Previous();
-    void Next_Click(object sender, RoutedEventArgs e) => _media.Next();
+    void Prev_Click(object sender, RoutedEventArgs e) { PulseElement(PrevBtn); _media.Previous(); }
+    void Next_Click(object sender, RoutedEventArgs e) { PulseElement(NextBtn); _media.Next(); }
 
     void Shuffle_Click(object sender, RoutedEventArgs e)
     {
@@ -1415,10 +1404,12 @@ public partial class MainWindow : Window
         VolPeekBar.Fill = _info?.IsPlaying == true ? Progress.Fill : Brushes.White;
         VolPeekIcon.Text = muted || level < 0.005 ? "" : level < 0.34 ? "" : level < 0.67 ? "" : "";
         VolPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        bool wasVolume = _state == NotchState.Volume;
         _volumePeek = true;
         _volumeTimer.Stop();
         _volumeTimer.Start();
         ApplyState();
+        if (wasVolume && _state == NotchState.Volume) PulseNotch(16, 10, 0.04);
     }
 
     void Mute_Click(object sender, RoutedEventArgs e)

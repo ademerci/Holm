@@ -26,17 +26,23 @@ public partial class MainWindow
 
     void ShowTool(Tool tool)
     {
+        bool changed = tool != _tool;
         if (tool == Tool.None) EndTyping();
         _tool = tool;
         HomePanel.Visibility = tool == Tool.None ? Visibility.Visible : Visibility.Collapsed;
         ToolPage.Visibility = tool == Tool.None ? Visibility.Collapsed : Visibility.Visible;
+        UIElement? activePage = null;
         foreach (var (page, button, which) in ToolPages())
         {
-            page.Visibility = which == tool ? Visibility.Visible : Visibility.Collapsed;
-            button.Background = which == tool ? ToolLit : Brushes.Transparent;
+            bool match = which == tool;
+            page.Visibility = match ? Visibility.Visible : Visibility.Collapsed;
+            button.Background = match ? ToolLit : Brushes.Transparent;
+            if (match) activePage = page;
         }
         OnToolShown(tool);
         RefreshToolBar();
+        if (changed && _expanded && _state == NotchState.Expanded)
+            AnimateToolSwitch(activePage ?? HomePanel);
         if (_expanded && _state == NotchState.Expanded) ApplyState(); // a page has its own height
     }
 

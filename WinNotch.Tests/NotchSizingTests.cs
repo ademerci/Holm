@@ -98,14 +98,14 @@ public class NotchSizingTests
             SetField(window, "_expanded", true);
             Invoke(window, "ApplyState", true);
             Assert.True(GetField<bool>(window, "_shapeAnimating"));
-            Assert.True(GetField<DispatcherTimer>(window, "_fitTimer").IsEnabled);
+            Assert.True(GetField<bool>(window, "_motionRunning"));
 
             settings.ExpandedScale = 1.15;
             Invoke(window, "ApplyScale");
 
             AssertSize(window, 1.15, 520);
             Assert.False(GetField<bool>(window, "_shapeAnimating"));
-            Assert.False(GetField<DispatcherTimer>(window, "_fitTimer").IsEnabled);
+            Assert.False(GetField<bool>(window, "_motionRunning"));
             Assert.False(((ScaleTransform)((Grid)window.FindName("IslandHost")).LayoutTransform).HasAnimatedProperties);
         });
     }
