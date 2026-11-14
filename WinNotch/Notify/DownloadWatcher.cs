@@ -160,7 +160,10 @@ public sealed class DownloadWatcher : IDisposable
                     if (now - deleted < TimeSpan.FromSeconds(1)) continue;
                     _active.Remove(download.TempPath);
                     string final = Path.Combine(Path.GetDirectoryName(download.TempPath)!, Path.GetFileName(download.TempPath)[..^Path.GetExtension(download.TempPath).Length]);
-                    bool done = File.Exists(final) && new FileInfo(final).Length > 0 && File.GetLastWriteTimeUtc(final) >= download.Started.AddSeconds(-2);
+                    bool done;
+                    // The browser may move or lock the file in between: on this timer thread that would end Holm.
+                    try { done = File.Exists(final) && new FileInfo(final).Length > 0 && File.GetLastWriteTimeUtc(final) >= download.Started.AddSeconds(-2); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { done = false; }
                     if (done) finished.Add((download, final)); else cancelled.Add(download);
                     continue;
                 }

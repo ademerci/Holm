@@ -51,7 +51,7 @@ internal sealed class SettingsWindow : Window
     /// <param name="me">Your face and name for the top of the sidebar; clicking it opens the profile.</param>
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync, ProfileEditor? profile = null,
                           IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null, FrameworkElement? updates = null,
-                          IReadOnlyList<HubPage>? tools = null)
+                          IReadOnlyList<HubPage>? tools = null, string? start = null)
     {
         _animate = animate;
         _sync = sync;
@@ -67,7 +67,9 @@ internal sealed class SettingsWindow : Window
         Width = 980;
         Height = Math.Min(740, SystemParameters.WorkArea.Height - 24);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Topmost = true; // the notch is topmost too; this must not open behind it
+        // Not always on top: an ordinary window that comes forward when it opens and lets other windows over it. The notch
+        // collapses before it opens, so the notch can't hide it.
+        Topmost = false;
         FontFamily = HubTheme.Text;
         FontSize = 13;
         Foreground = Brushes.White;
@@ -206,9 +208,16 @@ internal sealed class SettingsWindow : Window
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(14),
             Margin = new Thickness(16), // room for the shadow and modal blur
-            Effect = new DropShadowEffect { BlurRadius = 28, ShadowDepth = 4, Opacity = 0.5 },
             Child = columns,
         };
+        // The shadow is its own layer, drawn once and kept as a bitmap. On the content itself, every change inside (a GIF
+        // frame, a caret blink) blurred the whole 980 × 740 window again, on the CPU of a transparent window.
+        layers.Children.Add(new Border
+        {
+            Background = HubTheme.Panel, CornerRadius = new CornerRadius(14), Margin = new Thickness(16), IsHitTestVisible = false,
+            Effect = new DropShadowEffect { BlurRadius = 28, ShadowDepth = 4, Opacity = 0.5 },
+            CacheMode = new BitmapCache(),
+        });
         layers.Children.Add(_surface);
         // Covers the whole window, so only the background blurs behind a question.
         _dialog = new Border
@@ -221,7 +230,9 @@ internal sealed class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
-        Navigate(_social.Count > 0 ? _social[0].Key : profile != null ? ProfileKey : groups[0].Key);
+        // Straight to the page asked for: building the first one (Activity pings every friend) only to leave it cost seconds.
+        string first = _social.Count > 0 ? _social[0].Key : profile != null ? ProfileKey : groups[0].Key;
+        Navigate(start != null && _titles.ContainsKey(start) ? start : first);
         RefreshApplyState();
         PreviewKeyDown += (_, e) =>
         {
@@ -242,6 +253,31 @@ internal sealed class SettingsWindow : Window
         };
         Closed += (_, _) => _shownView?.Detach();
     }
+
+    /// <summary>
+    /// In front of every window now, without staying there: the notch never takes the focus, so Windows may refuse to bring
+    /// a window of ours forward (tried live: a moment of topmost wasn't enough). It stays in front until you first click
+    /// somewhere else, or for 10 seconds if Windows never lets it be the active window, then it's an ordinary window.
+    /// </summary>
+    public void BringForward()
+    {
+        Topmost = true;
+        Activate();
+        if (_forward != null) { _forward.Stop(); _forward.Start(); return; }
+        _forward = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        void Release(object? sender, EventArgs e)
+        {
+            Deactivated -= Release;
+            _forward?.Stop();
+            _forward = null;
+            Topmost = false;
+        }
+        _forward.Tick += Release;
+        Deactivated += Release;
+        _forward.Start();
+    }
+
+    System.Windows.Threading.DispatcherTimer? _forward;
 
     /// <summary>Opens a page: a social one or a tool by its key, "profile", or a group of switches by its key.</summary>
     public void Navigate(string key)

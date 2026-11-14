@@ -43,7 +43,7 @@ public class StreamTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var watching = StreamProtocol.WatchAsync(viewer, f => { lock (frames) frames.Add(f); }, cts.Token);
 
-        Assert.True(await StreamProtocol.AnswerAsync(streamer, cts.Token));
+        Assert.True((await StreamProtocol.AnswerAsync(streamer, cts.Token)).Watch);
         await using var host = new StreamHost();
         host.Add("lena", "Lena", streamer);
         Assert.Equal(new[] { "Lena" }, host.Names);
@@ -74,7 +74,7 @@ public class StreamTests
 
         int frames = 0;
         var watching = StreamProtocol.WatchAsync(viewer, _ => Interlocked.Increment(ref frames), cts.Token);
-        Assert.True(await StreamProtocol.AnswerAsync(streamer, cts.Token));
+        Assert.True((await StreamProtocol.AnswerAsync(streamer, cts.Token)).Watch);
         var host = new StreamHost();
         host.Add("lena", "Lena", streamer);
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -96,7 +96,7 @@ public class StreamTests
         var (streamer, viewer) = await PairAsync();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await StreamProtocol.DeclineAsync(viewer, cts.Token);
-        Assert.False(await StreamProtocol.AnswerAsync(streamer, cts.Token));
+        Assert.False((await StreamProtocol.AnswerAsync(streamer, cts.Token)).Watch);
         streamer.Dispose();
         viewer.Dispose();
     }
@@ -108,7 +108,7 @@ public class StreamTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         using var closed = new CancellationTokenSource();
         var watching = StreamProtocol.WatchAsync(viewer, _ => { }, closed.Token);
-        Assert.True(await StreamProtocol.AnswerAsync(streamer, cts.Token));
+        Assert.True((await StreamProtocol.AnswerAsync(streamer, cts.Token)).Watch);
         await using var host = new StreamHost();
         int changes = 0;
         host.ViewersChanged += () => Interlocked.Increment(ref changes);
@@ -164,7 +164,12 @@ public class StreamTests
     {
         // A corner of the screen, kept in memory only.
         byte[]? jpeg = null;
-        var thread = new Thread(() => jpeg = ScreenCapture.Jpeg(new System.Windows.Int32Rect(0, 0, 64, 48)));
+        var thread = new Thread(() =>
+        {
+            using var grabber = new ScreenCapture.Grabber(new System.Windows.Int32Rect(0, 0, 64, 48));
+            jpeg = grabber.Jpeg(60);
+            jpeg = grabber.Jpeg(60) ?? jpeg; // the same grabber takes the next picture too
+        });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();

@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,14 +26,9 @@ public static class RelayLink
     public static async Task<Stream> ConnectAsync(string host, int port, byte[] token, CancellationToken ct)
     {
         if (token.Length != 32) throw new ArgumentException("Tokens are 32 bytes.", nameof(token));
-        var client = new TcpClient { NoDelay = true };
+        var client = await ReachAsync(host, port, ct).ConfigureAwait(false);
         try
         {
-            using (var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
-            {
-                connectTimeout.CancelAfter(TimeSpan.FromSeconds(15));
-                await client.ConnectAsync(host, port, connectTimeout.Token).ConfigureAwait(false);
-            }
             client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             var stream = new NetworkStream(client.Client, ownsSocket: true);
 
@@ -49,6 +46,40 @@ public static class RelayLink
             client.Dispose();
             throw;
         }
+    }
+
+    /// <summary>How long one address of the relay gets to answer before the next one is tried.</summary>
+    internal static TimeSpan AddressPatience = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// A TCP connection to the relay, IPv4 addresses first, each given <see cref="AddressPatience"/>. Trying the host name
+    /// as a whole went through its addresses one by one, IPv6 first: a network that silently drops IPv6 spent the whole
+    /// wait for a friend on that one address, and the send failed every time.
+    /// </summary>
+    /// <exception cref="IOException">No address of the relay could be reached.</exception>
+    static async Task<TcpClient> ReachAsync(string host, int port, CancellationToken ct)
+    {
+        IPAddress[] addresses;
+        try { addresses = IPAddress.TryParse(host, out var ip) ? new[] { ip } : await Dns.GetHostAddressesAsync(host, ct).ConfigureAwait(false); }
+        catch (SocketException ex) { throw new IOException("The relay's address couldn't be found.", ex); }
+        Exception? last = null;
+        foreach (var address in addresses.OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1))
+        {
+            var client = new TcpClient(address.AddressFamily) { NoDelay = true };
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            attempt.CancelAfter(AddressPatience);
+            try
+            {
+                await client.ConnectAsync(address, port, attempt.Token).ConfigureAwait(false);
+                return client;
+            }
+            catch (Exception ex) when (ex is SocketException || ex is OperationCanceledException && !ct.IsCancellationRequested)
+            {
+                client.Dispose();
+                last = ex;
+            }
+        }
+        throw new IOException("The relay couldn't be reached.", last);
     }
 
     static async Task<string> ReadLineAsync(Stream stream, CancellationToken ct)

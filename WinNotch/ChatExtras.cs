@@ -213,7 +213,7 @@ internal static class ChatExtras
         {
             const double width = 117;
             double height = Math.Clamp(width * (h / Math.Max(1, w)), 60, 160);
-            var view = GifPlayer.View(preview, width, height, 8, social.Animate(), maxSide: 160);
+            var view = GifPlayer.View(preview, width, height, 8, social.Animate(), maxSide: 160, hoverOnly: true, maxFrames: 48);
             var tile = new Border { Margin = new Thickness(2), Cursor = Cursors.Hand, Child = view, CornerRadius = new CornerRadius(8) };
             tile.MouseEnter += (_, _) => tile.Opacity = 0.8;
             tile.MouseLeave += (_, _) => tile.Opacity = 1;

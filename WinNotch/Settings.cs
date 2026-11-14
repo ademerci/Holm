@@ -77,6 +77,12 @@ internal sealed class AppSettings
     public bool Focumon { get; set; } = true;
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
+    /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>
+    public bool AllNotifications { get; set; }
+    /// <summary>Windows' own volume, brightness and media pop-up stays away, so only the notch shows them. Off by default.</summary>
+    public bool NotchOnlyPopups { get; set; }
+    /// <summary>Holm shows Handy's dictation in the notch and keeps Handy's own overlay out of sight. Off by default.</summary>
+    public bool Dictation { get; set; }
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>

@@ -147,7 +147,8 @@ internal static class GifDecoder
 
     /// <param name="maxSide">The frames are made smaller so the longer side is at most this many pixels.</param>
     /// <returns>The animation, or null if the data isn't a GIF that can be read.</returns>
-    public static GifAnimation? Decode(byte[] data, int maxSide = 320)
+    /// <param name="maxFrames">At most this many frames are kept; 1 for a still picture.</param>
+    public static GifAnimation? Decode(byte[] data, int maxSide = 320, int maxFrames = MaxFrames)
     {
         // Only a GIF whose every block was measured first goes to the decoder, cut back to its good frames.
         if (GifInspector.Check(data) is not { } checkedGif) return null;
@@ -163,12 +164,14 @@ internal static class GifDecoder
             double scale = Math.Min(1.0, maxSide / (double)Math.Max(width, height));
             int outW = Math.Max(1, (int)Math.Round(width * scale)), outH = Math.Max(1, (int)Math.Round(height * scale));
             int count = Math.Min(decoder.Frames.Count, checkedGif.Frames);
+            maxFrames = Math.Clamp(maxFrames, 1, MaxFrames);
+            if (maxFrames == 1) count = 1; // a still picture: the first frame is all that's drawn
             int budget = (int)Math.Max(1, MaxBytes / ((long)outW * outH * 4));
-            int step = Step(count, Math.Min(MaxFrames, budget));
+            int step = Step(count, Math.Min(maxFrames, budget));
 
             int stride = width * 4;
             var canvas = new byte[stride * height];
-            byte[]? saved = null;
+            byte[]? saved = null, buffer = null; // one buffer for every frame's pixels, not one each
             var frames = new List<BitmapSource>();
             var delays = new List<TimeSpan>();
             var pending = TimeSpan.Zero;
@@ -195,14 +198,14 @@ internal static class GifDecoder
                 var pixels = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
                 int fw = pixels.PixelWidth, fh = pixels.PixelHeight;
                 if (fw <= 0 || fh <= 0 || fw > GifInspector.MaxSide || fh > GifInspector.MaxSide) break; // not the frame that was checked
-                var buffer = new byte[fw * fh * 4];
+                if (buffer == null || buffer.Length < fw * fh * 4) buffer = new byte[fw * fh * 4];
                 pixels.CopyPixels(buffer, fw * 4, 0);
                 Draw(canvas, stride, width, height, buffer, fw, fh, left, top);
                 previous = (left, top, fw, fh, disposal);
 
                 pending += delay;
                 if (i % step != 0 && i != count - 1) continue;
-                frames.Add(Freeze(canvas, width, height, stride, scale));
+                frames.Add(Freeze(canvas, width, height, outW, outH));
                 delays.Add(pending);
                 pending = TimeSpan.Zero;
             }
@@ -227,17 +230,18 @@ internal static class GifDecoder
     /// <summary>Draws a frame's pixels over the canvas; GIF pixels are either seen or not, so the seen ones replace.</summary>
     internal static void Draw(byte[] canvas, int stride, int width, int height, byte[] pixels, int fw, int fh, int left, int top)
     {
-        for (int y = 0; y < fh; y++)
+        // Whole pixels at a time (one uint each), not a copy call per pixel.
+        var from = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(pixels.AsSpan(0, fw * fh * 4));
+        var to = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(canvas.AsSpan(0, stride * height));
+        int rowWidth = stride / 4;
+        int x0 = Math.Max(0, -left), x1 = Math.Min(fw, width - left);
+        for (int y = Math.Max(0, -top); y < Math.Min(fh, height - top); y++)
         {
-            int cy = top + y;
-            if (cy < 0 || cy >= height) continue;
-            for (int x = 0; x < fw; x++)
+            int src = y * fw, dst = (top + y) * rowWidth + left;
+            for (int x = x0; x < x1; x++)
             {
-                int cx = left + x;
-                if (cx < 0 || cx >= width) continue;
-                int src = (y * fw + x) * 4;
-                if (pixels[src + 3] == 0) continue;
-                Buffer.BlockCopy(pixels, src, canvas, cy * stride + cx * 4, 4);
+                uint p = from[src + x];
+                if (p >> 24 != 0) to[dst + x] = p;
             }
         }
     }
@@ -251,17 +255,38 @@ internal static class GifDecoder
         }
     }
 
-    static BitmapSource Freeze(byte[] canvas, int width, int height, int stride, double scale)
+    static BitmapSource Freeze(byte[] canvas, int width, int height, int outW, int outH)
     {
         // Bgra32 with fully seen or fully clear pixels is the same as premultiplied, which WPF draws fastest.
-        BitmapSource image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, canvas, stride);
-        if (scale < 1)
-        {
-            var smaller = new TransformedBitmap(image, new ScaleTransform(scale, scale));
-            image = new CachedBitmap(smaller, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-        }
+        // Made smaller here, straight from the canvas: no full-size copy per frame left for the garbage collector.
+        byte[] pixels = outW == width && outH == height ? canvas : Shrink(canvas, width, height, outW, outH);
+        var image = BitmapSource.Create(outW, outH, 96, 96, PixelFormats.Pbgra32, null, pixels, outW * 4);
         image.Freeze();
         return image;
+    }
+
+    /// <summary>Averages each block of canvas pixels into one; premultiplied, so clear pixels just add nothing.</summary>
+    internal static byte[] Shrink(byte[] canvas, int width, int height, int outW, int outH)
+    {
+        var result = new byte[outW * outH * 4];
+        Span<int> sum = stackalloc int[4];
+        for (int oy = 0; oy < outH; oy++)
+        {
+            int y0 = oy * height / outH, y1 = Math.Max(y0 + 1, (oy + 1) * height / outH);
+            for (int ox = 0; ox < outW; ox++)
+            {
+                int x0 = ox * width / outW, x1 = Math.Max(x0 + 1, (ox + 1) * width / outW);
+                sum.Clear();
+                for (int y = y0; y < y1; y++)
+                    for (int i = (y * width + x0) * 4, end = (y * width + x1) * 4; i < end; i += 4)
+                    {
+                        sum[0] += canvas[i]; sum[1] += canvas[i + 1]; sum[2] += canvas[i + 2]; sum[3] += canvas[i + 3];
+                    }
+                int n = (y1 - y0) * (x1 - x0), o = (oy * outW + ox) * 4;
+                for (int c = 0; c < 4; c++) result[o + c] = (byte)((sum[c] + n / 2) / n);
+            }
+        }
+        return result;
     }
 }
 
@@ -296,9 +321,10 @@ internal static class GifCache
     static string FileFor(string url) => Path.Combine(Folder, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(url)))[..32] + ".gif");
 
     /// <summary>The GIF behind a link, decoded with its longer side at most <paramref name="maxSide"/>; null if it can't be had.</summary>
-    public static Task<GifAnimation?> LoadAsync(string url, int maxSide = 320)
+    /// <param name="maxFrames">1 when it won't move: only its first frame is decoded.</param>
+    public static Task<GifAnimation?> LoadAsync(string url, int maxSide = 320, int maxFrames = GifDecoder.MaxFrames)
     {
-        string key = maxSide + " " + url;
+        string key = maxSide + " " + maxFrames + " " + url;
         lock (Gate)
         {
             if (Loading.TryGetValue(key, out var task) && !(task.IsCompleted && task.Result == null))
@@ -307,16 +333,24 @@ internal static class GifCache
                 Order.AddFirst(key);
                 return task;
             }
-            task = Task.Run(() => FetchAndDecodeAsync(url, maxSide));
+            task = Task.Run(() => FetchAndDecodeAsync(url, maxSide, maxFrames));
             Loading[key] = task;
             Order.Remove(key); // tried before and failed
             Order.AddFirst(key);
-            while (Order.Count > 1 && (Order.Count > KeepDecoded || KeptBytes() > KeepBytes))
-            {
-                Loading.Remove(Order.Last!.Value);
-                Order.RemoveLast();
-            }
+            Trim();
+            // Its size is known only once it's decoded: hold the limit again then, not just at the next request.
+            task.ContinueWith(_ => { lock (Gate) Trim(); }, TaskScheduler.Default);
             return task;
+        }
+    }
+
+    /// <summary>The oldest decoded GIFs go until at most <see cref="KeepDecoded"/> and <see cref="KeepBytes"/> are kept.</summary>
+    static void Trim()
+    {
+        while (Order.Count > 1 && (Order.Count > KeepDecoded || KeptBytes() > KeepBytes))
+        {
+            Loading.Remove(Order.Last!.Value);
+            Order.RemoveLast();
         }
     }
 
@@ -340,7 +374,7 @@ internal static class GifCache
         => Loading.Values.Where(t => t.IsCompletedSuccessfully && t.Result != null).Sum(t => t.Result!.Bytes);
 
     /// <summary>Never throws: a GIF that can't be had is null.</summary>
-    static async Task<GifAnimation?> FetchAndDecodeAsync(string url, int maxSide)
+    static async Task<GifAnimation?> FetchAndDecodeAsync(string url, int maxSide, int maxFrames)
     {
         try
         {
@@ -349,7 +383,7 @@ internal static class GifCache
             await Decoding.WaitAsync().ConfigureAwait(false);
             try
             {
-                var gif = GifDecoder.Decode(data, maxSide);
+                var gif = GifDecoder.Decode(data, maxSide, maxFrames);
                 if (gif == null) Forget(url); // a kept copy that doesn't decode is fetched again next time
                 return gif;
             }
@@ -452,27 +486,56 @@ internal static class GifPlayer
         return animation;
     }
 
-    /// <summary>Shows the GIF on the image, moving while the image is on screen (and <paramref name="animate"/>).</summary>
-    public static void Play(Image image, GifAnimation gif, bool animate = true)
+    /// <summary>
+    /// Shows the GIF on the image, moving only while the image is on screen and visible (and <paramref name="animate"/>);
+    /// with <paramref name="hover"/>, only while the mouse is over that.
+    /// </summary>
+    public static void Play(Image image, GifAnimation gif, bool animate = true, UIElement? hover = null)
     {
         if (gif.Frames.Count == 0) return;
         image.Source = gif.Frames[0];
         if (!animate || gif.Frames.Count < 2 || gif.Frames.Count != gif.Delays.Count || gif.Duration <= TimeSpan.Zero) return;
         var animation = Animation(gif);
-        void Start()
+        bool running = false;
+        Window? window = null;
+        void Update()
         {
-            try { image.BeginAnimation(Image.SourceProperty, animation); }
+            // Only in the window you're using: in a transparent window every frame copies the whole window on the CPU,
+            // and a Holm window left open behind others burned half a core on its chat's GIFs (measured).
+            bool want = image.IsLoaded && image.IsVisible && (hover == null || hover.IsMouseOver) && window?.IsActive != false;
+            if (want == running) return;
+            running = want;
+            // An endless clock keeps ticking until a garbage collection even when its image is gone or hidden: stop it.
+            try { image.BeginAnimation(Image.SourceProperty, want ? animation : null); }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { Diag.Log("GIF not animated: " + ex.Message); }
         }
-        // An endless clock keeps ticking until a garbage collection even when its image is gone: stop it.
-        image.Loaded += (_, _) => Start();
-        image.Unloaded += (_, _) => image.BeginAnimation(Image.SourceProperty, null);
-        if (image.IsLoaded) Start();
+        void Focus(object? sender, EventArgs e) => Update();
+        image.Loaded += (_, _) =>
+        {
+            window = Window.GetWindow(image);
+            if (window != null) { window.Activated += Focus; window.Deactivated += Focus; }
+            Update();
+        };
+        image.Unloaded += (_, _) =>
+        {
+            if (window != null) { window.Activated -= Focus; window.Deactivated -= Focus; } // a rebuilt bubble mustn't stay alive through it
+            window = null;
+            Update();
+        };
+        image.IsVisibleChanged += (_, _) => Update();
+        if (hover != null)
+        {
+            hover.MouseEnter += (_, _) => Update();
+            hover.MouseLeave += (_, _) => Update();
+        }
+        Update();
     }
 
     /// <summary>An image that fetches the GIF behind the link and plays it; a soft placeholder until then.</summary>
     /// <param name="fitHeight">Once the GIF is in, the height follows its shape (between a third and 1.4 times the width).</param>
-    public static FrameworkElement View(string url, double width, double height, double radius, bool animate = true, int maxSide = 320, bool fitHeight = false)
+    /// <param name="hoverOnly">Moves only while the mouse is over it (many GIFs side by side, like the picker).</param>
+    public static FrameworkElement View(string url, double width, double height, double radius, bool animate = true, int maxSide = 320, bool fitHeight = false,
+                                        bool hoverOnly = false, int maxFrames = GifDecoder.MaxFrames)
     {
         var image = new Image { Stretch = Stretch.UniformToFill, Width = width, Height = height };
         RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.LowQuality);
@@ -491,7 +554,7 @@ internal static class GifPlayer
         };
         void Clip() => host.Clip = new RectangleGeometry(new Rect(0, 0, width, host.Height), radius, radius);
         host.Loaded += (_, _) => Clip();
-        _ = LoadInto(image, label, url, animate, maxSide, gif =>
+        _ = LoadInto(image, label, url, animate, maxSide, animate ? maxFrames : 1, hoverOnly ? host : null, gif =>
         {
             if (!fitHeight) return;
             double fitted = Math.Clamp(width * gif.Height / Math.Max(1, gif.Width), width / 3, width * 1.4);
@@ -502,11 +565,11 @@ internal static class GifPlayer
     }
 
     /// <summary>Never throws: whatever goes wrong, the bubble says the GIF is unavailable and the chat goes on.</summary>
-    static async Task LoadInto(Image image, TextBlock label, string url, bool animate, int maxSide, Action<GifAnimation> loaded)
+    static async Task LoadInto(Image image, TextBlock label, string url, bool animate, int maxSide, int maxFrames, UIElement? hover, Action<GifAnimation> loaded)
     {
         try
         {
-            var gif = await GifCache.LoadAsync(url, maxSide);
+            var gif = await GifCache.LoadAsync(url, maxSide, maxFrames);
             if (gif == null || gif.Frames.Count == 0)
             {
                 label.Text = "GIF unavailable";
@@ -515,7 +578,7 @@ internal static class GifPlayer
             }
             label.Visibility = Visibility.Collapsed;
             loaded(gif);
-            Play(image, gif, animate);
+            Play(image, gif, animate, hover);
         }
         catch (Exception ex) when (ex is not (StackOverflowException or AccessViolationException))
         {
