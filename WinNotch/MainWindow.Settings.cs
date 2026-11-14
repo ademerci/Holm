@@ -112,6 +112,14 @@ public partial class MainWindow
 
     void MenuProfile_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub("profile"), DispatcherPriority.Background);
 
+    void MenuNetwork_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub(NetworkKey), DispatcherPriority.Background);
+
+    const string NetworkKey = "network";
+
+    /// <summary>Wi-Fi in the Holm window: the speed test and the connection's details.</summary>
+    static HubPage NetworkHubPage(bool demo) => new(NetworkKey, "", "Wi-Fi", "Your connection and how fast it is",
+        () => new NetworkPage(demo));
+
     /// <summary>Opens the Holm window (or brings it forward) at <paramref name="page"/>.</summary>
     void ShowHub(string? page = null)
     {
@@ -160,6 +168,7 @@ public partial class MainWindow
             : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, HubTheme.ActionButtonStyle);
         Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
-                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage());
+                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage(),
+                                  new[] { NetworkHubPage(demo != null) });
     }
 }
