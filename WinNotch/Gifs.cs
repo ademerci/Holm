@@ -497,17 +497,31 @@ internal static class GifPlayer
         if (!animate || gif.Frames.Count < 2 || gif.Frames.Count != gif.Delays.Count || gif.Duration <= TimeSpan.Zero) return;
         var animation = Animation(gif);
         bool running = false;
+        Window? window = null;
         void Update()
         {
-            bool want = image.IsLoaded && image.IsVisible && (hover == null || hover.IsMouseOver);
+            // Only in the window you're using: in a transparent window every frame copies the whole window on the CPU,
+            // and a Holm window left open behind others burned half a core on its chat's GIFs (measured).
+            bool want = image.IsLoaded && image.IsVisible && (hover == null || hover.IsMouseOver) && window?.IsActive != false;
             if (want == running) return;
             running = want;
             // An endless clock keeps ticking until a garbage collection even when its image is gone or hidden: stop it.
             try { image.BeginAnimation(Image.SourceProperty, want ? animation : null); }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { Diag.Log("GIF not animated: " + ex.Message); }
         }
-        image.Loaded += (_, _) => Update();
-        image.Unloaded += (_, _) => Update();
+        void Focus(object? sender, EventArgs e) => Update();
+        image.Loaded += (_, _) =>
+        {
+            window = Window.GetWindow(image);
+            if (window != null) { window.Activated += Focus; window.Deactivated += Focus; }
+            Update();
+        };
+        image.Unloaded += (_, _) =>
+        {
+            if (window != null) { window.Activated -= Focus; window.Deactivated -= Focus; } // a rebuilt bubble mustn't stay alive through it
+            window = null;
+            Update();
+        };
         image.IsVisibleChanged += (_, _) => Update();
         if (hover != null)
         {

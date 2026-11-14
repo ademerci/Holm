@@ -410,6 +410,7 @@ public partial class MainWindow : Window
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
         _expanded = expand;
+        if (expand) WarmEmoji();
         if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
         if (expand)

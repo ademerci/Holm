@@ -24,14 +24,24 @@ public partial class MainWindow
         _friends.GifReceived += OnGifReceived;
         _friends.ReactionReceived += OnReactionReceived;
         _friends.RemovedUs += friend => _chats.Forget(friend.Key);
-        // Color emoji read the emoji font on first use, 2–4 s that blocked the first chat. With friends to chat with,
-        // that happens in the background a little after start; without, it costs nothing.
-        if (_friends.Friends.Count > 0)
-            _ = Task.Delay(TimeSpan.FromSeconds(8)).ContinueWith(_ =>
-            {
-                try { Emoji.Wpf.EmojiData.Load(); }
-                catch (Exception ex) { Diag.Log("Emoji not loaded ahead: " + ex.Message); }
-            }, TaskScheduler.Default);
+    }
+
+    bool _emojiWarmed;
+
+    /// <summary>
+    /// Color emoji read the emoji font on first use: 2–4 s on the UI thread that blocked the first chat, and some 75 MB
+    /// that stay. So it happens in the background once a chat is near (the notch opens, with its Chats button, or a friend
+    /// writes), and only for people with friends: idle Holm doesn't pay for it (Measure-Footprint: 137 MB private on 1.11.1, 139 MB now).
+    /// </summary>
+    void WarmEmoji()
+    {
+        if (_emojiWarmed || _friends.Friends.Count == 0) return;
+        _emojiWarmed = true;
+        _ = Task.Run(() =>
+        {
+            try { Emoji.Wpf.EmojiData.Load(); }
+            catch (Exception ex) { Diag.Log("Emoji not loaded ahead: " + ex.Message); }
+        });
     }
 
     /// <summary>Whether the Holm window is in front, showing the chat with this friend.</summary>
@@ -41,6 +51,7 @@ public partial class MainWindow
     void OnChatReceived(Friend friend, string id, string text, long sent)
     {
         var message = new FriendMessage { Id = id, Mine = false, Text = text, Sent = sent, State = ChatState.Received };
+        WarmEmoji();
         Received(friend, message);
     }
 
