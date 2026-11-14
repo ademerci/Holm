@@ -143,7 +143,8 @@ public sealed class StreamHost : IAsyncDisposable
     /// <summary>A viewer who said Watch (and whether they send receipts). The host owns the channel from now on.</summary>
     public void Add(string key, string name, SecureChannel channel, bool paced = false)
     {
-        var viewer = new Viewer { Key = key, Name = name, Channel = channel, Paced = paced };
+        // Its clock starts now: DropSilent mustn't take the wait for the first receipt as 0 + forever.
+        var viewer = new Viewer { Key = key, Name = name, Channel = channel, Paced = paced, SentAt = System.Diagnostics.Stopwatch.GetTimestamp() };
         lock (_lock)
         {
             if (_ended) { channel.Dispose(); return; }

@@ -101,6 +101,18 @@ public class StreamPacingTests
     }
 
     [Fact]
+    public async Task A_paced_viewer_that_just_joined_is_not_let_go()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var (streamer, viewer) = await PairAsync();
+        await using var host = new StreamHost();
+        host.Add("new", "New", streamer, paced: true);
+        host.DropSilent(); // the capture loop does this every round, before the viewer has even been asked for receipts
+        Assert.Equal(new[] { "New" }, host.Names);
+        viewer.Dispose();
+    }
+
+    [Fact]
     public async Task A_viewer_whose_receipt_never_comes_is_let_go()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));

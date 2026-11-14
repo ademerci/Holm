@@ -31,7 +31,7 @@ public partial class MainWindow
     /// <summary>
     /// Color emoji read the emoji font on first use: 2–4 s on the UI thread that blocked the first chat, and some 75 MB
     /// that stay. So it happens in the background once a chat is near (the notch opens, with its Chats button, or a friend
-    /// writes), and only for people with friends: idle Holm doesn't pay for it (Measure-Footprint: 137 MB private on 1.11.1, 139 MB now).
+    /// writes), and only for people with friends: idle Holm doesn't pay for it until then (Measure-Footprint: 137 MB private on 1.11.1, 139 MB now).
     /// </summary>
     void WarmEmoji()
     {

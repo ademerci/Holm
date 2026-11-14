@@ -10,7 +10,7 @@ namespace WinNotch.Tests;
 /// With the real Handy on this PC (installed and running): starts dictation, checks that Holm sees it and moves Handy's
 /// overlay off screen, then cancels (nothing is transcribed or typed). Skips without Handy.
 /// </summary>
-[Trait("Category", "Local")]
+[Trait("Category", "Manual")] // it turns on the microphone: only when someone runs it on purpose
 public class HandyLiveTests
 {
     [Fact]

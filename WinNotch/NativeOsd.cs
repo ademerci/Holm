@@ -37,12 +37,13 @@ internal static class NativeOsd
         _hidden = IntPtr.Zero;
     }
 
-    /// <summary>The host window, or zero: the first NativeHWNDHost with a DirectUIHWND inside.</summary>
+    /// <summary>The host window, or zero: Explorer's first NativeHWNDHost with a DirectUIHWND inside (other apps use those classes too).</summary>
     static IntPtr Find()
     {
         IntPtr host = IntPtr.Zero;
         while ((host = FindWindowEx(IntPtr.Zero, host, "NativeHWNDHost", null)) != IntPtr.Zero)
-            if (FindWindowEx(host, IntPtr.Zero, "DirectUIHWND", null) != IntPtr.Zero) return host;
+            if (FindWindowEx(host, IntPtr.Zero, "DirectUIHWND", null) != IntPtr.Zero
+                && string.Equals(Native.ProcessNameOf(host), "explorer", StringComparison.OrdinalIgnoreCase)) return host;
         return IntPtr.Zero;
     }
 
