@@ -55,8 +55,8 @@ public partial class MainWindow
             var (host, port) = RelayEndpoint();
             var link = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.StreamPatience, wait.Token);
             var channel = new SecureChannel(link, ShareCode.Key(secret), initiator: true);
-            bool watching;
-            try { watching = await StreamProtocol.AnswerAsync(channel, wait.Token); }
+            bool watching, paced;
+            try { (watching, paced) = await StreamProtocol.AnswerAsync(channel, wait.Token); }
             catch { channel.Dispose(); throw; }
             if (!watching)
             {
@@ -65,7 +65,7 @@ public partial class MainWindow
                 return;
             }
             GoLive();
-            _stream!.Add(friend.Key, friend.Name, channel);
+            _stream!.Add(friend.Key, friend.Name, channel, paced);
             ShowPeek("", $"{friend.Name} is watching", "LIVE", null, false, HubTheme.Red);
         }
         catch (OperationCanceledException)
@@ -113,12 +113,20 @@ public partial class MainWindow
     static void CaptureLoop(StreamHost host, Int32Rect area, CancellationToken stop)
     {
         var clock = Stopwatch.StartNew();
+        int quality = StreamProtocol.StartQuality;
+        using var grabber = new ScreenCapture.Grabber(area);
         while (!stop.IsCancellationRequested)
         {
             long start = clock.ElapsedMilliseconds;
             try
             {
-                if (ScreenCapture.Jpeg(area) is { } jpeg && jpeg.Length < SecureChannel.MaxPlaintext) host.Publish(jpeg);
+                // No viewer can take a frame yet: a picture now would only be thrown away.
+                if (host.AnyReady && grabber.Jpeg(quality) is { } jpeg)
+                {
+                    if (jpeg.Length < SecureChannel.MaxPlaintext) host.Publish(jpeg);
+                    else quality = StreamProtocol.MinQuality; // a very busy screen: smaller pictures from now on
+                    quality = StreamProtocol.NextQuality(quality, host.SlowestRoundTripMs);
+                }
             }
             catch (Exception ex) { Diag.Log("Stream capture: " + ex.Message); }
             int wait = FrameMs - (int)(clock.ElapsedMilliseconds - start);
