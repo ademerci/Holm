@@ -15,18 +15,42 @@ namespace WinNotch;
 /// </summary>
 internal sealed class Spring : IEasingFunction
 {
+    /// <summary>The highest <see cref="Bounce"/>: one and a half times Holm's normal swing.</summary>
+    public const double MaxBounce = 1.5;
+
+    // Declared before the curves below, so it is set when they are made.
+    static double _bounce = 1;
+
     /// <summary>The notch opening, views popping in and rows unfolding: a natural bounce (~7 % past the end).</summary>
-    public static readonly Spring Bouncy = new(0.64);
+    public static Spring Bouncy { get; private set; } = new(0.64);
     /// <summary>Quick playful pop (~11 % past the end) for reactions and micro-interactions.</summary>
-    public static readonly Spring Snappy = new(0.58);
+    public static Spring Snappy { get; private set; } = new(0.58);
     /// <summary>The notch closing onto the edge: no overshoot, so a shrinking height never goes below zero.</summary>
     public static readonly Spring Smooth = new(1);
+
+    /// <summary>
+    /// How springy all motion is (Settings › Bouncy motion, right-click › Customize › Bounce): 0 glides in without
+    /// overshooting, 1 is Holm's normal bounce, up to <see cref="MaxBounce"/> swings further.
+    /// </summary>
+    public static double Bounce
+    {
+        get => _bounce;
+        set
+        {
+            _bounce = Math.Clamp(value, 0, MaxBounce);
+            Bouncy = new(0.64);
+            Snappy = new(0.58);
+        }
+    }
+
+    /// <summary>A damping as tuned for the normal bounce, scaled to <see cref="Bounce"/>; 1 and above stay as they are.</summary>
+    public static double Soften(double damping) => damping >= 1 ? damping : 1 - (1 - damping) * _bounce;
 
     readonly double _damping, _omega, _damped;
 
     public Spring(double damping)
     {
-        _damping = Math.Clamp(damping, 0.3, 1);
+        _damping = Math.Clamp(Soften(damping), 0.3, 1);
         // Stiff enough that what's left of the swing at the end is below 0.1 %.
         _omega = _damping >= 1 ? 9.23 : Math.Log(1000 / Math.Sqrt(1 - _damping * _damping)) / _damping;
         _damped = _damping >= 1 ? 0 : _omega * Math.Sqrt(1 - _damping * _damping);
@@ -80,7 +104,7 @@ internal struct SpringValue
     {
         Target = target;
         Response = Math.Max(response, 0.05);
-        Damping = Math.Clamp(damping, 0.25, 1.5);
+        Damping = Math.Clamp(Spring.Soften(damping), 0.25, 1.5);
         IsSettled = Math.Abs(Value - Target) <= _positionTolerance && Math.Abs(Velocity) <= _velocityTolerance;
         if (IsSettled)
         {
@@ -92,7 +116,7 @@ internal struct SpringValue
     public void Kick(double deltaVelocity, double? response = null, double? damping = null)
     {
         if (response.HasValue) Response = Math.Max(response.Value, 0.05);
-        if (damping.HasValue) Damping = Math.Clamp(damping.Value, 0.25, 1.5);
+        if (damping.HasValue) Damping = Math.Clamp(Spring.Soften(damping.Value), 0.25, 1.5);
         Velocity += deltaVelocity;
         IsSettled = false;
     }
@@ -195,8 +219,40 @@ public partial class MainWindow
         VolumeView, DownloadView, TaskView, PhoneView, ShareView, ExpandedView,
     };
 
+    static readonly (string Name, double Level)[] BounceLevels = { ("Subtle", 0.5), ("Normal", 1), ("Lively", Spring.MaxBounce) };
+
+    /// <summary>Sets every spring to the bounce the settings ask for: none while Bouncy motion is off.</summary>
+    void ApplyBounce() => Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+
+    /// <summary>Customize › Bounce: how much the springs swing past the end while Bouncy motion is on.</summary>
+    void FillBounceMenu()
+    {
+        MenuBounceLevel.Items.Clear();
+        MenuBounceLevel.IsEnabled = _settings.Bounce;
+        foreach (var (name, level) in BounceLevels)
+        {
+            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = Math.Abs(_settings.BounceLevel - level) < 0.01 };
+            item.Click += (_, _) =>
+            {
+                _settings.BounceLevel = level;
+                foreach (MenuItem choice in MenuBounceLevel.Items) choice.IsChecked = choice == item;
+                _settings.Save();
+                ApplyBounce();
+            };
+            MenuBounceLevel.Items.Add(item);
+        }
+    }
+
+    void MenuBounce_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.Bounce = MenuBounce.IsChecked;
+        _settings.Save();
+        ApplyBounce();
+    }
+
     void InitMotion()
     {
+        ApplyBounce();
         foreach (var view in AllViews)
         {
             view.RenderTransform = new ScaleTransform();

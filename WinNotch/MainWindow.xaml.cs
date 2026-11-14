@@ -1534,6 +1534,7 @@ public partial class MainWindow : Window
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
         FillSizeMenu();
+        FillBounceMenu();
         RefreshUpdateMenu();
         ListScreens(Island.ContextMenu);
     }

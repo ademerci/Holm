@@ -4,6 +4,7 @@
 
 ### Changed
 - **Physics-based, bouncier motion.** The notch's size, corner radius, shoulders and scale now run on a live damped harmonic oscillator instead of fixed-duration ease curves, so interrupting mid-flight preserves momentum and every refresh rate stays identical. Opening springs further with a softer vertical squash-and-stretch bounce, normal collapses snap back into place gently, hovering the closed notch swells slightly toward the cursor, in-place volume/peek updates give a small physical pulse, open rows cascade out, switching tools or toggling settings switches bounces lightly, and chat reaction hovers/pops use spring curves.
+- **Choose how bouncy.** *Settings › General › Bouncy motion* turns the bounce off (everything glides in without overshooting, still on springs), and right-click › *Customize › Bounce* picks *Subtle*, *Normal* or *Lively*.
 
 ### Added
 - **Chats in the tool bar.** A chat bubble in the middle of the open notch's tool row, between *Calculator* and *Clipboard*, opens your chats in the Holm window straight away.

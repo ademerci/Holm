@@ -18,6 +18,30 @@ public class MotionTests
     }
 
     [Fact]
+    public void Bounce_setting_scales_the_overshoot_and_off_never_overshoots()
+    {
+        static double Peak() => Steps().Max(t => Spring.Bouncy.Ease(t));
+        try
+        {
+            Spring.Bounce = 1;
+            double normal = Peak();
+            Spring.Bounce = 0.5;
+            double subtle = Peak();
+            Spring.Bounce = Spring.MaxBounce;
+            double lively = Peak();
+            Spring.Bounce = 0;
+            double off = Peak();
+
+            Assert.True(subtle < normal && normal < lively, $"{subtle} < {normal} < {lively}");
+            Assert.InRange(off, 0.999, 1.0005); // glides in, never past the end
+            Assert.Equal(1, Spring.Soften(1)); // already overshoot-free curves stay so
+            Assert.Equal(1, Spring.Soften(0.6)); // off: every spring is critically damped
+            Assert.Equal(1, Spring.Bouncy.Ease(1));
+        }
+        finally { Spring.Bounce = 1; }
+    }
+
+    [Fact]
     public void Closing_glides_in_without_overshoot()
     {
         double last = 0;
