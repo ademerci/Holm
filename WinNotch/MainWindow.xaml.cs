@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Dictation, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -54,7 +54,7 @@ public partial class MainWindow : Window
     string? _demoVpn = null; // README screenshots only (set in Debug builds)
 
     string? CurrentVpn => _demoVpn ?? _vpn?.Current;
-    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _fitTimer, _volumeTimer;
+    readonly DispatcherTimer _expandDelay, _collapseDelay, _peekTimer, _liveTimer, _watchTimer, _btSoon, _btLate, _btPoll, _trimTimer, _volumeTimer;
     readonly ScaleTransform[] _bars;
     readonly AnimationClock?[] _barClocks = new AnimationClock?[4];
     readonly AudioMeter _meter = new();
@@ -109,6 +109,7 @@ public partial class MainWindow : Window
         _media.Changed += OnMediaChanged;
         _chat = new MessagesService(Dispatcher, app => !_settings.MutedApps.Contains(app));
         _chat.Changed += OnMessagesChanged;
+        _chat.OtherArrived += OnOtherNotification;
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
@@ -125,8 +126,8 @@ public partial class MainWindow : Window
         _btSoon = MakeTimer(1500, ScanBluetooth, oneShot: true);
         _btLate = MakeTimer(8000, ScanBluetooth, oneShot: true);
         _btPoll = MakeTimer(60_000, ScanBluetooth);
-        _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
-        _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
+        // Never under the open Holm window: paged-out memory made its next click or keystroke wait seconds.
+        _trimTimer = MakeTimer(6000, () => { if (!_expanded && _settingsWindow == null) Native.TrimWorkingSet(); }, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
         ForgetLeftoverZips();
@@ -218,7 +219,8 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
-        if (_settings.Messages) _ = _chat.StartAsync(ask: true);
+        _chat.EveryApp = _settings.AllNotifications;
+        if (_settings.Messages || _settings.AllNotifications) _ = _chat.StartAsync(ask: true);
         StartDownloads();
         StartUpdates();
 
@@ -241,6 +243,8 @@ public partial class MainWindow : Window
         RefreshToolBar();
         CheckReminders(); // also the ones missed while the PC was off
         StartCapsLock();
+        StartMediaKeys();
+        StartDictation();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -252,6 +256,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopMotion();
         _bluetoothStopped = true;
         _btPoll.Stop();
         _btSoon.Stop();
@@ -284,6 +289,8 @@ public partial class MainWindow : Window
         ForgetClips(_clips.Clear()); // the pictures in the temp folder go with Holm
         ForgetClipFiles();
         _volume.Shutdown();
+        _mediaKeys?.Dispose(); // Windows gets its keys, and its own pop-up, back
+        StopDictation();
         _vpn?.Dispose();
         StopPrivacy();
         _chat.Stop();
@@ -402,7 +409,9 @@ public partial class MainWindow : Window
     void SetExpanded(bool expand)
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
+        _hoverBoost = false;
         _expanded = expand;
+        if (expand) WarmEmoji();
         if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
         if (expand)
@@ -434,7 +443,7 @@ public partial class MainWindow : Window
         ShowPrivacy();
         if (expand) ShowShelf();
         // Nothing to wait for when the shape didn't move (animations off): finish right after this.
-        if (expand && !_fitTimer.IsEnabled) Dispatcher.InvokeAsync(FinishOpening, DispatcherPriority.Background);
+        if (expand && !_shapeAnimating) Dispatcher.InvokeAsync(FinishOpening, DispatcherPriority.Background);
     }
 
     void ApplyState(bool animate = true)
@@ -447,6 +456,7 @@ public partial class MainWindow : Window
                    : PhoneShowing ? NotchState.Phone
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
+                   : _dictating ? NotchState.Dictation // you're talking to it right now: above a call or music
                    : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
@@ -489,6 +499,7 @@ public partial class MainWindow : Window
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
+            case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
@@ -501,33 +512,24 @@ public partial class MainWindow : Window
         // Media apps report every few seconds; only animate when the shape really changes.
         if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || scale != _shapeScale)
         {
-            double currentScale = _notchScale.ScaleX;
-            bool grow = w * h * scale * scale > Island.ActualWidth * Island.ActualHeight * currentScale * currentScale;
+            double currentScale = _scaleSpring.Value;
+            double currentArea = _wSpring.Value * _hSpring.Value * currentScale * currentScale;
+            bool grow = w * h * scale * scale > currentArea;
+            double ear = mini ? 0 : MaxEar;
             // Reserve room for both the outgoing view and the incoming scale, including spring overshoot.
-            double needed = Math.Ceiling(Math.Max(h, Island.ActualHeight) * Math.Max(scale, currentScale) * 1.12) + 2;
+            double needed = NeededWindowHeight(Math.Max(h, _hSpring.Value), Math.Max(scale, currentScale));
             (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
-            Animate(Island, WidthProperty, w, grow, animate);
-            Animate(Island, HeightProperty, h, grow, animate);
-            Animate(this, RadiusProperty, r, grow, animate);
-            Animate(this, EarProperty, mini ? 0 : MaxEar, grow, animate);
-            Animate(_notchScale, ScaleTransform.ScaleXProperty, scale, grow, animate);
-            Animate(_notchScale, ScaleTransform.ScaleYProperty, scale, grow, animate);
 
-            // The window is a layered (per-pixel alpha) window: every animation frame copies its whole
-            // surface. Keep it only as tall as needed, with a fixed width for both configured sizes
-            // so expanding and collapsing never moves the window's top-left.
-            _fitTimer.Stop();
             if (!animate)
             {
                 _shapeAnimating = false;
+                SnapShape(w, h, r, ear, scale);
                 FitWindowHeight();
             }
             else
             {
                 if (needed > Height) Height = needed;
-                _shapeAnimating = true;
-                _fitTimer.Interval = TimeSpan.FromMilliseconds((grow ? OpenMs : CloseMs) + 60);
-                _fitTimer.Start();
+                MoveShapeTo(w, h, r, ear, scale, grow, mini);
             }
         }
 
@@ -541,6 +543,7 @@ public partial class MainWindow : Window
             SetView(TimerView, target == NotchState.Timer, animate);
             SetView(FocumonView, target == NotchState.Focumon, soft);
             SetView(CallView, target == NotchState.Call, animate);
+            SetView(DictationView, target == NotchState.Dictation, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(VolumeView, target == NotchState.Volume, animate);
@@ -601,29 +604,18 @@ public partial class MainWindow : Window
         FinishOpening();
     }
 
-    static void Animate(IAnimatable target, DependencyProperty property, double to, bool grow, bool animate)
-    {
-        if (!animate)
-        {
-            target.BeginAnimation(property, null);
-            ((DependencyObject)target).SetValue(property, to);
-            return;
-        }
-        // Growing springs open with a little overshoot like the iPhone; shrinking glides in without one (height would go negative).
-        var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(grow ? OpenMs : CloseMs))
-        {
-            EasingFunction = grow ? Spring.Bouncy : Spring.Smooth,
-        };
-        target.BeginAnimation(property, animation, HandoffBehavior.SnapshotAndReplace);
-    }
-
     /// <summary>
     /// Cuts the outline (notch + shoulders) out of the backdrop. Runs on every animation frame,
     /// because the outline follows the animated size, radius and shoulder size.
     /// </summary>
     void UpdateShape()
     {
-        double w = Island.ActualWidth, h = Island.ActualHeight;
+        if (_steppingShape) return;
+        UpdateShape(Island.ActualWidth, Island.ActualHeight);
+    }
+
+    void UpdateShape(double w, double h)
+    {
         if (w <= 0 || h <= 0) return;
         double r = Math.Clamp(Radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(Ear, 0, Math.Min(MaxEar, h - r));
@@ -812,12 +804,14 @@ public partial class MainWindow : Window
         PeekBattery.Level = battery ?? 0;
         PeekBattery.Charging = charging;
 
+        bool wasPeek = _state == NotchState.Peek;
         _peekActive = true;
         _peekMessage = false;
         _peekTimer.Stop();
         _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
         _peekTimer.Start();
         ApplyState();
+        if (wasPeek && _state == NotchState.Peek) PulseNotch();
     }
 
     /// <summary>Pops out a message that just came in. The caller applies the state.</summary>
@@ -916,8 +910,18 @@ public partial class MainWindow : Window
         UpdateCallPause();
     }
 
+    /// <summary>Another app's notification, shown at the top in the notch like a message (Settings › Pop-outs).</summary>
+    void OnOtherNotification(ChatMessage notification)
+    {
+        if (!_settings.AllNotifications) return;
+        if (Silenced(notification)) { Diag.Log("Quiet hours: no pop-out"); return; }
+        ShowMessage(notification);
+        ApplyState();
+    }
+
     void OnMessagesChanged(ChatMessage? arrived)
     {
+        if (!_settings.Messages) return; // running only for every app's pop-outs
         // Already looking at that app: its messages aren't unread. (MarkRead calls back here with them cleared.)
         if (AppInFront() is { } front && _chat.Messages.Any(m => m.App == front.Key)) { _chat.MarkRead(front.Key); return; }
 
@@ -1330,12 +1334,17 @@ public partial class MainWindow : Window
     {
         _collapseDelay.Stop();
         _pickClose.Stop();
-        if (!_expanded) _expandDelay.Start();
+        if (!_expanded)
+        {
+            _expandDelay.Start();
+            if (!_hiddenForFullscreen && !TaskShowing && !_sharing && !PhoneShowing) SetHoverBoost(true);
+        }
     }
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
         _expandDelay.Stop();
+        SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
         if (_expanded) _collapseDelay.Start();
     }
@@ -1368,12 +1377,13 @@ public partial class MainWindow : Window
 
     void Play_Click(object sender, RoutedEventArgs e)
     {
+        PulseElement(PlayBtn);
         if (_info != null) SetPlayIcon(!_info.IsPlaying); // feels instant; the real state follows a moment later
         _media.PlayPause();
     }
 
-    void Prev_Click(object sender, RoutedEventArgs e) => _media.Previous();
-    void Next_Click(object sender, RoutedEventArgs e) => _media.Next();
+    void Prev_Click(object sender, RoutedEventArgs e) { PulseElement(PrevBtn); _media.Previous(); }
+    void Next_Click(object sender, RoutedEventArgs e) { PulseElement(NextBtn); _media.Next(); }
 
     void Shuffle_Click(object sender, RoutedEventArgs e)
     {
@@ -1415,10 +1425,12 @@ public partial class MainWindow : Window
         VolPeekBar.Fill = _info?.IsPlaying == true ? Progress.Fill : Brushes.White;
         VolPeekIcon.Text = muted || level < 0.005 ? "" : level < 0.34 ? "" : level < 0.67 ? "" : "";
         VolPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        bool wasVolume = _state == NotchState.Volume;
         _volumePeek = true;
         _volumeTimer.Stop();
         _volumeTimer.Start();
         ApplyState();
+        if (wasVolume && _state == NotchState.Volume) PulseNotch(16, 10, 0.04);
     }
 
     void Mute_Click(object sender, RoutedEventArgs e)
@@ -1521,6 +1533,7 @@ public partial class MainWindow : Window
         MenuReceive.IsEnabled = _settings.Beam && !TaskShowing && !_installingUpdate;
         FillFriendsMenu();
         FillSizeMenu();
+        FillBounceMenu();
         RefreshUpdateMenu();
         ListScreens(Island.ContextMenu);
     }
@@ -1644,7 +1657,7 @@ public partial class MainWindow : Window
         {
             _settings.Messages = all.IsChecked;
             _settings.Save();
-            if (!_settings.Messages) { _chat.Stop(); return; }
+            if (!_settings.Messages && !_settings.AllNotifications) { _chat.Stop(); return; }
             await _chat.StartAsync(ask: true);
             // Once refused, Windows doesn't ask again; the switch is in Settings.
             if (_chat.Access == MessagesService.AccessState.Denied) TryOpen("ms-settings:privacy-notifications");

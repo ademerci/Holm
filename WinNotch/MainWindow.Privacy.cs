@@ -58,10 +58,15 @@ public partial class MainWindow
         ShowPrivacy();
         // Say once which app started (the camera first); the dot then stays while it records. A call shows itself.
         if (_call != null) started.RemoveAll(u => u.Sensor == Sensor.Microphone && u.Key == _call.Key);
+        // Dictation shows itself too (Listening), so Handy's microphone isn't announced a second time over it.
+        if (_handy != null) started.RemoveAll(u => u.Sensor == Sensor.Microphone && IsHandy(u));
         if (started.Count == 0) return;
         var first = started[0];
         ShowPeek(first.Sensor == Sensor.Camera ? "" : "", $"{first.Name} is using the {SensorWord(first.Sensor)}", "", null, false, null);
     }
+
+    static bool IsHandy(SensorUse use)
+        => use.Name.Equals("handy", StringComparison.OrdinalIgnoreCase) || use.Key.EndsWith("handy.exe", StringComparison.OrdinalIgnoreCase);
 
     static string SensorWord(Sensor sensor) => sensor == Sensor.Camera ? "camera" : "microphone";
 

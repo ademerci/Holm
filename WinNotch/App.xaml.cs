@@ -19,6 +19,9 @@ public partial class App : Application
             // A crash before the notch is on screen would otherwise leave an invisible process behind.
             if (MainWindow is not { IsLoaded: true }) Shutdown(1);
         };
+        // A crash off the UI thread leaves at least a line in the log; a task nobody awaited doesn't take Holm down.
+        AppDomain.CurrentDomain.UnhandledException += (_, ex) => { if (ex.ExceptionObject is Exception error) Diag.Error(error); };
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ex) => { Diag.Error(ex.Exception); ex.SetObserved(); };
 
         _singleInstance = new Mutex(true, @"Local\Holm.SingleInstance", out bool first);
         if (!first)

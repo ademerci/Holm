@@ -9,58 +9,74 @@ namespace WinNotch;
 
 /// <summary>
 /// Pictures of a screen for streaming: GDI copies the screen with the mouse pointer drawn in, and the picture goes out
-/// as a JPEG at most <see cref="MaxWidth"/> wide. Windows marked with <see cref="HideFromCapture"/> (the notch, which
-/// pops out your messages, and the LIVE badge) stay out of it.
+/// as a JPEG at most <see cref="MaxSide"/> on its longer side. Windows marked with <see cref="HideFromCapture"/> (the
+/// notch, which pops out your messages, and the LIVE badge) stay out of it.
 /// </summary>
 internal static class ScreenCapture
 {
-    public const int MaxWidth = 1600;
-    const int Quality = 70;
+    /// <summary>
+    /// The longer side of a streamed picture. 1600 px at quality 70 made 150–400 KB frames, 10–25 Mbit/s at 8 a second
+    /// through a shared public relay; text stays readable at 1280.
+    /// </summary>
+    public const int MaxSide = 1280;
 
-    /// <summary>The screen's area in physical pixels as a JPEG, or null if Windows wouldn't give it (the lock screen, a UAC prompt).</summary>
-    public static byte[]? Jpeg(Int32Rect area)
+    /// <summary>
+    /// Takes pictures of one area again and again, made smaller by GDI as it copies (no full-size copy in memory), with
+    /// its DCs, bitmap and pixel buffer kept from one picture to the next. One capture thread only.
+    /// </summary>
+    public sealed class Grabber : IDisposable
     {
-        if (area.Width <= 0 || area.Height <= 0) return null;
-        IntPtr screen = GetDC(IntPtr.Zero);
-        IntPtr memory = CreateCompatibleDC(screen);
-        IntPtr bitmap = CreateCompatibleBitmap(screen, area.Width, area.Height);
-        IntPtr old = SelectObject(memory, bitmap);
-        try
+        readonly Int32Rect _area;
+        readonly int _width, _height;
+        readonly IntPtr _screen, _memory, _bitmap;
+        readonly byte[] _pixels;
+
+        public Grabber(Int32Rect area, int maxSide = MaxSide)
         {
-            if (!BitBlt(memory, 0, 0, area.Width, area.Height, screen, area.X, area.Y, SRCCOPY | CAPTUREBLT)) return null;
-            DrawPointer(memory, area);
+            _area = area;
+            (_width, _height) = Sharing.StreamProtocol.FitWithin(Math.Max(1, area.Width), Math.Max(1, area.Height), maxSide);
+            _screen = GetDC(IntPtr.Zero);
+            _memory = CreateCompatibleDC(_screen);
+            _bitmap = CreateCompatibleBitmap(_screen, _width, _height);
+            SetStretchBltMode(_memory, HALFTONE);
+            SetBrushOrgEx(_memory, 0, 0, IntPtr.Zero);
+            _pixels = new byte[_width * _height * 4];
+        }
+
+        /// <summary>The area now as a JPEG, or null if Windows wouldn't give it (the lock screen, a UAC prompt).</summary>
+        public byte[]? Jpeg(int quality)
+        {
+            IntPtr old = SelectObject(_memory, _bitmap);
+            try
+            {
+                if (!StretchBlt(_memory, 0, 0, _width, _height, _screen, _area.X, _area.Y, _area.Width, _area.Height, SRCCOPY | CAPTUREBLT)) return null;
+                DrawPointer(_memory, _area, _width / (double)Math.Max(1, _area.Width));
+            }
+            finally { SelectObject(_memory, old); } // GetDIBits wants the bitmap out of the DC
             var header = new BITMAPINFOHEADER
             {
-                biSize = Marshal.SizeOf<BITMAPINFOHEADER>(), biWidth = area.Width, biHeight = -area.Height, // top-down
+                biSize = Marshal.SizeOf<BITMAPINFOHEADER>(), biWidth = _width, biHeight = -_height, // top-down
                 biPlanes = 1, biBitCount = 32,
             };
-            var pixels = new byte[area.Width * area.Height * 4];
-            SelectObject(memory, old); // GetDIBits wants the bitmap out of the DC
-            old = IntPtr.Zero;
-            if (GetDIBits(screen, bitmap, 0, (uint)area.Height, pixels, ref header, 0) == 0) return null;
-            BitmapSource picture = BitmapSource.Create(area.Width, area.Height, 96, 96, PixelFormats.Bgr32, null, pixels, area.Width * 4);
-            if (area.Width > MaxWidth)
-            {
-                double scale = (double)MaxWidth / area.Width;
-                picture = new TransformedBitmap(picture, new ScaleTransform(scale, scale));
-            }
-            var jpeg = new JpegBitmapEncoder { QualityLevel = Quality };
+            if (GetDIBits(_screen, _bitmap, 0, (uint)_height, _pixels, ref header, 0) == 0) return null;
+            var picture = BitmapSource.Create(_width, _height, 96, 96, PixelFormats.Bgr32, null, _pixels, _width * 4);
+            var jpeg = new JpegBitmapEncoder { QualityLevel = Math.Clamp(quality, 1, 100) };
             jpeg.Frames.Add(BitmapFrame.Create(picture));
             using var stream = new MemoryStream();
             jpeg.Save(stream);
             return stream.ToArray();
         }
-        finally
+
+        public void Dispose()
         {
-            if (old != IntPtr.Zero) SelectObject(memory, old);
-            DeleteObject(bitmap);
-            DeleteDC(memory);
-            ReleaseDC(IntPtr.Zero, screen);
+            DeleteObject(_bitmap);
+            DeleteDC(_memory);
+            ReleaseDC(IntPtr.Zero, _screen);
         }
     }
 
     /// <summary>The mouse pointer where it is, as viewers expect to see it.</summary>
-    static void DrawPointer(IntPtr dc, Int32Rect area)
+    static void DrawPointer(IntPtr dc, Int32Rect area, double scale = 1)
     {
         var info = new CURSORINFO { cbSize = Marshal.SizeOf<CURSORINFO>() };
         if (!GetCursorInfo(ref info) || (info.flags & CURSOR_SHOWING) == 0 || info.hCursor == IntPtr.Zero) return;
@@ -71,7 +87,9 @@ internal static class ScreenCapture
             if (icon.hbmMask != IntPtr.Zero) DeleteObject(icon.hbmMask);
             if (icon.hbmColor != IntPtr.Zero) DeleteObject(icon.hbmColor);
         }
-        DrawIconEx(dc, info.ptScreenPos.X - area.X - hotX, info.ptScreenPos.Y - area.Y - hotY, info.hCursor, 0, 0, 0, IntPtr.Zero, DI_NORMAL);
+        int size = scale < 1 ? Math.Max(12, (int)Math.Round(32 * scale)) : 0; // 0: the pointer's own size
+        DrawIconEx(dc, (int)Math.Round((info.ptScreenPos.X - area.X - hotX) * scale), (int)Math.Round((info.ptScreenPos.Y - area.Y - hotY) * scale),
+                   info.hCursor, size, size, 0, IntPtr.Zero, DI_NORMAL);
     }
 
     /// <summary>Keeps a window out of screen pictures (this one's and every other app's), or lets it back in.</summary>
@@ -83,6 +101,7 @@ internal static class ScreenCapture
     }
 
     const uint SRCCOPY = 0x00CC0020, CAPTUREBLT = 0x40000000, WDA_NONE = 0, WDA_EXCLUDEFROMCAPTURE = 0x11;
+    const int HALFTONE = 4;
     const int CURSOR_SHOWING = 1, DI_NORMAL = 3;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -109,6 +128,9 @@ internal static class ScreenCapture
     [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr dc);
     [DllImport("gdi32.dll")] static extern bool BitBlt(IntPtr dest, int x, int y, int width, int height, IntPtr source, int sx, int sy, uint rop);
+    [DllImport("gdi32.dll")] static extern bool StretchBlt(IntPtr dest, int x, int y, int width, int height, IntPtr source, int sx, int sy, int sw, int sh, uint rop);
+    [DllImport("gdi32.dll")] static extern int SetStretchBltMode(IntPtr dc, int mode);
+    [DllImport("gdi32.dll")] static extern bool SetBrushOrgEx(IntPtr dc, int x, int y, IntPtr previous);
     [DllImport("gdi32.dll")] static extern int GetDIBits(IntPtr dc, IntPtr bitmap, uint start, uint lines, byte[] bits, ref BITMAPINFOHEADER info, uint usage);
     [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO info);
     [DllImport("user32.dll")] static extern bool GetIconInfo(IntPtr icon, out ICONINFO info);

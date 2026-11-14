@@ -175,7 +175,7 @@
         <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource NotchButton}">
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="32"/>
-            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Margin" Value="2,0"/>
         </Style>
 
         <!-- A whole row you can click (the messages in the open notch) -->
@@ -241,6 +241,7 @@
                         <MenuItem x:Name="MenuFriends" Header="Friends"/>
                         <Separator/>
                         <MenuItem x:Name="MenuFriendsHub" Header="Friends and chat…" Click="MenuFriendsHub_Click"/>
+                        <MenuItem x:Name="MenuNetwork" Header="Wi-Fi and speed test…" Click="MenuNetwork_Click"/>
                         <MenuItem x:Name="MenuSettings" Header="Settings…" Click="MenuSettings_Click"/>
                         <MenuItem x:Name="MenuCustomize" Header="Customize">
                             <!-- Show messages, then one switch per app; filled in when the menu opens -->
@@ -253,12 +254,15 @@
                             <MenuItem x:Name="MenuAi" Header="AI button"/>
                             <MenuItem x:Name="MenuCollapsedSize" Header="Collapsed size"/>
                             <MenuItem x:Name="MenuExpandedSize" Header="Expanded size"/>
+                            <!-- Subtle / Normal / Lively; filled when the menu opens -->
+                            <MenuItem x:Name="MenuBounceLevel" Header="Bounce"/>
                         </MenuItem>
                         <!-- The switches the settings window shows: their handlers apply each setting. Never shown here. -->
                         <MenuItem x:Name="SettingsSwitches" Visibility="Collapsed">
                             <MenuItem x:Name="MenuMediaControls" Header="Media controls" ToolTip="Show music and video controls, artwork and track details. On by default." IsCheckable="True" Click="MenuMediaControls_Click"/>
                             <MenuItem x:Name="MenuWeatherAutoLocation" Header="Set up weather using approximate location" ToolTip="If no city is saved, use Windows location once. Rounded coordinates go to Open-Meteo. Respects Windows location services; no IP lookup service." IsCheckable="True" Click="MenuWeatherAutoLocation_Click"/>
                             <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
+                            <MenuItem x:Name="MenuBounce" Header="Bouncy motion" IsCheckable="True" Click="MenuBounce_Click"/>
                             <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>
                             <MenuItem x:Name="MenuMini" Header="Minimize when idle" IsCheckable="True" Click="MenuMini_Click"/>
                             <MenuItem x:Name="MenuAutostart" Header="Start with Windows" IsCheckable="True" Click="MenuAutostart_Click"/>
@@ -272,6 +276,9 @@
                             <MenuItem x:Name="MenuColorPicker" Header="Color picker" IsCheckable="True" Click="MenuColorPicker_Click"/>
                             <MenuItem x:Name="MenuFocumon" Header="Focumon" ToolTip="Show your Focumon monster and timer in the closed notch (instead of weather) and in the open bar. Needs the Focumon for Holm browser extension (extension/focumon in the repo)." IsCheckable="True" Click="MenuFocumon_Click"/>
                             <MenuItem x:Name="MenuCapsLock" Header="Caps Lock hint" IsCheckable="True" Click="MenuCapsLock_Click"/>
+                            <MenuItem x:Name="MenuAllNotifications" Header="All notifications in the notch" IsCheckable="True" Click="MenuAllNotifications_Click"/>
+                            <MenuItem x:Name="MenuNotchOnlyPopups" Header="Volume and media only in the notch" IsCheckable="True" Click="MenuNotchOnlyPopups_Click"/>
+                            <MenuItem x:Name="MenuDictation" Header="Dictation with Handy" IsCheckable="True" Click="MenuDictation_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
                             <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>
@@ -373,6 +380,17 @@
                                        Foreground="#FFFF453A" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed"/>
                             <TextBlock x:Name="CallTime" FontSize="13" FontWeight="SemiBold" Foreground="#FF30D158" VerticalAlignment="Center"/>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- Dictation: Handy listens (Settings › Calls and privacy › Dictation with Handy) -->
+                    <Grid x:Name="DictationView" Opacity="0" IsHitTestVisible="False" Margin="14,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Ellipse x:Name="DictationDot" Width="8" Height="8" Fill="#FF9B8CFF" VerticalAlignment="Center"/>
+                            <TextBlock Text="&#xE720;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="#FF9B8CFF"
+                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock x:Name="DictationText" Text="Listening" FontSize="13" FontWeight="SemiBold" Foreground="#FFC9C1FF"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Timer: a timer runs and nothing plays -->
@@ -541,6 +559,10 @@
                                 </Button>
                                 <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
                                     <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <!-- Not a page: opens the chats in the Holm window. In the middle of the row, between Calculator and Clipboard -->
+                                <Button x:Name="ChatsToolBtn" Style="{StaticResource ToolButton}" ToolTip="Chats" Click="ChatsTool_Click">
+                                    <TextBlock Text="&#xE8BD;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                                 <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
                                     <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>

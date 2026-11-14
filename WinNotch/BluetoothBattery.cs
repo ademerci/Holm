@@ -27,17 +27,26 @@ internal sealed class BtDevice
     {
         get
         {
+            const string Headphones = "", Mouse = "", Keyboard = "", Controller = "", Pen = "";
             uint major = (ClassOfDevice >> 8) & 0x1F;
-            if (major == 0x04) return ""; // audio / video -> headphones
-            if (major == 0x05) return ((ClassOfDevice >> 6) & 0x3) == 2 ? "" : ((ClassOfDevice >> 2) & 0xF) == 2 ? "" : "";
+            if (major == 0x04) return Headphones; // audio / video
+            if (major == 0x05)
+            {
+                // Peripheral: bits 6-7 say keyboard (1), pointing device (2) or both (3, a keyboard with a touchpad).
+                uint kind = (ClassOfDevice >> 6) & 0x3;
+                if (kind == 2) return Mouse;
+                if (kind != 0) return Keyboard;
+                if (((ClassOfDevice >> 2) & 0xF) is 1 or 2) return Controller; // joystick / gamepad
+            }
             if (major == 0x02) return "";
 
+            // Bluetooth LE devices carry no class: go by the name. Keyboards first, so "MX Keys" isn't a mouse.
             var n = Name.ToLowerInvariant();
-            if (Regex.IsMatch(n, "buds|pods|head|kopfh|ear|anc|crusher|wh-|wf-|bose|beats|jbl|sony|sennheiser|jabra")) return "";
-            if (Regex.IsMatch(n, "mouse|maus|^mx ")) return "";
-            if (Regex.IsMatch(n, "keyboard|tastatur|keys")) return "";
-            if (Regex.IsMatch(n, "controller|xbox|dualsense|gamepad")) return "";
-            if (Regex.IsMatch(n, "pen|stift")) return "";
+            if (Regex.IsMatch(n, "keyboard|tastatur|keys|clavier|teclado")) return Keyboard;
+            if (Regex.IsMatch(n, "mouse|maus|^mx |trackball|trackpad")) return Mouse;
+            if (Regex.IsMatch(n, "buds|pods|head|kopfh|ear|anc|crusher|wh-|wf-|bose|beats|jbl|sony|sennheiser|jabra")) return Headphones;
+            if (Regex.IsMatch(n, "controller|xbox|dualsense|gamepad")) return Controller;
+            if (Regex.IsMatch(n, "pen|stift")) return Pen;
             return "";
         }
     }

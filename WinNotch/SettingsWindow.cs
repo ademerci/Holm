@@ -17,8 +17,8 @@ internal sealed record SettingsSwitch(MenuItem Item, string Glyph, string? Help 
 internal sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
 
 /// <summary>
-/// The Holm window: a sidebar with your friends, chat and achievements on top and the settings below, one page at a
-/// time. Switches and the profile stage a draft; Apply raises the hidden menu entries' handlers to save the changes.
+/// The Holm window: a sidebar with your friends, chat and achievements on top, then tools (Wi-Fi) and the settings
+/// below, one page at a time. Switches and the profile stage a draft; Apply raises the hidden menu entries' handlers to save the changes.
 /// </summary>
 internal sealed class SettingsWindow : Window
 {
@@ -33,7 +33,7 @@ internal sealed class SettingsWindow : Window
     readonly Dictionary<string, (Border Item, TextBlock Glyph, Border Badge, TextBlock BadgeText)> _navItems = new();
     readonly Dictionary<string, FrameworkElement> _settingsPages = new();
     readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
-    readonly IReadOnlyList<HubPage> _social;
+    readonly IReadOnlyList<HubPage> _social, _tools;
     IInputElement? _previousFocus;
     HubView? _shownView;
     bool HasChanges => _rows.Any(r => r.Item.IsChecked != r.Switch.IsOn) || _profile?.HasChanges == true;
@@ -47,14 +47,17 @@ internal sealed class SettingsWindow : Window
     /// <param name="sync">Checks the menu entries as the settings stand, before the switches are shown.</param>
     /// <param name="profile">Your profile, the first settings page, saved with the switches.</param>
     /// <param name="social">Friends, chat and achievements: the pages above the settings.</param>
+    /// <param name="tools">Pages between the social ones and the settings (Wi-Fi).</param>
     /// <param name="me">Your face and name for the top of the sidebar; clicking it opens the profile.</param>
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, bool animate, Action sync, ProfileEditor? profile = null,
-                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null, FrameworkElement? updates = null)
+                          IReadOnlyList<HubPage>? social = null, Func<FrameworkElement>? me = null, FrameworkElement? updates = null,
+                          IReadOnlyList<HubPage>? tools = null, string? start = null)
     {
         _animate = animate;
         _sync = sync;
         _profile = profile;
         _social = social ?? Array.Empty<HubPage>();
+        _tools = tools ?? Array.Empty<HubPage>();
         sync();
         Title = "Holm";
         WindowStyle = WindowStyle.None;
@@ -64,7 +67,9 @@ internal sealed class SettingsWindow : Window
         Width = 980;
         Height = Math.Min(740, SystemParameters.WorkArea.Height - 24);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Topmost = true; // the notch is topmost too; this must not open behind it
+        // Not always on top: an ordinary window that comes forward when it opens and lets other windows over it. The notch
+        // collapses before it opens, so the notch can't hide it.
+        Topmost = false;
         FontFamily = HubTheme.Text;
         FontSize = 13;
         Foreground = Brushes.White;
@@ -102,6 +107,16 @@ internal sealed class SettingsWindow : Window
         {
             _nav.Children.Add(HubTheme.Caption("Friends"));
             foreach (var page in _social)
+            {
+                _titles[page.Key] = (page.Title, page.Subtitle);
+                _nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
+            }
+            _nav.Children.Add(new Border { Height = 14 });
+        }
+        if (_tools.Count > 0)
+        {
+            _nav.Children.Add(HubTheme.Caption("Tools"));
+            foreach (var page in _tools)
             {
                 _titles[page.Key] = (page.Title, page.Subtitle);
                 _nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
@@ -193,9 +208,16 @@ internal sealed class SettingsWindow : Window
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(14),
             Margin = new Thickness(16), // room for the shadow and modal blur
-            Effect = new DropShadowEffect { BlurRadius = 28, ShadowDepth = 4, Opacity = 0.5 },
             Child = columns,
         };
+        // The shadow is its own layer, drawn once and kept as a bitmap. On the content itself, every change inside (a GIF
+        // frame, a caret blink) blurred the whole 980 × 740 window again, on the CPU of a transparent window.
+        layers.Children.Add(new Border
+        {
+            Background = HubTheme.Panel, CornerRadius = new CornerRadius(14), Margin = new Thickness(16), IsHitTestVisible = false,
+            Effect = new DropShadowEffect { BlurRadius = 28, ShadowDepth = 4, Opacity = 0.5 },
+            CacheMode = new BitmapCache(),
+        });
         layers.Children.Add(_surface);
         // Covers the whole window, so only the background blurs behind a question.
         _dialog = new Border
@@ -208,7 +230,9 @@ internal sealed class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
-        Navigate(_social.Count > 0 ? _social[0].Key : profile != null ? ProfileKey : groups[0].Key);
+        // Straight to the page asked for: building the first one (Activity pings every friend) only to leave it cost seconds.
+        string first = _social.Count > 0 ? _social[0].Key : profile != null ? ProfileKey : groups[0].Key;
+        Navigate(start != null && _titles.ContainsKey(start) ? start : first);
         RefreshApplyState();
         PreviewKeyDown += (_, e) =>
         {
@@ -230,7 +254,32 @@ internal sealed class SettingsWindow : Window
         Closed += (_, _) => _shownView?.Detach();
     }
 
-    /// <summary>Opens a page: a social one by its key, "profile", or a group of switches by its key.</summary>
+    /// <summary>
+    /// In front of every window now, without staying there: the notch never takes the focus, so Windows may refuse to bring
+    /// a window of ours forward (tried live: a moment of topmost wasn't enough). It stays in front until you first click
+    /// somewhere else, or for 10 seconds if Windows never lets it be the active window, then it's an ordinary window.
+    /// </summary>
+    public void BringForward()
+    {
+        Topmost = true;
+        Activate();
+        if (_forward != null) { _forward.Stop(); _forward.Start(); return; }
+        _forward = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        void Release(object? sender, EventArgs e)
+        {
+            Deactivated -= Release;
+            _forward?.Stop();
+            _forward = null;
+            Topmost = false;
+        }
+        _forward.Tick += Release;
+        Deactivated += Release;
+        _forward.Start();
+    }
+
+    System.Windows.Threading.DispatcherTimer? _forward;
+
+    /// <summary>Opens a page: a social one or a tool by its key, "profile", or a group of switches by its key.</summary>
     public void Navigate(string key)
     {
         if (!_titles.ContainsKey(key)) return;
@@ -238,7 +287,7 @@ internal sealed class SettingsWindow : Window
         _shownView = null;
         Page = key;
         bool settings = _settingsPages.TryGetValue(key, out var page);
-        if (!settings && _social.FirstOrDefault(p => p.Key == key) is { } social)
+        if (!settings && _social.Concat(_tools).FirstOrDefault(p => p.Key == key) is { } social)
         {
             _shownView = social.Build();
             page = _shownView;
@@ -267,7 +316,7 @@ internal sealed class SettingsWindow : Window
         }
     }
 
-    /// <summary>The page shown now, if it's one of the social ones.</summary>
+    /// <summary>The page shown now, if it's one of the social ones or a tool.</summary>
     public HubView? ShownView => _shownView;
 
     /// <summary>Shows each switch as its menu entry stands now.</summary>
@@ -474,9 +523,9 @@ internal sealed class ToggleSwitch : FrameworkElement
             Position = on ? 1 : 0;
             return;
         }
-        BeginAnimation(PositionProperty, new DoubleAnimation(on ? 1 : 0, TimeSpan.FromMilliseconds(160))
+        BeginAnimation(PositionProperty, new DoubleAnimation(on ? 1 : 0, TimeSpan.FromMilliseconds(240))
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            EasingFunction = Spring.Bouncy,
         });
     }
 
@@ -489,6 +538,6 @@ internal sealed class ToggleSwitch : FrameworkElement
             (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
             (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
         dc.DrawRoundedRectangle(track, null, new Rect(0, 0, 40, 24), 12, 12);
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * t, 12), 10, 10);
+        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
     }
 }

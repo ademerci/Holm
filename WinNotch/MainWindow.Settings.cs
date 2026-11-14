@@ -19,6 +19,7 @@ public partial class MainWindow
         new SettingsGroup("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new SettingsSwitch[]
         {
             new(MenuAnim, "", "Smooth transitions and the moving equalizer."),
+            new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
@@ -41,6 +42,8 @@ public partial class MainWindow
             new(MenuScreenshots, "", "A new screenshot pops out with Send and Shelf."),
             new(MenuScreenshotText, "", "Read the text in a screenshot with Windows' own OCR."),
             new(MenuCapsLock, "", "The notch says when Caps Lock goes on or off."),
+            new(MenuAllNotifications, "", "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."),
+            new(MenuNotchOnlyPopups, "", "Holm takes the volume and media keys and changes the volume or track itself, so Windows' own pop-up doesn't show and the notch does. Brightness keys stay with Windows."),
             new(MenuDiskWarning, "", "One warning when the system drive runs low."),
             new(MenuUsbDrives, "", "USB sticks pop out with Open and Eject."),
             new(MenuConnectivity, "", "Says when the internet drops and when it's back."),
@@ -50,6 +53,7 @@ public partial class MainWindow
             new(MenuCalls, "", "Shows a call with its time and a mute button."),
             new(MenuPauseForCalls, "", "Music pauses when a call starts and plays on after."),
             new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
+            new(MenuDictation, "", "Dictate with Handy, free and offline: the notch shows when it listens, and Handy's own overlay stays out of sight. Holm finds Handy or offers to install it."),
             new(MenuVpn, "", "A small lock while a VPN is connected."),
             new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds."),
         }),
@@ -75,6 +79,7 @@ public partial class MainWindow
     void SyncSwitches()
     {
         MenuAnim.IsChecked = _settings.Animations;
+        MenuBounce.IsChecked = _settings.Bounce;
         MenuReactiveEq.IsChecked = _settings.ReactiveEqualizer;
         MenuMini.IsChecked = _settings.MiniIdle;
         MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
@@ -100,6 +105,9 @@ public partial class MainWindow
         MenuFocumon.IsChecked = _settings.Focumon;
         MenuScreenshotText.IsChecked = _settings.ScreenshotText;
         MenuCapsLock.IsChecked = _settings.CapsLock;
+        MenuAllNotifications.IsChecked = _settings.AllNotifications;
+        MenuNotchOnlyPopups.IsChecked = _settings.NotchOnlyPopups;
+        MenuDictation.IsChecked = _settings.Dictation;
         MenuDiskWarning.IsChecked = _settings.DiskWarning;
         MenuUsbDrives.IsChecked = _settings.UsbDrives;
         MenuConnectivity.IsChecked = _settings.Connectivity;
@@ -115,6 +123,14 @@ public partial class MainWindow
 
     void MenuProfile_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub("profile"), DispatcherPriority.Background);
 
+    void MenuNetwork_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => ShowHub(NetworkKey), DispatcherPriority.Background);
+
+    const string NetworkKey = "network";
+
+    /// <summary>Wi-Fi in the Holm window: the speed test and the connection's details.</summary>
+    static HubPage NetworkHubPage(bool demo) => new(NetworkKey, "", "Wi-Fi", "Your connection and how fast it is",
+        () => new NetworkPage(demo));
+
     /// <summary>Opens the Holm window (or brings it forward) at <paramref name="page"/>.</summary>
     async void ShowHub(string? page = null)
     {
@@ -126,13 +142,13 @@ public partial class MainWindow
         }
         if (_settingsWindow == null)
         {
-            _settingsWindow = MakeSettingsWindow();
+            _settingsWindow = MakeSettingsWindow(start: page);
             _settingsWindow.Closed += OnHubClosed;
             _settingsWindow.Show();
         }
-        if (page != null) _settingsWindow.Navigate(page);
+        else if (page != null) _settingsWindow.Navigate(page);
         if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
-        _settingsWindow.Activate();
+        _settingsWindow.BringForward();
     }
 
     DispatcherTimer? _handBack;
@@ -160,7 +176,7 @@ public partial class MainWindow
     }
 
     /// <param name="demo">For snapshots: a made-up profile in place of yours, and Apply saves nothing.</param>
-    SettingsWindow MakeSettingsWindow(ProfileDraft? demo = null)
+    SettingsWindow MakeSettingsWindow(ProfileDraft? demo = null, string? start = null)
     {
         var version = RunningVersion;
         var profile = demo != null
@@ -168,6 +184,7 @@ public partial class MainWindow
             : new ProfileEditor(Native.DisplayName(), CurrentProfile, ApplyProfile, HubTheme.ActionButtonStyle);
         Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
-                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage());
+                                  HubPages(demo != null), () => MeCard(current()), UpdatesPage(),
+                                  new[] { NetworkHubPage(demo != null) }, start);
     }
 }

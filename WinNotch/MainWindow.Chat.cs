@@ -26,6 +26,24 @@ public partial class MainWindow
         _friends.RemovedUs += friend => _chats.Forget(friend.Key);
     }
 
+    bool _emojiWarmed;
+
+    /// <summary>
+    /// Color emoji read the emoji font on first use: 2–4 s on the UI thread that blocked the first chat, and some 75 MB
+    /// that stay. So it happens in the background once a chat is near (the notch opens, with its Chats button, or a friend
+    /// writes), and only for people with friends: idle Holm doesn't pay for it until then (Measure-Footprint: 137 MB private on 1.11.1, 139 MB now).
+    /// </summary>
+    void WarmEmoji()
+    {
+        if (_emojiWarmed || _friends.Friends.Count == 0) return;
+        _emojiWarmed = true;
+        _ = Task.Run(() =>
+        {
+            try { Emoji.Wpf.EmojiData.Load(); }
+            catch (Exception ex) { Diag.Log("Emoji not loaded ahead: " + ex.Message); }
+        });
+    }
+
     /// <summary>Whether the Holm window is in front, showing the chat with this friend.</summary>
     bool Reading(Friend friend)
         => _settingsWindow is { IsActive: true, ShownView: ChatPage page } && page.Friend?.Key == friend.Key;
@@ -33,6 +51,7 @@ public partial class MainWindow
     void OnChatReceived(Friend friend, string id, string text, long sent)
     {
         var message = new FriendMessage { Id = id, Mine = false, Text = text, Sent = sent, State = ChatState.Received };
+        WarmEmoji();
         Received(friend, message);
     }
 
@@ -79,6 +98,16 @@ public partial class MainWindow
         HideTask();
         if (_chats.Find(friend.Key, message.Id) is { } stored && stored.MyReaction != emoji) ReactTo(friend, stored, emoji);
         ShowPeek(null, $"Reacted {emoji}", "", null, false, null, seconds: 2);
+    }
+
+    /// <summary>A GIF's endless clock on the notification's picture would tick on in the always-open notch: stop it.</summary>
+    void StopTaskGif()
+    {
+        if (TaskThumb.Background is System.Windows.Media.ImageBrush { HasAnimatedProperties: true } brush)
+        {
+            brush.BeginAnimation(System.Windows.Media.ImageBrush.ImageSourceProperty, null);
+            TaskThumb.Background = null;
+        }
     }
 
     /// <summary>The GIF moves in the notification's picture, small, while the notification shows.</summary>
@@ -216,6 +245,12 @@ public partial class MainWindow
     {
         _settings.ChatPopups = MenuChatPopups.IsChecked;
         _settings.Save();
+    }
+
+    void ChatsTool_Click(object sender, RoutedEventArgs e)
+    {
+        SetExpanded(false);
+        MenuFriendsHub_Click(sender, e);
     }
 
     void MenuFriendsHub_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => OpenChat(null), System.Windows.Threading.DispatcherPriority.Background);

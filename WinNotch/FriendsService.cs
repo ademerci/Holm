@@ -26,6 +26,11 @@ internal sealed class FriendsService
 
     /// <summary>How long the sender waits for the friend's notch to answer; older invitations are stale.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+    /// <summary>
+    /// How long a sender waits on the relay for the friend's notch. Longer than <see cref="Patience"/>, which the receiver
+    /// holds the note's age to: the note's trip through the inbox and their connection to the relay come on top of it.
+    /// </summary>
+    public static readonly TimeSpan SendPatience = TimeSpan.FromSeconds(40);
     /// <summary>How long a stream invitation waits for the friend to click Watch.</summary>
     public static readonly TimeSpan StreamPatience = TimeSpan.FromSeconds(60);
     /// <summary>An older "are you there?" or answer is history: it came in while Holm wasn't running.</summary>

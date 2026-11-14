@@ -11,6 +11,10 @@ namespace WinNotch;
 internal sealed class AppSettings
 {
     public bool Animations { get; set; } = true;
+    /// <summary>The notch and its parts spring into place with a bounce; off, they glide in without overshooting.</summary>
+    public bool Bounce { get; set; } = true;
+    /// <summary>How far the bounce swings: 1 is normal, 0.5 subtle, up to 1.5 lively.</summary>
+    public double BounceLevel { get; set; } = 1;
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
@@ -77,6 +81,12 @@ internal sealed class AppSettings
     public bool Focumon { get; set; } = true;
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
+    /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>
+    public bool AllNotifications { get; set; }
+    /// <summary>Holm takes the volume and media keys, so Windows' own pop-up stays away and only the notch shows them. Off by default.</summary>
+    public bool NotchOnlyPopups { get; set; }
+    /// <summary>Holm shows Handy's dictation in the notch and keeps Handy's own overlay out of sight. Off by default.</summary>
+    public bool Dictation { get; set; }
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>

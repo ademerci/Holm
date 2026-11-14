@@ -329,6 +329,21 @@ public class UpdateServiceTests
         return stream.ToArray();
     }
 
+    // The release workflow, the website and the updater only agree on asset names by string; nothing else ties them.
+    [Fact]
+    public void Release_workflow_publishes_the_assets_the_updater_and_website_look_for()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root != null && !Directory.Exists(Path.Combine(root.FullName, ".github"))) root = root.Parent;
+        Assert.True(root != null, "Run from a checkout of the repository.");
+        string workflow = File.ReadAllText(Path.Combine(root!.FullName, ".github", "workflows", "release.yml"));
+        string website = File.ReadAllText(Path.Combine(root.FullName, "website", "src", "releases.mjs"));
+
+        // The updater downloads the versioned ZIP; the website links to the bare exe.
+        Assert.Contains($"\"assets/{UpdateService.AssetName("v$env:VERSION")}\" \"assets/Holm.exe\"", workflow);
+        Assert.Contains("a.name === 'Holm.exe'", website);
+    }
+
     static HttpClient Client(Func<HttpRequestMessage, HttpResponseMessage> response) => new(new FakeHandler(response));
     static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
     static HttpResponseMessage Bytes(byte[] bytes) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
