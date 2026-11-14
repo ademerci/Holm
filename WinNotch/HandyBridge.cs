@@ -39,6 +39,11 @@ internal sealed class HandyBridge : IDisposable
 
     readonly WinEventProc _proc; // kept alive while the hooks are in
     readonly Dispatcher _dispatcher;
+    /// <summary>
+    /// While dictating, a look once a second: live, the first hide after start once went unheard and the notch kept
+    /// saying Listening. Events stay the fast path; this only makes sure the state can't get stuck.
+    /// </summary>
+    readonly DispatcherTimer _check;
     IntPtr _showHook, _moveHook;
     IntPtr _overlay;
     uint _overlayPid;
@@ -61,6 +66,8 @@ internal sealed class HandyBridge : IDisposable
     {
         dispatcher.VerifyAccess();
         _dispatcher = dispatcher;
+        _check = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Update(), dispatcher);
+        _check.Stop();
         _proc = OnEvent;
         // Only show/hide/destroy system-wide; moves (which include every mouse move) are hooked for Handy alone.
         _showHook = SetWinEventHook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, IntPtr.Zero, _proc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
@@ -117,6 +124,7 @@ internal sealed class HandyBridge : IDisposable
         if (on) MoveAway();
         if (on == _dictating) return;
         _dictating = on;
+        if (on) _check.Start(); else _check.Stop();
         // Posted, so a handler attached right after construction still hears the start-up state.
         _dispatcher.InvokeAsync(() => DictatingChanged?.Invoke(on));
     }
@@ -132,6 +140,7 @@ internal sealed class HandyBridge : IDisposable
     public void Dispose()
     {
         if (!_dispatcher.CheckAccess()) { _dispatcher.Invoke(Dispose); return; }
+        _check.Stop();
         Forget();
         if (_showHook != IntPtr.Zero) UnhookWinEvent(_showHook);
         _showHook = IntPtr.Zero;

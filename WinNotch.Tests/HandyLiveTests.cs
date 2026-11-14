@@ -31,7 +31,7 @@ public class HandyLiveTests
                     bridge.DictatingChanged += on => seen.Add(on);
                     Process.Start(exe, "--toggle-transcription")!.WaitForExit();
                     for (int i = 0; i < 40 && !seen.Contains(true); i++) await Task.Delay(100);
-                    await Task.Delay(300);
+                    await Task.Delay(3000);
                     var overlay = FindWindow("Tauri Window", "Recording");
                     if (GetWindowRect(overlay, out var rect)) whileDictating = (rect.Left, rect.Top);
                     Process.Start(exe, "--cancel")!.WaitForExit();
