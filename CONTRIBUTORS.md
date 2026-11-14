@@ -2,6 +2,10 @@
 
 The human maintainers guide the project, review changes and test the app on Windows. Their contributions are recorded in the repository's commit history.
 
+## Contributors
+
+- **Djordje Mojsilovic** ([@DjordjeMojsilovic](https://github.com/DjordjeMojsilovic)) — Holm 1.12.0: the faster chat, lighter GIFs, file sending and screen sharing fixes, the Chats button, the AI button's icon, dictation with Handy, all notifications in the notch, and volume and media only in the notch, built with Claude Code.
+
 ## AI development contributors
 
 - **Claude (Anthropic), through Claude Code** — helped create the original app, from the idea to performance tuning, and continues to work on the project.

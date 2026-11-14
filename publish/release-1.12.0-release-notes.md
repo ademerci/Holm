@@ -1,4 +1,4 @@
-Holm 1.12.0 makes the chat fast again, unsticks sending files, makes screen sharing hold up on slow connections, and brings dictation with Handy, every notification in the notch and a Chats button in the tool bar.
+Holm 1.12.0 makes the chat fast again, unsticks sending files, makes screen sharing hold up on slow connections, and brings dictation with Handy, every notification in the notch, volume and media only in the notch, a Chats button in the tool bar and bouncier, physics-based motion.
 
 ## Download
 
@@ -10,6 +10,10 @@ Holm 1.12.0 makes the chat fast again, unsticks sending files, makes screen shar
 Requires Windows 10 (2004 or newer) or Windows 11, x64.
 
 Holm is not code-signed. Windows SmartScreen may warn on first launch; Smart App Control may block an unsigned app.
+
+### Changed
+- **Physics-based, bouncier motion.** The notch's size, corner radius, shoulders and scale now run on a live damped harmonic oscillator instead of fixed-duration ease curves, so interrupting mid-flight preserves momentum and every refresh rate stays identical. Opening springs further with a softer vertical squash-and-stretch bounce, normal collapses snap back into place gently, hovering the closed notch swells slightly toward the cursor, in-place volume/peek updates give a small physical pulse, open rows cascade out, switching tools or toggling settings switches bounces lightly, and chat reaction hovers/pops use spring curves.
+- **Choose how bouncy.** *Settings › General › Bouncy motion* turns the bounce off (everything glides in without overshooting, still on springs), and right-click › *Customize › Bounce* picks *Subtle*, *Normal* or *Lively*.
 
 ### Added
 - **Chats in the tool bar.** A chat bubble in the middle of the open notch's tool row, between *Calculator* and *Clipboard*, opens your chats in the Holm window straight away.
@@ -30,3 +34,10 @@ Holm is not code-signed. Windows SmartScreen may warn on first launch; Smart App
 - **Screen sharing holds up on a slow connection.** Frames are at most 1280 px on their longer side and start at JPEG quality 60 (168 KB → 107 KB a frame on a 1920×1080 screen), captured and shrunk by GDI in one step with buffers kept from frame to frame. A viewer on 1.12 sends a receipt for every frame it shows, and the next frame waits for it, so the relay and routers no longer pile up seconds of old frames; the time it takes sets the quality between 30 and 75. A viewer that was busy still gets the latest picture, one that stops answering is let go after 15 s, and nothing is captured while no viewer can take a frame. Older Holm on either side keeps working as before.
 - **Fewer ways to crash.** A download renamed at the wrong moment could end Holm from a timer thread; crashes off the UI thread are now logged.
 - **Bluetooth keyboards show a keyboard.** Bluetooth LE keyboards such as *MX Keys* showed the mouse icon, because the name was checked for mice first. Keyboard names now come first (*clavier* and *teclado* count too, *trackball* and *trackpad* are mice), classic keyboards with a touchpad show a keyboard, and gamepads and joysticks show a controller.
+
+## Contributors
+
+- **Djordje Mojsilovic** (@DjordjeMojsilovic): the faster chat, lighter GIFs, file sending and screen sharing fixes, the Chats button, the AI button's icon, dictation with Handy, all notifications in the notch, and volume and media only in the notch. Built with Claude Code.
+- **@Diekartoffel19**: physics-based, bouncier motion and the *Bouncy motion* setting.
+
+Dictation uses [Handy](https://github.com/cjpais/Handy) by CJ Pais (MIT licence), which you install separately.
