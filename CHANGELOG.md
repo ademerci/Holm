@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Ctrl+H opens the notch.** Press Ctrl+H anywhere to open the notch, and again to close it (a click elsewhere closes it too). While it's on, other apps don't get Ctrl+H (browser history, Replace in editors); *Settings › General* turns it off.
+
 ## 1.11.1 – 2026-11-12
 
 ### Changed

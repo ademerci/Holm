@@ -77,6 +77,8 @@ internal sealed class AppSettings
     public bool Focumon { get; set; } = true;
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
+    /// <summary>Ctrl+H opens and closes the notch from anywhere.</summary>
+    public bool HotKey { get; set; } = true;
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
