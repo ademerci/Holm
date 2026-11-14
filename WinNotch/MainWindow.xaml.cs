@@ -244,7 +244,7 @@ public partial class MainWindow : Window
         RefreshToolBar();
         CheckReminders(); // also the ones missed while the PC was off
         StartCapsLock();
-        if (_settings.NotchOnlyPopups) NativeOsd.Hide();
+        StartMediaKeys();
         StartDictation();
         StartDiskSpace();
         StartUsb();
@@ -289,7 +289,7 @@ public partial class MainWindow : Window
         ForgetClips(_clips.Clear()); // the pictures in the temp folder go with Holm
         ForgetClipFiles();
         _volume.Shutdown();
-        NativeOsd.Restore(); // Windows gets its own volume pop-up back
+        _mediaKeys?.Dispose(); // Windows gets its keys, and its own pop-up, back
         StopDictation();
         _vpn?.Dispose();
         StopPrivacy();
@@ -1429,7 +1429,6 @@ public partial class MainWindow : Window
     /// <summary>Someone changed the volume (keys, the taskbar, another app): show it like the phone does.</summary>
     void OnVolumeChanged(float level, bool muted)
     {
-        if (_settings.NotchOnlyPopups) NativeOsd.Hide(); // Windows makes its pop-up only once a key is pressed
         if (_expanded) { ReadVolume(); return; }
         if (_hiddenForFullscreen || TaskShowing || _sharing) return;
 
