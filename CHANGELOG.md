@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Bluetooth keyboards show a keyboard.** Bluetooth LE keyboards such as *MX Keys* showed the mouse icon, because the name was checked for mice first. Keyboard names now come first (*clavier* and *teclado* count too, *trackball* and *trackpad* are mice), classic keyboards with a touchpad show a keyboard, and gamepads and joysticks show a controller.
+
 ## 1.11.1 – 2026-11-12
 
 ### Changed
