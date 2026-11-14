@@ -522,9 +522,9 @@ internal sealed class ToggleSwitch : FrameworkElement
             Position = on ? 1 : 0;
             return;
         }
-        BeginAnimation(PositionProperty, new DoubleAnimation(on ? 1 : 0, TimeSpan.FromMilliseconds(160))
+        BeginAnimation(PositionProperty, new DoubleAnimation(on ? 1 : 0, TimeSpan.FromMilliseconds(240))
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            EasingFunction = Spring.Bouncy,
         });
     }
 
@@ -537,6 +537,6 @@ internal sealed class ToggleSwitch : FrameworkElement
             (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
             (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
         dc.DrawRoundedRectangle(track, null, new Rect(0, 0, 40, 24), 12, 12);
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * t, 12), 10, 10);
+        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
     }
 }

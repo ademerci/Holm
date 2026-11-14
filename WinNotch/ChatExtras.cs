@@ -60,7 +60,7 @@ internal static class ChatExtras
         };
         void Grow(double to)
         {
-            var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(120)) { EasingFunction = new QuadraticEase() };
+            var animation = new DoubleAnimation(to, TimeSpan.FromMilliseconds(240)) { EasingFunction = Spring.Snappy };
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
         }
