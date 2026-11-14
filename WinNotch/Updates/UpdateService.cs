@@ -204,7 +204,7 @@ internal sealed class UpdateService : IDisposable
     }
 
     static Version Normalize(Version version) => new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
-    static string AssetName(string tag) => $"Holm-{tag.TrimStart('v')}-win-x64.zip";
+    internal static string AssetName(string tag) => $"Holm-{tag.TrimStart('v')}-win-x64.zip";
     static bool Flag(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
     static string? Text(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
