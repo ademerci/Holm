@@ -107,6 +107,13 @@ internal sealed class ChatPage : HubView
     Friend? _friend;
     /// <summary>The message just reacted to here: its reaction pops in, like Instagram's heart.</summary>
     string? _justReacted;
+    /// <summary>The bubbles shown, by message id, with what they were built from: one that didn't change is kept.</summary>
+    readonly Dictionary<string, (string Look, FrameworkElement View)> _bubbles = new();
+    /// <summary>How many of the latest messages show; "Show earlier messages" adds more. All 300 at once took seconds.</summary>
+    internal const int ShownAtFirst = 80;
+    int _shown = ShownAtFirst;
+    /// <summary>Conversations that changed since the page was last brought up to date; null when no update is waiting.</summary>
+    HashSet<string>? _changed;
 
     public ChatPage(SocialContext social, Friend? with)
     {
@@ -252,11 +259,12 @@ internal sealed class ChatPage : HubView
         Loaded += (_, _) => Child.Clip = new RectangleGeometry(new Rect(0, 0, ((Border)Child).ActualWidth, ((Border)Child).ActualHeight), 14, 14);
         SizeChanged += (_, _) => Child.Clip = new RectangleGeometry(new Rect(0, 0, ((Border)Child).ActualWidth, ((Border)Child).ActualHeight), 14, 14);
 
-        social.Chats.Changed += OnChanged;
-        social.Changed += OnFriendsChanged;
         RefreshComposer();
         // Unread first, then whoever wrote last.
         Select(with ?? friends.OrderByDescending(f => social.Chats.Unread(f.Key)).ThenByDescending(f => social.Chats.Last(f.Key)?.Sent ?? 0).First());
+        // Only now: marking the first conversation read mustn't build everything a second time.
+        social.Chats.Changed += OnChanged;
+        social.Changed += OnFriendsChanged;
         Loaded += (_, _) => _input.Focus();
     }
 
@@ -289,9 +297,27 @@ internal sealed class ChatPage : HubView
         if (_friend != null && Window.GetWindow(this)?.IsActive == true) _social.Chats.MarkRead(_friend.Key);
     }
 
+    /// <summary>
+    /// A conversation changed. Sending one message changes the store several times in a row (added, sent, read): the page
+    /// catches up once, after input and drawing, instead of rebuilding everything on each change.
+    /// </summary>
     void OnChanged(string key)
     {
-        if (_friend?.Key == key)
+        if (_changed != null)
+        {
+            _changed.Add(key);
+            return;
+        }
+        _changed = new HashSet<string> { key };
+        Dispatcher.InvokeAsync(CatchUp, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    void CatchUp()
+    {
+        var changed = _changed;
+        _changed = null;
+        if (changed == null || !IsLoaded && Parent == null) return; // the page was left meanwhile
+        if (_friend != null && changed.Contains(_friend.Key))
         {
             // A reaction to an older message mustn't jump to the end; a new message at the end does.
             bool atEnd = _scroll.VerticalOffset >= _scroll.ScrollableHeight - 24;
@@ -305,6 +331,11 @@ internal sealed class ChatPage : HubView
 
     public void Select(Friend friend)
     {
+        if (_friend?.Key != friend.Key)
+        {
+            _bubbles.Clear();
+            _shown = ShownAtFirst;
+        }
         _friend = _social.Friends().FirstOrDefault(f => f.Key == friend.Key) ?? friend;
         ShowHeader();
         ShowMessages();
@@ -378,9 +409,9 @@ internal sealed class ChatPage : HubView
         Brush previewColor = unread > 0 ? Brushes.White : HubTheme.Dim;
         if (last?.Gif is { } gif)
         {
-            // A GIF shows as a small moving picture in the list, like a preview should.
+            // A GIF shows as a small still picture in the list: moving at 24 px it costs a decode and a clock for nothing.
             var line = new StackPanel { Orientation = Orientation.Horizontal };
-            line.Children.Add(GifPlayer.View(gif, 24, 16, 4, _social.Animate(), maxSide: 48));
+            line.Children.Add(GifPlayer.View(gif, 24, 16, 4, animate: false, maxSide: 48));
             line.Children.Add(new TextBlock { Text = (last.Mine ? "You: " : "") + "GIF", FontSize = 12, Margin = new Thickness(6, 0, 0, 0), Foreground = previewColor, VerticalAlignment = VerticalAlignment.Center });
             preview = line;
         }
@@ -471,9 +502,28 @@ internal sealed class ChatPage : HubView
             _messages.Children.Add(Welcome(_friend));
             return;
         }
+        int first = Math.Max(0, messages.Count - _shown);
+        if (first > 0)
+        {
+            var earlier = Chip("Show earlier messages", $"{first} more");
+            earlier.HorizontalAlignment = HorizontalAlignment.Center;
+            earlier.Margin = new Thickness(0, 14, 0, 4);
+            earlier.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                // Keep the message you were looking at where it is while the earlier ones go in above it.
+                double fromEnd = _scroll.ScrollableHeight - _scroll.VerticalOffset;
+                _shown += ShownAtFirst * 2;
+                ShowMessages(scrollToEnd: false);
+                _scroll.UpdateLayout();
+                _scroll.ScrollToVerticalOffset(_scroll.ScrollableHeight - fromEnd);
+            };
+            _messages.Children.Add(earlier);
+        }
         // The face and the friend's name at the top, as messengers start a conversation.
-        _messages.Children.Add(Welcome(_friend, small: true));
-        for (int i = 0; i < messages.Count; i++)
+        else _messages.Children.Add(Welcome(_friend, small: true));
+        var used = new HashSet<string>();
+        for (int i = first; i < messages.Count; i++)
         {
             var message = messages[i];
             var previous = i > 0 ? messages[i - 1] : null;
@@ -484,12 +534,21 @@ internal sealed class ChatPage : HubView
             bool joinsPrevious = !newTime && Together(previous, message);
             bool joinsNext = next != null && Together(message, next) && next.Sent - message.Sent < TimeGapSeconds;
             bool lastOfMine = message.Mine && next == null;
-            _messages.Children.Add(Bubble(message, joinsPrevious, joinsNext, lastOfMine));
+            // A bubble whose message and place didn't change is the one already built: no new text, menus or GIF decode.
+            string look = BubbleLook(message, joinsPrevious, joinsNext, lastOfMine);
+            if (_justReacted == message.Id || !_bubbles.TryGetValue(message.Id, out var kept) || kept.Look != look)
+                _bubbles[message.Id] = kept = (look, Bubble(message, joinsPrevious, joinsNext, lastOfMine));
+            used.Add(message.Id);
+            _messages.Children.Add(kept.View);
         }
+        foreach (string gone in _bubbles.Keys.Where(id => !used.Contains(id)).ToList()) _bubbles.Remove(gone);
         _justReacted = null;
-        _scroll.UpdateLayout();
-        if (scrollToEnd) _scroll.ScrollToEnd();
+        if (scrollToEnd) _scroll.ScrollToEnd(); // applied at the next layout pass; no need to force one now
     }
+
+    /// <summary>Everything a bubble is drawn from: when this is the same, so is the bubble.</summary>
+    internal static string BubbleLook(FriendMessage message, bool joinsPrevious, bool joinsNext, bool lastOfMine)
+        => string.Join("\u001F", message.State, message.MyReaction, message.TheirReaction, message.Gif, message.Text, message.Sent, joinsPrevious, joinsNext, lastOfMine);
 
     static bool Together(FriendMessage? a, FriendMessage? b)
         => a != null && b != null && a.Mine == b.Mine && b.Sent - a.Sent < GroupSeconds
@@ -592,13 +651,28 @@ internal sealed class ChatPage : HubView
             && parts.All(p => ChatReaction.Clean(p) != null && (char.IsSurrogate(p[0]) || p[0] >= '←'));
     }
 
+    /// <summary>Color emoji cost a slower text block: plain text gets WPF's own.</summary>
+    static TextBlock TextOf(string text)
+    {
+        var block = HasEmoji(text) ? new EmojiText() : new TextBlock();
+        block.Text = text;
+        block.TextWrapping = TextWrapping.Wrap;
+        block.FontSize = 13.5;
+        block.Foreground = Brushes.White;
+        return block;
+    }
+
+    /// <summary>Anything Emoji.Wpf would draw in color: characters outside the basic plane and the symbol blocks.</summary>
+    internal static bool HasEmoji(string text)
+        => text.Any(c => char.IsSurrogate(c) || c is >= '\u2190' and <= '\u2BFF' || c is '\u00A9' or '\u00AE' or '\u200D' or '\uFE0F' or '\u20E3' or '\u3030' or '\u303D' or '\u3297' or '\u3299');
+
     FrameworkElement Bubble(FriendMessage message, bool joinsPrevious, bool joinsNext, bool lastOfMine)
     {
         bool gif = message.Gif != null;
         bool big = !gif && IsBigEmoji(message.Text);
         FrameworkElement content = gif ? GifPlayer.View(message.Gif!, 220, 160, 0, _social.Animate(), maxSide: 320, fitHeight: true)
                                  : big ? new EmojiText { Text = message.Text.Trim(), FontSize = 40 }
-                                 : new EmojiText { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Brushes.White };
+                                 : TextOf(message.Text);
 
         // Bubbles of one group run together: the corners where they meet are small, like in every messenger.
         const double round = 18, joined = 5;

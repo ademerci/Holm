@@ -62,6 +62,15 @@ internal sealed class MessagesService
     /// <summary>The list changed. The argument is the message that just arrived, or null if none did.</summary>
     public event Action<ChatMessage?>? Changed;
 
+    /// <summary>Also report notifications of every other app (<see cref="OtherArrived"/>), not only messengers.</summary>
+    public bool EveryApp { get; set; }
+
+    /// <summary>
+    /// A notification of an app that isn't a messenger arrived (with <see cref="EveryApp"/> on): the newest of a burst.
+    /// It doesn't count as unread; <see cref="ChatMessage.App"/> is the app's id, its logo is in <see cref="LogoOf"/>.
+    /// </summary>
+    public event Action<ChatMessage>? OtherArrived;
+
     public MessagesService(Dispatcher ui, Func<string, bool> shown)
     {
         _shown = shown;
@@ -305,13 +314,19 @@ internal sealed class MessagesService
 
         var unread = new List<ChatMessage>();
         var present = new HashSet<uint>();
-        ChatMessage? arrived = null;
+        ChatMessage? arrived = null, other = null;
         foreach (var notification in all)
         {
             uint id;
             try { id = notification.Id; } catch { continue; }
             present.Add(id);
             var latest = Read(notification, out string? appId);
+            if (latest == null && EveryApp && _primed && !_seen.ContainsKey(id) && ReadAny(notification) is { } any
+                && (other == null || any.Time >= other.Time))
+            {
+                other = any;
+                if (_logoTried.Add(any.App)) await LoadLogoAsync(notification, any.App);
+            }
             if (!_seen.TryGetValue(id, out var message) || latest?.App != message?.App
                 || latest?.Time != message?.Time || latest?.Title != message?.Title || latest?.Text != message?.Text)
             {
@@ -337,6 +352,7 @@ internal sealed class MessagesService
         unread.RemoveAll(m => _read.Contains(m.Id)); // marked read while we were busy
         unread.Sort((a, b) => a.Time.CompareTo(b.Time));
         _toasts = unread;
+        if (other != null) OtherArrived?.Invoke(other);
         return arrived;
     }
 
@@ -446,6 +462,35 @@ internal sealed class MessagesService
             Diag.Log("Unreadable notification: " + ex.Message);
             return null;
         }
+    }
+
+    /// <summary>Any app's notification as a pop-out: its first line as the title, the rest as the text. Null if unreadable.</summary>
+    internal static ChatMessage? ReadAny(UserNotification notification)
+    {
+        try
+        {
+            string? appId = notification.AppInfo?.AppUserModelId;
+            string? name = notification.AppInfo?.DisplayInfo?.DisplayName;
+            var lines = notification.Notification?.Visual?.GetBinding(KnownNotificationBindings.ToastGeneric)?.GetTextElements()
+                ?.Select(t => t.Text).ToList() ?? new List<string>();
+            return Pop(appId, name, lines, notification.Id, notification.CreationTime);
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Unreadable notification: " + ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>The pop-out for a notification's lines; without a first line, the app's name is the title.</summary>
+    internal static ChatMessage? Pop(string? appId, string? name, IReadOnlyList<string> lines, uint id, DateTimeOffset time)
+    {
+        var words = lines.Select(l => (l ?? "").Trim()).Where(l => l.Length > 0).ToList();
+        string app = !string.IsNullOrWhiteSpace(appId) ? appId! : name ?? "";
+        if (app.Length == 0 || words.Count == 0 && string.IsNullOrWhiteSpace(name)) return null;
+        string title = words.Count > 0 ? words[0] : name!;
+        string text = string.Join(" · ", words.Skip(1));
+        return new ChatMessage { Id = id, App = app, Title = title, Text = text.Length > 200 ? text[..200] + "…" : text, Time = time };
     }
 
     async Task LoadLogoAsync(UserNotification notification, string app)

@@ -19,7 +19,7 @@ namespace WinNotch;
 
 public partial class MainWindow : Window
 {
-    enum NotchState { None, Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Expanded }
+    enum NotchState { None, Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Phone, Task, Share, Dictation, Expanded }
 
     const double ExpandedWidth = 520;
     /// <summary>Window width at normal size, with room for the notch's shoulders.</summary>
@@ -109,6 +109,7 @@ public partial class MainWindow : Window
         _media.Changed += OnMediaChanged;
         _chat = new MessagesService(Dispatcher, app => !_settings.MutedApps.Contains(app));
         _chat.Changed += OnMessagesChanged;
+        _chat.OtherArrived += OnOtherNotification;
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
@@ -125,7 +126,8 @@ public partial class MainWindow : Window
         _btSoon = MakeTimer(1500, ScanBluetooth, oneShot: true);
         _btLate = MakeTimer(8000, ScanBluetooth, oneShot: true);
         _btPoll = MakeTimer(60_000, ScanBluetooth);
-        _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
+        // Never under the open Holm window: paged-out memory made its next click or keystroke wait seconds.
+        _trimTimer = MakeTimer(6000, () => { if (!_expanded && _settingsWindow == null) Native.TrimWorkingSet(); }, oneShot: true);
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();
@@ -218,7 +220,8 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
-        if (_settings.Messages) _ = _chat.StartAsync(ask: true);
+        _chat.EveryApp = _settings.AllNotifications;
+        if (_settings.Messages || _settings.AllNotifications) _ = _chat.StartAsync(ask: true);
         StartDownloads();
         StartUpdates();
 
@@ -241,6 +244,8 @@ public partial class MainWindow : Window
         RefreshToolBar();
         CheckReminders(); // also the ones missed while the PC was off
         StartCapsLock();
+        if (_settings.NotchOnlyPopups) NativeOsd.Hide();
+        StartDictation();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -284,6 +289,8 @@ public partial class MainWindow : Window
         ForgetClips(_clips.Clear()); // the pictures in the temp folder go with Holm
         ForgetClipFiles();
         _volume.Shutdown();
+        NativeOsd.Restore(); // Windows gets its own volume pop-up back
+        StopDictation();
         _vpn?.Dispose();
         StopPrivacy();
         _chat.Stop();
@@ -403,6 +410,7 @@ public partial class MainWindow : Window
     {
         if (_expanded == expand || _hiddenForFullscreen) return;
         _expanded = expand;
+        if (expand) WarmEmoji();
         if (expand && !AppSettings.ReadOnly) _achievements?.Used(DateTime.Now); // days in a row, the night owl
         Diag.Log(expand ? "Expanded" : "Collapsed");
         if (expand)
@@ -447,6 +455,7 @@ public partial class MainWindow : Window
                    : PhoneShowing ? NotchState.Phone
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
+                   : _dictating ? NotchState.Dictation // you're talking to it right now: above a call or music
                    : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
@@ -489,6 +498,7 @@ public partial class MainWindow : Window
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
+            case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
             case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
@@ -541,6 +551,7 @@ public partial class MainWindow : Window
             SetView(TimerView, target == NotchState.Timer, animate);
             SetView(FocumonView, target == NotchState.Focumon, soft);
             SetView(CallView, target == NotchState.Call, animate);
+            SetView(DictationView, target == NotchState.Dictation, animate);
             SetView(PeekView, target == NotchState.Peek, animate);
             SetView(MessageView, target == NotchState.Message, animate);
             SetView(VolumeView, target == NotchState.Volume, animate);
@@ -916,8 +927,18 @@ public partial class MainWindow : Window
         UpdateCallPause();
     }
 
+    /// <summary>Another app's notification, shown at the top in the notch like a message (Settings › Pop-outs).</summary>
+    void OnOtherNotification(ChatMessage notification)
+    {
+        if (!_settings.AllNotifications) return;
+        if (Silenced(notification)) { Diag.Log("Quiet hours: no pop-out"); return; }
+        ShowMessage(notification);
+        ApplyState();
+    }
+
     void OnMessagesChanged(ChatMessage? arrived)
     {
+        if (!_settings.Messages) return; // running only for every app's pop-outs
         // Already looking at that app: its messages aren't unread. (MarkRead calls back here with them cleared.)
         if (AppInFront() is { } front && _chat.Messages.Any(m => m.App == front.Key)) { _chat.MarkRead(front.Key); return; }
 
@@ -1408,6 +1429,7 @@ public partial class MainWindow : Window
     /// <summary>Someone changed the volume (keys, the taskbar, another app): show it like the phone does.</summary>
     void OnVolumeChanged(float level, bool muted)
     {
+        if (_settings.NotchOnlyPopups) NativeOsd.Hide(); // Windows makes its pop-up only once a key is pressed
         if (_expanded) { ReadVolume(); return; }
         if (_hiddenForFullscreen || TaskShowing || _sharing) return;
 
@@ -1644,7 +1666,7 @@ public partial class MainWindow : Window
         {
             _settings.Messages = all.IsChecked;
             _settings.Save();
-            if (!_settings.Messages) { _chat.Stop(); return; }
+            if (!_settings.Messages && !_settings.AllNotifications) { _chat.Stop(); return; }
             await _chat.StartAsync(ask: true);
             // Once refused, Windows doesn't ask again; the switch is in Settings.
             if (_chat.Access == MessagesService.AccessState.Denied) TryOpen("ms-settings:privacy-notifications");
