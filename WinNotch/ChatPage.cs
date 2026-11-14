@@ -109,6 +109,9 @@ internal sealed class ChatPage : HubView
     string? _justReacted;
     /// <summary>The bubbles shown, by message id, with what they were built from: one that didn't change is kept.</summary>
     readonly Dictionary<string, (string Look, FrameworkElement View)> _bubbles = new();
+    /// <summary>How many of the latest messages show; "Show earlier messages" adds more. All 300 at once took seconds.</summary>
+    internal const int ShownAtFirst = 80;
+    int _shown = ShownAtFirst;
     /// <summary>Conversations that changed since the page was last brought up to date; null when no update is waiting.</summary>
     HashSet<string>? _changed;
 
@@ -328,7 +331,11 @@ internal sealed class ChatPage : HubView
 
     public void Select(Friend friend)
     {
-        if (_friend?.Key != friend.Key) _bubbles.Clear();
+        if (_friend?.Key != friend.Key)
+        {
+            _bubbles.Clear();
+            _shown = ShownAtFirst;
+        }
         _friend = _social.Friends().FirstOrDefault(f => f.Key == friend.Key) ?? friend;
         ShowHeader();
         ShowMessages();
@@ -495,10 +502,28 @@ internal sealed class ChatPage : HubView
             _messages.Children.Add(Welcome(_friend));
             return;
         }
+        int first = Math.Max(0, messages.Count - _shown);
+        if (first > 0)
+        {
+            var earlier = Chip("Show earlier messages", $"{first} more");
+            earlier.HorizontalAlignment = HorizontalAlignment.Center;
+            earlier.Margin = new Thickness(0, 14, 0, 4);
+            earlier.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                // Keep the message you were looking at where it is while the earlier ones go in above it.
+                double fromEnd = _scroll.ScrollableHeight - _scroll.VerticalOffset;
+                _shown += ShownAtFirst * 2;
+                ShowMessages(scrollToEnd: false);
+                _scroll.UpdateLayout();
+                _scroll.ScrollToVerticalOffset(_scroll.ScrollableHeight - fromEnd);
+            };
+            _messages.Children.Add(earlier);
+        }
         // The face and the friend's name at the top, as messengers start a conversation.
-        _messages.Children.Add(Welcome(_friend, small: true));
+        else _messages.Children.Add(Welcome(_friend, small: true));
         var used = new HashSet<string>();
-        for (int i = 0; i < messages.Count; i++)
+        for (int i = first; i < messages.Count; i++)
         {
             var message = messages[i];
             var previous = i > 0 ? messages[i - 1] : null;

@@ -114,18 +114,24 @@ public partial class MainWindow
     {
         var clock = Stopwatch.StartNew();
         int quality = StreamProtocol.StartQuality;
+        long receipts = 0;
         using var grabber = new ScreenCapture.Grabber(area);
         while (!stop.IsCancellationRequested)
         {
             long start = clock.ElapsedMilliseconds;
             try
             {
+                host.DropSilent();
+                if (host.Receipts != receipts)
+                {
+                    receipts = host.Receipts;
+                    quality = StreamProtocol.NextQuality(quality, host.SlowestRoundTripMs);
+                }
                 // No viewer can take a frame yet: a picture now would only be thrown away.
                 if (host.AnyReady && grabber.Jpeg(quality) is { } jpeg)
                 {
                     if (jpeg.Length < SecureChannel.MaxPlaintext) host.Publish(jpeg);
                     else quality = StreamProtocol.MinQuality; // a very busy screen: smaller pictures from now on
-                    quality = StreamProtocol.NextQuality(quality, host.SlowestRoundTripMs);
                 }
             }
             catch (Exception ex) { Diag.Log("Stream capture: " + ex.Message); }

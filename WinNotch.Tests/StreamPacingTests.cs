@@ -100,13 +100,33 @@ public class StreamPacingTests
         viewer.Dispose();
     }
 
+    [Fact]
+    public async Task A_viewer_whose_receipt_never_comes_is_let_go()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var (streamer, viewer) = await PairAsync();
+        await viewer.SendAsync(new[] { StreamProtocol.Watch, StreamProtocol.Receipts }, cts.Token); // says it pays receipts, never does
+        var answer = await StreamProtocol.AnswerAsync(streamer, cts.Token);
+        await using var host = new StreamHost { ReceiptPatience = TimeSpan.FromMilliseconds(300) };
+        host.Add("gone", "Gone", streamer, answer.Receipts);
+        Assert.Equal(StreamProtocol.Paced, (await viewer.ReceiveAsync(cts.Token))[0]);
+        await Until(() => { host.Publish(Picture(1)); return !host.AnyReady; });
+        Assert.Equal(StreamProtocol.Frame, (await viewer.ReceiveAsync(cts.Token))[0]);
+
+        await Task.Delay(400);
+        host.DropSilent();
+        Assert.Empty(host.Names);
+        Assert.True(host.AnyReady); // nobody left to wait for
+        viewer.Dispose();
+    }
+
     [Theory]
     [InlineData(60, 900, 50)]
     [InlineData(60, 500, 56)]
     [InlineData(60, 300, 60)]
     [InlineData(60, 100, 63)]
     [InlineData(StreamProtocol.MinQuality, 5000, StreamProtocol.MinQuality)]
-    [InlineData(StreamProtocol.MaxQuality, 0, StreamProtocol.MaxQuality)]
+    [InlineData(60, 0, 60)] // no receipts (older Holm watching): it stays
     public void Quality_follows_how_long_frames_take(int quality, double roundTripMs, int next)
         => Assert.Equal(next, StreamProtocol.NextQuality(quality, roundTripMs));
 

@@ -32,8 +32,9 @@ public static class StreamProtocol
     /// The next frames' JPEG quality, from how long the last frame took to reach the slowest viewer and come back: lower
     /// when it took long, higher again when there's room. Between <see cref="MinQuality"/> and <see cref="MaxQuality"/>.
     /// </summary>
+    /// <remarks>0 means no receipts to go by (older Holm watching, or none yet): the quality stays where it is.</remarks>
     public static int NextQuality(int quality, double roundTripMs)
-        => Math.Clamp(roundTripMs > 700 ? quality - 10 : roundTripMs > 400 ? quality - 4 : roundTripMs < 200 ? quality + 3 : quality, MinQuality, MaxQuality);
+        => roundTripMs <= 0 ? Math.Clamp(quality, MinQuality, MaxQuality) : Math.Clamp(roundTripMs > 700 ? quality - 10 : roundTripMs > 400 ? quality - 4 : roundTripMs < 200 ? quality + 3 : quality, MinQuality, MaxQuality);
 
     /// <summary>The size a screen is sent at: within <paramref name="max"/> on both sides, the same shape, never larger.</summary>
     public static (int Width, int Height) FitWithin(int width, int height, int max)
@@ -102,6 +103,14 @@ public sealed class StreamHost : IAsyncDisposable
 {
     static readonly TimeSpan SendPatience = TimeSpan.FromSeconds(15);
 
+    /// <summary>How long a paced viewer may take to send a frame's receipt before it counts as gone.</summary>
+    public TimeSpan ReceiptPatience { get; init; } = SendPatience;
+
+    long _receipts;
+
+    /// <summary>Receipts so far, from every viewer: the quality moves once per receipt, not once per captured frame.</summary>
+    public long Receipts => Interlocked.Read(ref _receipts);
+
     sealed class Viewer
     {
         public required string Key { get; init; }
@@ -164,6 +173,19 @@ public sealed class StreamHost : IAsyncDisposable
     }
 
     /// <summary>
+    /// Lets go of paced viewers whose receipt is overdue: a half-open connection would otherwise count as watching for
+    /// good, and keep <see cref="AnyReady"/> false. The capture loop calls it every round, picture or not.
+    /// </summary>
+    public void DropSilent()
+    {
+        Viewer[] overdue;
+        lock (_lock)
+            overdue = _viewers.Where(v => v.Paced && Volatile.Read(ref v.Busy) != 0
+                                          && System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Read(ref v.SentAt)) > ReceiptPatience).ToArray();
+        foreach (var viewer in overdue) Remove(viewer);
+    }
+
+    /// <summary>
     /// A new picture of the screen (from the capture thread). To each viewer ready for one: the picture, or, when it's
     /// what they saw last, a sign of life every few seconds.
     /// </summary>
@@ -178,8 +200,6 @@ public sealed class StreamHost : IAsyncDisposable
         {
             if (Volatile.Read(ref viewer.Busy) != 0)
             {
-                // A receipt that doesn't come is a viewer that is gone.
-                if (viewer.Paced && System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Read(ref viewer.SentAt)) > SendPatience) Remove(viewer);
                 continue; // still on the last one
             }
             bool same = hash == viewer.LastHash;
@@ -220,6 +240,7 @@ public sealed class StreamHost : IAsyncDisposable
                 if (message.Length == 0 || message[0] != StreamProtocol.Ack) continue;
                 double took = System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Read(ref viewer.SentAt)).TotalMilliseconds;
                 lock (_lock) viewer.RoundTripMs = viewer.RoundTripMs == 0 ? took : viewer.RoundTripMs * 0.6 + took * 0.4;
+                Interlocked.Increment(ref _receipts);
                 Interlocked.Exchange(ref viewer.Busy, 0);
             }
         }

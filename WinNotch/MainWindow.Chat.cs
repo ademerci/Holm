@@ -24,6 +24,14 @@ public partial class MainWindow
         _friends.GifReceived += OnGifReceived;
         _friends.ReactionReceived += OnReactionReceived;
         _friends.RemovedUs += friend => _chats.Forget(friend.Key);
+        // Color emoji read the emoji font on first use, 2–4 s that blocked the first chat. With friends to chat with,
+        // that happens in the background a little after start; without, it costs nothing.
+        if (_friends.Friends.Count > 0)
+            _ = Task.Delay(TimeSpan.FromSeconds(8)).ContinueWith(_ =>
+            {
+                try { Emoji.Wpf.EmojiData.Load(); }
+                catch (Exception ex) { Diag.Log("Emoji not loaded ahead: " + ex.Message); }
+            }, TaskScheduler.Default);
     }
 
     /// <summary>Whether the Holm window is in front, showing the chat with this friend.</summary>
