@@ -175,7 +175,7 @@
         <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource NotchButton}">
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="32"/>
-            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Margin" Value="2,0"/>
         </Style>
 
         <!-- A whole row you can click (the messages in the open notch) -->
@@ -542,6 +542,10 @@
                                 </Button>
                                 <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
                                     <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <!-- Not a page: opens the chats in the Holm window. In the middle of the row, between Calculator and Clipboard -->
+                                <Button x:Name="ChatsToolBtn" Style="{StaticResource ToolButton}" ToolTip="Chats" Click="ChatsTool_Click">
+                                    <TextBlock Text="&#xE8BD;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                                 <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
                                     <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>

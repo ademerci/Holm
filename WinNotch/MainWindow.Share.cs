@@ -826,7 +826,8 @@ public partial class MainWindow
     void ShowTask(string icon, Brush circle, string title, string subtitle, double? progress,
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
-        TaskThumb.Visibility = Visibility.Collapsed; // a screenshot puts its picture back afterwards
+        StopTaskGif(); // a screenshot puts its picture back afterwards
+        TaskThumb.Visibility = Visibility.Collapsed;
         _taskGif = null; // and a chat GIF
         TaskExtra.Visibility = Visibility.Collapsed; // and its third button
         _extraAction = null;
@@ -904,6 +905,7 @@ public partial class MainWindow
         _primaryAction = _secondaryAction = _extraAction = null;
         if (!_taskVisible) return;
         _taskVisible = false;
+        StopTaskGif();
         ApplyState();
     }
 

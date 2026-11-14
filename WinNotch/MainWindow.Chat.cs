@@ -81,6 +81,16 @@ public partial class MainWindow
         ShowPeek(null, $"Reacted {emoji}", "", null, false, null, seconds: 2);
     }
 
+    /// <summary>A GIF's endless clock on the notification's picture would tick on in the always-open notch: stop it.</summary>
+    void StopTaskGif()
+    {
+        if (TaskThumb.Background is System.Windows.Media.ImageBrush { HasAnimatedProperties: true } brush)
+        {
+            brush.BeginAnimation(System.Windows.Media.ImageBrush.ImageSourceProperty, null);
+            TaskThumb.Background = null;
+        }
+    }
+
     /// <summary>The GIF moves in the notification's picture, small, while the notification shows.</summary>
     async Task ShowTaskGifAsync(string url, string messageId)
     {
@@ -216,6 +226,12 @@ public partial class MainWindow
     {
         _settings.ChatPopups = MenuChatPopups.IsChecked;
         _settings.Save();
+    }
+
+    void ChatsTool_Click(object sender, RoutedEventArgs e)
+    {
+        SetExpanded(false);
+        MenuFriendsHub_Click(sender, e);
     }
 
     void MenuFriendsHub_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => OpenChat(null), System.Windows.Threading.DispatcherPriority.Background);

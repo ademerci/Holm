@@ -125,7 +125,8 @@ public partial class MainWindow : Window
         _btSoon = MakeTimer(1500, ScanBluetooth, oneShot: true);
         _btLate = MakeTimer(8000, ScanBluetooth, oneShot: true);
         _btPoll = MakeTimer(60_000, ScanBluetooth);
-        _trimTimer = MakeTimer(6000, () => { if (!_expanded) Native.TrimWorkingSet(); }, oneShot: true);
+        // Never under the open Holm window: paged-out memory made its next click or keystroke wait seconds.
+        _trimTimer = MakeTimer(6000, () => { if (!_expanded && _settingsWindow == null) Native.TrimWorkingSet(); }, oneShot: true);
         _fitTimer = MakeTimer(500, OnShapeSettled, oneShot: true);
         _volumeTimer = MakeTimer(1600, () => { _volumePeek = false; ApplyState(); }, oneShot: true);
         InitSharing();

@@ -126,11 +126,11 @@ public partial class MainWindow
         SetExpanded(false);
         if (_settingsWindow == null)
         {
-            _settingsWindow = MakeSettingsWindow();
+            _settingsWindow = MakeSettingsWindow(start: page);
             _settingsWindow.Closed += OnHubClosed;
             _settingsWindow.Show();
         }
-        if (page != null) _settingsWindow.Navigate(page);
+        else if (page != null) _settingsWindow.Navigate(page);
         if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
         _settingsWindow.Activate();
     }
@@ -160,7 +160,7 @@ public partial class MainWindow
     }
 
     /// <param name="demo">For snapshots: a made-up profile in place of yours, and Apply saves nothing.</param>
-    SettingsWindow MakeSettingsWindow(ProfileDraft? demo = null)
+    SettingsWindow MakeSettingsWindow(ProfileDraft? demo = null, string? start = null)
     {
         var version = RunningVersion;
         var profile = demo != null
@@ -169,6 +169,6 @@ public partial class MainWindow
         Func<ProfileDraft> current = demo != null ? () => demo : CurrentProfile;
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
                                   HubPages(demo != null), () => MeCard(current()), UpdatesPage(),
-                                  new[] { NetworkHubPage(demo != null) });
+                                  new[] { NetworkHubPage(demo != null) }, start);
     }
 }
