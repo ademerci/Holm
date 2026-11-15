@@ -57,4 +57,18 @@
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
   </ItemGroup>
 
+  <!-- The single-file publish compiles one ReadyToRun "composite" image of the app and the whole framework (122 of the
+       213 MB). These framework assemblies are never loaded while Holm starts and idles (measured with the bench build's
+       loaded-assembly list); left out of the composite they keep Microsoft's own precompiled code, which is far smaller.
+       Measured: Holm.exe 213.2 -> 204.4 MB, the same JIT count until the notch is ready. Turning composite off altogether
+       saves 56 MB but doubles the JIT work at start-up (ready +0.7 s), see docs/opt/PLAN.md. -->
+  <PropertyGroup>
+    <HolmCompositeExclusions>;System.Data.Common;System.Private.DataContractSerialization;System.Private.Windows.Core;ReachFramework;System.Windows.Controls.Ribbon;System.Linq.AsyncEnumerable;PresentationUI;Microsoft.VisualBasic.Core;System.Reflection.Metadata;System.DirectoryServices;PresentationFramework.Fluent;Microsoft.CSharp;System.Collections.Immutable;System.Printing;System.Drawing.Common;System.Text.Encoding.CodePages;UIAutomationClientSideProviders;System.Diagnostics.EventLog.Messages;System.Linq.Parallel;System.Security.Cryptography.Pkcs;PresentationFramework.Luna;System.Transactions.Local;System.Net.HttpListener;System.Net.Mail;System.CodeDom;System.Threading.Tasks.Dataflow;System.Security.Cryptography.Xml;PresentationFramework.Aero;System.Private.Windows.GdiPlus;System.IO.Compression;UIAutomationClient;System.Private.Xml.Linq;System.Windows.Primitives;System.Diagnostics.EventLog;System.Net.Quic;System.Runtime.Numerics;PresentationFramework.Royale;System.Diagnostics.PerformanceCounter;System.Formats.Tar;PresentationFramework.Classic;System.Net.WebSockets;System.Formats.Asn1;PresentationFramework.AeroLite;System.Security.AccessControl;</HolmCompositeExclusions>
+  </PropertyGroup>
+  <Target Name="HolmCompositeExclusions" BeforeTargets="_PrepareForReadyToRunCompilation">
+    <ItemGroup>
+      <PublishReadyToRunCompositeExclusions Include="@(ResolvedFileToPublish->'%(Filename)%(Extension)')" Condition="$(HolmCompositeExclusions.Contains(';%(ResolvedFileToPublish.Filename);'))" />
+    </ItemGroup>
+  </Target>
+
 </Project>
