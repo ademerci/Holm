@@ -505,7 +505,7 @@ public partial class MainWindow
             else if (_settings.SendLater)
             {
                 var send = Enqueue(friend, paths, text);
-                EndTask(LaterGlyph, TimerOrange, $"{friend.Name} is offline", "It goes once their Holm is back",
+                EndTask(LaterGlyph, TimerOrange, $"Couldn't reach {friend.Name} right now", "It goes once you're both online",
                         ("Don't send", () => { HideTask(); Unqueue(send); }));
                 _taskHide.Interval = TimeSpan.FromSeconds(8);
                 _taskHide.Start();
@@ -798,7 +798,7 @@ public partial class MainWindow
         bool text = offer.IsText && _settings.BeamText;
         ShowTask(FaceText(offer.Sender), FaceBrush(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
                  text ? "Copy it to your clipboard?" : Summary(offer), null,
-                 (text ? "Copy" : "Accept", () => answer.TrySetResult(true)), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
+                 (text ? "Copy" : "Accept", () => { _acceptTick = Environment.TickCount64; answer.TrySetResult(true); }), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
         PlayIncomingFileSound();
         using (ct.Register(() => answer.TrySetResult(false)))
         {
@@ -821,7 +821,10 @@ public partial class MainWindow
         return _taskCts;
     }
 
-    void CancelTask() => _taskCts?.Cancel();
+    long _acceptTick;
+
+    // Ignore the second click of a double-click on Accept, which lands on the Cancel that replaces it.
+    void CancelTask() { if (Environment.TickCount64 - _acceptTick > 600) _taskCts?.Cancel(); }
 
     void ShowTask(string icon, Brush circle, string title, string subtitle, double? progress,
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
@@ -892,7 +895,7 @@ public partial class MainWindow
             SocketException => "Couldn't reach them",
             AuthenticationTagMismatchException => "The data didn't check out – wrong code?",
             EndOfStreamException => "The connection was closed",
-            IOException io => io.Message,
+            IOException => "The connection dropped – try again.",
             _ => "Something went wrong",
         };
         EndTask("", RedBrush, title, reason);
