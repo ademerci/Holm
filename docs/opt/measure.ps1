@@ -94,17 +94,17 @@ $live = foreach ($i in 0..$Runs) {
         while (-not [Opt.Win]::HasVisibleWindow([uint32]$p.Id) -and $w.Elapsed.TotalSeconds -lt 30) { Start-Sleep -Milliseconds 5 }
         if ($w.Elapsed.TotalSeconds -ge 30) { throw 'no window within 30 s' }
         $startMs = $w.Elapsed.TotalMilliseconds
-        # Ready = the UI thread waits for input for the first time (constructor, Loaded and the first layout are done).
-        $null = $p.WaitForInputIdle(30000)
-        $readyMs = $w.Elapsed.TotalMilliseconds
         Start-Sleep -Seconds 25
+        # Ready = Loaded and the first frame done, UI thread idle for the first time (bench build stamp, App.xaml.cs).
+        $ready = (Get-Content "$env:HOLM_DATA/ready.txt" | Where-Object { $_ -like 'ready *' } | Select-Object -First 1) -split ' '
+        $readyMs = [double]$ready[1]; $jitReady = [double]$ready[2]
         $p.Refresh(); if ($p.HasExited) { throw "exited during start-up ($($p.ExitCode))" }
         $cpu0 = $p.TotalProcessorTime
         $startCpu = $cpu0.TotalMilliseconds
         Start-Sleep -Seconds 45
         $p.Refresh(); if ($p.HasExited) { throw "exited while measured ($($p.ExitCode))" }
         [pscustomobject]@{
-            StartMs = [math]::Round($startMs); ReadyMs = [math]::Round($readyMs); StartCpuMs = [math]::Round($startCpu)
+            StartMs = [math]::Round($startMs); ReadyMs = [math]::Round($readyMs); JitAtReady = $jitReady; StartCpuMs = [math]::Round($startCpu)
             IdleCpuMsPerMin = [math]::Round(($p.TotalProcessorTime - $cpu0).TotalMilliseconds * 60 / 45)
             PrivateMB = [math]::Round($p.PrivateMemorySize64 / 1MB, 1); WorkingMB = [math]::Round($p.WorkingSet64 / 1MB, 1)
             PeakWorkingMB = [math]::Round($p.PeakWorkingSet64 / 1MB, 1); Threads = $p.Threads.Count; Handles = $p.HandleCount
@@ -114,7 +114,7 @@ $live = foreach ($i in 0..$Runs) {
 }
 $live = $live | Select-Object -Skip 1
 $result.Live = [ordered]@{ Runs = $live }
-foreach ($k in 'StartMs', 'ReadyMs', 'StartCpuMs', 'IdleCpuMsPerMin', 'PrivateMB', 'WorkingMB', 'PeakWorkingMB', 'Threads', 'Handles') {
+foreach ($k in 'StartMs', 'ReadyMs', 'JitAtReady', 'StartCpuMs', 'IdleCpuMsPerMin', 'PrivateMB', 'WorkingMB', 'PeakWorkingMB', 'Threads', 'Handles') {
     $result.Live[$k] = Median ($live | ForEach-Object { $_.$k })
 }
 
