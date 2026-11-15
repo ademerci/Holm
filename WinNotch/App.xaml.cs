@@ -20,7 +20,7 @@ public partial class App : Application
             if (MainWindow is not { IsLoaded: true }) Shutdown(1);
         };
 
-        _singleInstance = new Mutex(true, @"Local\Holm.SingleInstance", out bool first);
+        _singleInstance = new Mutex(true, Diag.DevFolder == null ? @"Local\Holm.SingleInstance" : @"Local\Holm.SingleInstance.Dev", out bool first);
         if (!first)
         {
             MessageBox.Show(
@@ -62,7 +62,7 @@ public partial class App : Application
 #endif
 
         Diag.Enabled = e.Args.Contains("--diag");
-        FormerName.Migrate(); // before the window reads the settings
+        if (Diag.DevFolder == null) FormerName.Migrate(); // before the window reads the settings; test data leaves your autostart alone
         new MainWindow().Show();
 
 #if DEBUG
