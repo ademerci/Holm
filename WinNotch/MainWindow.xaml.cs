@@ -977,8 +977,8 @@ public partial class MainWindow : Window
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), 14);
-        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), 12);
+        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
+        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
         AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 
@@ -1070,6 +1070,10 @@ public partial class MainWindow : Window
         close.Click += (_, e) => { e.Handled = true; dismiss(); };
         return host;
     }
+
+    // App icons in the closed notch while notifications wait: as big as the album art (20) in the 30-high badge, a
+    // little smaller next to the art in the 32-high media notch, so they read at a glance.
+    const double BadgeLogoSize = 20, MediaBadgeLogoSize = 18;
 
     void PopulateAppLogos(Panel host, IEnumerable<string> apps, double size)
     {

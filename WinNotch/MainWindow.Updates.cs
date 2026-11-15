@@ -181,8 +181,8 @@ public partial class MainWindow
     void AddUpdateNotification()
     {
         if (!HasUpdateNotification || _availableUpdate is not { } release) return;
-        BadgeLogoList.Children.Add(UpdateNotificationIcon(14));
-        MediaBadgeLogos.Children.Add(UpdateNotificationIcon(12));
+        BadgeLogoList.Children.Add(UpdateNotificationIcon(BadgeLogoSize));
+        MediaBadgeLogos.Children.Add(UpdateNotificationIcon(MediaBadgeLogoSize));
         var row = new System.Windows.Controls.Grid();
         row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());
