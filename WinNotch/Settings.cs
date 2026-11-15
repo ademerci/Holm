@@ -87,6 +87,8 @@ internal sealed class AppSettings
     public bool NotchOnlyPopups { get; set; }
     /// <summary>Holm shows Handy's dictation in the notch and keeps Handy's own overlay out of sight. Off by default.</summary>
     public bool Dictation { get; set; }
+    /// <summary>Ctrl+H opens and closes the notch from anywhere.</summary>
+    public bool HotKey { get; set; } = true;
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>

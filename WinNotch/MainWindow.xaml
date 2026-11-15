@@ -279,6 +279,7 @@
                             <MenuItem x:Name="MenuAllNotifications" Header="All notifications in the notch" IsCheckable="True" Click="MenuAllNotifications_Click"/>
                             <MenuItem x:Name="MenuNotchOnlyPopups" Header="Volume and media only in the notch" IsCheckable="True" Click="MenuNotchOnlyPopups_Click"/>
                             <MenuItem x:Name="MenuDictation" Header="Dictation with Handy" IsCheckable="True" Click="MenuDictation_Click"/>
+                            <MenuItem x:Name="MenuHotKey" Header="Ctrl+H opens and closes the notch" IsCheckable="True" Click="MenuHotKey_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
                             <MenuItem x:Name="MenuConnectivity" Header="Internet connection lost" IsCheckable="True" Click="MenuConnectivity_Click"/>

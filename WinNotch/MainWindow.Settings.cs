@@ -22,6 +22,7 @@ public partial class MainWindow
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
+            new(MenuHotKey, "", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on."),
             new(MenuHideOverBrowsers, ""),
         }),
         new SettingsGroup("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new SettingsSwitch[]
@@ -81,6 +82,7 @@ public partial class MainWindow
         MenuBounce.IsChecked = _settings.Bounce;
         MenuReactiveEq.IsChecked = _settings.ReactiveEqualizer;
         MenuMini.IsChecked = _settings.MiniIdle;
+        MenuHotKey.IsChecked = _settings.HotKey;
         MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
         MenuMediaControls.IsChecked = _settings.MediaControls;
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;

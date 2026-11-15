@@ -226,6 +226,25 @@ public class NotchSizingTests
         root.UpdateLayout();
     }
 
+    [Fact]
+    public void CtrlHOpensTheNotchAndClosesItAgain()
+    {
+        Assert.True(new AppSettings().HotKey); // on by default
+        bool readOnly = AppSettings.ReadOnly;
+        AppSettings.ReadOnly = true; // opening counts toward achievements, which must not touch your files
+        try
+        {
+            WithWindow(window =>
+            {
+                window.ToggleFromKeyboard();
+                Assert.True(GetField<bool>(window, "_expanded"));
+                window.ToggleFromKeyboard();
+                Assert.False(GetField<bool>(window, "_expanded"));
+            });
+        }
+        finally { AppSettings.ReadOnly = readOnly; }
+    }
+
     // Never show the window: Loaded starts the real media, notification and sharing services.
     // Settings are changed only in memory, and no menu click or Save method is invoked.
     static void WithWindow(Action<MainWindow> test)

@@ -245,6 +245,7 @@ public partial class MainWindow : Window
         StartCapsLock();
         StartMediaKeys();
         StartDictation();
+        StartHotKey();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -257,6 +258,7 @@ public partial class MainWindow : Window
     void OnClosed(object? sender, EventArgs e)
     {
         StopMotion();
+        StopHotKey();
         _bluetoothStopped = true;
         _btPoll.Stop();
         _btSoon.Stop();
@@ -325,6 +327,11 @@ public partial class MainWindow : Window
                 // Something was (dis)connected. Windows fills in the battery level a few seconds later, so look twice.
                 _btSoon.Stop(); _btSoon.Start();
                 _btLate.Stop(); _btLate.Start();
+                break;
+
+            case WM_HOTKEY when wParam.ToInt32() == HotKeyId:
+                ToggleFromKeyboard();
+                handled = true;
                 break;
 
             case Native.WM_DISPLAYCHANGE:
