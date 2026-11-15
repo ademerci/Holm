@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.3 – 2026-11-15
+
+### Changed
+- **A smaller Holm.exe.** The self-contained exe drops from 213 to about 157 MB: the framework keeps its own precompiled code instead of being compiled again into one large image, with nothing left out.
+- **Bigger app icons in the closed notch.** While notifications wait, their app icons in the closed notch are as big as the album art, so they read at a glance.
+
 ## 1.12.2 – 2026-11-15
 
 ### Added
