@@ -114,6 +114,16 @@ cherry-picked into a pull request against `main`.
 | Cover blur, shade and accent maths on plain bytes | new `CoverMath.cs`, `MediaService.cs` |
 | `LevelEnvelope` apart from the WASAPI meter | new `LevelEnvelope.cs`, `AudioMeter.cs` |
 
+**Linux and macOS:** `Holm.App` and `Holm.Tests` build there (CI), but nothing has been run and no backend
+exists. Known test failures on those systems, each a real portability gap in shared code:
+
+| Test | Why it fails off Windows |
+|---|---|
+| `FileTransferTests.SafeFileName_keeps_only_a_plain_name` (`x:y?.txt`) | Relies on the OS's list of invalid file name characters; `:` and `?` are allowed on Unix. A name received from a Windows peer should be cleaned the same way everywhere. |
+| `ShelfTests.Shows_the_name` (three Windows paths) | `Path.GetFileName` does not split on `\` on Unix. |
+| `DownloadWatcherTests.Leftovers_from_before_are_ignored_and_other_files_too` (macOS) | Not looked into yet; probably file watcher timing. |
+| `UpdateInstallerTests` (all) | The updater swaps `Holm.exe` through PowerShell: Windows only by design, excluded from the non-Windows run. Linux and macOS need their own update path. |
+
 **Still blocked,** each a candidate for the next seam:
 
 | Blocked files | Reason |
