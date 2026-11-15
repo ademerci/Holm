@@ -21,7 +21,7 @@ public partial class MainWindow
     DispatcherTimer _weatherTick = null!;
     bool _fetchingWeather, _choosingPlace;
     bool _locatingWeather, _locationAttempted, _weatherClosed;
-    CancellationTokenSource? _locationCancel;
+    CancellationTokenSource? _locationCancel, _placeSearch;
     Func<CancellationToken, Task<WeatherPlace?>> _locateWeather = WeatherLocation.FindAsync;
     Func<double, double, CancellationToken, Task<WeatherNow?>> _fetchWeather = Weather.NowAsync;
 
@@ -122,7 +122,7 @@ public partial class MainWindow
         WeatherAdd.Visibility = _settings.Weather && !_choosingPlace && weather == null ? Visibility.Visible : Visibility.Collapsed;
         WeatherAdd.Text = _locatingWeather ? "Finding approximate location…"
             : _settings.WeatherLatitude == null ? (_locationAttempted ? "Choose weather city" : "+ Weather")
-            : _fetchingWeather ? "Loading weather…" : "Weather unavailable · choose city";
+            : _fetchingWeather ? "Loading weather…" : "Weather unavailable · retrying soon"; // a place is saved: the fetch failed, not the city
         if (weather != null)
         {
             IdleWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 12, DimBrush);
@@ -162,6 +162,8 @@ public partial class MainWindow
     void ChoosePlace()
     {
         _locationCancel?.Cancel();
+        _placeSearch?.Cancel(); // a search from an earlier visit must not save a place later
+        _placeSearch = null;
         ShowTool(Tool.None);
         _choosingPlace = true;
         RefreshMediaUi();
@@ -178,12 +180,14 @@ public partial class MainWindow
         if (e.Key != Key.Enter) return;
         e.Handled = true;
         string name = WeatherBox.Text.Trim();
-        if (name.Length == 0) return;
-        WeatherHint.Text = "Looking for " + name + "…";
+        if (name.Length == 0 || _placeSearch != null) return; // one search at a time
+        WeatherHint.Text = "Looking for " + name + "… (Esc to cancel)";
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        _placeSearch = cancel;
         try
         {
-            using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             var place = await Weather.FindAsync(name, cancel.Token);
+            if (_placeSearch != cancel || !_choosingPlace) return; // Esc or closing meanwhile: save nothing
             if (place == null) { WeatherHint.Text = $"No place called “{name}” – check the spelling or try a larger town nearby"; return; }
             _settings.WeatherPlace = place.Label;
             _settings.WeatherLatitude = place.Latitude;
@@ -199,8 +203,9 @@ public partial class MainWindow
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException or System.Collections.Generic.KeyNotFoundException or FormatException)
         {
             Diag.Log("Weather place: " + ex.GetType().Name);
-            WeatherHint.Text = "Can't reach the weather service – try again";
+            if (_choosingPlace && _placeSearch == cancel) WeatherHint.Text = "Can't reach the weather service – try again";
         }
+        finally { if (_placeSearch == cancel) _placeSearch = null; }
     }
 
     void FillWeatherMenu()
