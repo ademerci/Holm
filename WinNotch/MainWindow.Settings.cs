@@ -50,11 +50,11 @@ public partial class MainWindow
             new(MenuPauseForCalls, "", "Music pauses when a call starts and plays on after."),
             new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
             new(MenuVpn, "", "A small lock while a VPN is connected."),
-            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds. The clipboard history stays in memory only; passwords marked private by password managers are never read."),
+            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read."),
         }),
         new SettingsGroup("beam", "Beam", "", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new SettingsSwitch[]
         {
-            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat."),
+            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent."),
             new(MenuSendFolders, "", "Folders are packed as a ZIP before they're sent."),
             new(MenuSendLater, "", "Files for an offline friend wait and go once they're back."),
         }),
