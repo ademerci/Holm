@@ -26,6 +26,7 @@ public partial class MainWindow
 
     void ShowTool(Tool tool)
     {
+        if (_clockViewOpen) SetClockView(false, animate: false);
         bool changed = tool != _tool;
         if (tool == Tool.None) EndTyping();
         _tool = tool;

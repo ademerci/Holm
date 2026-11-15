@@ -555,6 +555,12 @@ public partial class MainWindow
     IEnumerable<UIElement> UnfoldingParts()
     {
         int rows = 0;
+        if (ClockFullView.Visibility == Visibility.Visible)
+        {
+            foreach (UIElement part in ClockFullView.Children)
+                if (part.Visibility == Visibility.Visible && rows++ < 8) yield return part;
+            yield break;
+        }
         foreach (UIElement part in ExpandedPanel.Children)
         {
             if (part.Visibility != Visibility.Visible) continue;

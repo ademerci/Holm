@@ -101,6 +101,16 @@ internal sealed class AppSettings
     public bool Weather { get; set; } = true;
     /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
     public bool SkyColors { get; set; } = true;
+    /// <summary>Large clock view: show seconds next to the time.</summary>
+    public bool ClockShowSeconds { get; set; } = true;
+    /// <summary>Large clock view: show the date under the time.</summary>
+    public bool ClockShowDate { get; set; } = true;
+    /// <summary>Large clock view: show compact music controls at the bottom (on by default).</summary>
+    public bool ClockShowMedia { get; set; } = true;
+    /// <summary>Large clock view typography: "light", "bold" or "mono".</summary>
+    public string ClockStyle { get; set; } = BigClock.StyleLight;
+    /// <summary>Large clock view digit colour: "white", "sky", "amber", "cyan", "green" or "rose".</summary>
+    public string ClockColor { get; set; } = BigClock.ColorWhite;
     /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
     public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }

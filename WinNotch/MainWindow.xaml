@@ -548,7 +548,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" IsHitTestVisible="False">
+                            <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" Panel.ZIndex="1" Background="Transparent" Cursor="Hand" ToolTip="Large clock" MouseLeftButtonUp="ClockHeader_Click">
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
@@ -675,7 +675,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
+                                        <StackPanel HorizontalAlignment="Left" Background="Transparent" Cursor="Hand" ToolTip="Large clock" MouseLeftButtonUp="ClockHeader_Click">
                                             <TextBlock x:Name="GreetingText" FontSize="12" FontWeight="SemiBold" Margin="1,-2,0,0"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
@@ -944,6 +944,88 @@
                                 </StackPanel>
                             </Grid>
 
+                        </StackPanel>
+
+                        <!-- Full-notch clock view: opened by clicking the clock in the expanded notch -->
+                        <StackPanel x:Name="ClockFullView" Visibility="Collapsed">
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ClockBackBtn" Style="{StaticResource NotchButton}" Width="30" Height="30"
+                                        ToolTip="Back" Click="ClockBack_Click">
+                                    <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button x:Name="ClockCustomizeBtn" Style="{StaticResource NotchButton}" Width="30" Height="30"
+                                            ToolTip="Customize clock" Click="ClockCustomize_Click">
+                                        <TextBlock x:Name="ClockCustomizeIcon" Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                    </Button>
+                                    <Button x:Name="ClockPinBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="4,0,0,0"
+                                            ToolTip="Pin clock open" Click="ClockPin_Click">
+                                        <TextBlock x:Name="ClockPinIcon" Text="&#xE718;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel HorizontalAlignment="Center" Margin="0,-6,0,6" Background="Transparent" Cursor="Hand"
+                                        ToolTip="Back to notch" MouseLeftButtonUp="ClockFullDigits_Click">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="ClockFullTime" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="86"
+                                               FontWeight="Light" VerticalAlignment="Bottom"/>
+                                    <TextBlock x:Name="ClockFullSeconds" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="28"
+                                               FontWeight="Light" Opacity="0.72" Margin="6,0,0,15" VerticalAlignment="Bottom"/>
+                                </StackPanel>
+                                <TextBlock x:Name="ClockFullDate" FontSize="14" Foreground="{StaticResource Dim}"
+                                           HorizontalAlignment="Center" Margin="0,-8,0,2"/>
+                            </StackPanel>
+
+                            <!-- Inline customization bar -->
+                            <StackPanel x:Name="ClockCustomizePanel" Visibility="Collapsed" Margin="0,4,0,6">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button x:Name="ClockSecToggle" Style="{StaticResource PillButton}" Content="Seconds" Margin="3,0" Click="ClockSecToggle_Click"/>
+                                    <Button x:Name="ClockDateToggle" Style="{StaticResource PillButton}" Content="Date" Margin="3,0" Click="ClockDateToggle_Click"/>
+                                    <Button x:Name="ClockMediaToggle" Style="{StaticResource PillButton}" Content="Music" Margin="3,0" Click="ClockMediaToggle_Click"/>
+                                    <Button x:Name="ClockStyleToggle" Style="{StaticResource PillButton}" Content="Style: Light" Margin="3,0" Click="ClockStyleToggle_Click"/>
+                                </StackPanel>
+                                <StackPanel x:Name="ClockColorRow" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                            </StackPanel>
+
+                            <!-- Compact music bar at the bottom (on by default, toggleable) -->
+                            <StackPanel x:Name="ClockMediaBar" Margin="0,4,0,2">
+                                <Border Height="1" Background="#1AFFFFFF" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="ClockMediaArt" Width="38" Height="38" CornerRadius="9" Background="{StaticResource ArtFallback}"
+                                            Cursor="Hand" ToolTip="Open the player" MouseLeftButtonUp="Player_Click">
+                                        <TextBlock x:Name="ClockMediaArtPlaceholder" Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" FontSize="15"
+                                                   Foreground="{StaticResource Faint}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="11,0,10,0" VerticalAlignment="Center" Background="Transparent"
+                                                Cursor="Hand" MouseLeftButtonUp="Player_Click">
+                                        <TextBlock x:Name="ClockMediaTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="ClockMediaArtist" FontSize="11" Foreground="{StaticResource Dim}"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="ClockPrevBtn" Style="{StaticResource NotchButton}" Width="32" Height="32" Click="ClockPrev_Click">
+                                            <Path Data="{StaticResource PrevGeo}" Style="{StaticResource IconPath}" Width="15" Height="11"/>
+                                        </Button>
+                                        <Button x:Name="ClockPlayBtn" Style="{StaticResource NotchButton}" Width="36" Height="36" Margin="6,0" Click="ClockPlay_Click">
+                                            <Path x:Name="ClockPlayIcon" Data="{StaticResource PlayGeo}" Style="{StaticResource IconPath}" Width="14" Height="16"/>
+                                        </Button>
+                                        <Button x:Name="ClockNextBtn" Style="{StaticResource NotchButton}" Width="32" Height="32" Click="ClockNext_Click">
+                                            <Path Data="{StaticResource NextGeo}" Style="{StaticResource IconPath}" Width="15" Height="11"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                     <!-- Privacy indicators stay inside the notch, with their own space beside the content. -->

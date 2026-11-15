@@ -116,6 +116,7 @@ public partial class MainWindow : Window
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
+            if (PinnedClockOpen) return;
             // Dragging a slider, a menu open or typing: try again shortly.
             if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
@@ -149,6 +150,7 @@ public partial class MainWindow : Window
         InitMixer();
         InitSendLater();
         InitToday();
+        InitClockView();
 
         Progress.ValueCommitted += v =>
         {
@@ -440,6 +442,7 @@ public partial class MainWindow : Window
         {
             _liveTimer.Stop();
             _trimTimer.Start();
+            SetClockView(false, animate: false);
             ShowTool(Tool.None); // the next time it opens on home
             if (_choosingPlace) { _choosingPlace = false; RefreshMediaUi(); ShowWeather(); }
             RefreshFocumon(); // closed Focumon view + its tick (live timer only runs while open)
@@ -1175,6 +1178,8 @@ public partial class MainWindow : Window
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();
+        RefreshBigClockMedia();
+        if (_clockViewOpen) RefreshBigClockStyle();
         var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
         {
@@ -1244,6 +1249,7 @@ public partial class MainWindow : Window
             RemainText.Text = "-" + FormatTime(info.Duration - pos);
         }
         if (ClockPanel.Visibility == Visibility.Visible || MediaClockHeader.Visibility == Visibility.Visible) UpdateClock();
+        if (_clockViewOpen) UpdateBigClock();
         ReadVolume();
         RefreshFocumon();
     }
@@ -1357,7 +1363,7 @@ public partial class MainWindow : Window
         _expandDelay.Stop();
         SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
-        if (_expanded) _collapseDelay.Start();
+        if (_expanded && !PinnedClockOpen) _collapseDelay.Start();
     }
 
     async void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
