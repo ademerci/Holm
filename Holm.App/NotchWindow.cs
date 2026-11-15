@@ -73,7 +73,10 @@ public sealed partial class NotchWindow : Window
         Background = Brushes.Transparent;
         TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
         WindowStartupLocation = WindowStartupLocation.Manual;
-        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI, Inter");
+        // X11 (Linux): a dock, which window managers keep above normal windows, on every workspace and out of the
+        // task switcher. It has to be said before the window shows; other systems ignore it.
+        X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dock);
+        FontFamily = Fonts.Text;
         Foreground = Brushes.White;
 
         BuildViews();

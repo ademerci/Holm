@@ -32,8 +32,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\HolmIcons.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
     <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
     <ProjectReference Include="..\Holm.Platform.Windows\Holm.Platform.Windows.csproj" Condition="'$(HolmWindows)' == 'true'" />
+    <ProjectReference Include="..\Holm.Platform.Linux\Holm.Platform.Linux.csproj" Condition="'$(HolmWindows)' != 'true'" />
   </ItemGroup>
 </Project>

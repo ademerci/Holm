@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Linux backend: X11, D-Bus (MPRIS, UPower, BlueZ) and PulseAudio/PipeWire behind the interfaces of
+       Holm.Platform. Plain net10.0: it builds on every system, and is only loaded on Linux. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The version Avalonia already brings along for its own Linux support: no second copy in the app. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Holm.Tests" />
+  </ItemGroup>
+
+</Project>

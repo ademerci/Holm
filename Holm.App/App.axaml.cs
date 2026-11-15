@@ -23,11 +23,17 @@ public partial class App : Application
     }
 
     /// <summary>The backend for the system the app was built for; the only place that knows which one that is.</summary>
+#if !HOLM_WINDOWS
+    static IPlatformServices CreateLinux() => new Holm.Platform.Linux.LinuxPlatformServices();
+#endif
+
     static IPlatformServices CreatePlatform()
     {
 #if HOLM_WINDOWS
         return new Holm.Platform.Windows.WindowsPlatformServices();
 #else
+        // Loaded by name, so that the Linux backend's code is only touched on Linux.
+        if (System.OperatingSystem.IsLinux()) return CreateLinux();
         return new NoPlatformServices();
 #endif
     }

@@ -17,8 +17,8 @@ namespace Holm.App;
 public sealed partial class NotchWindow
 {
     static readonly IBrush Dim = Brush("#A6FFFFFF"), Faint = Brush("#66FFFFFF"), ArtFallback = Brush("#FF262628");
-    static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
-    static readonly FontFamily DisplayFont = new("Segoe UI Variable Display, Segoe UI, Inter");
+    static readonly FontFamily IconFont = Fonts.Icons;
+    static readonly FontFamily DisplayFont = Fonts.Display;
     static readonly Geometry PlayGeo = Geometry.Parse("M3,1 L16,9 L3,17 Z"),
         PauseGeo = Geometry.Parse("M3,1 L7,1 L7,17 L3,17 Z M11,1 L15,1 L15,17 L11,17 Z"),
         NextGeo = Geometry.Parse("M1,2 L9,9 L1,16 Z M9,2 L17,9 L9,16 Z"),
