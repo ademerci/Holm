@@ -128,6 +128,7 @@ internal sealed class SettingsWindow : Window
             _titles[ProfileKey] = ("Profile", "How your friends see you");
             _nav.Children.Add(NavItem(ProfileKey, "", "Profile"));
             profile.Changed += RefreshApplyState;
+            profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _settingsPages[ProfileKey] = profile;
         }
         foreach (var group in groups)
