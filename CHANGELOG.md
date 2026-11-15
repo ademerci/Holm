@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.12.2 – 2026-11-15
 
 ### Added
 - **Sky colours can be switched off.** *Settings › Weather › Sky colours*: off, the open notch stays plain black when nothing plays, and the greeting is grey instead of tinted. On by default.
