@@ -8,7 +8,7 @@ touched, and how it gets back into `main`.
 
 ## Where the work lives
 
-- Branch: `experimental/cross-platform`, checked out as its own worktree next to the main checkout
+- Branch: `dev` (the same commits as `experimental/cross-platform`), checked out as its own worktree next to the main checkout
   (`../Holm-crossplatform`). The main checkout stays on `main`; both can be open and built at the same time.
 - Everything new goes into new top-level folders: `Holm.Core/`, `Holm.Platform/`, `Holm.Platform.<OS>/`,
   `Holm.App/`, `Holm.Tests/`, plus `Holm.slnx`, `docs/cross-platform/` and
@@ -65,7 +65,7 @@ Not one big merge at the end. In this order:
 Last merge from `main`: Holm 1.12.5. Its notch changes are ported too (a tool's field takes the keyboard when the
 tool opens, the reminder hint when no time is found, the double-click guard on removing a reminder).
 
-**Linked into `Holm.Core`:** 37 source files, with 27 test files (443 tests) in `Holm.Tests`.
+**Linked into `Holm.Core`:** 37 source files, with 27 test files in `Holm.Tests`.
 
 **`Holm.App`** (checked on Windows by running it):
 
@@ -75,8 +75,8 @@ tool opens, the reminder hint when no time is found, the double-click guard on r
   (cover, title, progress, seek, shuffle/previous/play/next/repeat) or the clock, and the cover's colour wash.
 - `MediaService.cs`: shared debounce, de-duplication and cover handling on top of `IMediaPlatform`.
 - `Controls/MiniSlider.cs`, `Controls/NotchButton.cs`: drawn directly, no templates.
-- Volume: the pop-out when the level changes (not yet seen running), mute button and slider in the open notch.
-- Equalizer: follows the sound through the audio backend, or bounces when it can't be read (not yet seen running).
+- Volume: the pop-out when the level changes, mute button and slider in the open notch (seen running on Linux).
+- Equalizer: follows the sound through the audio backend, or bounces when it can't be read (seen running on Linux).
 - `NotchWindow.Tools.cs`: the tool row with notes and the calculator, and the keyboard hand-over (the notch takes
   the keyboard only while you click into one of its text fields).
 - `NotchWindow.Reminders.cs`: the reminders page, the next reminder in the idle notch, the card when one is due.
@@ -87,20 +87,27 @@ tool opens, the reminder hint when no time is found, the double-click guard on r
 - `NotchWindow.Devices.cs`: battery and Bluetooth chips in the open notch, and the peeks for charging, low battery
   and a device connecting (the peeks are not yet seen running). Bluetooth is read at start and each time the
   notch has opened; nothing watches it in between yet.
-- Notes and reminders live only as long as the port runs: settings are read-only. No alarm sound yet.
+- On Windows notes and reminders live only as long as the port runs: settings are read-only there (see below).
+  On Linux and macOS the settings file is the port's own and it saves. No alarm sound yet.
 - `Holm.Platform.Windows`: overlay window styles and click region, media sessions (GSMTC), volume and
   levels (CoreAudio), battery, Bluetooth batteries. `VolumeService.cs`, `AudioMeter.cs`, `Native.cs` and
   `BluetoothBattery.cs` are linked from `WinNotch/` into this project:
   Windows-only files that never touch WPF need no rewrite, only an interface in front.
 
-The port reads the installed app's `settings.json` (animations, bounce, reactive equalizer) and never writes it
-(`AppSettings.ReadOnly`). With `HOLM_DATA=folder` (Debug builds) it runs on a data folder of its own and saves there.
+On Windows the port reads the installed app's `settings.json` (animations, bounce, reactive equalizer) and never
+writes it (`AppSettings.ReadOnly`). On Linux (`~/.config/Holm`) and macOS there is no other Holm, so it saves. With `HOLM_DATA=folder` (Debug builds) it runs on a data folder of its own and saves there.
 
 Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): the notch sits 300 px down.
 
 Known gaps in what is ported: clipboard, mixer and colour picker are missing from the tool row; views fade but do not pop
-or unfold yet; a new cover fades in over black instead of cross-fading; no scale settings, mini idle or multi-monitor choice; the context menu has only Timer and Quit. Icons use Segoe Fluent Icons by name, which
-exists on Windows only and may not be redistributed: Linux and macOS need a replacement icon font.
+or unfold yet; a new cover fades in over black instead of cross-fading; no scale settings, mini idle or multi-monitor choice; the context menu has only Timer and Quit.
+
+**Fonts.** On Windows the port uses the WPF app's fonts (Segoe UI Variable, Segoe Fluent Icons). Those may not be
+redistributed, so elsewhere text is set in Inter (bundled with Avalonia) and icons come from
+`Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points, so the code that shows
+an icon is the same everywhere. `Holm.App/Fonts.cs` picks the font; `tools/icon-font/` builds it and says how to
+add an icon. An icon missing from that font is an empty box on Linux and macOS only: `icons.txt` covers what the
+port shows today and most of what the WPF app uses, not all of it.
 
 **Seams made so far.** These are the only edits under `WinNotch/` on this branch. They change no behavior (the
 WPF suite passes) and belong on `main`: commit them separately from the new folders, so that commit can be
@@ -113,16 +120,40 @@ cherry-picked into a pull request against `main`.
 | `Spring` and `SpringValue` out of the window code | new `Spring.cs`, `MainWindow.Motion.cs` |
 | Cover blur, shade and accent maths on plain bytes | new `CoverMath.cs`, `MediaService.cs` |
 | `LevelEnvelope` apart from the WASAPI meter | new `LevelEnvelope.cs`, `AudioMeter.cs` |
+| Received file names are cleaned of what Windows forbids on every system | `Sharing/FileTransfer.cs` |
+| A shelf item's name is split by hand, so Windows paths read the same elsewhere | `Shelf.cs` |
 
-**Linux and macOS:** `Holm.App` and `Holm.Tests` build there (CI), but nothing has been run and no backend
-exists. Known test failures on those systems, each a real portability gap in shared code:
+**Linux:** `Holm.Platform.Linux` is the backend, checked by running the app under Xvfb with openbox, a compositor,
+PulseAudio and pretend MPRIS and BlueZ services on a private bus (not yet on a real desktop):
 
-| Test | Why it fails off Windows |
+- Window (`LinuxNotchWindowPlatform.cs`): a dock on X11, so window managers keep it above normal windows, on every
+  workspace and out of the task switcher; an input shape lets clicks beside the notch through; the keyboard is
+  taken for the notch's text fields and handed back. Under Wayland the app runs through XWayland (Avalonia has no
+  Wayland backend); how each compositor treats an XWayland dock there is not checked. The see-through corners
+  need a compositing window manager.
+- Media (`LinuxMediaPlatform.cs`): MPRIS players on the session bus. The cover comes from the address the player
+  gives: a file, a data URL, or a web address (Spotify gives its CDN's), which is then downloaded.
+- Volume and equalizer (`LinuxAudioPlatform.cs`): the PulseAudio client library (`libpulse.so.0`), which is also
+  how PipeWire is spoken to. Open question: the equalizer reads the default output's monitor through a recording
+  stream, and a desktop may show its "microphone in use" sign for that although no microphone is involved. Check on
+  GNOME and KDE before this ships; "Equalizer follows the music" off avoids the stream.
+- Battery (`LinuxDevicePlatforms.cs`): `/sys/class/power_supply`, with UPower announcing changes.
+- Bluetooth batteries: BlueZ. Only devices whose battery BlueZ reports are listed.
+- One file: `dotnet publish Holm.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
+  -p:PublishReadyToRun=true` gives a single `Holm.App` (about 110 MB). Measured under Xvfb: no CPU use at rest,
+  about 50 MB of private memory, under 1 % of a core while the equalizer runs.
+- Missing: single instance, autostart (`~/.config/autostart`), an update path, a `.desktop` file and packaging.
+
+All tests pass on Linux (the updater's stay excluded: it swaps `Holm.exe` through PowerShell, Windows only by
+design). The backend's plain logic has tests of its own in `Holm.Tests/Linux/`, which run on every system.
+
+**macOS:** `Holm.App` and `Holm.Tests` build there (CI), but nothing has been run and no backend exists: the app
+would start with `NoPlatformServices`, an ordinary topmost window with no media, volume or battery. One known
+test failure:
+
+| Test | Why it fails |
 |---|---|
-| `FileTransferTests.SafeFileName_keeps_only_a_plain_name` (`x:y?.txt`) | Relies on the OS's list of invalid file name characters; `:` and `?` are allowed on Unix. A name received from a Windows peer should be cleaned the same way everywhere. |
-| `ShelfTests.Shows_the_name` (three Windows paths) | `Path.GetFileName` does not split on `\` on Unix. |
-| `DownloadWatcherTests.Leftovers_from_before_are_ignored_and_other_files_too` (macOS) | Not looked into yet; probably file watcher timing. |
-| `UpdateInstallerTests` (all) | The updater swaps `Holm.exe` through PowerShell: Windows only by design, excluded from the non-Windows run. Linux and macOS need their own update path. |
+| `DownloadWatcherTests.Leftovers_from_before_are_ignored_and_other_files_too` | Not looked into yet; probably file watcher timing. |
 
 **Still blocked,** each a candidate for the next seam:
 

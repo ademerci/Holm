@@ -29,8 +29,9 @@ public sealed partial class NotchWindow : Window
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
     readonly IAudioPlatform _audio;
-    // Read only for now: the port shares the installed app's settings file and must not write to it yet.
-    // With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there.
+    // Read only on Windows for now: there the port shares the installed app's settings file and must not write to
+    // it yet. With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there. On Linux and
+    // macOS there is no other Holm: the file is this app's own, and it saves.
     readonly AppSettings _settings = AppSettings.Load();
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>
@@ -58,7 +59,7 @@ public sealed partial class NotchWindow : Window
         _media = new MediaService(platform.Media);
         _audio = platform.Audio;
         InitDevices(platform);
-        AppSettings.ReadOnly = Diag.DevFolder == null;
+        AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
         Title = "Holm";

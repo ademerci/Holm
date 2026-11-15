@@ -14,6 +14,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Same footprint settings as WinNotch.csproj; the reasons and measurements are documented there. -->
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <!-- Skia and HarfBuzz are native libraries: without this a "single file" publish leaves them beside the
+         executable, and the release is one file by rule (AGENTS.md). -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>

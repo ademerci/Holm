@@ -5,7 +5,7 @@ name: Cross-platform
 on:
   push:
     paths: ["Holm.*/**", "Holm.slnx", "WinNotch/**", "WinNotch.Tests/**", ".github/workflows/cross-platform.yml"]
-    branches: ["experimental/cross-platform"]
+    branches: ["experimental/cross-platform", "dev"]
   pull_request:
     paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
   workflow_dispatch:
@@ -21,9 +21,9 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    # Linux and macOS still have known test failures (docs/cross-platform/WORKFLOW.md): they are reported, but
-    # do not turn the run red until those are fixed. Windows must pass.
-    continue-on-error: ${{ matrix.os != 'windows-latest' }}
+    # macOS still has a known test failure (docs/cross-platform/WORKFLOW.md): it is reported, but does not turn
+    # the run red until that is fixed. Windows and Linux must pass.
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -44,3 +44,17 @@ jobs:
       - name: Test (Linux, macOS)
         if: matrix.os != 'windows-latest'
         run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual&FullyQualifiedName!~UpdateInstallerTests"
+
+      # The Linux build as people would get it: self-contained, one file. Kept for a few days to try out; it is
+      # a test build of an experimental branch, not a release.
+      - name: Publish (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet publish Holm.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/linux-x64
+
+      - name: Upload (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-linux-x64-test-build.${{ github.run_number }}
+          path: out/linux-x64/
+          retention-days: 7
