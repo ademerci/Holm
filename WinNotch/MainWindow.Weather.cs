@@ -122,7 +122,7 @@ public partial class MainWindow
         WeatherAdd.Visibility = _settings.Weather && !_choosingPlace && weather == null ? Visibility.Visible : Visibility.Collapsed;
         WeatherAdd.Text = _locatingWeather ? "Finding approximate location…"
             : _settings.WeatherLatitude == null ? (_locationAttempted ? "Choose weather city" : "+ Weather")
-            : _fetchingWeather ? "Loading weather…" : "Weather unavailable · retrying soon"; // a place is saved: the fetch failed, not the city
+            : _fetchingWeather ? "Loading weather…" : "Weather unavailable · will retry"; // a place is saved: the fetch failed, not the city
         if (weather != null)
         {
             IdleWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 12, DimBrush);
@@ -181,7 +181,7 @@ public partial class MainWindow
         e.Handled = true;
         string name = WeatherBox.Text.Trim();
         if (name.Length == 0 || _placeSearch != null) return; // one search at a time
-        WeatherHint.Text = "Looking for " + name + "… (Esc to cancel)";
+        WeatherHint.Text = "Looking for " + name + "…";
         using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         _placeSearch = cancel;
         try
