@@ -374,7 +374,7 @@ internal sealed class MediaService
     internal static (ImageSource Backdrop, double Shade) BackdropFor(byte[] bytes)
     {
         var (image, luminance) = BackdropOf(bytes);
-        return (image, Math.Clamp(1 - 0.22 / Math.Max(luminance, 0.01), 0.25, 0.8));
+        return (image, CoverMath.ShadeFor(luminance));
     }
 
     static BitmapSource Decode(byte[] bytes, int width, int height = 0)
@@ -398,52 +398,16 @@ internal sealed class MediaService
     /// </summary>
     static (BitmapSource Image, double Luminance) BackdropOf(byte[] bytes)
     {
-        const int n = 24;
+        const int n = CoverMath.BackdropSize;
         var bgra = new FormatConvertedBitmap(Decode(bytes, n, n), PixelFormats.Bgra32, null, 0);
         var px = new byte[n * n * 4];
         bgra.CopyPixels(px, n * 4, 0);
 
-        var planes = new double[3][]; // B, G, R
-        for (int c = 0; c < 3; c++)
-        {
-            planes[c] = new double[n * n];
-            for (int i = 0; i < n * n; i++) planes[c][i] = px[i * 4 + c] / 255.0;
-        }
-        for (int pass = 0; pass < 3; pass++) // three box blurs ≈ one gaussian
-            foreach (var plane in planes) { BoxBlur(plane, n, horizontal: true); BoxBlur(plane, n, horizontal: false); }
-
-        double luminance = 0;
-        for (int i = 0; i < n * n; i++)
-        {
-            double b = planes[0][i], g = planes[1][i], r = planes[2][i];
-            double gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            luminance += gray;
-            px[i * 4] = ToByte(gray + (b - gray) * 1.35);
-            px[i * 4 + 1] = ToByte(gray + (g - gray) * 1.35);
-            px[i * 4 + 2] = ToByte(gray + (r - gray) * 1.35);
-            px[i * 4 + 3] = 255;
-        }
+        double luminance = CoverMath.Backdrop(px);
 
         var image = BitmapSource.Create(n, n, 96, 96, PixelFormats.Bgra32, null, px, n * 4);
         image.Freeze();
-        return (image, luminance / (n * n));
-    }
-
-    static byte ToByte(double v) => (byte)Math.Round(Math.Clamp(v, 0, 1) * 255);
-
-    static void BoxBlur(double[] plane, int n, bool horizontal, int radius = 2)
-    {
-        var line = new double[n];
-        for (int a = 0; a < n; a++)
-        {
-            for (int b = 0; b < n; b++) line[b] = plane[horizontal ? a * n + b : b * n + a];
-            for (int b = 0; b < n; b++)
-            {
-                double sum = 0;
-                for (int k = -radius; k <= radius; k++) sum += line[Math.Clamp(b + k, 0, n - 1)];
-                plane[horizontal ? a * n + b : b * n + a] = sum / (2 * radius + 1);
-            }
-        }
+        return (image, luminance);
     }
 
     /// <summary>A bright, saturated colour from the cover, used for the equalizer and the progress bar.</summary>
@@ -454,37 +418,7 @@ internal sealed class MediaService
         var px = new byte[w * h * 4];
         bgra.CopyPixels(px, w * 4, 0);
 
-        double r = 0, g = 0, b = 0, total = 0;
-        for (int i = 0; i < px.Length; i += 4)
-        {
-            double B = px[i], G = px[i + 1], R = px[i + 2];
-            double max = Math.Max(R, Math.Max(G, B)), min = Math.Min(R, Math.Min(G, B));
-            double sat = max <= 0 ? 0 : (max - min) / max;
-            double weight = 0.02 + sat * sat * (max / 255.0);
-            r += R * weight; g += G * weight; b += B * weight; total += weight;
-        }
-        r /= total; g /= total; b /= total;
-
-        double vmax = Math.Max(r, Math.Max(g, b)), vmin = Math.Min(r, Math.Min(g, b));
-        double s = vmax <= 0 ? 0 : (vmax - vmin) / vmax;
-        if (s < 0.18) return Color.FromRgb(235, 235, 240);
-
-        double hue = vmax == vmin ? 0
-                   : vmax == r ? 60 * (((g - b) / (vmax - vmin)) % 6)
-                   : vmax == g ? 60 * ((b - r) / (vmax - vmin) + 2)
-                   : 60 * ((r - g) / (vmax - vmin) + 4);
-        if (hue < 0) hue += 360;
-        return FromHsv(hue, Math.Min(s * 1.15, 0.8), 1.0);
-    }
-
-    static Color FromHsv(double h, double s, double v)
-    {
-        double c = v * s, x = c * (1 - Math.Abs(h / 60 % 2 - 1)), m = v - c;
-        var (r, g, b) = h switch
-        {
-            < 60 => (c, x, 0d), < 120 => (x, c, 0d), < 180 => (0d, c, x),
-            < 240 => (0d, x, c), < 300 => (x, 0d, c), _ => (c, 0d, x),
-        };
-        return Color.FromRgb((byte)((r + m) * 255), (byte)((g + m) * 255), (byte)((b + m) * 255));
+        var (r, g, b) = CoverMath.Accent(px);
+        return Color.FromRgb(r, g, b);
     }
 }

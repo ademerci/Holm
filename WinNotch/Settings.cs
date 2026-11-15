@@ -235,11 +235,12 @@ internal static class FormerName
             }
         }
         catch (Exception ex) { Diag.Error(ex); }
-        try { Autostart.TakeOver(Name); }
+        try { if (OperatingSystem.IsWindows()) Autostart.TakeOver(Name); }
         catch (Exception ex) { Diag.Error(ex); }
     }
 }
 
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 internal static class Autostart
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
