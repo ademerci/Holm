@@ -55,7 +55,7 @@ internal sealed class AddFriendPage : HubView
         _copyMessage.Click += (_, _) => Copy(_invite == null ? null : Message(_invite.Code), "Message copied: paste it into any chat");
         _newCode = HubTheme.Action("New code");
         _newCode.Margin = new Thickness(0, 0, 8, 8);
-        _newCode.ToolTip = "Your old code stops working when it runs out; friends who already used it stay friends";
+        _newCode.ToolTip = "Makes a new code. The old one still works until it runs out; friends who already used it stay friends";
         _newCode.Click += async (_, _) => await LoadInvite(fresh: true);
         buttons.Children.Add(_copy);
         buttons.Children.Add(_copyMessage);
