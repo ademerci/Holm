@@ -172,6 +172,7 @@ internal sealed class SettingsWindow : Window
         close.MouseLeave += (_, _) => close.Background = HubTheme.Card;
         close.MouseLeftButtonDown += (_, e) => e.Handled = true; // not the start of a drag
         close.MouseLeftButtonUp += (_, _) => Close();
+        Keyboardable(close, "Close", Close);
         Grid.SetColumn(close, 1);
         header.Children.Add(close);
         DockPanel.SetDock(header, Dock.Top);
@@ -305,6 +306,27 @@ internal sealed class SettingsWindow : Window
         _apply.Background = HasChanges ? HubTheme.Accent : HubTheme.Card;
     }
 
+    /// <summary>Makes a mouse-only element reachable by keyboard: Tab, Space/Enter to act, and a name for screen readers.</summary>
+    static void Keyboardable(FrameworkElement el, string name, Action act)
+    {
+        el.Focusable = true;
+        System.Windows.Automation.AutomationProperties.SetName(el, name);
+        var ring = new FrameworkElementFactory(typeof(System.Windows.Shapes.Rectangle));
+        ring.SetValue(System.Windows.Shapes.Shape.StrokeProperty, HubTheme.Accent);
+        ring.SetValue(System.Windows.Shapes.Shape.StrokeThicknessProperty, 1.5);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusXProperty, 8.0);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusYProperty, 8.0);
+        ring.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        var style = new Style();
+        style.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate { VisualTree = ring }));
+        el.FocusVisualStyle = style;
+        el.KeyDown += (_, e) =>
+        {
+            if (e.Source != el || e.Key != Key.Space && e.Key != Key.Enter) return;
+            e.Handled = true;
+            act();
+        };
+    }
     Border NavItem(string key, string glyph, string title)
     {
         var grid = new Grid();
@@ -333,6 +355,7 @@ internal sealed class SettingsWindow : Window
         item.MouseEnter += (_, _) => { if (Page != key) item.Background = HubTheme.Hover; };
         item.MouseLeave += (_, _) => { if (Page != key) item.Background = Brushes.Transparent; };
         item.MouseLeftButtonUp += (_, _) => Navigate(key);
+        Keyboardable(item, title, () => Navigate(key));
         _navItems[key] = (item, icon, badge, badgeText);
         return item;
     }
@@ -384,6 +407,7 @@ internal sealed class SettingsWindow : Window
         row.MouseEnter += (_, _) => hover.Background = HubTheme.Hover;
         row.MouseLeave += (_, _) => hover.Background = null;
         row.MouseLeftButtonUp += (_, _) => Flip(item, toggle);
+        Keyboardable(row, item.Header as string ?? "", () => Flip(item, toggle));
         return row;
     }
 
