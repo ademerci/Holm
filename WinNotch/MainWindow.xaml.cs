@@ -1330,7 +1330,7 @@ public partial class MainWindow : Window
 
     static FrameworkElement DeviceChip(string glyph, string? name, int level, bool charging)
     {
-        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Center };
+        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 16, 6), VerticalAlignment = VerticalAlignment.Center };
         chip.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
         if (name != null)
             chip.Children.Add(new TextBlock { Text = name, FontSize = 12, Foreground = DimBrush, MaxWidth = 100, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
