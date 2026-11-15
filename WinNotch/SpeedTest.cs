@@ -37,6 +37,7 @@ internal static class SpeedTest
     public static readonly TimeSpan PhaseTime = TimeSpan.FromSeconds(7);
     /// <summary>The first moments of a phase, while the connections speed up, don't count towards the result.</summary>
     public static readonly TimeSpan Warmup = TimeSpan.FromSeconds(1.5);
+    static readonly TimeSpan PingTimeout = TimeSpan.FromSeconds(5);
     public const long MaxBytesPerPhase = 300_000_000;
     const int Streams = 4, Pings = 8, DownChunk = 25_000_000, UpChunk = 8_000_000;
 
@@ -75,7 +76,14 @@ internal static class SpeedTest
         for (int i = 0; i <= Pings; i++)
         {
             var clock = Stopwatch.StartNew();
-            using var response = await Http.GetAsync(Server + "__down?bytes=0", HttpCompletionOption.ResponseHeadersRead, cancel);
+            // The client has no overall timeout, so each ping gets its own; only a timeout that wasn't the user's Stop is an error.
+            using var one = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            one.CancelAfter(PingTimeout);
+            HttpResponseMessage response;
+            try { response = await Http.GetAsync(Server + "__down?bytes=0", HttpCompletionOption.ResponseHeadersRead, one.Token); }
+            catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
+            { throw new HttpRequestException("The speed test server didn't answer – check your connection and try again."); }
+            using var disposeResponse = response;
             clock.Stop();
             response.EnsureSuccessStatusCode();
             if (i > 0) times.Add(clock.Elapsed.TotalMilliseconds);
