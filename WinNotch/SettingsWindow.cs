@@ -79,7 +79,8 @@ internal sealed class SettingsWindow : Window
         brand.Children.Add(new Image
         {
             Width = 30, Height = 30,
-            Source = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Holm;component/notch.ico")),
+            // The 128 px frame of notch.ico (the one this took before): sharp at any scaling, without a second 381 KB icon in the exe.
+            Source = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Holm;component/Assets/brand.png")),
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeights.SemiBold });
