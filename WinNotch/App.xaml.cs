@@ -65,6 +65,21 @@ public partial class App : Application
         if (Diag.DevFolder == null) FormerName.Migrate(); // before the window reads the settings; test data leaves your autostart alone
         new MainWindow().Show();
 
+#if DEBUG || BENCH
+        // Measurement on test data: when the notch is ready (Loaded and the first frame done, the UI thread idle for the
+        // first time) and 10 s later, write ms since process start, JIT'd methods and JIT time to HOLM_DATA\ready.txt.
+        if (Diag.DevFolder is { } dev)
+        {
+            void Stamp(string label) => System.IO.File.AppendAllText(System.IO.Path.Combine(dev, "ready.txt"),
+                $"{label} {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:F0} " +
+                $"{System.Runtime.JitInfo.GetCompiledMethodCount()} {System.Runtime.JitInfo.GetCompilationTime().TotalMilliseconds:F0}{Environment.NewLine}");
+            Dispatcher.InvokeAsync(() => Stamp("ready"), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            var later = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            later.Tick += (_, _) => { later.Stop(); Stamp("10s"); };
+            later.Start();
+        }
+#endif
+
 #if DEBUG
         // Dev helpers to check that the process really ends: quit after N seconds like the menu's Quit
         // (--quit-after N), and with --linger leave a thread behind that would keep it alive (the watchdog's job).
