@@ -101,6 +101,8 @@ internal sealed class AppSettings
     public bool Weather { get; set; } = true;
     /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
     public bool SkyColors { get; set; } = true;
+    /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
+    public bool AiUsage { get; set; } = true;
     /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
     public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }

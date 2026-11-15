@@ -21,6 +21,7 @@ public partial class MainWindow
             new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
+            new(MenuAiUsage, "", "A small ring beside the notch shows how much of Claude Code's and Codex's limits you have used, and what their agents are doing. Read from their logs on this PC only."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
             new(MenuHotKey, "", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on."),
             new(MenuHideOverBrowsers, ""),
@@ -88,6 +89,7 @@ public partial class MainWindow
         MenuMediaControls.IsChecked = _settings.MediaControls;
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
         MenuSkyColors.IsChecked = _settings.SkyColors;
+        MenuAiUsage.IsChecked = _settings.AiUsage;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;

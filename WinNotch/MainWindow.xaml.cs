@@ -246,6 +246,7 @@ public partial class MainWindow : Window
         StartMediaKeys();
         StartDictation();
         StartHotKey();
+        StartAiUsage();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -257,6 +258,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopAiUsage();
         StopMotion();
         StopHotKey();
         _bluetoothStopped = true;
@@ -563,9 +565,11 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
+        PlaceAiRing(); // out of the way while the notch is open
     }
 
-    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
+    // At least as tall as the AI usage ring beside the notch while it shows (the mini pill alone is 6 px).
+    void FitWindowHeight() => Height = Math.Max(Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2, AiRingShown ? 28 : 0);
 
     double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
     double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
@@ -646,6 +650,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
+        PlaceAiRing(); // the usage ring follows the notch's edge
     }
 
     /// <summary>

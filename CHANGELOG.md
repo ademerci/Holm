@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **AI usage ring.** A small ring beside the notch, also while music plays, shows how much of Claude Code's or Codex's limit you have used, with its logo inside. Hover it for the details: usage, when it resets, tokens in the current window, and which agents are working right now on which project and step. Read only from their own logs on this PC, never sent or shared. Codex shows its real limit; Claude Code doesn't log one, so its ring compares the current 5 hours with your busiest 5 hours of the past week. *Settings › General › AI usage ring* turns it off.
+
 ## 1.12.2 – 2026-11-15
 
 ### Added
