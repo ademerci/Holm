@@ -31,6 +31,7 @@ public sealed partial class NotchWindow
     NotchButton _notesToolBtn = null!, _remindersToolBtn = null!, _calculatorToolBtn = null!;
     Tool _tool;
     bool _typing;
+    bool _typingUntouched; // the field took the keyboard when its tool opened and nothing was typed yet
 
     // Notes: a short note that survives a restart
     readonly StackPanel _notesPage = new() { IsVisible = false };
@@ -152,7 +153,23 @@ public sealed partial class NotchWindow
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
-    void ToggleTool(Tool tool) => ShowTool(_tool == tool ? Tool.None : tool);
+    void ToggleTool(Tool tool)
+    {
+        ShowTool(_tool == tool ? Tool.None : tool);
+        // You clicked the tool to use it: its field takes the keyboard at once, without a second click into it.
+        if (_tool == tool && TypingBox(tool) is { } box) BeginTyping(box, untouched: true);
+    }
+
+    TextBox? TypingBox(Tool tool) => tool switch
+    {
+        Tool.Notes => _notesBox,
+        Tool.Reminders => _reminderBox,
+        Tool.Calculator => _calcBox,
+        _ => null,
+    };
+
+    /// <summary>Typing keeps the notch open when the mouse leaves; a field that only got the keyboard by opening doesn't.</summary>
+    bool KeepOpenForTyping => _typing && !_typingUntouched;
 
     void ShowTool(Tool tool)
     {
@@ -247,7 +264,7 @@ public sealed partial class NotchWindow
         box.AddHandler(PointerPressedEvent, (_, _) => BeginTyping(box), RoutingStrategies.Tunnel);
         box.AddHandler(KeyDownEvent, (_, e) =>
         {
-            if (e.Key != Key.Escape) return;
+            if (e.Key != Key.Escape) { _typingUntouched = false; return; }
             e.Handled = true;
             EndTyping();
             _hovered = false;
@@ -255,8 +272,9 @@ public sealed partial class NotchWindow
         }, RoutingStrategies.Tunnel);
     }
 
-    void BeginTyping(TextBox box)
+    void BeginTyping(TextBox box, bool untouched = false)
     {
+        _typingUntouched = untouched;
         if (!_typing && TryGetPlatformHandle() is { } handle)
         {
             _typing = true;
@@ -272,6 +290,7 @@ public sealed partial class NotchWindow
     {
         if (!_typing) return;
         _typing = false;
+        _typingUntouched = false;
         SaveNotes();
         FocusManager?.Focus(null); // nothing holds the keyboard
         if (TryGetPlatformHandle() is { } handle) _platform.SetKeyboard(handle.Handle, take: false);

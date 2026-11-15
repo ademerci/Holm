@@ -26,6 +26,7 @@ public sealed partial class NotchWindow
     const string BellGlyph = "";
     ReminderList _reminders = null!;
     readonly DispatcherTimer _reminderTick = new();
+    long _lastReminderRemove; // a double-click on × must not also delete the row that slides into place
 
     readonly StackPanel _remindersPage = new() { IsVisible = false };
     readonly TextBox _reminderBox = NotchTextBox();
@@ -53,7 +54,11 @@ public sealed partial class NotchWindow
             if (e.Key != Key.Enter) return;
             e.Handled = true;
             var now = DateTime.Now;
-            if (!ReminderParser.TryParse(_reminderBox.Text, now, out var due, out var text)) return;
+            if (!ReminderParser.TryParse(_reminderBox.Text, now, out var due, out var text))
+            {
+                if ((_reminderBox.Text ?? "").Trim().Length > 0) _reminderHint.Text = "Couldn’t find a time – try “20 min laundry” or “14:30 dentist”";
+                return;
+            }
             _reminderBox.Text = "";
             AddReminder(text, due.ToUniversalTime());
         }, RoutingStrategies.Tunnel);
@@ -143,6 +148,8 @@ public sealed partial class NotchWindow
             string id = reminder.Id;
             remove.Click += () =>
             {
+                if (Environment.TickCount64 - _lastReminderRemove < 400) return;
+                _lastReminderRemove = Environment.TickCount64;
                 _reminders.Remove(id);
                 _settings.Save();
                 ShowReminderRows();

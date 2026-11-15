@@ -62,6 +62,9 @@ Not one big merge at the end. In this order:
 
 ## Status
 
+Last merge from `main`: Holm 1.12.5. Its notch changes are ported too (a tool's field takes the keyboard when the
+tool opens, the reminder hint when no time is found, the double-click guard on removing a reminder).
+
 **Linked into `Holm.Core`:** 37 source files, with 27 test files (443 tests) in `Holm.Tests`.
 
 **`Holm.App`** (checked on Windows by running it):
@@ -91,7 +94,7 @@ Not one big merge at the end. In this order:
   Windows-only files that never touch WPF need no rewrite, only an interface in front.
 
 The port reads the installed app's `settings.json` (animations, bounce, reactive equalizer) and never writes it
-(`AppSettings.ReadOnly`).
+(`AppSettings.ReadOnly`). With `HOLM_DATA=folder` (Debug builds) it runs on a data folder of its own and saves there.
 
 Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): the notch sits 300 px down.
 

@@ -30,6 +30,7 @@ public sealed partial class NotchWindow : Window
     readonly MediaService _media;
     readonly IAudioPlatform _audio;
     // Read only for now: the port shares the installed app's settings file and must not write to it yet.
+    // With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there.
     readonly AppSettings _settings = AppSettings.Load();
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>
@@ -57,7 +58,7 @@ public sealed partial class NotchWindow : Window
         _media = new MediaService(platform.Media);
         _audio = platform.Audio;
         InitDevices(platform);
-        AppSettings.ReadOnly = true;
+        AppSettings.ReadOnly = Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
         Title = "Holm";
@@ -82,7 +83,7 @@ public sealed partial class NotchWindow : Window
         Content = _root;
 
         _island.PointerEntered += (_, _) => { if (_taskVisible) return; _hovered = true; ApplyState(animate: true); };
-        _island.PointerExited += (_, _) => { if (_typing || _menuOpen) return; _hovered = false; ApplyState(animate: true); };
+        _island.PointerExited += (_, _) => { if (KeepOpenForTyping || _menuOpen) return; _hovered = false; ApplyState(animate: true); };
 
         BuildContextMenu();
         _media.Changed += OnMediaChanged;
