@@ -156,6 +156,7 @@ public partial class MainWindow
     {
         e.Handled = true;
         ChoosePlace();
+        BeginTyping(WeatherBox, untouched: true); // you came to type a city
     }
 
     void ChoosePlace()
@@ -183,7 +184,7 @@ public partial class MainWindow
         {
             using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             var place = await Weather.FindAsync(name, cancel.Token);
-            if (place == null) { WeatherHint.Text = $"No place called “{name}”"; return; }
+            if (place == null) { WeatherHint.Text = $"No place called “{name}” – check the spelling or try a larger town nearby"; return; }
             _settings.WeatherPlace = place.Label;
             _settings.WeatherLatitude = place.Latitude;
             _settings.WeatherLongitude = place.Longitude;
@@ -218,6 +219,7 @@ public partial class MainWindow
         {
             SetExpanded(true);
             ChoosePlace();
+            BeginTyping(WeatherBox, untouched: true);
         };
         MenuWeather.Items.Add(place);
         var automatic = new MenuItem
