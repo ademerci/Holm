@@ -1,0 +1,37 @@
+# Builds and tests the cross-platform rewrite (docs/cross-platform/). Separate from test.yml on purpose:
+# the WPF app's checks are not affected by this branch, and this one is not affected by WPF-only changes.
+name: Cross-platform
+
+on:
+  push:
+    paths: ["Holm.*/**", "Holm.slnx", "WinNotch/**", "WinNotch.Tests/**", ".github/workflows/cross-platform.yml"]
+    branches: ["experimental/cross-platform"]
+  pull_request:
+    paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        # Not the solution: it also holds the Windows backend, which only builds on Windows.
+        run: dotnet build Holm.App -c Release && dotnet build Holm.Tests -c Release
+
+      - name: Test
+        run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual"

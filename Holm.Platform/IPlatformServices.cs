@@ -1,0 +1,21 @@
+namespace Holm.Platform;
+
+/// <summary>Everything the shared app asks of the system it runs on. One implementation per OS.</summary>
+public interface IPlatformServices
+{
+    INotchWindowPlatform NotchWindow { get; }
+    IMediaPlatform Media { get; }
+    IAudioPlatform Audio { get; }
+    IPowerPlatform Power { get; }
+    IBluetoothPlatform Bluetooth { get; }
+}
+
+/// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
+public sealed class NoPlatformServices : IPlatformServices
+{
+    public INotchWindowPlatform NotchWindow { get; } = new NoNotchWindowPlatform();
+    public IMediaPlatform Media { get; } = new NoMediaPlatform();
+    public IAudioPlatform Audio { get; } = new NoAudioPlatform();
+    public IPowerPlatform Power { get; } = new NoPowerPlatform();
+    public IBluetoothPlatform Bluetooth { get; } = new NoBluetoothPlatform();
+}

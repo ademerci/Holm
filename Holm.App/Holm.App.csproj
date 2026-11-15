@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- One shared app; only the backend it loads differs. The Windows backend needs the Windows target for
+         WinRT, so the app takes that target when it is built for Windows and plain net10.0 everywhere else. -->
+    <HolmWindows Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier.StartsWith('win'))</HolmWindows>
+    <HolmWindows Condition="'$(RuntimeIdentifier)' == ''">$([MSBuild]::IsOSPlatform('Windows'))</HolmWindows>
+    <TargetFramework Condition="'$(HolmWindows)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(HolmWindows)' != 'true'">net10.0</TargetFramework>
+    <SupportedOSPlatformVersion Condition="'$(HolmWindows)' == 'true'">10.0.19041.0</SupportedOSPlatformVersion>
+    <DefineConstants Condition="'$(HolmWindows)' == 'true'">$(DefineConstants);HOLM_WINDOWS</DefineConstants>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Same footprint settings as WinNotch.csproj; the reasons and measurements are documented there. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+    <ProjectReference Include="..\Holm.Platform.Windows\Holm.Platform.Windows.csproj" Condition="'$(HolmWindows)' == 'true'" />
+  </ItemGroup>
+</Project>

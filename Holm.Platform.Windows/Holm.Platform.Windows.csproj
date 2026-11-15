@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Windows backend: Win32, COM and WinRT behind the interfaces of Holm.Platform. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Windows-only services of the WPF app that never touch WPF: linked, not copied, like the sources in
+       Holm.Core. See docs/cross-platform/WORKFLOW.md. -->
+  <ItemGroup>
+    <Compile Include="..\WinNotch\AudioMeter.cs" Link="Linked\AudioMeter.cs" />
+    <Compile Include="..\WinNotch\BluetoothBattery.cs" Link="Linked\BluetoothBattery.cs" />
+    <Compile Include="..\WinNotch\Native.cs" Link="Linked\Native.cs" />
+    <Compile Include="..\WinNotch\VolumeService.cs" Link="Linked\VolumeService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Power source changes, without a window of our own to receive them. -->
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
+  </ItemGroup>
+
+</Project>

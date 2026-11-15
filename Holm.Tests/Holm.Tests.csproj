@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>WinNotch.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+  </ItemGroup>
+
+  <!-- Tests stay in WinNotch.Tests/ and are linked, like the sources in Holm.Core: one copy, tested on both sides.
+       Add a test file here when the source it covers gets linked into Holm.Core. -->
+  <ItemGroup>
+    <Compile Include="..\WinNotch.Tests\AppVolumeTests.cs" Link="Linked\AppVolumeTests.cs" />
+    <Compile Include="..\WinNotch.Tests\BrowsersTests.cs" Link="Linked\BrowsersTests.cs" />
+    <Compile Include="..\WinNotch.Tests\CalculatorTests.cs" Link="Linked\CalculatorTests.cs" />
+    <Compile Include="..\WinNotch.Tests\CallPauseTests.cs" Link="Linked\CallPauseTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ChatTests.cs" Link="Linked\ChatTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ClipboardHistoryTests.cs" Link="Linked\ClipboardHistoryTests.cs" />
+    <Compile Include="..\WinNotch.Tests\CountdownTests.cs" Link="Linked\CountdownTests.cs" />
+    <Compile Include="..\WinNotch.Tests\DiskSpaceTests.cs" Link="Linked\DiskSpaceTests.cs" />
+    <Compile Include="..\WinNotch.Tests\DownloadWatcherTests.cs" Link="Linked\DownloadWatcherTests.cs" />
+    <Compile Include="..\WinNotch.Tests\FileTransferTests.cs" Link="Linked\FileTransferTests.cs" />
+    <Compile Include="..\WinNotch.Tests\FocumonTests.cs" Link="Linked\FocumonTests.cs" />
+    <Compile Include="..\WinNotch.Tests\FolderPackTests.cs" Link="Linked\FolderPackTests.cs" />
+    <Compile Include="..\WinNotch.Tests\FriendInviteTests.cs" Link="Linked\FriendInviteTests.cs" />
+    <Compile Include="..\WinNotch.Tests\NearbyServiceTests.cs" Link="Linked\NearbyServiceTests.cs" />
+    <Compile Include="..\WinNotch.Tests\NotepadTests.cs" Link="Linked\NotepadTests.cs" />
+    <Compile Include="..\WinNotch.Tests\QuietHoursTests.cs" Link="Linked\QuietHoursTests.cs" />
+    <Compile Include="..\WinNotch.Tests\RelayTests.cs" Link="Linked\RelayTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ReminderTests.cs" Link="Linked\ReminderTests.cs" />
+    <Compile Include="..\WinNotch.Tests\SecureChannelTests.cs" Link="Linked\SecureChannelTests.cs" />
+    <Compile Include="..\WinNotch.Tests\SettingsTests.cs" Link="Linked\SettingsTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ShareCodeTests.cs" Link="Linked\ShareCodeTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ShelfTests.cs" Link="Linked\ShelfTests.cs" />
+    <Compile Include="..\WinNotch.Tests\SleepTimerTests.cs" Link="Linked\SleepTimerTests.cs" />
+    <Compile Include="..\WinNotch.Tests\TestHelpers.cs" Link="Linked\TestHelpers.cs" />
+    <Compile Include="..\WinNotch.Tests\TodayTests.cs" Link="Linked\TodayTests.cs" />
+    <Compile Include="..\WinNotch.Tests\UpdateInstallerTests.cs" Link="Linked\UpdateInstallerTests.cs" />
+    <Compile Include="..\WinNotch.Tests\WaveTests.cs" Link="Linked\WaveTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
