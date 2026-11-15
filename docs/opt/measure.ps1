@@ -84,12 +84,15 @@ public static bool HasVisibleWindow(uint pid) {
 }
 '@
 
+$result | ConvertTo-Json -Depth 6 | Set-Content $Out   # keep what's measured even if a live run is blocked
+
 # --- Start time and idle footprint ---
 # Warm-up run first (disk cache, native library unpacking); it does not count.
 $live = foreach ($i in 0..$Runs) {
     $env:HOLM_DATA = NewData "run$i"
     $w = [Diagnostics.Stopwatch]::StartNew()
-    $p = Start-Process -FilePath $bench -PassThru
+    try { $p = Start-Process -FilePath $bench -PassThru }
+    catch { Write-Warning "live run blocked: $($_.Exception.Message)"; Remove-Item Env:HOLM_DATA; continue }
     try {
         while (-not [Opt.Win]::HasVisibleWindow([uint32]$p.Id) -and $w.Elapsed.TotalSeconds -lt 30) { Start-Sleep -Milliseconds 5 }
         if ($w.Elapsed.TotalSeconds -ge 30) { throw 'no window within 30 s' }
@@ -112,7 +115,8 @@ $live = foreach ($i in 0..$Runs) {
     }
     finally { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(10000) | Out-Null }; Remove-Item Env:HOLM_DATA }
 }
-$live = $live | Select-Object -Skip 1
+$live = @($live | Select-Object -Skip 1)
+if ($live.Count -eq 0) { $result.Live = 'not measurable: Smart App Control blocked the new bench exe'; $result | ConvertTo-Json -Depth 6 | Set-Content $Out; exit 0 }
 $result.Live = [ordered]@{ Runs = $live }
 foreach ($k in 'StartMs', 'ReadyMs', 'JitAtReady', 'StartCpuMs', 'IdleCpuMsPerMin', 'PrivateMB', 'WorkingMB', 'PeakWorkingMB', 'Threads', 'Handles') {
     $result.Live[$k] = Median ($live | ForEach-Object { $_.$k })
