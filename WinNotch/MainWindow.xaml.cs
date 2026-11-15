@@ -201,7 +201,6 @@ public partial class MainWindow : Window
         Native.AddClipboardFormatListener(_hwnd); // a copied Beam or friend code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
-        Native.EnableEcoQoS();
         PositionWindow();
     }
 
@@ -215,6 +214,8 @@ public partial class MainWindow : Window
         _btPoll.Start();
         _trimTimer.Start();
         UpdateAiButton();
+        // Efficiency mode only once the notch is up: on slow, low-power cores the start-up itself took much longer.
+        Dispatcher.InvokeAsync(Native.EnableEcoQoS, DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
