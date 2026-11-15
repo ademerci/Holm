@@ -27,3 +27,15 @@
 12. **`docs/opt/` und `website.yml`.** Der Website-Workflow läuft bei Änderungen unter `docs/**` (die Website nutzt
     `docs/*.png`). Ein Merge dieses Branches baut die Website also neu (gleicher Inhalt). Workflow bleibt unverändert,
     weil Website out of scope ist (2). Wer das vermeiden will: `docs/opt/` vor dem Merge entfernen oder Filter anpassen.
+13. **Autofocus in Tool-Seiten (Verhaltensänderung, bewusst).** Klick auf Notiz/Erinnerung/Rechner (oder Wetter-Ort)
+    setzt den Cursor ins Feld. Vorher brauchte es einen zweiten Klick ins Feld. Sicherung: Ohne Tastendruck schliesst die
+    Notch beim Wegfahren der Maus wie bisher (`KeepOpenForTyping`), Esc gibt die Tastatur zurück, Klick in andere App
+    ebenso. Der Fokus wird nur nach einem Klick in Holm genommen (Windows erlaubt Vordergrund nur dann). README angepasst.
+14. **Ziele nach verworfenem Composite-Schalter neu.** GOALS.md hatte Exe ≤ 165 MB / Private ≤ 135 MB aus der
+    Variante ohne Composite. Diese ist verworfen (Start +24 %). Neue Ziele leiten sich aus Ausschlüssen + Icon ab
+    (siehe GOALS.md, Abschnitt "Neu ab Welle 1").
+15. **Regel 12 offen ausgewiesen.** Composite-Roots: 3 Fehlversuche → verworfen. Composite-Ausschlüsse: 4 Publish-Versuche
+    (Pfad-Items wirkungslos, Fassaden fehlten, MSBuild-Syntax, dann explizite Liste erfolgreich) – zählt als neue,
+    jeweils andere Variante; dokumentiert in PLAN.md.
+16. **Bestehende UI-Tests lesen echte Settings.** `UpdateMenuTests` bauen `MainWindow` mit `AppSettings.Load()` aus
+    `%APPDATA%\Holm`, ohne `ReadOnly`. Nicht geändert (vorbestehend, Regel: nur notieren). Neue Tests setzen `ReadOnly`.

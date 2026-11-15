@@ -116,7 +116,7 @@ public partial class MainWindow : Window
         _collapseDelay = MakeTimer(300, () =>
         {
             // Dragging a slider, a menu open or typing: try again shortly.
-            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
+            if (Mouse.Captured != null || MenuOpen || KeepOpenForTyping) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
