@@ -257,8 +257,7 @@ public static class FileTransfer
         name ??= "";
         name = name.Replace('\\', '/');
         name = name[(name.LastIndexOf('/') + 1)..];
-        var invalid = Path.GetInvalidFileNameChars();
-        name = new string(name.Select(c => char.IsControl(c) || IsDirectionMark(c) || Array.IndexOf(invalid, c) >= 0 ? '_' : c).ToArray());
+        name = new string(name.Select(c => char.IsControl(c) || IsDirectionMark(c) || InvalidOnWindows.Contains(c) ? '_' : c).ToArray());
         name = name.Trim().TrimEnd('.', ' ');
         if (name.Length == 0 || name.All(c => c == '.')) name = "file";
         string stem = Path.GetFileNameWithoutExtension(name);
@@ -271,6 +270,12 @@ public static class FileTransfer
         }
         return name;
     }
+
+    /// <summary>
+    /// What Windows forbids in a file name, written out instead of asked from the system this runs on: Linux and
+    /// macOS allow nearly everything, and a file received there may well travel on to a Windows PC.
+    /// </summary>
+    const string InvalidOnWindows = "\"<>|:*?\\/";
 
     static bool IsDirectionMark(char c) => c is '\u200E' or '\u200F' or '\u061C' or (>= '\u202A' and <= '\u202E') or (>= '\u2066' and <= '\u2069');
 

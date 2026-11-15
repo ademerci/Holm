@@ -45,10 +45,15 @@ internal static class Shelf
 
     public static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
+    static readonly char[] Separators = { '\\', '/' };
+
     /// <summary>"Report.pdf", or "D:\" for a drive.</summary>
     public static string DisplayName(string path)
     {
-        string name = Path.GetFileName(path.TrimEnd('\\', '/'));
+        // Split by hand: a path from Windows must read the same on Linux and macOS, where "\" is no separator.
+        string trimmed = path.TrimEnd('\\', '/');
+        string name = trimmed[(trimmed.LastIndexOfAny(Separators) + 1)..];
+        if (name.Length == trimmed.Length && name.Length >= 2 && name[1] == ':') name = name[2..]; // "D:" is a drive, not a name
         return name.Length > 0 ? name : path;
     }
 }
