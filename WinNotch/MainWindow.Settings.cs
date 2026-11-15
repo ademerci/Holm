@@ -72,6 +72,7 @@ public partial class MainWindow
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
         {
             new(MenuWeatherAutoLocation, ""),
+            new(MenuSkyColors, "", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black."),
         }),
     };
 
@@ -86,6 +87,7 @@ public partial class MainWindow
         MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
         MenuMediaControls.IsChecked = _settings.MediaControls;
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
+        MenuSkyColors.IsChecked = _settings.SkyColors;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;

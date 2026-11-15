@@ -245,6 +245,21 @@ public class NotchSizingTests
         finally { AppSettings.ReadOnly = readOnly; }
     }
 
+    [Theory]
+    [InlineData(true, 1.0)]
+    [InlineData(false, 0.0)]
+    public void TheSkyColoursCanBeSwitchedOff(bool colours, double opacity)
+    {
+        Assert.True(new AppSettings().SkyColors); // on by default
+        WithWindow(window =>
+        {
+            Settings(window).SkyColors = colours;
+            SetField(window, "_expanded", true);
+            Invoke(window, "ShowSky");
+            Assert.Equal(opacity, ((Border)window.FindName("SkyLayer")).Opacity);
+        });
+    }
+
     // Never show the window: Loaded starts the real media, notification and sharing services.
     // Settings are changed only in memory, and no menu click or Save method is invoked.
     static void WithWindow(Action<MainWindow> test)
