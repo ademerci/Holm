@@ -1,6 +1,6 @@
 # STATE – Optimierung Holm (lies das zuerst nach Kontext-Reset)
 
-**Aktuelle Phase:** 4, Welle 1 (Composite-Ausschlüsse uncommittet in csproj, A/B läuft; Icon im Stash)
+**Aktuelle Phase:** Teil 1 abgeschlossen (Phasen 0–9). Phase 10 offen: finale measure.ps1 (SAC blockte 2×), sauberer Install + Gate, Advisor. Siehe REPORT.md.
 **Branch:** `opt/lean` · **Start-Tag:** `opt/start` (780965e) · nichts pushen, nichts mergen.
 Achtung: im selben Ordner existiert eine zweite (idle) Claude-Session "Holm: stability fixes". Nichts davon anfassen.
 
