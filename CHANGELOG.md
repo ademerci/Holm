@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+- **Leaner and faster, part 1** (led by Djordje Mojsilovic, see `docs/opt/REPORT.md`; not finished yet). *Holm.exe* is ~9 MB smaller: framework parts Holm never loads keep Microsoft's own precompiled code instead of being compiled again into the app (213.2 → 204.4 MB), and the Holm window's logo no longer carries a second copy of the 381 KB icon. The notch is ready about a fifth sooner after start (median 1.56 → 1.27 s in 25 interleaved runs) because efficiency mode now starts once the notch is up, not during start-up.
+- **Fewer clicks.** Opening notes, reminders, the calculator or the weather place puts the cursor in its field; if you only look, the notch still closes when the mouse leaves. Enter in the profile's name or status applies it.
+- **Keyboard and screen readers.** The Holm window's switches, sidebar and close button work with Tab and Space/Enter and say whether a switch is on; 21 icon-only notch buttons have names, and previous/play/next have tooltips.
+- **Clearer texts.** Beam says *Couldn't reach …* instead of blaming a friend as offline and shows plain words when a connection drops; the invite page says that anyone with the code becomes your friend and that *New code* doesn't stop the old one; settings explain the weather location, what the clipboard history keeps and that Beam looks at copied text for codes; the phone link warns that it isn't encrypted; unreadable reminders say why.
+
+### Fixed
+- **Double clicks.** A double click on a reminder's × no longer removes the next reminder too, and a double click on *Accept* no longer cancels the transfer it just accepted.
+- **Weather place search.** Only one search runs at a time, nothing is saved after you close the notch, and a failed forecast no longer asks you to choose a city again.
+- **Speed test.** A ping that gets no answer gives up after 5 seconds instead of hanging.
+
 ### Added
 - **Wi-Fi and speed test.** Right-click › *Wi-Fi and speed test…* opens a new *Wi-Fi* page under *Tools* in the Holm window. It measures ping, download and upload against Cloudflare's public speed test, with the Cloudflare location and your public IP once it has run, and shows the connection's details: network name, signal bars, link speed, IPv4 and IPv6 address, gateway, DNS servers, DHCP, DNS suffix, MAC address and adapter. A click copies a value. The test runs only when you press *Start* (about 15 seconds, at most ~600 MB on a very fast line) and stops when you leave the page; the details are read from Windows and refresh when the network changes.
 - **Tailscale in the VPN indicator.** Tailscale counts as a VPN while it's connected to your tailnet (it holds a 100.64.0.0/10 or fd7a:115c:a1e0::/48 address), and says *exit node* when your internet goes through one. Turning an exit node on or off is noticed at once: Holm now also listens for route changes, not only address changes. A VPN that carries all traffic still wins over Tailscale used only for the tailnet.

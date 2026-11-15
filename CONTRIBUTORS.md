@@ -2,6 +2,10 @@
 
 The human maintainers guide the project, review changes and test the app on Windows. Their contributions are recorded in the repository's commit history.
 
+## Human contributors
+
+- **Djordje Mojsilovic** — ran the "leaner and faster" optimisation pass (part 1, November 2026): measured start-up, size and flows, decided what to keep, and had ten personas review the experience twice (`docs/opt/REPORT.md`).
+
 ## AI development contributors
 
 - **Claude (Anthropic), through Claude Code** — helped create the original app, from the idea to performance tuning, and continues to work on the project.
