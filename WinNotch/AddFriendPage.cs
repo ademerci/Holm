@@ -55,7 +55,7 @@ internal sealed class AddFriendPage : HubView
         _copyMessage.Click += (_, _) => Copy(_invite == null ? null : Message(_invite.Code), "Message copied: paste it into any chat");
         _newCode = HubTheme.Action("New code");
         _newCode.Margin = new Thickness(0, 0, 8, 8);
-        _newCode.ToolTip = "Your old code stops working when it runs out; friends who already used it stay friends";
+        _newCode.ToolTip = "Makes a new code. The old one still works until it runs out; friends who already used it stay friends";
         _newCode.Click += async (_, _) => await LoadInvite(fresh: true);
         buttons.Children.Add(_copy);
         buttons.Children.Add(_copyMessage);
@@ -149,7 +149,7 @@ internal sealed class AddFriendPage : HubView
         if (_invite == null)
         {
             _code.Text = "No code yet";
-            _codeNote.Text = (error ?? "The server couldn't be reached") + ". Try again in a moment.";
+            _codeNote.Text = error != null ? error + ". Try again in a moment." : "The invite server (ntfy) couldn't be reached. Check your connection and try again.";
             _newCode.Content = "Try again";
             _newCode.IsEnabled = true;
             return;
@@ -157,7 +157,7 @@ internal sealed class AddFriendPage : HubView
         _code.Text = _invite.Code;
         var until = DateTimeOffset.FromUnixTimeSeconds(_invite.Expires).LocalDateTime;
         string when = until.Date == DateTime.Today ? until.ToString("t", CultureInfo.CurrentCulture) : "tomorrow, " + until.ToString("t", CultureInfo.CurrentCulture);
-        _codeNote.Text = $"Send it to a friend, or read it out. It works for everyone you give it to until {when}.";
+        _codeNote.Text = $"Send it to a friend, or read it out. It works for everyone you give it to until {when}. Anyone with this code becomes your friend and can see what you share with friends – only give it to people you trust.";
         _newCode.Content = "New code";
         _newCode.IsEnabled = _copy.IsEnabled = _copyMessage.IsEnabled = true;
     }

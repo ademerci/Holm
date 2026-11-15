@@ -151,4 +151,24 @@ public class ProfileTests
         Assert.Null(settings.ProfilePicture);
         Assert.Null(settings.Friends[0].Picture);
     }
+
+    [Fact]
+    public void Enter_in_the_name_or_status_box_asks_to_apply()
+    {
+        int submits = OnSta(() =>
+        {
+            var editor = new ProfileEditor("Alex", () => new ProfileDraft("Alex", null, null, null), _ => { }, HubTheme.ActionButtonStyle);
+            int count = 0;
+            editor.Submit += () => count++;
+            using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("test"));
+            foreach (string name in new[] { "_name", "_status" })
+            {
+                var box = (System.Windows.Controls.TextBox)typeof(ProfileEditor).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(editor)!;
+                foreach (var key in new[] { System.Windows.Input.Key.A, System.Windows.Input.Key.Enter })
+                    box.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, source, 0, key) { RoutedEvent = System.Windows.Input.Keyboard.KeyDownEvent });
+            }
+            return count;
+        });
+        Assert.Equal(2, submits); // one per Enter, none for other keys
+    }
 }

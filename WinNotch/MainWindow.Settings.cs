@@ -17,7 +17,7 @@ public partial class MainWindow
     {
         new SettingsGroup("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new SettingsSwitch[]
         {
-            new(MenuAnim, "", "Smooth transitions and the moving equalizer."),
+            new(MenuAnim, "", "Smooth transitions, the moving equalizer, GIFs and the animated sky."),
             new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
@@ -55,11 +55,11 @@ public partial class MainWindow
             new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
             new(MenuDictation, "", "Dictate with Handy, free and offline: the notch shows when it listens, and Handy's own overlay stays out of sight. Holm finds Handy or offers to install it."),
             new(MenuVpn, "", "A small lock while a VPN is connected."),
-            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds."),
+            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read."),
         }),
         new SettingsGroup("beam", "Beam", "", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new SettingsSwitch[]
         {
-            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat."),
+            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent."),
             new(MenuSendFolders, "", "Folders are packed as a ZIP before they're sent."),
             new(MenuSendLater, "", "Files for an offline friend wait and go once they're back."),
         }),
@@ -71,7 +71,7 @@ public partial class MainWindow
         }),
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
         {
-            new(MenuWeatherAutoLocation, ""),
+            new(MenuWeatherAutoLocation, "", "Uses Windows location once if no city is set. Coordinates are rounded and sent only to Open-Meteo for the forecast; no IP lookup."),
             new(MenuSkyColors, "", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black."),
         }),
     };

@@ -20,9 +20,26 @@ public partial class MainWindow
 
     Tool _tool;
     bool _typing;
+    bool _typingUntouched; // the field took the keyboard when its tool opened and nothing was typed yet
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
-    void ToggleTool(Tool tool) => ShowTool(_tool == tool ? Tool.None : tool);
+    void ToggleTool(Tool tool)
+    {
+        ShowTool(_tool == tool ? Tool.None : tool);
+        // You clicked the tool to use it: its field takes the keyboard at once, without a second click into it.
+        if (_tool == tool && TypingBox(tool) is { } box) BeginTyping(box, untouched: true);
+    }
+
+    TextBox? TypingBox(Tool tool) => tool switch
+    {
+        Tool.Notes => NotesBox,
+        Tool.Reminders => ReminderBox,
+        Tool.Calculator => CalcBox,
+        _ => null,
+    };
+
+    /// <summary>Typing keeps the notch open when the mouse leaves; a field that only got the keyboard by opening doesn't.</summary>
+    bool KeepOpenForTyping => _typing && !_typingUntouched;
 
     void ShowTool(Tool tool)
     {
@@ -94,15 +111,16 @@ public partial class MainWindow
         box.PreviewMouseLeftButtonDown += (_, _) => BeginTyping(box);
         box.PreviewKeyDown += (_, e) =>
         {
-            if (e.Key != Key.Escape) return;
+            if (e.Key != Key.Escape) { _typingUntouched = false; return; }
             e.Handled = true;
             EndTyping();
             SetExpanded(false);
         };
     }
 
-    void BeginTyping(TextBox box)
+    void BeginTyping(TextBox box, bool untouched = false)
     {
+        _typingUntouched = untouched;
         if (!_typing && _hwnd != IntPtr.Zero)
         {
             _typing = true;
@@ -119,6 +137,7 @@ public partial class MainWindow
     /// <summary>Back to never taking focus. Called when the notch closes, home shows again or you click elsewhere.</summary>
     void EndTyping()
     {
+        _typingUntouched = false;
         if (!_typing) return;
         _typing = false;
         SaveNotes();

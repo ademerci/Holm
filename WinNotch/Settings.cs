@@ -276,7 +276,14 @@ internal static class Autostart
 internal static class Diag
 {
     public static bool Enabled;
-    public static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+    public static readonly string Folder = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+
+    /// <summary>Dev and bench builds only: HOLM_DATA=folder runs Holm on test data beside your own Holm (measurements, snapshots).</summary>
+    public static string? DevFolder =>
+#if DEBUG || BENCH
+        Environment.GetEnvironmentVariable("HOLM_DATA") is { Length: > 0 } folder ? folder :
+#endif
+        null;
 
     public static void Log(string message)
     {

@@ -118,7 +118,7 @@ public partial class MainWindow : Window
         {
             if (PinnedClockOpen) return;
             // Dragging a slider, a menu open or typing: try again shortly.
-            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
+            if (Mouse.Captured != null || MenuOpen || KeepOpenForTyping) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -204,7 +204,6 @@ public partial class MainWindow : Window
         Native.AddClipboardFormatListener(_hwnd); // a copied Beam or friend code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
-        Native.EnableEcoQoS();
         PositionWindow();
     }
 
@@ -218,6 +217,8 @@ public partial class MainWindow : Window
         _btPoll.Start();
         _trimTimer.Start();
         UpdateAiButton();
+        // Efficiency mode only once the notch is up: on slow, low-power cores the start-up itself took much longer.
+        Dispatcher.InvokeAsync(Native.EnableEcoQoS, DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
