@@ -407,7 +407,7 @@ internal sealed class SettingsWindow : Window
         row.MouseEnter += (_, _) => hover.Background = HubTheme.Hover;
         row.MouseLeave += (_, _) => hover.Background = null;
         row.MouseLeftButtonUp += (_, _) => Flip(item, toggle);
-        Keyboardable(row, item.Header as string ?? "", () => Flip(item, toggle));
+        Keyboardable(row, $"{item.Header}, {(toggle.IsOn ? "on" : "off")}", () => Flip(item, toggle));
         return row;
     }
 
@@ -457,6 +457,8 @@ internal sealed class SettingsWindow : Window
         bool next = !toggle.IsOn;
         if (item.Name == "MenuAnim") _animate = next;
         toggle.Set(next, _animate);
+        // Screen readers hear the new state, not just the title.
+        if (((FrameworkElement)toggle.Parent).Parent is UIElement owner) System.Windows.Automation.AutomationProperties.SetName(owner, $"{item.Header}, {(next ? "on" : "off")}");
         if (!_animate) foreach (var row in _rows) row.Switch.Set(row.Switch.IsOn, false);
         RefreshApplyState();
     }
