@@ -18,6 +18,10 @@
          and 130 MB without, and a third less CPU at start-up. The exe grows from 86 to 219 MB on disk; the release zip
          only from 79.6 to 80.9 MB. -->
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <!-- A self-contained single file otherwise precompiles the whole framework into one composite image (Holm.r2r.dll,
+         128 MB), most of it code Holm never loads. Without it, the framework keeps its own precompiled code and only
+         Holm's assemblies are compiled: the exe shrinks from 223 to 164 MB, with nothing left out. -->
+    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
 
     <!-- Keep the idle footprint small: no background GC thread, no PGO instrumentation. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
