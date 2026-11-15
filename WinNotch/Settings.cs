@@ -99,6 +99,8 @@ internal sealed class AppSettings
     public bool Connectivity { get; set; } = true;
     /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
     public bool Weather { get; set; } = true;
+    /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
+    public bool SkyColors { get; set; } = true;
     /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
     public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }
