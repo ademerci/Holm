@@ -35,6 +35,11 @@ public sealed class DownloadWatcher : IDisposable
     readonly object _gate = new();
     readonly Dictionary<string, Download> _active = new(StringComparer.OrdinalIgnoreCase);
     FileSystemWatcher? _watcher;
+    /// <summary>
+    /// Partial downloads that were already there when watching began. macOS reports such a file as created once it
+    /// is written to (its events carry the creation flag along); it is no new download. Windows never reports them.
+    /// </summary>
+    readonly HashSet<string> _leftovers = new(StringComparer.OrdinalIgnoreCase);
     Timer? _timer;
     bool _disposed;
 
@@ -65,6 +70,14 @@ public sealed class DownloadWatcher : IDisposable
         _watcher.Created += (_, e) => OnCreated(e.FullPath);
         _watcher.Renamed += (_, e) => OnRenamed(e.OldFullPath, e.FullPath);
         _watcher.Deleted += (_, e) => OnDeleted(e.FullPath);
+        try
+        {
+            lock (_gate)
+                foreach (var file in Directory.EnumerateFiles(_folder))
+                    if (IsTemp(file)) _leftovers.Add(file);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
         _watcher.EnableRaisingEvents = true;
     }
 
@@ -89,7 +102,7 @@ public sealed class DownloadWatcher : IDisposable
         Download? started = null;
         lock (_gate)
         {
-            if (_disposed || _active.ContainsKey(path)) return;
+            if (_disposed || _active.ContainsKey(path) || _leftovers.Contains(path)) return;
             var now = DateTime.UtcNow;
             started = new Download { TempPath = path, Name = NameOf(path), Started = now, LastSample = now };
             _active[path] = started;
@@ -101,6 +114,7 @@ public sealed class DownloadWatcher : IDisposable
     void OnRenamed(string from, string to)
     {
         bool wasTemp = IsTemp(from), isTemp = IsTemp(to);
+        lock (_gate) { _leftovers.Remove(from); _leftovers.Remove(to); }
         if (!wasTemp && isTemp) { OnCreated(to); return; }
         if (!wasTemp) return;
 
@@ -130,6 +144,7 @@ public sealed class DownloadWatcher : IDisposable
         if (!IsTemp(path)) return;
         lock (_gate)
         {
+            _leftovers.Remove(path);
             // Cancelled, or a browser that copies the finished file instead of renaming it: the tick decides.
             if (_active.TryGetValue(path, out var download)) download.DeletedAt = DateTime.UtcNow;
         }
