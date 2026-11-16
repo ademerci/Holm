@@ -208,6 +208,7 @@ public sealed partial class NotchWindow
         clockHeader.Children.Add(clockStack);
         _clockPanel.Children.Add(clockHeader);
         BuildWeather(clockHeader);
+        BuildSky(clockStack);
 
         _homePanel.Children.Add(_mediaPanel);
         _homePanel.Children.Add(_clockPanel);

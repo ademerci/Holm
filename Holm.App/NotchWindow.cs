@@ -229,6 +229,7 @@ public sealed partial class NotchWindow : Window
         }
         UpdateBackdrop();
         UpdateEqualizer();
+        ShowSky();
     }
 
     /// <summary>Room for a shape this high, including the spring's overshoot.</summary>
