@@ -73,6 +73,13 @@ public sealed partial class NotchWindow
                     s => s.Beam, SetBeam),
                 Switch("Send folders as ZIP", "\uE8B7", "Folders are packed as a ZIP before they're sent.", s => s.SendFolders, on => { _settings.SendFolders = on; Save(); }),
             }),
+            new("friends", "Friends", "\uE716", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new[]
+            {
+                Switch("Share my activity", "\uE716", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note.",
+                    s => s.ShareActivity, SetShareActivity),
+                Switch("Chat pop-outs", "\uE8BD", "A friend's message pops out of the notch with Reply. It's in Chat either way.", s => s.ChatPopups, on => { _settings.ChatPopups = on; Save(); }),
+                Switch("Achievement pop-outs", "\uE734", "A trophy pops out of the notch when you unlock an achievement.", s => s.AchievementPopups, on => { _settings.AchievementPopups = on; Save(); }),
+            }),
             new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new[]
             {
                 Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",

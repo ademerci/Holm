@@ -71,6 +71,7 @@ public sealed partial class NotchWindow
             picker.Show();
             var (picked, swatch) = await done.Task;
             if (picked == null) return;
+            Achieve(AchievementBook.Colors);
             bool copied = false;
             try
             {

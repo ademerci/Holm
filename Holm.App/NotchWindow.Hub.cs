@@ -59,9 +59,12 @@ public sealed partial class NotchWindow
         var social = Social();
         return new List<HubPage>
         {
+            new("activity", "\uE716", "Active now", "What your friends are up to", () => new ActivityPage(social)),
             new("chat", ChatsGlyph, "Chat", "Messages with your friends, sealed so only you two can read them",
                 () => { var page = new ChatPage(social, _hubFriend); _hubFriend = null; return page; },
                 () => social.Chats.UnreadTotal),
+            new("achievements", "\uE734", "Achievements", "What you've done with Holm",
+                () => new AchievementsPage(_achievements)),
             new("add", FriendGlyph, "Add a friend", "Share your invite code, or type in a friend's",
                 () => new AddFriendPage(social), () => social.Incoming().Count),
         };
@@ -71,6 +74,8 @@ public sealed partial class NotchWindow
     {
         Friends = () => _friends.Friends,
         ActivityOf = _friends.ActivityOf,
+        Mine = MyActivity,
+        Sharing = () => _settings.ShareActivity,
         Ping = () => _friends.PingAll(30),
         TrophiesOf = _friends.TrophiesOf,
         Chats = _chats,
@@ -87,6 +92,7 @@ public sealed partial class NotchWindow
         LongCode = () => _settings.Beam ? _friends.EnsureMe().FriendCode : null,
         SendFiles = SendChatFiles,
         React = ReactTo,
+        Wave = WaveAt,
         QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
         Copy = TrySetClipboardAsync,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
@@ -309,6 +315,7 @@ public sealed partial class NotchWindow
             var message = new FriendMessage { Id = Guid.NewGuid().ToString("N"), Mine = true, Text = part, Sent = now, State = ChatState.Sending };
             _chats.Add(friend.Key, message, unread: false);
             _ = DeliverAsync(friend, message);
+            Achieve(AchievementBook.Messages);
         }
     }
 
@@ -324,6 +331,7 @@ public sealed partial class NotchWindow
         _chats.Add(friend.Key, message, unread: false);
         RememberGif(clean);
         _ = DeliverAsync(friend, message);
+        Achieve(AchievementBook.Messages);
     }
 
     void RetryChat(Friend friend, FriendMessage message)

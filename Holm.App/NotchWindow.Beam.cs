@@ -477,7 +477,7 @@ public sealed partial class NotchWindow
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
                 bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                     new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token);
-                if (accepted) EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths));
+                if (accepted) { EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths)); CountSent(paths); }
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
             }
         }
@@ -500,7 +500,7 @@ public sealed partial class NotchWindow
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token);
-            if (accepted) EndTask("", GreenBrush, "Sent", Summary(paths));
+            if (accepted) { EndTask("", GreenBrush, "Sent", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
@@ -529,7 +529,7 @@ public sealed partial class NotchWindow
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
                 new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token);
-            if (accepted) EndTask("", GreenBrush, $"Sent to {friend.Name}", Summary(paths));
+            if (accepted) { EndTask("", GreenBrush, $"Sent to {friend.Name}", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, $"{friend.Name} declined", Summary(paths));
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
@@ -918,6 +918,21 @@ public sealed partial class NotchWindow
         }
         if (_friends.Friends.Count == 0) return;
         menu.Items.Add(new Separator());
+        // Friends › Wave at › (each friend), and the switch for waves coming in.
+        if (_settings.Waves)
+        {
+            var wave = new MenuItem { Header = "Wave at" };
+            foreach (var friend in _friends.Friends.ToList())
+            {
+                var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
+                item.Click += (_, _) => WaveAt(friend);
+                wave.Items.Add(item);
+            }
+            menu.Items.Add(wave);
+        }
+        var allow = new MenuItem { Header = "Waves from friends", ToggleType = MenuItemToggleType.CheckBox, IsChecked = _settings.Waves };
+        allow.Click += (_, _) => { _settings.Waves = !_settings.Waves; _settings.Save(); };
+        menu.Items.Add(allow);
         var remove = new MenuItem { Header = "Remove friend" };
         foreach (var friend in _friends.Friends.ToList())
         {

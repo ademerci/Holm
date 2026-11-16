@@ -218,6 +218,7 @@ public sealed partial class NotchWindow
         _timer = null;
         ShowTimer();
         Diag.Log("Timer done");
+        Achieve(AchievementBook.Timers);
         string length = Countdown.Describe(timer.Length);
         ShowTask(TimerGlyph, TimerOrange, "Timer done", length + (length.StartsWith("1 ") ? " is up" : " are up"), null,
                  ("+5 min", () => { HideTask(); StartTimer(TimeSpan.FromMinutes(5)); }), ("OK", HideTask));

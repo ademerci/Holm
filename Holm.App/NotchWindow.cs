@@ -106,6 +106,8 @@ public sealed partial class NotchWindow : Window
         InitMessages(platform);
         InitBeam(platform);
         InitHub();
+        InitAchievements();
+        InitActivity();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -200,6 +202,7 @@ public sealed partial class NotchWindow : Window
 
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
+        if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
         _info = info;
         RefreshMediaUi();
         ApplyState(animate: true);

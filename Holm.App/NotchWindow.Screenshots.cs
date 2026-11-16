@@ -108,6 +108,7 @@ public sealed partial class NotchWindow
         if (Thumbnail(path) is not { } thumbnail) return;
         _lastShotAt = DateTime.UtcNow;
         _shotPath = path;
+        Achieve(AchievementBook.Screenshots);
         Diag.Log("Screenshot taken");
         ShowTask(ScreenshotGlyph, ShareBlue, "Screenshot", "Saved in " + Path.GetFileName(Path.GetDirectoryName(path)), null,
                  ("Send", () => { if (_shotPath is { } shot) PickTarget(new[] { shot }); }),

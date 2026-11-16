@@ -18,6 +18,7 @@
     <Compile Include="..\WinNotch\CapsKey.cs" Link="Linked\CapsKey.cs" />
     <Compile Include="..\WinNotch\CallPause.cs" Link="Linked\CallPause.cs" />
     <Compile Include="..\WinNotch\Calls.cs" Link="Linked\Calls.cs" />
+    <Compile Include="..\WinNotch\Achievements.cs" Link="Linked\Achievements.cs" />
     <Compile Include="..\WinNotch\FriendsService.cs" Link="Linked\FriendsService.cs" />
     <Compile Include="..\WinNotch\Notify\NotificationBadges.cs" Link="Linked\NotificationBadges.cs" />
     <Compile Include="..\WinNotch\SensorUse.cs" Link="Linked\SensorUse.cs" />

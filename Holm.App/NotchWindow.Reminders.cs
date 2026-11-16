@@ -96,6 +96,7 @@ public sealed partial class NotchWindow
     {
         var first = due[0];
         Diag.Log($"Reminder due ({due.Count})");
+        Achieve(AchievementBook.Reminders, due.Count);
         string when = first.Due.ToLocalTime().ToString("HH:mm");
         string subtitle = due.Count == 1 ? $"Reminder · {when}" : $"Reminder · {when} · and {due.Count - 1} more";
         ShowTask(BellGlyph, TimerOrange, first.Text, subtitle, null,
