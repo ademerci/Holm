@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Windows.Networking.Connectivity;
 
 namespace WinNotch;
 
@@ -31,7 +30,7 @@ internal sealed record NetworkLink(bool IsWifi, string? Ssid, int? SignalBars, u
 /// Only when you start it; nothing about you is sent besides the requests themselves, and the bytes are zeros.
 /// A phase stops early after <see cref="MaxBytesPerPhase"/>, so a test uses at most ~600 MB on a very fast line.
 /// </summary>
-internal static class SpeedTest
+internal static partial class SpeedTest
 {
     const string Server = "https://speed.cloudflare.com/";
     public static readonly TimeSpan PhaseTime = TimeSpan.FromSeconds(7);
@@ -207,32 +206,6 @@ internal static class SpeedTest
         return mbps >= 1000 && mbps % 1000 == 0
             ? (mbps / 1000).ToString("0", CultureInfo.InvariantCulture) + " Gbps"
             : Math.Floor(mbps).ToString("0", CultureInfo.InvariantCulture) + " Mbps";
-    }
-
-    /// <summary>
-    /// The connection to the internet, as Windows reports it. The Wi-Fi name may be missing when Windows' location
-    /// permission is off for desktop apps (Windows 11 24H2 and later).
-    /// </summary>
-    public static NetworkLink? CurrentLink()
-    {
-        try
-        {
-            var profile = NetworkInformation.GetInternetConnectionProfile();
-            if (profile == null) return null;
-            ulong bits = profile.NetworkAdapter?.InboundMaxBitsPerSecond ?? 0;
-            Guid? adapter = profile.NetworkAdapter?.NetworkAdapterId;
-            if (!profile.IsWlanConnectionProfile) return new NetworkLink(false, null, null, bits, adapter);
-            string? ssid = null;
-            try { ssid = profile.WlanConnectionProfileDetails?.GetConnectedSsid(); }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Runtime.InteropServices.COMException) { }
-            int? signal = profile.GetSignalBars() is { } b ? b : null;
-            return new NetworkLink(true, ssid, signal, bits, adapter);
-        }
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidCastException)
-        {
-            Diag.Log("Network link: " + ex.GetType().Name);
-            return null;
-        }
     }
 
     /// <summary>The bytes a phase has moved so far, across its connections.</summary>
