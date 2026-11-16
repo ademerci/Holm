@@ -2,6 +2,9 @@ using System;
 
 namespace Holm.Platform;
 
+/// <summary>A hit-testable rectangle in device pixels, relative to the notch window.</summary>
+public readonly record struct HitRect(int X, int Y, int Width, int Height);
+
 /// <summary>
 /// What the notch window needs from the OS beyond what Avalonia offers: sitting above everything without ever
 /// taking the keyboard, and letting clicks next to the notch through to whatever is behind the window.
@@ -16,6 +19,12 @@ public interface INotchWindowPlatform
     /// window is click-through.
     /// </summary>
     void SetHitRegion(IntPtr window, int x, int y, int width, int height);
+
+    /// <summary>Only these rectangles (in device pixels, relative to the window) take the mouse.</summary>
+    void SetHitRegions(IntPtr window, HitRect[] rects)
+    {
+        if (rects.Length > 0) SetHitRegion(window, rects[0].X, rects[0].Y, rects[0].Width, rects[0].Height);
+    }
 
     /// <summary>
     /// Lets the overlay take the keyboard (the user clicked into one of its text fields) or makes it give the

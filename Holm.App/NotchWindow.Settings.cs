@@ -18,8 +18,8 @@ public sealed partial class NotchWindow
 
     SettingsWindow? _settingsWindow;
 
-    SettingsSwitch Switch(string header, string glyph, string? help, Func<AppSettings, bool> get, Action<bool> set)
-        => new(header, glyph, help, () => get(_settings), set, get(new AppSettings()));
+    SettingsSwitch Switch(string header, string glyph, string? help, Func<AppSettings, bool> get, Action<bool> set, string? actionLabel = null, Action? runAction = null)
+        => new(header, glyph, help, () => get(_settings), set, get(new AppSettings()), actionLabel, runAction);
 
     List<SettingsGroup> SettingsGroups()
     {
@@ -34,8 +34,12 @@ public sealed partial class NotchWindow
                     s => s.Bounce, on => { _settings.Bounce = on; Save(); ApplyBounce(); }),
                 Switch("Equalizer follows the music", "", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded.",
                     s => s.ReactiveEqualizer, on => { _settings.ReactiveEqualizer = on; Save(); UpdateEqualizer(); }),
+                Switch("Drag notch position", "\uE7C2", "Drag the notch by its top edge to move it left or right. Its position is remembered, even with dragging off.",
+                    s => s.Draggable, on => { FinishPositionDrag(); _settings.Draggable = on; Save(); }, "Reset Position", ResetNotchPosition),
                 Switch("Minimize when idle", "\uE921", "The notch shrinks to a small pill while nothing is going on.", s => s.MiniIdle,
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
+                Switch("AI usage ring", "\uE9D9", "A small bubble beside the notch fills with how much of Claude Code's and Codex's limits you have used; hover it to see what their agents are working on. Read from their logs on this PC, never shared.",
+                    s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }),
                 Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
                     s => s.HotKey, SetHotKey),
                 Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
@@ -46,6 +50,17 @@ public sealed partial class NotchWindow
             }),
             new("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new[]
             {
+                Switch("Media controls", "\uE8D6", "Show music and video controls, artwork and track details. On by default.",
+                    s => s.MediaControls, on =>
+                    {
+                        _settings.MediaControls = on;
+                        Save();
+                        if (!on) { CancelSleep(); _callPause.Reset(); }
+                        RefreshMediaUi();
+                        ShowSleep();
+                        ShowSky();
+                        ApplyState(animate: true);
+                    }),
                 Switch("Notes", "", "A small note in the open notch, kept on this computer.", s => s.Notes, on => { _settings.Notes = on; Save(); RefreshToolBar(); }),
                 Switch("Reminders", "", "Type “20 min laundry” and the notch rings on time.", s => s.Reminders,
                     on => { _settings.Reminders = on; Save(); RefreshToolBar(); ShowIdleStatus(); }),

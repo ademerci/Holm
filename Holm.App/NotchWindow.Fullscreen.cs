@@ -46,6 +46,7 @@ public sealed partial class NotchWindow
             _hiddenForFullscreen = front.Fullscreen;
             if (front.Fullscreen)
             {
+                FinishPositionDrag();
                 _hovered = false;
                 _peekActive = false;
                 _live.Stop();

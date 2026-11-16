@@ -132,6 +132,7 @@ public sealed partial class NotchWindow : Window
         Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
 
         InitMotion();
+        InitPositionDrag();
 
         BuildContextMenu();
         _media.Changed += OnMediaChanged;
@@ -171,6 +172,7 @@ public sealed partial class NotchWindow : Window
         StartUpdates();
         StartFocumon();
         StartDictation();
+        StartAiUsage();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -196,6 +198,7 @@ public sealed partial class NotchWindow : Window
         StopFocumon();
         StopDictation();
         StopPhone();
+        StopAiUsage();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -211,7 +214,7 @@ public sealed partial class NotchWindow : Window
         // HOLM_DEV_TOP=300 puts the notch that many pixels down, to run it next to an installed Holm while developing.
         if (int.TryParse(Environment.GetEnvironmentVariable("HOLM_DEV_TOP"), out int down)) top += down;
 #endif
-        Position = new PixelPoint(screen.Bounds.X + (screen.Bounds.Width - width) / 2, top);
+        Position = new PixelPoint(NotchPlacement.Left(screen.Bounds.X, screen.Bounds.Right, width, _settings.NotchPosition), top);
     }
 
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
@@ -322,6 +325,7 @@ public sealed partial class NotchWindow : Window
         UpdateBackdrop();
         UpdateEqualizer();
         ShowSky();
+        ShowAiDock();
     }
 
     /// <summary>Room for a shape this high at this scale, including the spring's overshoot.</summary>
@@ -509,6 +513,7 @@ public sealed partial class NotchWindow : Window
             c.EndFigure(true);
         }
         _backdrop.Clip = outline;
+        PlaceAiDock(w, h, e);
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
@@ -518,7 +523,14 @@ public sealed partial class NotchWindow : Window
         double scale = RenderScaling;
         double width = (w + 2 * MaxEar) * 1.12 * notchScale, height = h * notchScale * 1.15 + 2;
         double x = (Width - width) / 2;
-        _platform.SetHitRegion(handle.Handle,
-            (int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
+        var notchRect = new HitRect((int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
+        if (AiDockBounds(w, h, notchScale) is { } bubble)
+        {
+            var bubbleRect = new HitRect((int)Math.Floor(bubble.X * scale), (int)Math.Floor(bubble.Y * scale),
+                (int)Math.Ceiling(bubble.W * scale), (int)Math.Ceiling(bubble.H * scale));
+            _platform.SetHitRegions(handle.Handle, new[] { notchRect, bubbleRect });
+            return;
+        }
+        _platform.SetHitRegion(handle.Handle, notchRect.X, notchRect.Y, notchRect.Width, notchRect.Height);
     }
 }

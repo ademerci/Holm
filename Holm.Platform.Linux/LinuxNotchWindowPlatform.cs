@@ -38,12 +38,23 @@ public sealed class LinuxNotchWindowPlatform : INotchWindowPlatform
     }
 
     public void SetHitRegion(IntPtr window, int x, int y, int width, int height)
+        => SetHitRegions(window, new[] { new HitRect(x, y, width, height) });
+
+    public void SetHitRegions(IntPtr window, HitRect[] rects)
     {
-        if (_display == IntPtr.Zero) return;
-        var rect = new XRectangle { X = (short)x, Y = (short)y, Width = (ushort)Math.Max(0, width), Height = (ushort)Math.Max(0, height) };
+        if (_display == IntPtr.Zero || rects.Length == 0) return;
+        var xRects = new XRectangle[rects.Length];
+        for (int i = 0; i < rects.Length; i++)
+            xRects[i] = new XRectangle
+            {
+                X = (short)rects[i].X,
+                Y = (short)rects[i].Y,
+                Width = (ushort)Math.Max(0, rects[i].Width),
+                Height = (ushort)Math.Max(0, rects[i].Height),
+            };
         try
         {
-            XShapeCombineRectangles(_display, window, ShapeInput, 0, 0, ref rect, 1, ShapeSet, 0);
+            XShapeCombineRectangles(_display, window, ShapeInput, 0, 0, xRects, xRects.Length, ShapeSet, 0);
             XFlush(_display);
         }
         catch (DllNotFoundException) { } // no libXext: the whole window takes the mouse
@@ -112,5 +123,5 @@ public sealed class LinuxNotchWindowPlatform : INotchWindowPlatform
     [DllImport(X11)] static extern int XSetInputFocus(IntPtr display, IntPtr focus, int revertTo, IntPtr time);
     [DllImport(X11)] static extern int XQueryTree(IntPtr display, IntPtr window, out IntPtr root, out IntPtr parent, out IntPtr children, out uint count);
     [DllImport(X11)] static extern int XFree(IntPtr data);
-    [DllImport(Xext)] static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int kind, int xOff, int yOff, ref XRectangle rects, int count, int op, int ordering);
+    [DllImport(Xext)] static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int kind, int xOff, int yOff, XRectangle[] rects, int count, int op, int ordering);
 }

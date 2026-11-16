@@ -11,6 +11,7 @@
        every change made there arrives in the rewrite with a plain merge. Move a file into this folder only at the
        final cutover, when WinNotch/ is deleted. See docs/cross-platform/WORKFLOW.md. -->
   <ItemGroup>
+    <Compile Include="..\WinNotch\AiUsage.cs" Link="Linked\AiUsage.cs" />
     <Compile Include="..\WinNotch\AppVolumeList.cs" Link="Linked\AppVolumeList.cs" />
     <Compile Include="..\WinNotch\BigClock.cs" Link="Linked\BigClock.cs" />
     <Compile Include="..\WinNotch\Browsers.cs" Link="Linked\Browsers.cs" />
@@ -32,6 +33,7 @@
     <Compile Include="..\WinNotch\Focumon.cs" Link="Linked\Focumon.cs" />
     <Compile Include="..\WinNotch\FolderPack.cs" Link="Linked\FolderPack.cs" />
     <Compile Include="..\WinNotch\LevelEnvelope.cs" Link="Linked\LevelEnvelope.cs" />
+    <Compile Include="..\WinNotch\NotchPlacement.cs" Link="Linked\NotchPlacement.cs" />
     <Compile Include="..\WinNotch\Notepad.cs" Link="Linked\Notepad.cs" />
     <Compile Include="..\WinNotch\Outage.cs" Link="Linked\Outage.cs" />
     <Compile Include="..\WinNotch\Notify\DownloadWatcher.cs" Link="Linked\Notify\DownloadWatcher.cs" />

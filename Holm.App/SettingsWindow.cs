@@ -13,7 +13,7 @@ using Avalonia.Media;
 namespace Holm.App;
 
 /// <summary>One switch in the settings: its words, an icon, and how to read and apply it.</summary>
-sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default);
+sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null);
 
 /// <summary>A page of switches.</summary>
 sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
@@ -360,13 +360,29 @@ sealed class SettingsWindow : Window
             words.Children.Add(new TextBlock { Text = setting.Help, Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
         Grid.SetColumn(words, 1);
         content.Children.Add(words);
-        Grid.SetColumn(toggle, 2);
+        if (setting.RunAction != null && setting.ActionLabel != null)
+        {
+            content.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            var reset = Action(setting.ActionLabel);
+            reset.Padding = new Thickness(10, 3, 10, 3);
+            reset.MinHeight = 28;
+            reset.Height = 28;
+            reset.Margin = new Thickness(8, 0, 12, 0);
+            reset.VerticalAlignment = VerticalAlignment.Center;
+            reset.Click += (_, _) => setting.RunAction();
+            // Keep the action button separate from the row toggle.
+            reset.AddHandler(PointerReleasedEvent, (_, e) => e.Handled = true, Avalonia.Interactivity.RoutingStrategies.Bubble);
+            Grid.SetColumn(reset, 2);
+            content.Children.Add(reset);
+            Grid.SetColumn(toggle, 3);
+        }
+        else Grid.SetColumn(toggle, 2);
         content.Children.Add(toggle);
         row.Children.Add(content);
 
         row.PointerEntered += (_, _) => hover.Background = Hover;
         row.PointerExited += (_, _) => hover.Background = null;
-        row.PointerReleased += (_, _) => { toggle.Set(!toggle.IsOn, _animations()); RefreshApplyState(); };
+        row.PointerReleased += (_, e) => { if (e.Handled) return; toggle.Set(!toggle.IsOn, _animations()); RefreshApplyState(); };
         return row;
     }
 

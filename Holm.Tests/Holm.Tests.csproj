@@ -25,6 +25,7 @@
   <!-- Tests stay in WinNotch.Tests/ and are linked, like the sources in Holm.Core: one copy, tested on both sides.
        Add a test file here when the source it covers gets linked into Holm.Core. -->
   <ItemGroup>
+    <Compile Include="..\WinNotch.Tests\AiUsageTests.cs" Link="Linked\AiUsageTests.cs" />
     <Compile Include="..\WinNotch.Tests\AppVolumeTests.cs" Link="Linked\AppVolumeTests.cs" />
     <Compile Include="..\WinNotch.Tests\BrowsersTests.cs" Link="Linked\BrowsersTests.cs" />
     <Compile Include="..\WinNotch.Tests\CalculatorTests.cs" Link="Linked\CalculatorTests.cs" />
@@ -42,6 +43,7 @@
     <Compile Include="..\WinNotch.Tests\FolderPackTests.cs" Link="Linked\FolderPackTests.cs" />
     <Compile Include="..\WinNotch.Tests\FriendInviteTests.cs" Link="Linked\FriendInviteTests.cs" />
     <Compile Include="..\WinNotch.Tests\NearbyServiceTests.cs" Link="Linked\NearbyServiceTests.cs" />
+    <Compile Include="..\WinNotch.Tests\NotchPlacementTests.cs" Link="Linked\NotchPlacementTests.cs" />
     <Compile Include="..\WinNotch.Tests\NotepadTests.cs" Link="Linked\NotepadTests.cs" />
     <Compile Include="..\WinNotch.Tests\OutageTests.cs" Link="Linked\OutageTests.cs" />
     <Compile Include="..\WinNotch.Tests\QuietHoursTests.cs" Link="Linked\QuietHoursTests.cs" />

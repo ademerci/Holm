@@ -92,3 +92,5 @@ E95B HeadsetRegular             # Headset
 EA3B CircleFilled               # filled circle (colour swatch)
 EB63 GlobeProhibitedRegular     # offline
 E8A5 DocumentRegular            # Document
+E7C2 ArrowMoveRegular           # Move (drag notch position)
+E9D9 DataUsageRegular           # Diagnostic / usage ring (AI usage)

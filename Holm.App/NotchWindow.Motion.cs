@@ -115,6 +115,7 @@ public sealed partial class NotchWindow
         };
         _island.PointerEntered += (_, _) =>
         {
+            if (_positionHeld) return;
             _collapseDelay.Stop();
             if (_hovered) return;
             _expandDelay.Start();
@@ -122,6 +123,7 @@ public sealed partial class NotchWindow
         };
         _island.PointerExited += (_, _) =>
         {
+            if (_positionHeld) return;
             _expandDelay.Stop();
             SetHoverBoost(false);
             if (_hovered && !PinnedClockOpen) _collapseDelay.Start();
@@ -129,7 +131,7 @@ public sealed partial class NotchWindow
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
         {
-            if (e.InitialPressMouseButton != MouseButton.Left || _hovered || _taskVisible || _sharing || _picking) return;
+            if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left || _hovered || _taskVisible || _sharing || _picking) return;
             _expandDelay.Stop();
             SetExpanded(true);
         };
