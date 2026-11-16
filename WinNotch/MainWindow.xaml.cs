@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -102,6 +102,7 @@ public partial class MainWindow : Window
         TaskProgressHost.Child = TaskProgress;
         (_artFront, _artBack) = (ArtLayerA, ArtLayerB);
         _bars = new[] { Bar1, Bar2, Bar3, Bar4 }.Select(b => (ScaleTransform)b.RenderTransform).ToArray();
+        InitPositionDrag();
         InitMotion();
         InitSky();
 
@@ -113,7 +114,7 @@ public partial class MainWindow : Window
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
-        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
+        _expandDelay = MakeTimer(140, () => { if (!_positionHeld && Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
             if (PinnedClockOpen) return;
@@ -369,7 +370,7 @@ public partial class MainWindow : Window
 
         var dpi = VisualTreeHelper.GetDpi(this);
         int width = (int)Math.Round(Width * dpi.DpiScaleX), height = (int)Math.Round(Height * dpi.DpiScaleY);
-        int x = screen.Bounds.Left + (screen.Bounds.Right - screen.Bounds.Left - width) / 2;
+        int x = NotchPlacement.Left(screen.Bounds.Left, screen.Bounds.Right, width, _settings.NotchPosition);
         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, x, screen.Bounds.Top, width, height, Native.SWP_NOACTIVATE);
     }
 
@@ -1354,6 +1355,7 @@ public partial class MainWindow : Window
 
     void Island_MouseEnter(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _collapseDelay.Stop();
         _pickClose.Stop();
         if (!_expanded)
@@ -1365,6 +1367,7 @@ public partial class MainWindow : Window
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _expandDelay.Stop();
         SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"

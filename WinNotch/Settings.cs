@@ -18,6 +18,10 @@ internal sealed class AppSettings
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Allow moving the notch along the selected display's top edge.</summary>
+    public bool Draggable { get; set; }
+    /// <summary>Saved horizontal centre as a fraction of the display width; null means centred.</summary>
+    public double? NotchPosition { get; set; }
     /// <summary>Shrink to the mini pill while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
     public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>

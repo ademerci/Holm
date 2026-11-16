@@ -11,7 +11,7 @@ using System.Windows.Media.Effects;
 namespace WinNotch;
 
 /// <summary>One switch in the settings: the hidden menu entry that holds its handler, an icon and a line of help.</summary>
-internal sealed record SettingsSwitch(MenuItem Item, string Glyph, string? Help = null);
+internal sealed record SettingsSwitch(MenuItem Item, string Glyph, string? Help = null, string? ActionLabel = null, Action? RunAction = null);
 
 /// <summary>A page of switches in the Holm window.</summary>
 internal sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
@@ -436,7 +436,19 @@ internal sealed class SettingsWindow : Window
             words.Children.Add(new TextBlock { Text = help, Foreground = HubTheme.Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
         Grid.SetColumn(words, 1);
         content.Children.Add(words);
-        Grid.SetColumn(toggle, 2);
+        if (setting.RunAction != null && setting.ActionLabel != null)
+        {
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var reset = HubTheme.Action(setting.ActionLabel);
+            reset.Padding = new Thickness(10, 6, 10, 6);
+            reset.Click += (_, e) => { e.Handled = true; setting.RunAction(); };
+            // ButtonBase handles mouse-up; keep the action separate from the row toggle.
+            reset.MouseLeftButtonUp += (_, e) => e.Handled = true;
+            Grid.SetColumn(reset, 2);
+            content.Children.Add(reset);
+            Grid.SetColumn(toggle, 3);
+        }
+        else Grid.SetColumn(toggle, 2);
         content.Children.Add(toggle);
         row.Children.Add(content);
 
