@@ -99,8 +99,27 @@ writes it (`AppSettings.ReadOnly`). On Linux (`~/.config/Holm`) and macOS there 
 
 Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): the notch sits 300 px down.
 
-Known gaps in what is ported: clipboard, mixer and colour picker are missing from the tool row; views fade but do not pop
-or unfold yet; a new cover fades in over black instead of cross-fading; no scale settings, mini idle or multi-monitor choice; the context menu has only Timer and Quit.
+**Ported since, on all three systems** (each backend behind an interface in `Holm.Platform`, the app code shared):
+
+| Feature | Windows | Linux | macOS |
+|---|---|---|---|
+| Clipboard history (privacy markers honoured) | clipboard listener | XFixes | pasteboard change count, read twice a second |
+| Colour picker (screen read once, picked in a window over it) | GDI | X root window | `screencapture` (asks for screen recording) |
+| Volume per app | Core Audio sessions (WPF code linked) | PulseAudio/PipeWire sink inputs | **not possible**: the page says so |
+| Downloads, low disk space | known folder, Explorer | XDG user dirs, FileManager1 / xdg-open | ~/Downloads, Finder |
+| No internet / back online | Network List Manager | NetworkManager | Network framework path monitor |
+| Caps Lock hint | keyboard hook on that key | XKB indicator events | modifier state, read four times a second |
+| Ctrl+H | RegisterHotKey | X key grab | Carbon hot key (Control+H) |
+| Weather, sky, greeting, sleep timer, shelf (drag and drop), menus, tooltips, settings window | shared | shared | shared |
+
+Weather asks for the city on every system (the WPF app's one-time Windows location lookup is not ported). The shelf's
+drag and drop goes through Avalonia; it has not been tried with a real drag on each system yet.
+
+Still missing from the WPF app: Beam (friends, chat, nearby, phone, streaming, achievements, profile, the Holm window's
+social pages), notifications and message badges, calls and the microphone/camera dot, screenshots and their text,
+USB drives, VPN, quiet hours, dictation, Focumon, the AI button, updates, mini idle, notch sizes, monitor choice,
+hiding over full-screen apps and browser tabs, the big clock view, today cards; views fade but do not pop or unfold
+yet, and a new cover fades in over black instead of cross-fading.
 
 **Fonts: the same on every system.** Text is set in Inter (bundled with Avalonia) and icons come from
 `Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points. Both ship inside the app,
@@ -197,5 +216,5 @@ there.
 | `Notify/Messengers.cs` tests | Need `BadgeCounter`. |
 | `UpdateServiceTests.cs` | Expects a built `Holm.exe` next to the test assembly. |
 
-**Next in `Holm.App`:** the remaining closed views (badge, call), the Bluetooth and output-device buttons, then
-the rest of the context menu with the settings switches (which needs writable settings).
+**Next in `Holm.App`:** mini idle and the notch sizes, screenshots, USB drives, VPN, quiet hours, then calls and
+notifications.
