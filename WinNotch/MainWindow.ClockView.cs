@@ -113,7 +113,7 @@ public partial class MainWindow
         ClockFullSeconds.FontFamily = family;
         ClockFullSeconds.FontWeight = weight;
 
-        var color = BigClock.ResolveColor(_settings.ClockColor, _info?.Accent, _skyShown?.Left);
+        var color = BigClock.ResolveColor(_settings.ClockColor, _info?.Accent, _skyShown is { } sky ? ToColor(sky.Left) : null);
         var brush = Frozen(color);
         ClockFullTime.Foreground = brush;
         ClockFullSeconds.Foreground = brush;

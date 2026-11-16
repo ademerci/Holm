@@ -44,6 +44,7 @@
     <Compile Include="..\WinNotch\Sharing\SecureChannel.cs" Link="Linked\Sharing\SecureChannel.cs" />
     <Compile Include="..\WinNotch\Sharing\ShareCode.cs" Link="Linked\Sharing\ShareCode.cs" />
     <Compile Include="..\WinNotch\Shelf.cs" Link="Linked\Shelf.cs" />
+    <Compile Include="..\WinNotch\Sky.cs" Link="Linked\Sky.cs" />
     <Compile Include="..\WinNotch\SleepTimer.cs" Link="Linked\SleepTimer.cs" />
     <Compile Include="..\WinNotch\Spring.cs" Link="Linked\Spring.cs" />
     <Compile Include="..\WinNotch\Today.cs" Link="Linked\Today.cs" />
