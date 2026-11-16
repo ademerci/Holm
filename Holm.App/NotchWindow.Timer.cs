@@ -81,6 +81,7 @@ public sealed partial class NotchWindow
         customize.Items.Add(bounceLevel);
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
+        menu.Items.Add(_menuSleep);
         menu.Items.Add(new Separator());
         menu.Items.Add(settings);
         menu.Items.Add(customize);
@@ -90,6 +91,7 @@ public sealed partial class NotchWindow
         {
             _menuOpen = true;
             FillTimerMenu();
+            FillSleepMenu();
             FillBounceMenu(bounceLevel);
             FillWeatherMenu(weather);
         };

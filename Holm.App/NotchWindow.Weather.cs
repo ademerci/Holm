@@ -153,6 +153,7 @@ public sealed partial class NotchWindow
             _rainText.Text = weather.RainNote ?? "";
             _rainText.IsVisible = weather.RainNote != null;
         }
+        RefreshMediaWeather();
         if (_state == NotchState.Expanded) ApplyState(animate: true);
     }
 

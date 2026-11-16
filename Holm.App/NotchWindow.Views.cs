@@ -279,6 +279,7 @@ public sealed partial class NotchWindow
         _mediaPanel.IsVisible = info != null;
         _clockPanel.IsVisible = info == null;
         _compactArt.Background = ArtBrush(info?.Art);
+        RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }
 
         var accent = new SolidColorBrush(info.Accent).ToImmutable();

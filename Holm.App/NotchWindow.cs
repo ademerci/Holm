@@ -122,6 +122,7 @@ public sealed partial class NotchWindow : Window
         StartDiskSpace();
         StartConnectivity();
         StartWeather();
+        ShowSleep();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
