@@ -152,7 +152,7 @@ public sealed partial class NotchWindow
             _islandContent.Children.Add(view);
         }
 
-        _live.Tick += (_, _) => UpdateLive();
+        _live.Tick += (_, _) => { UpdateLive(); UpdateBigClock(); };
         _minute.Tick += (_, _) => { UpdateClock(); ShowIdleStatus(); ScheduleMinute(); };
     }
 
@@ -221,6 +221,7 @@ public sealed partial class NotchWindow
         _clockPanel.Children.Add(clockHeader);
         BuildWeather(clockHeader);
         BuildSky(clockStack);
+        BuildClockView(clockStack);
 
         _homePanel.Children.Add(_mediaPanel);
         _homePanel.Children.Add(_clockPanel);
@@ -300,6 +301,8 @@ public sealed partial class NotchWindow
             FadeIn(media ? _mediaPanel : _clockPanel);
         }
         _compactArt.Background = ArtBrush(info?.Art);
+        RefreshBigClockMedia();
+        if (_clockViewOpen) RefreshBigClockStyle();
         RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }
 

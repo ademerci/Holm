@@ -108,6 +108,7 @@ public sealed partial class NotchWindow
         {
             _collapseDelay.Stop();
             // Dragging a slider, a menu open or typing: try again shortly.
+            if (PinnedClockOpen) return;
             if (_menuOpen || KeepOpenForTyping || _volSlider.IsDragging || _mixerDragging) { _collapseDelay.Start(); return; }
             if (!_island.IsPointerOver) SetExpanded(false);
         };
@@ -122,7 +123,7 @@ public sealed partial class NotchWindow
         {
             _expandDelay.Stop();
             SetHoverBoost(false);
-            if (_hovered) _collapseDelay.Start();
+            if (_hovered && !PinnedClockOpen) _collapseDelay.Start();
         };
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
@@ -139,7 +140,11 @@ public sealed partial class NotchWindow
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");
-        if (!expand) ShowTool(Tool.None); // the next time it opens on home
+        if (!expand)
+        {
+            SetClockView(false, animate: false);
+            ShowTool(Tool.None); // the next time it opens on home
+        }
         ApplyState(animate: true);
     }
 
@@ -201,6 +206,12 @@ public sealed partial class NotchWindow
     IEnumerable<Control> UnfoldingParts()
     {
         int rows = 0;
+        if (_clockFullView.IsVisible)
+        {
+            foreach (var part in _clockFullView.Children)
+                if (part.IsVisible && rows++ < 8) yield return part;
+            yield break;
+        }
         foreach (var part in _expandedPanel.Children)
         {
             if (!part.IsVisible) continue;

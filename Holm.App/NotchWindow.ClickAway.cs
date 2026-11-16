@@ -21,7 +21,7 @@ public sealed partial class NotchWindow
     }
 
     /// <summary>Something is open that a click elsewhere should close.</summary>
-    bool ClosesOnClickAway => _hovered || _peekActive || _volumePeek || (_taskVisible && _taskHide.IsEnabled);
+    bool ClosesOnClickAway => (_hovered && !PinnedClockOpen) || _peekActive || _volumePeek || (_taskVisible && _taskHide.IsEnabled);
 
     /// <summary>Starts or stops watching for clicks away as the notch opens and closes (from ApplyState).</summary>
     void WatchClicksAway() => _clickAway.Watch(ClosesOnClickAway);
@@ -36,7 +36,7 @@ public sealed partial class NotchWindow
         _peekActive = false;
         _volumePeek = false;
         if (_taskVisible && _taskHide.IsEnabled) HideTask();
-        if (_hovered)
+        if (_hovered && !PinnedClockOpen)
         {
             EndTyping();
             SetExpanded(false); // also redraws
