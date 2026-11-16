@@ -78,4 +78,4 @@ jobs:
           tag=$(tr -d '[:space:]' < docs/cross-platform/dev-release-version.txt)
           if gh release view "dev-v$tag" >/dev/null 2>&1; then echo "dev-v$tag exists already"; exit 1; fi
           gh release create "dev-v$tag" release/* --prerelease --latest=false --target "$GITHUB_SHA" \
-            --title "Holm $tag (dev, for testing)" --notes-file docs/cross-platform/DEV-RELEASE.md
+            --title "Holm $tag (alpha, for testing)" --notes-file docs/cross-platform/DEV-RELEASE.md
