@@ -260,6 +260,51 @@ public class NotchSizingTests
         });
     }
 
+    [Fact]
+    public void TheAiBubbleSitsBesideTheClosedNotchAndFlattensBesideTheMiniPill()
+    {
+        WithWindow(window =>
+        {
+            var claude = new AiUsageSnapshot(AiTool.ClaudeCode, 62, "", DateTime.UtcNow.AddHours(2), 1_240_000,
+                new[] { new AiSession(AiTool.ClaudeCode, "holm", "Bash: Run the tests", DateTime.UtcNow) }) { BusiestTokens = 2_000_000 };
+            var codex = new AiUsageSnapshot(AiTool.Codex, 95, "", null, 0, Array.Empty<AiSession>()) { IsLimit = true, WeekPercent = 40 };
+            Invoke(window, "ApplyState", false);
+            window.ShowAiUsage(new[] { codex, claude });
+
+            // One bubble: the agent at work wins over the one further along.
+            Assert.True(window.AiDockShown);
+            Assert.Equal(AiTool.ClaudeCode, window.AiBubble!.Shown.Tool);
+            Assert.Equal((UsageBubble.Size, UsageBubble.Size), (window.AiBubble.Root.Width, window.AiBubble.Root.Height));
+            Assert.Equal(AiTool.Codex, MainWindow.Leading(new[] { claude with { Active = Array.Empty<AiSession>() }, codex })!.Tool);
+            Assert.Same(HubTheme.Red, UsageBubble.ColorOf(codex)); // nearly used up
+
+            // Beside the minimized notch it is a capsule no taller than it, so the window needn't grow.
+            Settings(window).MiniIdle = true;
+            Invoke(window, "ApplyState", false);
+            Assert.True(window.AiDockShown);
+            Assert.Equal(UsageBubble.MiniHeight, window.AiBubble.Root.Height);
+            Assert.True(window.Height <= 10);
+
+            // The open notch takes the room; with nothing to show it's gone.
+            SetField(window, "_expanded", true);
+            Invoke(window, "ApplyState", false);
+            Assert.False(window.AiDockShown);
+            SetField(window, "_expanded", false);
+            Invoke(window, "ApplyState", false);
+            Assert.True(window.AiDockShown);
+            window.ShowAiUsage(Array.Empty<AiUsageSnapshot>());
+            Assert.False(window.AiDockShown);
+
+            // The card lays out with one agent and with both.
+            foreach (var usage in new[] { new[] { codex }, new[] { claude, codex } })
+            {
+                var card = MainWindow.BuildAiCard(usage);
+                card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Assert.InRange(card.DesiredSize.Height, 120, 460);
+            }
+        });
+    }
+
     // Never show the window: Loaded starts the real media, notification and sharing services.
     // Settings are changed only in memory, and no menu click or Save method is invoked.
     static void WithWindow(Action<MainWindow> test)

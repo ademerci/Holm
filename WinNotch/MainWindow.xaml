@@ -262,6 +262,7 @@
                             <MenuItem x:Name="MenuMediaControls" Header="Media controls" ToolTip="Show music and video controls, artwork and track details. On by default." IsCheckable="True" Click="MenuMediaControls_Click"/>
                             <MenuItem x:Name="MenuWeatherAutoLocation" Header="Set up weather using approximate location" ToolTip="If no city is saved, use Windows location once. Rounded coordinates go to Open-Meteo. Respects Windows location services; no IP lookup service." IsCheckable="True" Click="MenuWeatherAutoLocation_Click"/>
                             <MenuItem x:Name="MenuSkyColors" Header="Sky colours" IsCheckable="True" Click="MenuSkyColors_Click"/>
+                            <MenuItem x:Name="MenuAiUsage" Header="AI usage ring" IsCheckable="True" Click="MenuAiUsage_Click"/>
                             <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
                             <MenuItem x:Name="MenuBounce" Header="Bouncy motion" IsCheckable="True" Click="MenuBounce_Click"/>
                             <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>

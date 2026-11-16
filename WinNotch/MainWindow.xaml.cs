@@ -249,6 +249,7 @@ public partial class MainWindow : Window
         StartMediaKeys();
         StartDictation();
         StartHotKey();
+        StartAiUsage();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -260,6 +261,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopAiUsage();
         StopMotion();
         StopHotKey();
         _bluetoothStopped = true;
@@ -567,6 +569,7 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
+        ShowAiDock();
     }
 
     void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
@@ -650,6 +653,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
+        PlaceAiDock(w, h, e);
     }
 
     /// <summary>
@@ -1771,6 +1775,14 @@ public partial class MainWindow : Window
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _chat.Changed -= OnMessagesChanged;
+        // Nor a friend's real chat message, GIF or reaction: they would pop out over a pose.
+        _settings.ChatPopups = false; // and none that is already on its way pops out either (not saved: snapshots are read-only)
+        _peekActive = false;
+        _peekTimer.Stop();
+        if (TaskShowing) HideTask(); // a friend's message that popped out before the poses took over
+        _friends.ChatReceived -= OnChatReceived;
+        _friends.GifReceived -= OnGifReceived;
+        _friends.ReactionReceived -= OnReactionReceived;
         _messages = Array.Empty<ChatMessage>(); // your real messages came in meanwhile: they must not end up in a picture
         RefreshMessages();
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
@@ -1779,6 +1791,8 @@ public partial class MainWindow : Window
         ShowVpn();
         StopPrivacy(); // and only demo apps use the microphone
         ShowPrivacy();
+
+        await SnapAiUsageAsync(dir); // its own pictures, with made-up usage; gone again for all the others
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);

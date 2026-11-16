@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **AI usage beside the notch.** A small black circle sits at the notch's right shoulder, like a second activity on the iPhone's island: the mark of the coding agent that matters most right now (Claude Code's spark or OpenAI's knot for Codex) inside a thin ring that fills with its usage. It shows in every closed state, also while music plays; beside the minimized notch it flattens into a capsule with a bar, and the open notch grows over it. Hovering it (which doesn't open the notch) shows a calm card with each agent you use: the percentage, when it resets, and the sessions at work with their project and latest step. Codex logs its real 5-hour and weekly limits; Claude Code logs only tokens, so its ring compares the current 5-hour window with your busiest one this week. Read from the tools' own logs on this PC at most once a minute, off the UI thread and only what was added since the last look; nothing is sent or shared. *Settings › General › AI usage ring* turns it off.
+
+### Fixed
+- **Snapshots stay private.** Holm's `--snap` picture mode no longer lets a friend's real chat message pop out over a pose.
+
 ## 1.12.5 – 2026-11-15
 
 ### Changed
