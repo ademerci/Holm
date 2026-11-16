@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Badge, Timer, Focumon, Media, Download, Call, Dictation, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { Idle, Badge, Timer, Focumon, Media, Download, Call, Dictation, Peek, Message, Volume, Phone, Task, Share, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -112,6 +112,7 @@ public sealed partial class NotchWindow : Window
         InitUpdates();
         BuildFocumon();
         InitDictation(platform);
+        InitPhone();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -193,6 +194,7 @@ public sealed partial class NotchWindow : Window
         StopUpdates();
         StopFocumon();
         StopDictation();
+        StopPhone();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -228,6 +230,7 @@ public sealed partial class NotchWindow : Window
         var target = _hovered ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : _taskVisible ? NotchState.Task
+                   : PhoneShowing ? NotchState.Phone
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _dictating ? NotchState.Dictation // you're talking to it right now: above a call or music
@@ -264,6 +267,7 @@ public sealed partial class NotchWindow : Window
                 _shareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(_shareView.DesiredSize.Height) + 6, 28);
                 break;
+            case NotchState.Phone: (w, h, r) = (420, 160, 28); break;
             case NotchState.Task: (w, h, r) = (_taskExtra.IsVisible ? 490 : 420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
@@ -305,6 +309,7 @@ public sealed partial class NotchWindow : Window
             SetView(_messageView, target == NotchState.Message, animate);
             SetView(_badgeView, target == NotchState.Badge, animate);
             SetView(_taskView, target == NotchState.Task, animate);
+            SetView(_phoneView, target == NotchState.Phone, animate);
             SetView(_shareView, target == NotchState.Share, animate);
             SetView(_expandedView, target == NotchState.Expanded, animate);
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }

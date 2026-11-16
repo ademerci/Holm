@@ -80,6 +80,12 @@ public sealed partial class NotchWindow
     /// <summary>Sends the text file, then deletes it.</summary>
     async Task BeamTextFileAsync(ShareTarget target, string path)
     {
+        if (target.Place == ShareTarget.PhonePlace)
+        {
+            BeamToPhone(new() { path });
+            _phoneZips.Add(path);
+            return;
+        }
         try { await SendFilesAsync(target, new() { path }, text: true); }
         finally { FolderPack.Forget(new[] { path }, FolderPack.TempFolder); }
     }

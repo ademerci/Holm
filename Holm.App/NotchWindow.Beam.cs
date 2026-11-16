@@ -166,7 +166,7 @@ public sealed partial class NotchWindow
     {
         e.Handled = true;
         // Without Beam, the shelf is all there is to drop on. Not while dragging off the shelf.
-        if (_draggingOut || _busy || _hiddenForFullscreen || !e.DataTransfer.Contains(DataFormat.File))
+        if (_draggingOut || _busy || _hiddenForFullscreen || PhoneShowing || !e.DataTransfer.Contains(DataFormat.File))
         {
             e.DragEffects = DragDropEffects.None;
             return;
@@ -264,6 +264,7 @@ public sealed partial class NotchWindow
     /// <summary>Sends to whoever the chip stands for; done when the transfer is over.</summary>
     Task SendFilesAsync(ShareTarget target, List<string> paths, bool text = false)
     {
+        if (target.Place == ShareTarget.PhonePlace) { BeamToPhone(paths); return Task.CompletedTask; }
         if (target.Friend != null) return SendToFriendAsync(target.Friend, paths, text);
         if (target.Peer != null) return SendNearbyAsync(target.Peer, paths, text);
         return SendWithCodeAsync(paths, text);
@@ -295,7 +296,15 @@ public sealed partial class NotchWindow
             return;
         }
         if (skipped > 0) Diag.Log($"Packing: {skipped} file(s) couldn't be read and were left out");
-        try { await SendFilesAsync(target, files.Concat(zips).ToList()); }
+        var all = files.Concat(zips).ToList();
+        if (target.Place == ShareTarget.PhonePlace)
+        {
+            _busy = false;
+            BeamToPhone(all);
+            _phoneZips.AddRange(zips); // until the link closes
+            return;
+        }
+        try { await SendFilesAsync(target, all); }
         finally { FolderPack.Forget(zips, FolderPack.TempFolder); }
     }
 
@@ -349,6 +358,7 @@ public sealed partial class NotchWindow
             _shareTargets.Children.Add(chip);
         }
         foreach (var peer in peers.Take(6)) _shareTargets.Children.Add(PersonChip(peer.Name, new ShareTarget(peer)));
+        if (beam) _shareTargets.Children.Add(PlaceChip("\uE8EA", PhoneIndigo, new ShareTarget(null, Place: ShareTarget.PhonePlace)));
         _shareTargets.Children.Add(PlaceChip(ShelfGlyph, ShelfGray, new ShareTarget(null, Place: ShareTarget.ShelfPlace)));
         if (beam) _shareTargets.Children.Add(PlaceChip("", ShareBlue, new ShareTarget(null)));
         ShowOnlineDots();

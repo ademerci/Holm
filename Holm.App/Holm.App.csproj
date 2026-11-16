@@ -30,6 +30,8 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <!-- QR codes for Beam to a phone, as the WPF app makes them. -->
+    <PackageReference Include="QRCoder" Version="1.7.0" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
