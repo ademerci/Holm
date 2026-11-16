@@ -292,12 +292,29 @@ public static class FileTransfer
         }
     }
 
-    /// <summary>The "downloaded from the internet" mark, so Windows warns before opening programs or macros.</summary>
+    /// <summary>
+    /// The "downloaded from the internet" mark, so the system warns before opening programs or macros: Windows'
+    /// Zone.Identifier stream, macOS' quarantine attribute. Linux has none (elsewhere the stream would be a file).
+    /// </summary>
     static void MarkFromInternet(string path)
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            try
+            {
+                byte[] value = System.Text.Encoding.UTF8.GetBytes($"0081;{DateTimeOffset.UtcNow.ToUnixTimeSeconds():x8};Holm;");
+                setxattr(path, "com.apple.quarantine", value, (nuint)value.Length, 0, 0);
+            }
+            catch { } // not allowed: the file is still fine
+            return;
+        }
+        if (!OperatingSystem.IsWindows()) return;
         try { File.WriteAllText(path + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n"); }
         catch { } // not NTFS, or not allowed: the file is still fine
     }
+
+    [System.Runtime.InteropServices.DllImport("libc", CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+    static extern int setxattr(string path, string name, byte[] value, nuint size, uint position, int options);
 
     static bool HasRoom(string folder, long bytes)
     {
