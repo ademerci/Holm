@@ -5,7 +5,7 @@
 
 **Scope: Windows and Linux.** macOS was dropped on 2026-11-16 (its backend, tests and CI job are gone); older
 notes below that mention it describe the past. Dev builds for testing come from `.github/workflows/dev-release.yml`
-(a tag `dev-v<version>.<n>` on `dev`).
+(a new `<version>.<n>` in `docs/cross-platform/dev-release-version.txt` on `dev`).
 
 The plan itself is in [PLAN.md](PLAN.md). This file is about the mechanics: where the work lives, what may be
 touched, and how it gets back into `main`.
