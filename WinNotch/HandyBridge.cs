@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace WinNotch;
@@ -15,7 +14,7 @@ namespace WinNotch;
 /// Works alongside Handy (github.com/cjpais/Handy, offline dictation): tells when it is dictating by watching its
 /// "Recording" overlay show and hide, and can keep that overlay off screen so the notch shows the state instead.
 /// </summary>
-internal sealed class HandyBridge : IDisposable
+internal sealed partial class HandyBridge : IDisposable
 {
     const uint EVENT_OBJECT_DESTROY = 0x8001, EVENT_OBJECT_SHOW = 0x8002, EVENT_OBJECT_HIDE = 0x8003, EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
     const uint WINEVENT_OUTOFCONTEXT = 0x0000, WINEVENT_SKIPOWNPROCESS = 0x0002;
@@ -38,12 +37,14 @@ internal sealed class HandyBridge : IDisposable
     [DllImport("user32.dll", EntryPoint = "FindWindowExW", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? cls, string? title);
 
     readonly WinEventProc _proc; // kept alive while the hooks are in
-    readonly Dispatcher _dispatcher;
+    /// <summary>The UI thread's loop (the WPF app: its Dispatcher, see HandyBridge.Wpf.cs).</summary>
+    readonly Action<Action> _post, _invoke;
+    readonly Func<bool> _onUiThread;
     /// <summary>
     /// While dictating, a look once a second: live, the first hide after start once went unheard and the notch kept
     /// saying Listening. Events stay the fast path; this only makes sure the state can't get stuck.
     /// </summary>
-    readonly DispatcherTimer _check;
+    readonly Action<bool> _check; // true starts it, false stops it
     IntPtr _showHook, _moveHook;
     IntPtr _overlay;
     uint _overlayPid;
@@ -61,13 +62,17 @@ internal sealed class HandyBridge : IDisposable
         set { _hideOverlay = value; if (value) MoveAway(); }
     }
 
-    /// <summary>Create on the dispatcher's thread: out-of-context events arrive on the thread that hooked them.</summary>
-    public HandyBridge(Dispatcher dispatcher)
+    /// <summary>Create on the UI thread: out-of-context events arrive on the thread that hooked them.</summary>
+    /// <param name="post">Runs an action on the UI thread later.</param>
+    /// <param name="invoke">Runs an action on the UI thread and waits for it.</param>
+    /// <param name="onUiThread">Whether this is the UI thread.</param>
+    /// <param name="ticker">Makes the once-a-second check of the state from the action to run.</param>
+    public HandyBridge(Action<Action> post, Action<Action> invoke, Func<bool> onUiThread, Func<Action, Action<bool>> ticker)
     {
-        dispatcher.VerifyAccess();
-        _dispatcher = dispatcher;
-        _check = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Update(), dispatcher);
-        _check.Stop();
+        _post = post;
+        _invoke = invoke;
+        _onUiThread = onUiThread;
+        _check = ticker(Update);
         _proc = OnEvent;
         // Only show/hide/destroy system-wide; moves (which include every mouse move) are hooked for Handy alone.
         _showHook = SetWinEventHook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, IntPtr.Zero, _proc, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
@@ -124,9 +129,9 @@ internal sealed class HandyBridge : IDisposable
         if (on) MoveAway();
         if (on == _dictating) return;
         _dictating = on;
-        if (on) _check.Start(); else _check.Stop();
+        _check(on);
         // Posted, so a handler attached right after construction still hears the start-up state.
-        _dispatcher.InvokeAsync(() => DictatingChanged?.Invoke(on));
+        _post(() => DictatingChanged?.Invoke(on));
     }
 
     void MoveAway()
@@ -139,8 +144,8 @@ internal sealed class HandyBridge : IDisposable
 
     public void Dispose()
     {
-        if (!_dispatcher.CheckAccess()) { _dispatcher.Invoke(Dispose); return; }
-        _check.Stop();
+        if (!_onUiThread()) { _invoke(Dispose); return; }
+        _check(false);
         Forget();
         if (_showHook != IntPtr.Zero) UnhookWinEvent(_showHook);
         _showHook = IntPtr.Zero;
