@@ -113,7 +113,9 @@ public sealed partial class NotchWindow
             return;
         }
         string version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "";
-        _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page);
+        _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page,
+            new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
+            () => MeCard(CurrentProfile()));
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;

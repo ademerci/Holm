@@ -155,3 +155,52 @@ public sealed partial class NotchWindow
         _social?.Raise();
     }
 }
+
+/// <summary>
+/// Your profile (picture, name, status, color), edited in the Holm window and sent to your friends (the WPF app's
+/// MainWindow.Profile.cs).
+/// </summary>
+public sealed partial class NotchWindow
+{
+    ProfileDraft CurrentProfile() => new(_settings.ProfileName, _settings.ProfileStatus, _settings.ProfileColor, _settings.ProfilePicture);
+
+    void ApplyProfile(ProfileDraft profile)
+    {
+        string oldName = _friends.MyName;
+        _settings.ProfileName = FriendProfile.CleanText(profile.Name, FriendProfile.MaxName);
+        _settings.ProfileStatus = FriendProfile.CleanText(profile.Status, FriendProfile.MaxStatus);
+        _settings.ProfileColor = FriendProfile.CleanColor(profile.Color);
+        _settings.ProfilePicture = profile.Picture;
+        _settings.Save();
+        if (profile.Picture != null) _achievements.Set(AchievementBook.ProfilePicture, 1);
+        _friends.ProfileChanged();
+        if (_friends.MyName != oldName && _nearby != null)
+        {
+            // People nearby see the name the network service started with: start it again with the new one.
+            _nearby.Dispose();
+            _nearby = null;
+            StartSharing();
+        }
+        Diag.Log("Profile saved");
+    }
+
+    /// <summary>Your face, name and status for the top of the Holm window's sidebar.</summary>
+    Avalonia.Controls.Control MeCard(ProfileDraft profile)
+    {
+        string name = FriendProfile.CleanText(profile.Name, FriendProfile.MaxName) ?? FriendsService.AccountName();
+        var picture = ProfileEditor.PictureBrush(profile.Picture);
+        IBrush fill = picture ?? (FriendProfile.CleanColor(profile.Color) is { } color && Color.TryParse(color, out var c) ? new SolidColorBrush(c) : AvatarColor(name));
+        var row = new Avalonia.Controls.Grid { ColumnDefinitions = new Avalonia.Controls.ColumnDefinitions("Auto,*") };
+        row.Children.Add(HubTheme.Face(picture != null ? "" : Initials(name), fill, 36));
+        var words = new Avalonia.Controls.StackPanel { Margin = new Avalonia.Thickness(10, 0, 0, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        words.Children.Add(new Avalonia.Controls.TextBlock { Text = name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+        words.Children.Add(new Avalonia.Controls.TextBlock
+        {
+            Text = FriendProfile.CleanText(profile.Status, FriendProfile.MaxStatus) ?? "Set a status", FontSize = 11,
+            Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        Avalonia.Controls.Grid.SetColumn(words, 1);
+        row.Children.Add(words);
+        return row;
+    }
+}

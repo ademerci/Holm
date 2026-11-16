@@ -58,12 +58,19 @@ sealed class SettingsWindow : Window
 
     public string Page { get; private set; } = "";
 
-    bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn);
+    const string ProfileKey = "profile";
+    readonly ProfileEditor? _profile;
+    readonly Func<Control>? _me;
+    Border? _meCard;
+
+    bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
-                          IReadOnlyList<HubPage>? social = null, string? start = null)
+                          IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null)
     {
         _animations = animations;
+        _profile = profile;
+        _me = me;
         _social = social ?? Array.Empty<HubPage>();
         Title = "Holm";
         WindowDecorations = WindowDecorations.None;
@@ -95,6 +102,19 @@ sealed class SettingsWindow : Window
         brand.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         DockPanel.SetDock(brand, Dock.Top);
         sidebar.Children.Add(brand);
+        if (me != null)
+        {
+            var card = new Border
+            {
+                Background = Card, CornerRadius = new CornerRadius(10), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 14),
+                Cursor = new Cursor(StandardCursorType.Hand), Child = me(),
+            };
+            _meCard = card;
+            ToolTip.SetTip(card, "Edit your profile");
+            card.PointerReleased += (_, _) => Navigate(ProfileKey);
+            DockPanel.SetDock(card, Dock.Top);
+            sidebar.Children.Add(card);
+        }
         sidebar.Children.Add(Scroller(nav));
 
         if (_social.Count > 0)
@@ -108,6 +128,14 @@ sealed class SettingsWindow : Window
             nav.Children.Add(new Border { Height = 14 });
         }
         nav.Children.Add(Caption("Settings"));
+        if (profile != null)
+        {
+            _titles[ProfileKey] = ("Profile", "How your friends see you");
+            nav.Children.Add(NavItem(ProfileKey, "\uE77B", "Profile"));
+            profile.Changed += RefreshApplyState;
+            profile.Submit += () => { if (HasChanges) ApplyChanges(); };
+            _pages[ProfileKey] = profile;
+        }
         foreach (var group in groups)
         {
             _titles[group.Key] = (group.Title, group.Subtitle);
@@ -239,6 +267,8 @@ sealed class SettingsWindow : Window
     public void Refresh()
     {
         foreach (var (setting, toggle) in _rows) toggle.Set(setting.Get(), animate: false);
+        _profile?.Reload();
+        if (_meCard != null && _me != null) _meCard.Child = _me(); // the name or picture may have changed
         RefreshApplyState();
     }
 
@@ -329,6 +359,7 @@ sealed class SettingsWindow : Window
             try { setting.Set(toggle.IsOn); }
             catch (Exception ex) { WinNotch.Diag.Error(ex); }
         }
+        _profile?.Apply();
         Refresh();
     }
 

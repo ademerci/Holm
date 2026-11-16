@@ -933,6 +933,9 @@ public sealed partial class NotchWindow
         var chat = new MenuItem { Header = "Chat…" };
         chat.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         menu.Items.Add(chat);
+        var profile = new MenuItem { Header = "Edit my profile…" };
+        profile.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("profile"), DispatcherPriority.Background);
+        menu.Items.Add(profile);
         foreach (var card in _addBack.ToList())
         {
             var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
