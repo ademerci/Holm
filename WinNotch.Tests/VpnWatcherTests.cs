@@ -22,7 +22,7 @@ public class VpnWatcherTests
     };
 
     [Fact]
-    public void No_VPN_on_an_ordinary_PC() => Assert.Null(VpnWatcher.Find(Ordinary));
+    public void No_VPN_on_an_ordinary_PC() => Assert.Null(VpnNames.Find(Ordinary));
 
     [Theory]
     [InlineData("NordLynx", "NordLynx Tunnel", "NordVPN")]
@@ -34,15 +34,15 @@ public class VpnWatcherTests
     [InlineData("Mullvad", "Mullvad Tunnel", "Mullvad")]
     [InlineData("Ethernet 6", "Some Company VPN Adapter", "VPN")]
     public void The_usual_VPN_apps_are_recognised(string name, string description, string expected)
-        => Assert.Equal(expected, VpnWatcher.Find(Ordinary.Append(Up(name, description))));
+        => Assert.Equal(expected, VpnNames.Find(Ordinary.Append(Up(name, description))));
 
     [Fact]
     public void Windows_own_VPN_connections_show_the_name_you_gave_them()
-        => Assert.Equal("Work VPN", VpnWatcher.Find(Ordinary.Append(Up("Work VPN", "Work VPN", NetworkInterfaceType.Ppp))));
+        => Assert.Equal("Work VPN", VpnNames.Find(Ordinary.Append(Up("Work VPN", "Work VPN", NetworkInterfaceType.Ppp))));
 
     [Fact]
     public void An_unknown_tunnel_counts_as_a_VPN()
-        => Assert.Equal("VPN", VpnWatcher.Find(Ordinary.Append(Up("Tunnel 2", "Some tunnel", NetworkInterfaceType.Tunnel))));
+        => Assert.Equal("VPN", VpnNames.Find(Ordinary.Append(Up("Tunnel 2", "Some tunnel", NetworkInterfaceType.Tunnel))));
 
     static NetAdapter Tailscale(bool exitNode, params string[] addresses)
         => new("Tailscale", "Tailscale Tunnel", (NetworkInterfaceType)53, true, addresses.Select(IPAddress.Parse).ToArray(), exitNode);
@@ -51,19 +51,19 @@ public class VpnWatcherTests
 
     [Fact]
     public void Tailscale_connected_to_a_tailnet_counts()
-        => Assert.Equal("Tailscale", VpnWatcher.Find(WithoutTailscale.Append(Tailscale(false, "fe80::1", "fd7a:115c:a1e0::dc38:d725", "100.70.215.36"))));
+        => Assert.Equal("Tailscale", VpnNames.Find(WithoutTailscale.Append(Tailscale(false, "fe80::1", "fd7a:115c:a1e0::dc38:d725", "100.70.215.36"))));
 
     [Fact]
     public void Tailscale_with_an_exit_node_says_so()
-        => Assert.Equal("Tailscale · exit node", VpnWatcher.Find(WithoutTailscale.Append(Tailscale(true, "100.70.215.36"))));
+        => Assert.Equal("Tailscale · exit node", VpnNames.Find(WithoutTailscale.Append(Tailscale(true, "100.70.215.36"))));
 
     [Fact]
     public void Tailscale_without_a_tailnet_address_does_not_count()
-        => Assert.Null(VpnWatcher.Find(WithoutTailscale.Append(Tailscale(false, "fe80::1", "169.254.12.3"))));
+        => Assert.Null(VpnNames.Find(WithoutTailscale.Append(Tailscale(false, "fe80::1", "169.254.12.3"))));
 
     [Fact]
     public void A_full_VPN_wins_over_Tailscale_for_the_tailnet_only()
-        => Assert.Equal("NordVPN", VpnWatcher.Find(WithoutTailscale.Append(Tailscale(false, "100.70.215.36")).Append(Up("NordLynx", "NordLynx Tunnel"))));
+        => Assert.Equal("NordVPN", VpnNames.Find(WithoutTailscale.Append(Tailscale(false, "100.70.215.36")).Append(Up("NordLynx", "NordLynx Tunnel"))));
 
     [Theory]
     [InlineData("100.64.0.1", true)]
@@ -74,9 +74,9 @@ public class VpnWatcherTests
     [InlineData("fd7a:115c:a1e0::1", true)]
     [InlineData("fd7a:115c:a1e1::1", false)]
     public void Knows_tailnet_addresses(string address, bool expected)
-        => Assert.Equal(expected, VpnWatcher.IsTailnetAddress(IPAddress.Parse(address)));
+        => Assert.Equal(expected, VpnNames.IsTailnetAddress(IPAddress.Parse(address)));
 
     [Fact]
     public void A_disconnected_VPN_adapter_is_not_a_VPN()
-        => Assert.Null(VpnWatcher.Find(Ordinary.Append(new NetAdapter("NordLynx", "NordLynx Tunnel", NetworkInterfaceType.Ethernet, false))));
+        => Assert.Null(VpnNames.Find(Ordinary.Append(new NetAdapter("NordLynx", "NordLynx Tunnel", NetworkInterfaceType.Ethernet, false))));
 }

@@ -55,6 +55,7 @@
     <Compile Include="..\WinNotch.Tests\TestHelpers.cs" Link="Linked\TestHelpers.cs" />
     <Compile Include="..\WinNotch.Tests\TodayTests.cs" Link="Linked\TodayTests.cs" />
     <Compile Include="..\WinNotch.Tests\UpdateInstallerTests.cs" Link="Linked\UpdateInstallerTests.cs" />
+    <Compile Include="..\WinNotch.Tests\VpnWatcherTests.cs" Link="Linked\VpnWatcherTests.cs" />
     <Compile Include="..\WinNotch.Tests\WaveTests.cs" Link="Linked\WaveTests.cs" />
   </ItemGroup>
 

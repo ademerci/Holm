@@ -49,6 +49,7 @@
     <Compile Include="..\WinNotch\Spring.cs" Link="Linked\Spring.cs" />
     <Compile Include="..\WinNotch\Today.cs" Link="Linked\Today.cs" />
     <Compile Include="..\WinNotch\UsbDrives.cs" Link="Linked\UsbDrives.cs" />
+    <Compile Include="..\WinNotch\VpnNames.cs" Link="Linked\VpnNames.cs" />
     <Compile Include="..\WinNotch\Updates\UpdateInstaller.cs" Link="Linked\Updates\UpdateInstaller.cs" />
     <Compile Include="..\WinNotch\Updates\UpdateService.cs" Link="Linked\Updates\UpdateService.cs" />
     <Compile Include="..\WinNotch\Waves.cs" Link="Linked\Waves.cs" />
