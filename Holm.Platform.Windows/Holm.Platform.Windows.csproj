@@ -16,6 +16,7 @@
     <Compile Include="..\WinNotch\BluetoothBattery.cs" Link="Linked\BluetoothBattery.cs" />
     <Compile Include="..\WinNotch\Native.cs" Link="Linked\Native.cs" />
     <Compile Include="..\WinNotch\VolumeService.cs" Link="Linked\VolumeService.cs" />
+    <Compile Include="..\WinNotch\AppVolumes.cs" Link="Linked\AppVolumes.cs" />
   </ItemGroup>
 
   <ItemGroup>

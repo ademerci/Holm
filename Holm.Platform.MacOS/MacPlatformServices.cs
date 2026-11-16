@@ -12,4 +12,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IAutostartPlatform Autostart { get; } = new MacAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new MacClipboardPlatform();
     public IScreenPlatform Screen { get; } = new MacScreenPlatform();
+    public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
 }

@@ -77,12 +77,13 @@ public sealed partial class NotchWindow
 
     static TextBlock PageTitle(string text) => new() { Text = text, FontSize = 11, Foreground = Dim, Margin = new Thickness(2, 0, 0, 6) };
 
-    NotchButton ToolButton(string glyph, Tool tool)
+    NotchButton ToolButton(string glyph, Tool tool, string tip)
     {
         var button = new NotchButton(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Dim })
         {
             Width = 32, Height = 32, Margin = new Thickness(2, 0),
         };
+        ToolTip.SetTip(button, tip);
         button.Click += () => ToggleTool(tool);
         _toolBar.Children.Add(button);
         return button;
@@ -91,10 +92,11 @@ public sealed partial class NotchWindow
     /// <summary>The tool row at the top of the open notch.</summary>
     Control BuildToolRow()
     {
-        _notesToolBtn = ToolButton("", Tool.Notes);
-        _remindersToolBtn = ToolButton(BellGlyph, Tool.Reminders);
-        _calculatorToolBtn = ToolButton("", Tool.Calculator);
-        _clipboardToolBtn = ToolButton(ClipboardGlyph, Tool.Clipboard);
+        _notesToolBtn = ToolButton("", Tool.Notes, "Notes");
+        _remindersToolBtn = ToolButton(BellGlyph, Tool.Reminders, "Reminders");
+        _calculatorToolBtn = ToolButton("", Tool.Calculator, "Calculator");
+        _clipboardToolBtn = ToolButton(ClipboardGlyph, Tool.Clipboard, "Clipboard history");
+        _mixerToolBtn = ToolButton(MixerGlyph, Tool.Mixer, "Volume per app");
         BuildColorPickerButton();
         var row = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 32, VerticalAlignment = VerticalAlignment.Top };
         row.Children.Add(_toolBar);
@@ -142,6 +144,7 @@ public sealed partial class NotchWindow
         _toolPage.Children.Add(BuildRemindersPage());
         _toolPage.Children.Add(_calculatorPage);
         _toolPage.Children.Add(BuildClipboardPage());
+        _toolPage.Children.Add(BuildMixerPage());
         Deactivated += (_, _) => OnDeactivated();
         RefreshToolBar();
         return _toolPage;
@@ -154,6 +157,7 @@ public sealed partial class NotchWindow
         (_remindersPage, _remindersToolBtn, Tool.Reminders),
         (_calculatorPage, _calculatorToolBtn, Tool.Calculator),
         (_clipboardPage, _clipboardToolBtn, Tool.Clipboard),
+        (_mixerPage, _mixerToolBtn, Tool.Mixer),
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
@@ -187,10 +191,12 @@ public sealed partial class NotchWindow
             page.IsVisible = match;
             button.Rest = match ? ToolLit : Brushes.Transparent;
         }
+        if (tool != Tool.Mixer) HideMixer();
         if (tool == Tool.Notes) ShowNotes();
         else if (tool == Tool.Reminders) ShowRemindersPage();
         else if (tool == Tool.Calculator) OnCalcChanged();
         else if (tool == Tool.Clipboard) ShowClipboardPage();
+        else if (tool == Tool.Mixer) ShowMixerPage();
         if (_state == NotchState.Expanded) ApplyState(animate: true); // a page has its own height
     }
 
@@ -201,6 +207,7 @@ public sealed partial class NotchWindow
         _remindersToolBtn.IsVisible = _settings.Reminders;
         _calculatorToolBtn.IsVisible = _settings.Calculator;
         _clipboardToolBtn.IsVisible = _settings.ClipboardHistory;
+        _mixerToolBtn.IsVisible = _settings.AppVolume;
         _colorPickerBtn.IsVisible = _settings.ColorPicker;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())

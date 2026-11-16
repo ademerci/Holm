@@ -11,6 +11,7 @@ public interface IPlatformServices
     IAutostartPlatform Autostart { get; }
     IClipboardPlatform Clipboard { get; }
     IScreenPlatform Screen { get; }
+    IAppVolumePlatform AppVolumes { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -24,4 +25,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IAutostartPlatform Autostart { get; } = new NoAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new NoClipboardPlatform();
     public IScreenPlatform Screen { get; } = new NoScreenPlatform();
+    public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
 }

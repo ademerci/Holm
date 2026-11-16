@@ -12,4 +12,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IAutostartPlatform Autostart { get; } = new WindowsAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new WindowsClipboardPlatform();
     public IScreenPlatform Screen { get; } = new WindowsScreenPlatform();
+    public IAppVolumePlatform AppVolumes { get; } = new WindowsAppVolumePlatform();
 }

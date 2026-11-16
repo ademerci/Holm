@@ -12,4 +12,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IAutostartPlatform Autostart { get; } = new LinuxAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new LinuxClipboardPlatform();
     public IScreenPlatform Screen { get; } = new LinuxScreenPlatform();
+    public IAppVolumePlatform AppVolumes { get; } = new LinuxAppVolumePlatform();
 }

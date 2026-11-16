@@ -63,6 +63,7 @@ public sealed partial class NotchWindow : Window
         InitDevices(platform);
         InitClipboard(platform);
         InitColorPicker(platform);
+        InitMixer(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
