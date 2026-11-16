@@ -14,12 +14,16 @@ public class SecureChannelTests
         await using (receiver)
         {
             var ct = Net.Timeout();
+            // The receiver reads while the sender writes, as a real peer does: a full frame can be larger than the
+            // socket's buffer (macOS keeps loopback buffers small), and writing it waits until it is read.
+            var received = Task.Run(async () => (First: await receiver.ReceiveAsync(ct), Second: await receiver.ReceiveAsync(ct)));
             await sender.SendAsync(Encoding.UTF8.GetBytes("hello"), ct);
             await sender.SendAsync(new byte[SecureChannel.MaxPlaintext], ct);
+            var (first, second) = await received;
             await receiver.SendAsync(Encoding.UTF8.GetBytes("hi back"), ct);
 
-            Assert.Equal("hello", Encoding.UTF8.GetString(await receiver.ReceiveAsync(ct)));
-            Assert.Equal(SecureChannel.MaxPlaintext, (await receiver.ReceiveAsync(ct)).Length);
+            Assert.Equal("hello", Encoding.UTF8.GetString(first));
+            Assert.Equal(SecureChannel.MaxPlaintext, second.Length);
             Assert.Equal("hi back", Encoding.UTF8.GetString(await sender.ReceiveAsync(ct)));
         }
     }
