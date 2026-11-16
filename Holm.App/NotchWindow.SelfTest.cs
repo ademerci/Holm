@@ -30,11 +30,13 @@ public sealed partial class NotchWindow
         {
             Directory.CreateDirectory(folder);
             await Task.Delay(2500);
+            FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
 
             _hovered = true;
             ApplyState(animate: true);
             await Task.Delay(3000);
+            FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
 
             bool volume = _audio.TryGetVolume(out float level, out bool muted);
@@ -57,6 +59,18 @@ public sealed partial class NotchWindow
             exitCode = 1;
         }
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
+    }
+
+    /// <summary>What differs between machines rather than systems (the time, the volume) is set alike before a picture.</summary>
+    void FreezeForPicture()
+    {
+        _minute.Stop();
+        _idleClock.Text = _clockBig.Text = "09:41";
+        _dateText.Text = "Monday, November 16";
+        _volSlider.Value = 0.5;
+        _volSlider.Opacity = 1;
+        UpdateVolumeIcon(0.5, false);
+        UpdateLayout();
     }
 
     /// <summary>The window's content as drawn, at a scale of 2 on every system so pictures can be laid over each other.</summary>

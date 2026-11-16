@@ -92,3 +92,30 @@ jobs:
           name: Holm-macos-arm64-test-build.${{ github.run_number }}
           path: out/osx-arm64/
           retention-days: 7
+
+  # The three systems' self-test pictures laid over each other: the notch must look the same on each.
+  compare:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: selftest-*
+          path: selftest
+
+      - name: Compare
+        run: |
+          pip install --quiet pillow
+          python3 tools/selftest/compare.py selftest compare
+
+      - name: Upload differences
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-differences
+          path: compare/
+          retention-days: 7
+          if-no-files-found: ignore
