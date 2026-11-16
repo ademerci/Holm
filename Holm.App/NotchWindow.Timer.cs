@@ -78,12 +78,14 @@ public sealed partial class NotchWindow
         var weather = new MenuItem { Header = "Weather" };
         var collapsedSize = new MenuItem { Header = "Collapsed size" };
         var expandedSize = new MenuItem { Header = "Expanded size" };
+        var ai = new MenuItem { Header = "AI button" };
         var messages = new MenuItem { Header = "Messages" };
         var quiet = new MenuItem { Header = "Quiet hours" };
         var customize = new MenuItem { Header = "Customize" };
         customize.Items.Add(messages);
         customize.Items.Add(quiet);
         customize.Items.Add(weather);
+        customize.Items.Add(ai);
         customize.Items.Add(collapsedSize);
         customize.Items.Add(expandedSize);
         customize.Items.Add(bounceLevel);
@@ -116,6 +118,7 @@ public sealed partial class NotchWindow
             ListScreens(menu);
             FillWeatherMenu(weather);
             FillMessagesMenu(messages);
+            FillAiMenu(ai);
             FillFriendsMenu(friends);
             FillBeamTextMenu(beamText);
             receive.IsEnabled = _settings.Beam;

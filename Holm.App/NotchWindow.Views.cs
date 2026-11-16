@@ -238,6 +238,7 @@ public sealed partial class NotchWindow
         var sound = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         sound.Children.Add(muteBtn);
         sound.Children.Add(_volSlider);
+        BuildAiButton(sound);
         var bottom = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(sound, 1);
         bottom.Children.Add(_devicesPanel);
