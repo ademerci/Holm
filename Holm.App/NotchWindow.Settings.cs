@@ -69,6 +69,12 @@ public sealed partial class NotchWindow
                 Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
                 Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
             }),
+            new("beam", "Beam", "\uE724", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new[]
+            {
+                Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
+                    s => s.Beam, SetBeam),
+                Switch("Send folders as ZIP", "\uE8B7", "Folders are packed as a ZIP before they're sent.", s => s.SendFolders, on => { _settings.SendFolders = on; Save(); }),
+            }),
             new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new[]
             {
                 Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",

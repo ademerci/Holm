@@ -101,9 +101,12 @@ public sealed partial class NotchWindow
 
     /// <summary>Shows a card with up to two buttons in place of the closed notch; it stays until <see cref="HideTask"/>.</summary>
     void ShowTask(string icon, IBrush circle, string title, string subtitle, double? progress,
-                  (string Label, Action Act)? primary, (string Label, Action Act)? secondary)
+                  (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
         _taskIcon.Text = icon;
+        // A person's initials in their circle, an icon otherwise.
+        _taskIcon.FontFamily = textIcon ? FontFamily.Default : IconFont;
+        _taskIcon.FontWeight = textIcon ? FontWeight.SemiBold : FontWeight.Normal;
         _taskIconCircle.Background = circle;
         // A screenshot's picture takes the icon's place; every other card has its icon.
         _taskThumb.IsVisible = false;

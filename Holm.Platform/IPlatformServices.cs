@@ -21,6 +21,7 @@ public interface IPlatformServices
     IForegroundPlatform Foreground { get; }
     ISensorPlatform Sensors { get; }
     INotificationsPlatform Notifications { get; }
+    IIdentityPlatform Identity { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -44,4 +45,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IForegroundPlatform Foreground { get; } = new NoForegroundPlatform();
     public ISensorPlatform Sensors { get; } = new NoSensorPlatform();
     public INotificationsPlatform Notifications { get; } = new NoNotificationsPlatform();
+    public IIdentityPlatform Identity { get; } = new UnixIdentityPlatform(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Holm"));
 }

@@ -22,4 +22,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IForegroundPlatform Foreground { get; } = new MacForegroundPlatform();
     public ISensorPlatform Sensors { get; } = new MacSensorPlatform();
     public INotificationsPlatform Notifications { get; } = new MacNotificationsPlatform();
+    public IIdentityPlatform Identity { get; } = new MacIdentityPlatform(WinNotch.Diag.Folder);
 }

@@ -11,7 +11,7 @@ using WinNotch;
 namespace Holm.App;
 
 /// <summary>
-/// After a screenshot, the notch shows it small with "Shelf" and "Show"; click the picture to open it (the WPF app's
+/// After a screenshot, the notch shows it small with "Send" and "Shelf"; click the picture to open it (the WPF app's
 /// MainWindow.Screenshot.cs). The system's screenshots folder is watched; nothing is polled. Beam's "Send" and the
 /// text reading (Windows OCR) are not ported.
 /// </summary>
@@ -110,8 +110,8 @@ public sealed partial class NotchWindow
         _shotPath = path;
         Diag.Log("Screenshot taken");
         ShowTask(ScreenshotGlyph, ShareBlue, "Screenshot", "Saved in " + Path.GetFileName(Path.GetDirectoryName(path)), null,
-                 ("Shelf", () => { HideTask(); if (_shotPath is { } shot) AddToShelf(new[] { shot }); }),
-                 ("Show", () => { HideTask(); if (_shotPath is { } shot) Try(() => _shell.Reveal(shot)); }));
+                 ("Send", () => { if (_shotPath is { } shot) PickTarget(new[] { shot }); }),
+                 ("Shelf", () => { HideTask(); if (_shotPath is { } shot) AddToShelf(new[] { shot }); }));
         _taskThumb.Background = new ImageBrush(thumbnail) { Stretch = Stretch.UniformToFill };
         _taskThumb.IsVisible = true;
         _taskIconCircle.IsVisible = false;

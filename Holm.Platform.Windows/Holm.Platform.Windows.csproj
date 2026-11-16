@@ -25,6 +25,8 @@
   <ItemGroup>
     <!-- Power source changes, without a window of our own to receive them. -->
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.0" />
+    <!-- DPAPI for the friends key, as the WPF app keeps it. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

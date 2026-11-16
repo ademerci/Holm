@@ -18,10 +18,10 @@ public sealed partial class NotchWindow
     readonly DispatcherTimer _wipeTimer = new() { Interval = ClipboardWipe.After };
     uint _clipSequence;
 
-    /// <summary>The clipboard is watched while the history or the password wipe needs it.</summary>
+    /// <summary>The clipboard is watched while the history, the password wipe or Beam (copied codes) needs it.</summary>
     void FollowClipboard()
     {
-        if (_settings.ClipboardHistory || _settings.ClearPasswords) _clipboardPlatform.Start();
+        if (_settings.ClipboardHistory || _settings.ClearPasswords || _settings.Beam) _clipboardPlatform.Start();
         else _clipboardPlatform.Stop();
     }
 

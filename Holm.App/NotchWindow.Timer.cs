@@ -87,9 +87,14 @@ public sealed partial class NotchWindow
         customize.Items.Add(collapsedSize);
         customize.Items.Add(expandedSize);
         customize.Items.Add(bounceLevel);
+        var receive = new MenuItem { Header = "Receive with copied code" };
+        receive.Click += (_, _) => _ = ReceiveCopiedCodeAsync();
+        var friends = new MenuItem { Header = "Friends" };
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
         menu.Items.Add(_menuSleep);
+        menu.Items.Add(receive);
+        menu.Items.Add(friends);
         menu.Items.Add(new Separator());
         menu.Items.Add(settings);
         menu.Items.Add(customize);
@@ -106,6 +111,8 @@ public sealed partial class NotchWindow
             ListScreens(menu);
             FillWeatherMenu(weather);
             FillMessagesMenu(messages);
+            FillFriendsMenu(friends);
+            receive.IsEnabled = _settings.Beam;
             FillQuietMenu(quiet);
             FillSizeMenu(collapsedSize, expanded: false);
             FillSizeMenu(expandedSize, expanded: true);

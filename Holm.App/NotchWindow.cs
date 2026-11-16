@@ -104,6 +104,7 @@ public sealed partial class NotchWindow : Window
         InitVpn();
         InitPrivacy(platform);
         InitMessages(platform);
+        InitBeam(platform);
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -156,6 +157,7 @@ public sealed partial class NotchWindow : Window
         StartFullscreen();
         StartPrivacy();
         StartMessages();
+        StartSharing();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -176,6 +178,7 @@ public sealed partial class NotchWindow : Window
         _drives.Stop();
         _sensors.Stop();
         _notifications.Stop();
+        StopSharing();
         ForgetClipFiles();
         base.OnClosed(e);
     }

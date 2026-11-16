@@ -37,7 +37,6 @@ public sealed partial class NotchWindow
     readonly TextBlock _shareTitle = new() { FontSize = 13, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _shareHint = new() { FontSize = 11, Foreground = Dim, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
     readonly WrapPanel _shareTargets = new() { Margin = new Thickness(0, 10, 0, 0) };
-    Border _shelfChip = null!;
     bool _sharing, _draggingOut;
 
     void BuildShelf()
@@ -64,28 +63,9 @@ public sealed partial class NotchWindow
         _shareView.Children.Add(_shareTitle);
         _shareView.Children.Add(_shareHint);
         _shareView.Children.Add(_shareTargets);
-        _shelfChip = Chip(ShelfGlyph, ShelfGray, "Shelf");
-        _shareTargets.Children.Add(_shelfChip);
         _islandContent.Children.Add(_shareView);
         _shareView.Opacity = 0;
         _shareView.IsHitTestVisible = false;
-
-        DragDrop.SetAllowDrop(_island, true);
-        _island.AddHandler(DragDrop.DragEnterEvent, OnDrag);
-        _island.AddHandler(DragDrop.DragOverEvent, OnDrag);
-        _island.AddHandler(DragDrop.DragLeaveEvent, (_, e) =>
-        {
-            // Also raised moving between elements inside the notch: only leaving the notch itself ends the view.
-            if (_island.IsPointerOver || !_sharing) return;
-            EndShare();
-        });
-        _island.AddHandler(DragDrop.DropEvent, (_, e) =>
-        {
-            e.Handled = true;
-            var dropped = DroppedPaths(e);
-            EndShare();
-            if (dropped.Count > 0) AddToShelf(dropped); // folders too: only the paths are kept
-        });
 
         int gone = Shelf.Prune(_settings.Shelf);
         if (gone > 0)
@@ -101,42 +81,11 @@ public sealed partial class NotchWindow
     static List<string> DroppedPaths(DragEventArgs e)
         => e.DataTransfer.TryGetFiles()?.Select(item => item.TryGetLocalPath()).OfType<string>().ToList() ?? new List<string>();
 
-    void OnDrag(object? sender, DragEventArgs e)
-    {
-        e.Handled = true;
-        if (_draggingOut || !e.DataTransfer.Contains(DataFormat.File))
-        {
-            e.DragEffects = DragDropEffects.None;
-            return;
-        }
-        e.DragEffects = DragDropEffects.Copy;
-        _shelfChip.Background = ShareBlue; // the one place to drop
-        if (_sharing) return;
-        var files = DroppedPaths(e);
-        _shareTitle.Text = files.Count == 1 ? $"“{Path.GetFileName(files[0])}”" : files.Count > 1 ? $"{files.Count} files" : "Files";
-        _shareHint.Text = "Drop it on Shelf to keep it here and drag it out later.";
-        _sharing = true;
-        EndTyping();
-        SetExpanded(false);
-    }
-
-    void EndShare()
-    {
-        if (!_sharing) return;
-        _sharing = false;
-        _shelfChip.Background = ChipBrush;
-        ApplyState(animate: true);
-    }
-
     /// <summary>The WPF app's ChipButton: a round avatar and a name on a soft pill.</summary>
-    static Border Chip(string glyph, IBrush avatar, string name)
+    static Border Chip(Control avatar, string name)
     {
         var content = new StackPanel { Orientation = Orientation.Horizontal };
-        content.Children.Add(new Border
-        {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(15), Background = avatar,
-            Child = new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-        });
+        content.Children.Add(avatar);
         content.Children.Add(new TextBlock { Text = name, FontSize = 12, FontWeight = FontWeight.SemiBold, MaxWidth = 110, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
         return new Border { Background = ChipBrush, CornerRadius = new CornerRadius(19), Padding = new Thickness(4, 4, 14, 4), Margin = new Thickness(0, 0, 8, 8), Child = content };
     }
