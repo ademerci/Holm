@@ -14,4 +14,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IScreenPlatform Screen { get; } = new LinuxScreenPlatform();
     public IAppVolumePlatform AppVolumes { get; } = new LinuxAppVolumePlatform();
     public IShellPlatform Shell { get; } = new LinuxShellPlatform();
+    public IConnectivityPlatform Connectivity { get; } = new LinuxConnectivityPlatform();
 }

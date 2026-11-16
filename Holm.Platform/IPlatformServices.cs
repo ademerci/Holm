@@ -13,6 +13,7 @@ public interface IPlatformServices
     IScreenPlatform Screen { get; }
     IAppVolumePlatform AppVolumes { get; }
     IShellPlatform Shell { get; }
+    IConnectivityPlatform Connectivity { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -28,4 +29,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IScreenPlatform Screen { get; } = new NoScreenPlatform();
     public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
     public IShellPlatform Shell { get; } = new NoShellPlatform();
+    public IConnectivityPlatform Connectivity { get; } = new NoConnectivityPlatform();
 }
