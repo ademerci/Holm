@@ -46,8 +46,32 @@ public sealed class WindowsPowerPlatform : IPowerPlatform
 /// <summary>Bluetooth batteries as Windows' Settings app shows them (the WPF app's BluetoothBattery, linked).</summary>
 public sealed class WindowsBluetoothPlatform : IBluetoothPlatform
 {
+    global::Windows.Devices.Radios.Radio? _radio;
+    Dictionary<string, BtDevice> _paired = new();
+
     public List<BluetoothDeviceState> ScanBatteries()
         => BluetoothBattery.Scan().Select(d => new BluetoothDeviceState(d.Address, d.Name, d.Glyph, d.Battery, d.IsConnected)).ToList();
+
+    /// <summary>The radio through the WPF app's BluetoothControl (linked).</summary>
+    public async System.Threading.Tasks.Task<bool?> RadioAsync()
+    {
+        _radio ??= await BluetoothControl.RadioAsync();
+        return _radio == null ? null : _radio.State == global::Windows.Devices.Radios.RadioState.On;
+    }
+
+    public async System.Threading.Tasks.Task<bool> SetRadioAsync(bool on)
+        => _radio != null && await BluetoothControl.SetRadioAsync(_radio, on);
+
+    public List<PairedDevice> Paired()
+    {
+        var entries = BluetoothControl.Paired();
+        _paired = entries.GroupBy(e => e.Device.Address).ToDictionary(g => g.Key, g => g.First().Device);
+        return entries.Select(e => new PairedDevice(e.Device.Address, e.Device.Name, e.Device.Glyph, e.Device.Connected == true, e.Device.Battery, e.CanConnect)).ToList();
+    }
+
+    public bool SetConnected(string id, bool connect) => _paired.TryGetValue(id, out var device) && BluetoothControl.SetConnected(device, connect);
+
+    public string? SettingsLink => "ms-settings:bluetooth";
 }
 
 /// <summary>

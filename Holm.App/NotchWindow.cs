@@ -295,7 +295,7 @@ public sealed partial class NotchWindow : Window
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
             _mini = mini;
-            if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); _openSettling = true; _live.Start(); }
+            if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); RefreshOutputButtons(); _openSettling = true; _live.Start(); }
             else _live.Stop();
         }
         UpdateBackdrop();

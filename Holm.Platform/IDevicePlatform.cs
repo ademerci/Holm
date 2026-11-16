@@ -35,7 +35,25 @@ public interface IBluetoothPlatform
     /// what the system already has and never talks to the radio.
     /// </summary>
     List<BluetoothDeviceState> ScanBatteries();
+
+    /// <summary>Whether Bluetooth is on; null when the computer has no Bluetooth (then there's no button).</summary>
+    System.Threading.Tasks.Task<bool?> RadioAsync();
+
+    /// <summary>Switches Bluetooth on or off, like the switch in the system's settings. False if that wasn't allowed.</summary>
+    System.Threading.Tasks.Task<bool> SetRadioAsync(bool on);
+
+    /// <summary>The paired devices. Run it off the UI thread.</summary>
+    List<PairedDevice> Paired();
+
+    /// <summary>Asks a paired device to connect or disconnect. False if the system didn't take the request.</summary>
+    bool SetConnected(string id, bool connect);
+
+    /// <summary>The system's Bluetooth settings, to open from the menu; null where there is no such link.</summary>
+    string? SettingsLink { get; }
 }
+
+/// <summary>A paired Bluetooth device; <paramref name="CanConnect"/>: Holm can ask it to connect (sound devices on Windows).</summary>
+public sealed record PairedDevice(string Id, string Name, string Glyph, bool Connected, int Battery, bool CanConnect);
 
 /// <summary>For systems without a backend yet: no battery.</summary>
 public sealed class NoPowerPlatform : IPowerPlatform
@@ -50,6 +68,11 @@ public sealed class NoPowerPlatform : IPowerPlatform
 public sealed class NoBluetoothPlatform : IBluetoothPlatform
 {
     public List<BluetoothDeviceState> ScanBatteries() => new();
+    public System.Threading.Tasks.Task<bool?> RadioAsync() => System.Threading.Tasks.Task.FromResult<bool?>(null);
+    public System.Threading.Tasks.Task<bool> SetRadioAsync(bool on) => System.Threading.Tasks.Task.FromResult(false);
+    public List<PairedDevice> Paired() => new();
+    public bool SetConnected(string id, bool connect) => false;
+    public string? SettingsLink => null;
 }
 
 /// <summary>

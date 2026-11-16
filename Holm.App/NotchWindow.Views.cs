@@ -239,6 +239,7 @@ public sealed partial class NotchWindow
         sound.Children.Add(muteBtn);
         sound.Children.Add(_volSlider);
         BuildAiButton(sound);
+        BuildOutputButtons(sound);
         var bottom = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(sound, 1);
         bottom.Children.Add(_devicesPanel);

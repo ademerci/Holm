@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -129,6 +130,57 @@ public sealed class LinuxBluetoothPlatform : IBluetoothPlatform
         found.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         return found;
     }
+
+    /// <summary>The first adapter, and whether it is powered: BlueZ's Adapter1.</summary>
+    (string Path, bool Powered)? Adapter()
+    {
+        var objects = _bus.CallAsync("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects", ReadObjects).GetAwaiter().GetResult();
+        if (objects == null) return null;
+        foreach (var (path, interfaces) in objects.OrderBy(o => o.Key, StringComparer.Ordinal))
+            if (interfaces.TryGetValue("org.bluez.Adapter1", out var adapter))
+                return (path, adapter.TryGetValue("Powered", out var p) && p.Type == VariantValueType.Bool && p.GetBool());
+        return null;
+    }
+
+    public System.Threading.Tasks.Task<bool?> RadioAsync()
+        => System.Threading.Tasks.Task.Run<bool?>(() => Adapter() is { } adapter ? adapter.Powered : null);
+
+    public async System.Threading.Tasks.Task<bool> SetRadioAsync(bool on)
+    {
+        if (await System.Threading.Tasks.Task.Run(Adapter) is not { } adapter) return false;
+        try
+        {
+            await _bus.SetAsync("org.bluez", adapter.Path, "org.bluez.Adapter1", "Powered", VariantValue.Bool(on));
+            return true;
+        }
+        catch { return false; }
+    }
+
+    public List<PairedDevice> Paired()
+    {
+        var found = new List<PairedDevice>();
+        var objects = _bus.CallAsync("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects", ReadObjects).GetAwaiter().GetResult();
+        if (objects == null) return found;
+        foreach (var (path, interfaces) in objects)
+        {
+            if (!interfaces.TryGetValue("org.bluez.Device1", out var device)) continue;
+            if (!(device.TryGetValue("Paired", out var paired) && paired.Type == VariantValueType.Bool && paired.GetBool())) continue;
+            string name = Text(device, "Alias");
+            if (name.Length == 0) name = Text(device, "Name");
+            bool connected = device.TryGetValue("Connected", out var c) && c.Type == VariantValueType.Bool && c.GetBool();
+            int battery = interfaces.TryGetValue("org.bluez.Battery1", out var b) && b.TryGetValue("Percentage", out var pct)
+                          && LinuxMediaPlatform.Number(pct) is { } n ? Math.Clamp((int)n, 0, 100) : -1;
+            // BlueZ connects any paired device it is asked to.
+            found.Add(new PairedDevice(path, name, GlyphFor(Text(device, "Icon")), connected, battery, CanConnect: true));
+        }
+        found.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        return found;
+    }
+
+    public bool SetConnected(string id, bool connect)
+        => _bus.CallAsync("org.bluez", id, "org.bluez.Device1", connect ? "Connect" : "Disconnect").GetAwaiter().GetResult();
+
+    public string? SettingsLink => null;
 
     /// <summary>BlueZ names the kind of device with an icon name from the freedesktop naming specification.</summary>
     internal static string GlyphFor(string icon) => icon switch

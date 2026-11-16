@@ -42,4 +42,9 @@ public sealed class WindowsAudioPlatform : IAudioPlatform
     public void StopMeter() => _meter.Stop();
     public bool MeterWorking => _meter.Working;
     public float MeterBar(int bar, int bars) => _meter.Levels.Bar(bar, bars);
+
+    public System.Collections.Generic.IReadOnlyList<AudioOutput> Outputs(out string? current)
+        => System.Linq.Enumerable.ToList(System.Linq.Enumerable.Select(_volume.Outputs(out current), o => new AudioOutput(o.Id, o.Name, o.Glyph)));
+
+    public bool SetDefaultOutput(string id) => _volume.SetDefault(id);
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Holm.Platform;
 
@@ -36,6 +37,18 @@ public interface IAudioPlatform
 
     /// <summary>The level (0 to 1) equalizer bar <paramref name="bar"/> of <paramref name="bars"/> shows; the last bar is the newest sound.</summary>
     float MeterBar(int bar, int bars);
+
+    /// <summary>The speakers and headphones sound can go to, and which one it goes to now.</summary>
+    IReadOnlyList<AudioOutput> Outputs(out string? current);
+
+    /// <summary>Makes an output the default, as the system's sound settings do. False if that didn't work.</summary>
+    bool SetDefaultOutput(string id);
+}
+
+/// <summary>A place sound can go: its id, the name people know it by, and an icon glyph for its kind.</summary>
+public sealed record AudioOutput(string Id, string Name, string Glyph)
+{
+    public const string Speakers = "\uE7F5", Headphones = "\uE7F6", Headset = "\uE95B", Display = "\uE7F4";
 }
 
 /// <summary>For systems without a backend yet: no volume, no levels.</summary>
@@ -53,4 +66,6 @@ public sealed class NoAudioPlatform : IAudioPlatform
     public void StopMeter() { }
     public bool MeterWorking => false;
     public float MeterBar(int bar, int bars) => 0;
+    public IReadOnlyList<AudioOutput> Outputs(out string? current) { current = null; return Array.Empty<AudioOutput>(); }
+    public bool SetDefaultOutput(string id) => false;
 }

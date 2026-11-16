@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -160,6 +161,71 @@ public sealed class LinuxAudioPlatform : IAudioPlatform
     }
 
     public bool MeterWorking => _meterWorking;
+
+    // ───────────── outputs ─────────────
+
+    // Where the fields sit in pa_sink_info (64-bit, checked against introspect.h).
+    const int SinkName = 0, SinkDescription = 16, SinkProplist = 344, SinkActivePort = 392, PortName = 0;
+    List<AudioOutput>? _readingOutputs;
+    bool _outputsDone;
+    ListCallback? _onOutput;
+
+    /// <summary>The server's sinks: each with its description, and an icon from its form factor or port.</summary>
+    public IReadOnlyList<AudioOutput> Outputs(out string? current)
+    {
+        current = _defaultSinkName;
+        if (_loop == IntPtr.Zero) return Array.Empty<AudioOutput>();
+        _onOutput ??= OnOutput;
+        List<AudioOutput> found;
+        pa_threaded_mainloop_lock(_loop);
+        try
+        {
+            if (!Ready) return Array.Empty<AudioOutput>();
+            _readingOutputs = new();
+            _outputsDone = false;
+            IntPtr operation = pa_context_get_sink_info_list(_context, _onOutput, IntPtr.Zero);
+            if (operation == IntPtr.Zero) return Array.Empty<AudioOutput>();
+            while (!_outputsDone && Ready) pa_threaded_mainloop_wait(_loop);
+            pa_operation_unref(operation);
+            found = _readingOutputs;
+            _readingOutputs = null;
+        }
+        finally { pa_threaded_mainloop_unlock(_loop); }
+        return found;
+    }
+
+    void OnOutput(IntPtr context, IntPtr info, int end, IntPtr userdata)
+    {
+        try
+        {
+            if (end != 0 || info == IntPtr.Zero) { _outputsDone = true; pa_threaded_mainloop_signal(_loop, 0); return; }
+            string name = Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(info, SinkName)) ?? "";
+            string description = Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(info, SinkDescription)) ?? name;
+            IntPtr props = Marshal.ReadIntPtr(info, SinkProplist);
+            string form = props == IntPtr.Zero ? "" : Marshal.PtrToStringUTF8(pa_proplist_gets(props, "device.form_factor")) ?? "";
+            IntPtr port = Marshal.ReadIntPtr(info, SinkActivePort);
+            string portName = port == IntPtr.Zero ? "" : Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(port, PortName)) ?? "";
+            if (name.Length > 0) _readingOutputs?.Add(new AudioOutput(name, description, GlyphOf(form, portName)));
+        }
+        catch { }
+    }
+
+    internal static string GlyphOf(string formFactor, string port)
+    {
+        if (formFactor is "headphone") return AudioOutput.Headphones;
+        if (formFactor is "headset" or "handset" or "hands-free") return AudioOutput.Headset;
+        if (formFactor is "tv" or "display" || port.Contains("hdmi", StringComparison.OrdinalIgnoreCase) || port.Contains("displayport", StringComparison.OrdinalIgnoreCase))
+            return AudioOutput.Display;
+        if (port.Contains("headphone", StringComparison.OrdinalIgnoreCase)) return AudioOutput.Headphones;
+        return AudioOutput.Speakers;
+    }
+
+    public bool SetDefaultOutput(string id)
+    {
+        bool sent = false;
+        Locked(() => { if (Ready) { IntPtr op = pa_context_set_default_sink(_context, id, IntPtr.Zero, IntPtr.Zero); sent = op != IntPtr.Zero; Unref(op); } });
+        return sent;
+    }
     public float MeterBar(int bar, int bars) => _levels.Bar(bar, bars);
 
     static float LevelOf(uint raw) => Math.Clamp((float)raw / VolumeNorm, 0f, 1f);
@@ -360,6 +426,12 @@ public sealed class LinuxAudioPlatform : IAudioPlatform
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void InfoCallback(IntPtr context, IntPtr info, IntPtr userdata);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void SinkCallback(IntPtr context, IntPtr info, int end, IntPtr userdata);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void StreamCallback(IntPtr stream, UIntPtr bytes, IntPtr userdata);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void ListCallback(IntPtr context, IntPtr info, int end, IntPtr userdata);
+    [DllImport(Pulse)] static extern void pa_threaded_mainloop_wait(IntPtr loop);
+    [DllImport(Pulse)] static extern void pa_threaded_mainloop_signal(IntPtr loop, int waitForAccept);
+    [DllImport(Pulse)] static extern IntPtr pa_context_get_sink_info_list(IntPtr context, ListCallback callback, IntPtr userdata);
+    [DllImport(Pulse)] static extern IntPtr pa_context_set_default_sink(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr callback, IntPtr userdata);
+    [DllImport(Pulse)] static extern IntPtr pa_proplist_gets(IntPtr proplist, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
 
     const string Pulse = "libpulse.so.0";
 
