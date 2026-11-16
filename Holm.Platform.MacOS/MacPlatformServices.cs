@@ -15,4 +15,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
     public IShellPlatform Shell { get; } = new MacShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new MacConnectivityPlatform();
+    public ICapsLockPlatform CapsLock { get; } = new MacCapsLockPlatform();
 }

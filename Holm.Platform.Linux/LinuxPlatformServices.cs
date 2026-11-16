@@ -15,4 +15,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IAppVolumePlatform AppVolumes { get; } = new LinuxAppVolumePlatform();
     public IShellPlatform Shell { get; } = new LinuxShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new LinuxConnectivityPlatform();
+    public ICapsLockPlatform CapsLock { get; } = new LinuxCapsLockPlatform();
 }

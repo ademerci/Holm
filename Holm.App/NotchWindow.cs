@@ -67,6 +67,7 @@ public sealed partial class NotchWindow : Window
         InitDownloads(platform);
         InitDiskSpace();
         InitConnectivity(platform);
+        InitCapsLock(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
@@ -123,6 +124,7 @@ public sealed partial class NotchWindow : Window
         StartConnectivity();
         StartWeather();
         ShowSleep();
+        StartCapsLock();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -136,6 +138,7 @@ public sealed partial class NotchWindow : Window
         _clipboardPlatform.Stop();
         StopDownloads();
         _connectivity.Stop();
+        _capsLock.Stop();
         ForgetClipFiles();
         base.OnClosed(e);
     }

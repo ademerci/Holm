@@ -15,4 +15,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IAppVolumePlatform AppVolumes { get; } = new WindowsAppVolumePlatform();
     public IShellPlatform Shell { get; } = new WindowsShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new WindowsConnectivityPlatform();
+    public ICapsLockPlatform CapsLock { get; } = new WindowsCapsLockPlatform();
 }

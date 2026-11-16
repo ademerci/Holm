@@ -14,6 +14,7 @@ public interface IPlatformServices
     IAppVolumePlatform AppVolumes { get; }
     IShellPlatform Shell { get; }
     IConnectivityPlatform Connectivity { get; }
+    ICapsLockPlatform CapsLock { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -30,4 +31,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
     public IShellPlatform Shell { get; } = new NoShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new NoConnectivityPlatform();
+    public ICapsLockPlatform CapsLock { get; } = new NoCapsLockPlatform();
 }
