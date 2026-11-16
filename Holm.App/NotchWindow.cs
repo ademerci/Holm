@@ -109,6 +109,7 @@ public sealed partial class NotchWindow : Window
         InitAchievements();
         InitActivity();
         InitSendLater();
+        InitUpdates();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -163,6 +164,7 @@ public sealed partial class NotchWindow : Window
         StartMessages();
         StartSharing();
         StartSendLater();
+        StartUpdates();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -184,6 +186,7 @@ public sealed partial class NotchWindow : Window
         _sensors.Stop();
         _notifications.Stop();
         StopSharing();
+        StopUpdates();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -226,7 +229,7 @@ public sealed partial class NotchWindow : Window
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
-                   : _messages.Count > 0 ? NotchState.Badge
+                   : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
 
         // Over a maximized browser the notch is the idle pill, so the tabs under it can be clicked.

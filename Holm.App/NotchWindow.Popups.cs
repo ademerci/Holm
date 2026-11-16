@@ -82,6 +82,7 @@ public sealed partial class NotchWindow
     {
         if (_hiddenForFullscreen || _state == NotchState.Expanded) return;
 
+        _updateNotification = false;
         _peekIcon.Text = glyph ?? "";
         _peekIcon.Foreground = glyphBrush ?? Brushes.White;
         _peekIcon.IsVisible = glyph != null;

@@ -214,6 +214,7 @@ public sealed partial class NotchWindow
     void ShowMessage(ChatMessage message)
     {
         if (_hiddenForFullscreen || _state == NotchState.Expanded) return;
+        _updateNotification = false;
         _messageLogoHost.Child = AppLogo(message.App, 28);
         _messageTitle.Text = message.Title;
         _messageText.Text = message.Text;
@@ -229,7 +230,7 @@ public sealed partial class NotchWindow
     void RefreshMessages()
     {
         _clearNotificationsBtn.IsVisible = _messages.Count > 0;
-        int count = _messages.Sum(m => m.Count);
+        int count = _messages.Sum(m => m.Count) + (HasUpdateNotification ? 1 : 0);
         string totalText = count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture);
         _badgeText.Text = _mediaBadgeText.Text = totalText;
         _mediaBadge.IsVisible = count > 0;
@@ -252,6 +253,7 @@ public sealed partial class NotchWindow
 
         PopulateAppLogos(_badgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
         PopulateAppLogos(_mediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
+        AddUpdateNotification();
         _mediaBadge.Background = _badgePill.Background = RedBrush;
 
         foreach (var group in groups)

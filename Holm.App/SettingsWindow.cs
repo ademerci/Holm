@@ -43,7 +43,7 @@ sealed class SettingsWindow : Window
 
     readonly List<(SettingsSwitch Setting, ToggleSwitch Toggle)> _rows = new();
     readonly Dictionary<string, (Border Item, TextBlock Glyph, Border Badge, TextBlock BadgeText)> _navItems = new();
-    readonly IReadOnlyList<HubPage> _social;
+    readonly IReadOnlyList<HubPage> _social, _extra;
     HubView? _shownView;
     Control _footer = null!;
     readonly Dictionary<string, Control> _pages = new();
@@ -66,8 +66,10 @@ sealed class SettingsWindow : Window
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
-                          IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null)
+                          IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
+                          IReadOnlyList<HubPage>? extra = null)
     {
+        _extra = extra ?? Array.Empty<HubPage>();
         _animations = animations;
         _profile = profile;
         _me = me;
@@ -141,6 +143,12 @@ sealed class SettingsWindow : Window
             _titles[group.Key] = (group.Title, group.Subtitle);
             nav.Children.Add(NavItem(group.Key, group.Glyph, group.Title));
             _pages[group.Key] = GroupPage(group);
+        }
+        // Pages among the settings that aren't switches (Updates): built when opened, without Apply.
+        foreach (var page in _extra)
+        {
+            _titles[page.Key] = (page.Title, page.Subtitle);
+            nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
         }
         var sideBorder = new Border
         {
@@ -234,7 +242,7 @@ sealed class SettingsWindow : Window
         _shownView?.Detach();
         _shownView = null;
         bool settings = _pages.TryGetValue(key, out var page);
-        if (!settings && _social.FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
+        if (!settings && _social.Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
         (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
