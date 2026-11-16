@@ -98,7 +98,7 @@ internal sealed class CameraActivity : IDisposable
                         {
                             if (process.GetStreamingState(out bool streaming) != 0 || !streaming || process.GetProcessId(out uint pid) != 0) continue;
                             string key = Path.GetFileNameWithoutExtension(Native.ProcessPath((int)pid));
-                            if (key.Length > 0) active.Add(new SensorUse(Sensor.Camera, PrivacyMonitor.NameOfProcess(key), key, DateTime.UtcNow));
+                            if (key.Length > 0) active.Add(new SensorUse(Sensor.Camera, SensorRecord.NameOfProcess(key), key, DateTime.UtcNow));
                             else active.Add(new SensorUse(Sensor.Camera, "Camera", "camera-pid:" + pid, DateTime.UtcNow));
                         }
                         finally { Marshal.ReleaseComObject(process); }

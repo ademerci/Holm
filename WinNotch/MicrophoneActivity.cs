@@ -75,7 +75,7 @@ internal sealed class MicrophoneActivity : IDisposable
         => sessions.Where(s => s.State == AudioSessionInfo.Active && !s.IsSystemSounds && s.ProcessId != 0 && s.ExePath.Length > 0)
             .Select(s => Path.GetFileNameWithoutExtension(s.ExePath))
             .Where(key => key.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(key => new SensorUse(Sensor.Microphone, PrivacyMonitor.NameOfProcess(key), key, now)).ToArray();
+            .Select(key => new SensorUse(Sensor.Microphone, SensorRecord.NameOfProcess(key), key, now)).ToArray();
 
     void OnChanged() => Changed?.Invoke();
 
