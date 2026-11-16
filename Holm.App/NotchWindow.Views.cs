@@ -201,8 +201,13 @@ public sealed partial class NotchWindow
         _mediaPanel.Children.Add(controls);
 
         // No music: time and date stay at the top of home.
-        _clockPanel.Children.Add(_clockBig);
-        _clockPanel.Children.Add(_dateText);
+        var clockHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var clockStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+        clockStack.Children.Add(_clockBig);
+        clockStack.Children.Add(_dateText);
+        clockHeader.Children.Add(clockStack);
+        _clockPanel.Children.Add(clockHeader);
+        BuildWeather(clockHeader);
 
         _homePanel.Children.Add(_mediaPanel);
         _homePanel.Children.Add(_clockPanel);

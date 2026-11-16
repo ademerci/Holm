@@ -75,7 +75,9 @@ public sealed partial class NotchWindow
         var settings = new MenuItem { Header = "Settings…" };
         settings.Click += (_, _) => OpenSettings();
         var bounceLevel = new MenuItem { Header = "Bounce" };
+        var weather = new MenuItem { Header = "Weather" };
         var customize = new MenuItem { Header = "Customize" };
+        customize.Items.Add(weather);
         customize.Items.Add(bounceLevel);
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
@@ -89,6 +91,7 @@ public sealed partial class NotchWindow
             _menuOpen = true;
             FillTimerMenu();
             FillBounceMenu(bounceLevel);
+            FillWeatherMenu(weather);
         };
         // The notch stays as it is while its menu is open; once it has closed, it closes too if the mouse has gone.
         menu.Closed += (_, _) =>

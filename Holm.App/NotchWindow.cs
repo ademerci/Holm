@@ -120,6 +120,7 @@ public sealed partial class NotchWindow : Window
         StartDownloads();
         StartDiskSpace();
         StartConnectivity();
+        StartWeather();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -210,7 +211,7 @@ public sealed partial class NotchWindow : Window
             SetView(_peekView, target == NotchState.Peek, animate);
             SetView(_taskView, target == NotchState.Task, animate);
             SetView(_expandedView, target == NotchState.Expanded, animate);
-            if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); }
+            if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
             if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); _openSettling = true; _live.Start(); }
             else _live.Stop();
