@@ -94,6 +94,7 @@ public sealed partial class NotchWindow : Window
         BuildViews();
         BuildShelf();
         InitScreenshots();
+        InitUsb(platform);
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -129,6 +130,7 @@ public sealed partial class NotchWindow : Window
         StartCapsLock();
         StartHotKey();
         StartScreenshots();
+        StartUsb();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -145,6 +147,7 @@ public sealed partial class NotchWindow : Window
         _capsLock.Stop();
         _hotKey.Stop();
         StopScreenshots();
+        _drives.Stop();
         ForgetClipFiles();
         base.OnClosed(e);
     }

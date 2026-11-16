@@ -17,4 +17,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IConnectivityPlatform Connectivity { get; } = new LinuxConnectivityPlatform();
     public ICapsLockPlatform CapsLock { get; } = new LinuxCapsLockPlatform();
     public IHotKeyPlatform HotKey { get; } = new LinuxHotKeyPlatform();
+    public IRemovableDrivesPlatform Drives { get; } = new LinuxRemovableDrivesPlatform();
 }

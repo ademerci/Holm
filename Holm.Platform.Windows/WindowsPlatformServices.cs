@@ -17,4 +17,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IConnectivityPlatform Connectivity { get; } = new WindowsConnectivityPlatform();
     public ICapsLockPlatform CapsLock { get; } = new WindowsCapsLockPlatform();
     public IHotKeyPlatform HotKey { get; } = new WindowsHotKeyPlatform();
+    public IRemovableDrivesPlatform Drives { get; } = new WindowsRemovableDrivesPlatform();
 }
