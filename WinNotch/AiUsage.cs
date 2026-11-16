@@ -149,7 +149,7 @@ internal sealed class AiUsageReader
                 if (nowUtc - file.LastWriteTimeUtc > Kept) continue;
                 seen.Add(file.FullName);
                 if (!_logs.TryGetValue(file.FullName, out var log))
-                    _logs[file.FullName] = log = new AiLog { Subagent = file.FullName.Contains(@"\subagents\", StringComparison.OrdinalIgnoreCase) };
+                    _logs[file.FullName] = log = new AiLog { Subagent = file.FullName.Contains(@"\subagents\", StringComparison.OrdinalIgnoreCase) || file.FullName.Contains("/subagents/", StringComparison.OrdinalIgnoreCase) };
                 log.LastWrite = file.LastWriteTimeUtc;
                 Update(file, log);
             }
@@ -291,7 +291,7 @@ internal sealed class AiUsageReader
         string? detail = null;
         if (input.ValueKind == JsonValueKind.Object)
             detail = Text(input, "description") is { Length: > 0 } description ? description
-                   : Text(input, "file_path") is { Length: > 0 } file ? Path.GetFileName(file)
+                   : Text(input, "file_path") is { Length: > 0 } file ? FileNameOf(file)
                    : Text(input, "command") is { Length: > 0 } command ? Cut(OneLine(command), 40)
                    : Text(input, "pattern") is { Length: > 0 } pattern ? Cut(OneLine(pattern), 40)
                    : null;
@@ -459,9 +459,19 @@ internal sealed class AiUsageReader
                 .Select(l => new AiSession(_tool, ProjectName(l.Cwd), _tool == AiTool.ClaudeCode ? l.ShownStep : l.ToolStep ?? "Working", l.LastWrite))
                 .ToList();
 
+    static readonly char[] PathSeparators = { '\\', '/' };
+
+    // Split by hand so Windows paths logged on another OS (or in tests) read the same on Linux.
+    static string FileNameOf(string path)
+    {
+        string trimmed = path.TrimEnd(PathSeparators);
+        string name = trimmed[(trimmed.LastIndexOfAny(PathSeparators) + 1)..];
+        return name.Length == 2 && name[1] == ':' ? "" : name;
+    }
+
     static string ProjectName(string? cwd)
     {
-        string name = string.IsNullOrWhiteSpace(cwd) ? "" : Path.GetFileName(cwd.TrimEnd('\\', '/'));
+        string name = string.IsNullOrWhiteSpace(cwd) ? "" : FileNameOf(cwd);
         return name.Length > 0 ? name : "A session";
     }
 
