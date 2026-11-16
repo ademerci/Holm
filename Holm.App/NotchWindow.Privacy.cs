@@ -74,6 +74,9 @@ public sealed partial class NotchWindow
         ShowPrivacy();
         // Say once which app started (the camera first); the dot then stays while it records. A call shows itself.
         if (_call != null) started.RemoveAll(u => u.Sensor == Sensor.Microphone && u.Key == _call.Key);
+        // Dictation shows itself too (Listening), so Handy's microphone isn't announced a second time over it.
+        if (_settings.Dictation) started.RemoveAll(u => u.Sensor == Sensor.Microphone && IsHandy(u));
+        if (_settings.Dictation && !_dictation.ReportsListening) OnDictating(HandyListens());
         if (started.Count == 0) return;
         var first = started[0];
         ShowPeek(first.Sensor == Sensor.Camera ? CameraGlyph : MicGlyph, $"{first.Name} is using the {SensorWord(first.Sensor)}", "", null);

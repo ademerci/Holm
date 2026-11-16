@@ -22,6 +22,7 @@
     <Compile Include="..\WinNotch\MicrophoneActivity.cs" Link="Linked\MicrophoneActivity.cs" />
     <Compile Include="..\WinNotch\SensorRecord.cs" Link="Linked\SensorRecord.cs" />
     <Compile Include="..\WinNotch\ScreenText.cs" Link="Linked\ScreenText.cs" />
+    <Compile Include="..\WinNotch\HandyBridge.cs" Link="Linked\HandyBridge.cs" />
   </ItemGroup>
 
   <ItemGroup>

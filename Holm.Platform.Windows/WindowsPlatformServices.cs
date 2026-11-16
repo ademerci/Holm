@@ -23,4 +23,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public ISensorPlatform Sensors { get; } = new WindowsSensorPlatform();
     public INotificationsPlatform Notifications { get; } = new WindowsNotificationsPlatform();
     public IIdentityPlatform Identity { get; } = new WindowsIdentityPlatform();
+    public IDictationPlatform Dictation { get; } = new WindowsDictationPlatform();
 }

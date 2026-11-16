@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { Idle, Badge, Timer, Focumon, Media, Download, Call, Dictation, Peek, Message, Volume, Task, Share, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -111,6 +111,7 @@ public sealed partial class NotchWindow : Window
         InitSendLater();
         InitUpdates();
         BuildFocumon();
+        InitDictation(platform);
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -167,6 +168,7 @@ public sealed partial class NotchWindow : Window
         StartSendLater();
         StartUpdates();
         StartFocumon();
+        StartDictation();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -190,6 +192,7 @@ public sealed partial class NotchWindow : Window
         StopSharing();
         StopUpdates();
         StopFocumon();
+        StopDictation();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -227,6 +230,7 @@ public sealed partial class NotchWindow : Window
                    : _taskVisible ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
+                   : _dictating ? NotchState.Dictation // you're talking to it right now: above a call or music
                    : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
@@ -268,6 +272,7 @@ public sealed partial class NotchWindow : Window
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
+            case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
@@ -293,6 +298,7 @@ public sealed partial class NotchWindow : Window
             SetView(_timerView, target == NotchState.Timer, animate);
             SetView(_focumonView, target == NotchState.Focumon, animate);
             SetView(_callView, target == NotchState.Call, animate);
+            SetView(_dictationView, target == NotchState.Dictation, animate);
             SetView(_volumeView, target == NotchState.Volume, animate);
             SetView(_downloadView, target == NotchState.Download, animate);
             SetView(_peekView, target == NotchState.Peek, animate);
