@@ -73,6 +73,7 @@ public sealed partial class NotchWindow : Window
         InitConnectivity(platform);
         InitCapsLock(platform);
         InitHotKey(platform);
+        InitClickAway(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
@@ -163,6 +164,7 @@ public sealed partial class NotchWindow : Window
         _connectivity.Stop();
         _capsLock.Stop();
         _hotKey.Stop();
+        _clickAway.Watch(false);
         StopScreenshots();
         _drives.Stop();
         ForgetClipFiles();
@@ -194,6 +196,7 @@ public sealed partial class NotchWindow : Window
     void ApplyState(bool animate)
     {
         animate &= _settings.Animations;
+        WatchClicksAway();
         var target = _hovered ? NotchState.Expanded
                    : _sharing ? NotchState.Share
                    : _taskVisible ? NotchState.Task

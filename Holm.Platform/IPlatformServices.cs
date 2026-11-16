@@ -17,6 +17,7 @@ public interface IPlatformServices
     ICapsLockPlatform CapsLock { get; }
     IHotKeyPlatform HotKey { get; }
     IRemovableDrivesPlatform Drives { get; }
+    IClickAwayPlatform ClickAway { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -36,4 +37,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public ICapsLockPlatform CapsLock { get; } = new NoCapsLockPlatform();
     public IHotKeyPlatform HotKey { get; } = new NoHotKeyPlatform();
     public IRemovableDrivesPlatform Drives { get; } = new NoRemovableDrivesPlatform();
+    public IClickAwayPlatform ClickAway { get; } = new NoClickAwayPlatform();
 }

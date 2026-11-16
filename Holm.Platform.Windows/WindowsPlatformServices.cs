@@ -18,4 +18,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public ICapsLockPlatform CapsLock { get; } = new WindowsCapsLockPlatform();
     public IHotKeyPlatform HotKey { get; } = new WindowsHotKeyPlatform();
     public IRemovableDrivesPlatform Drives { get; } = new WindowsRemovableDrivesPlatform();
+    public IClickAwayPlatform ClickAway { get; } = new WindowsClickAwayPlatform();
 }
