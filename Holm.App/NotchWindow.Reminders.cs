@@ -175,7 +175,9 @@ public sealed partial class NotchWindow
     void ShowIdleStatus()
     {
         var next = _settings.Reminders ? _reminders.Items.FirstOrDefault() : null;
-        _idleReminder.IsVisible = Today.Pick(next?.Due, DateTime.UtcNow, 0) == IdleStatus.Reminder;
+        var status = Today.Pick(next?.Due, DateTime.UtcNow, ShelfItems.Count);
+        _idleReminder.IsVisible = status == IdleStatus.Reminder;
+        _idleShelf.IsVisible = status == IdleStatus.Shelf;
         if (next != null) _idleReminderTime.Text = next.Due.ToLocalTime().ToString("HH:mm");
     }
 }

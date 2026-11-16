@@ -91,3 +91,4 @@ E93E LiveRegular                # streaming
 E95B HeadsetRegular             # Headset
 EA3B CircleFilled               # filled circle (colour swatch)
 EB63 GlobeProhibitedRegular     # offline
+E8A5 DocumentRegular            # Document

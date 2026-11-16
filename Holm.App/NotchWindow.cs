@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Timer, Media, Download, Peek, Volume, Task, Expanded }
+    enum NotchState { Idle, Timer, Media, Download, Peek, Volume, Task, Share, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -90,6 +90,7 @@ public sealed partial class NotchWindow : Window
         Foreground = Brushes.White;
 
         BuildViews();
+        BuildShelf();
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -164,6 +165,7 @@ public sealed partial class NotchWindow : Window
     {
         animate &= _settings.Animations;
         var target = _hovered ? NotchState.Expanded
+                   : _sharing ? NotchState.Share
                    : _taskVisible ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? NotchState.Peek
@@ -182,6 +184,10 @@ public sealed partial class NotchWindow : Window
                 UpdateLayout();
                 _expandedView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(_expandedView.DesiredSize.Height) + 18, 32);
+                break;
+            case NotchState.Share:
+                _shareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
+                (w, h, r) = (400, Math.Ceiling(_shareView.DesiredSize.Height) + 6, 28);
                 break;
             case NotchState.Task: (w, h, r) = (420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
@@ -210,6 +216,7 @@ public sealed partial class NotchWindow : Window
             SetView(_downloadView, target == NotchState.Download, animate);
             SetView(_peekView, target == NotchState.Peek, animate);
             SetView(_taskView, target == NotchState.Task, animate);
+            SetView(_shareView, target == NotchState.Share, animate);
             SetView(_expandedView, target == NotchState.Expanded, animate);
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
