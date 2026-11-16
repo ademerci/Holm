@@ -102,12 +102,22 @@ Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): th
 Known gaps in what is ported: clipboard, mixer and colour picker are missing from the tool row; views fade but do not pop
 or unfold yet; a new cover fades in over black instead of cross-fading; no scale settings, mini idle or multi-monitor choice; the context menu has only Timer and Quit.
 
-**Fonts.** On Windows the port uses the WPF app's fonts (Segoe UI Variable, Segoe Fluent Icons). Those may not be
-redistributed, so elsewhere text is set in Inter (bundled with Avalonia) and icons come from
-`Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points, so the code that shows
-an icon is the same everywhere. `Holm.App/Fonts.cs` picks the font; `tools/icon-font/` builds it and says how to
-add an icon. An icon missing from that font is an empty box on Linux and macOS only: `icons.txt` covers what the
-port shows today and most of what the WPF app uses, not all of it.
+**Fonts: the same on every system.** Text is set in Inter (bundled with Avalonia) and icons come from
+`Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points. Both ship inside the app,
+on Windows too, so the notch does not depend on what a system has installed. Text is drawn with greyscale
+antialiasing and no hinting everywhere (`Holm.App/Fonts.cs`), so it is rasterised alike. The price: on Windows the
+port no longer uses Segoe UI Variable like the WPF app, so text there looks slightly different from the WPF build
+(Inter runs a little wider). `tools/icon-font/` builds the icon font and says how to add an icon; a missing icon is
+an empty box on every system, so it shows up at once.
+
+**Self-test.** `HOLM_SELFTEST=folder` runs the app without a person: it opens the notch by itself, writes what the
+backend reports (`report.txt`) and a picture of the closed and the open notch at scale 2, and quits. CI runs it on
+Windows, Linux and macOS and keeps the three folders as artifacts (`selftest-<system>`), so the pictures can be laid
+over each other.
+
+**On every system alike:** one instance at a time (a lock file in the data folder), and "Start at sign-in" in the
+context menu (Windows: the Run key, only shown next to an installed Holm; Linux: `~/.config/autostart/holm.desktop`;
+macOS: `~/Library/LaunchAgents/app.holm.notch.plist`).
 
 **Seams made so far.** These are the only edits under `WinNotch/` on this branch. They change no behavior (the
 WPF suite passes) and belong on `main`: commit them separately from the new folders, so that commit can be
@@ -122,6 +132,7 @@ cherry-picked into a pull request against `main`.
 | `LevelEnvelope` apart from the WASAPI meter | new `LevelEnvelope.cs`, `AudioMeter.cs` |
 | Received file names are cleaned of what Windows forbids on every system | `Sharing/FileTransfer.cs` |
 | A shelf item's name is split by hand, so Windows paths read the same elsewhere | `Shelf.cs` |
+| A partial download present before watching began is ignored (macOS reported it as new) | `Notify/DownloadWatcher.cs` |
 
 **Linux:** `Holm.Platform.Linux` is the backend, checked by running the app under Xvfb with openbox, a compositor,
 PulseAudio and pretend MPRIS and BlueZ services on a private bus (not yet on a real desktop):
@@ -142,18 +153,31 @@ PulseAudio and pretend MPRIS and BlueZ services on a private bus (not yet on a r
 - One file: `dotnet publish Holm.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
   -p:PublishReadyToRun=true` gives a single `Holm.App` (about 110 MB). Measured under Xvfb: no CPU use at rest,
   about 50 MB of private memory, under 1 % of a core while the equalizer runs.
-- Missing: single instance, autostart (`~/.config/autostart`), an update path, a `.desktop` file and packaging.
+- Missing: an update path, a `.desktop` file for the app menu, and packaging.
 
-All tests pass on Linux (the updater's stay excluded: it swaps `Holm.exe` through PowerShell, Windows only by
-design). The backend's plain logic has tests of its own in `Holm.Tests/Linux/`, which run on every system.
+All tests pass on Windows, Linux and macOS, and CI requires all three (the updater's stay excluded on Linux and
+macOS: it swaps `Holm.exe` through PowerShell, Windows only by design). Each backend's plain logic has tests of its
+own in `Holm.Tests/Linux/` and `Holm.Tests/MacOS/`, which run on every system.
 
-**macOS:** `Holm.App` and `Holm.Tests` build there (CI), but nothing has been run and no backend exists: the app
-would start with `NoPlatformServices`, an ordinary topmost window with no media, volume or battery. One known
-test failure:
+**macOS:** `Holm.Platform.MacOS` is the backend. CI starts the app on a Mac (the self-test) and runs the native
+calls in `MacNativeTests`; it has not yet been used by a person on a Mac, so hover, typing and media are unchecked
+there.
 
-| Test | Why it fails |
-|---|---|
-| `DownloadWatcherTests.Leftovers_from_before_are_ignored_and_other_files_too` | Not looked into yet; probably file watcher timing. |
+- Window (`MacNotchWindowPlatform.cs`): status-bar level (above the menu bar), on every Space and next to
+  full-screen apps, out of the window cycle, no Dock icon (`Program.cs`). macOS has no input shape, so the window
+  ignores the mouse and two event monitors (mouse movement only, no permission needed) let it take the mouse while
+  the pointer is over the notch. The keyboard is taken by activating the app and handed back to the app that had it.
+- Media (`MacMediaPlatform.cs`): Spotify and Music through their scripting (`osascript`), woken by their own
+  change notifications and by apps starting and quitting. macOS has no public "now playing" for all apps (the
+  private MediaRemote refuses unsigned callers since 15.4), so browsers and other players are not shown yet. macOS
+  asks once whether Holm may control each player. A player that isn't running is never addressed.
+- Volume (`MacAudioPlatform.cs`): CoreAudio, with listeners for volume, mute and the default device. The equalizer
+  cannot follow the sound (that needs a recording permission): it bounces, as it does elsewhere when the sound can't
+  be read. This is the one visible difference to Windows and Linux.
+- Battery: IOKit power sources, with their change notification. Bluetooth batteries: `system_profiler`
+  (AirPods per bud, mice, keyboards, trackpads).
+- One file: `dotnet publish Holm.App -c Release -r osx-arm64 --self-contained -p:PublishSingleFile=true`; CI uploads
+  it. Missing: a signed `.app` bundle (with `LSUIElement` and the automation usage text), notarisation.
 
 **Still blocked,** each a candidate for the next seam:
 
