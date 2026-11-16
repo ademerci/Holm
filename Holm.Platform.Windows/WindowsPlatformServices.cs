@@ -16,4 +16,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IShellPlatform Shell { get; } = new WindowsShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new WindowsConnectivityPlatform();
     public ICapsLockPlatform CapsLock { get; } = new WindowsCapsLockPlatform();
+    public IHotKeyPlatform HotKey { get; } = new WindowsHotKeyPlatform();
 }

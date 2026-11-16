@@ -15,6 +15,7 @@ public interface IPlatformServices
     IShellPlatform Shell { get; }
     IConnectivityPlatform Connectivity { get; }
     ICapsLockPlatform CapsLock { get; }
+    IHotKeyPlatform HotKey { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -32,4 +33,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IShellPlatform Shell { get; } = new NoShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new NoConnectivityPlatform();
     public ICapsLockPlatform CapsLock { get; } = new NoCapsLockPlatform();
+    public IHotKeyPlatform HotKey { get; } = new NoHotKeyPlatform();
 }

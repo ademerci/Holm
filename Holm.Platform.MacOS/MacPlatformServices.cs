@@ -16,4 +16,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IShellPlatform Shell { get; } = new MacShellPlatform();
     public IConnectivityPlatform Connectivity { get; } = new MacConnectivityPlatform();
     public ICapsLockPlatform CapsLock { get; } = new MacCapsLockPlatform();
+    public IHotKeyPlatform HotKey { get; } = new MacHotKeyPlatform();
 }

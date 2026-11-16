@@ -34,6 +34,8 @@ public sealed partial class NotchWindow
                     s => s.Bounce, on => { _settings.Bounce = on; Save(); ApplyBounce(); }),
                 Switch("Equalizer follows the music", "", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded.",
                     s => s.ReactiveEqualizer, on => { _settings.ReactiveEqualizer = on; Save(); UpdateEqualizer(); }),
+                Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
+                    s => s.HotKey, SetHotKey),
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
                 new SettingsSwitch("Start at sign-in", "", "Holm starts when you sign in.", () => _autostart.IsEnabled,
                     on => _autostart.Set(on), false),
