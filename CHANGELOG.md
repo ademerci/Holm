@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.12.7 – 2026-11-16
 
-- Add Settings > General > Drag notch position, with an adjacent Reset Position button. Drag the top edge left or right; the saved position survives restarts and stays locked when dragging is off.
+### Added
+- **Put the notch where you want it.** *Settings › General › Drag notch position* lets you hold the notch by its top edge and move it left or right along the selected screen. Its position is remembered after a restart and stays put when dragging is switched off. The small *Reset Position* button beside the switch brings it back to the centre.
 
-- Fix Codex usage showing a weekly allowance as a five-hour limit. Read each limit's actual window from Codex's local logs, show reset dates and additional reported limits, and mark old readings as potentially outdated rather than assuming a reset means zero usage.
+### Fixed
+- **Codex usage follows the reported limit.** A weekly allowance could show as a five-hour limit because Holm assumed the first limit was always five hours. The card now reads each limit's actual duration from Codex's local logs, shows additional limits only when reported, and includes the date in reset times. Old readings say they may be outdated; passing the reset time no longer invents zero usage.
 
 ## 1.12.6 – 2026-11-16
 
