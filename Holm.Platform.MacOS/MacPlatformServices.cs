@@ -10,4 +10,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IPowerPlatform Power { get; } = new MacPowerPlatform();
     public IBluetoothPlatform Bluetooth { get; } = new MacBluetoothPlatform();
     public IAutostartPlatform Autostart { get; } = new MacAutostartPlatform();
+    public IClipboardPlatform Clipboard { get; } = new MacClipboardPlatform();
 }

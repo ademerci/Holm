@@ -10,4 +10,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IPowerPlatform Power { get; } = new WindowsPowerPlatform();
     public IBluetoothPlatform Bluetooth { get; } = new WindowsBluetoothPlatform();
     public IAutostartPlatform Autostart { get; } = new WindowsAutostartPlatform();
+    public IClipboardPlatform Clipboard { get; } = new WindowsClipboardPlatform();
 }

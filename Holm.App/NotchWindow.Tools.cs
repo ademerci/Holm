@@ -17,11 +17,11 @@ namespace Holm.App;
 /// type into may take the keyboard: the notch otherwise never takes focus from your app, so it does that only while
 /// you click into a text field, and gives it back as soon as you click elsewhere or the notch closes.
 ///
-/// Ported so far: notes, reminders and the calculator. The clipboard, the mixer and the colour picker follow.
+/// Notes, reminders, the calculator, the clipboard history, the mixer and the colour picker, in the WPF app's order.
 /// </summary>
 public sealed partial class NotchWindow
 {
-    enum Tool { None, Notes, Reminders, Calculator }
+    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer }
 
     static readonly IBrush ToolLit = Brush("#29FFFFFF");
 
@@ -94,6 +94,7 @@ public sealed partial class NotchWindow
         _notesToolBtn = ToolButton("", Tool.Notes);
         _remindersToolBtn = ToolButton(BellGlyph, Tool.Reminders);
         _calculatorToolBtn = ToolButton("", Tool.Calculator);
+        _clipboardToolBtn = ToolButton(ClipboardGlyph, Tool.Clipboard);
         var row = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 32, VerticalAlignment = VerticalAlignment.Top };
         row.Children.Add(_toolBar);
         return row;
@@ -139,6 +140,7 @@ public sealed partial class NotchWindow
         _toolPage.Children.Add(_notesPage);
         _toolPage.Children.Add(BuildRemindersPage());
         _toolPage.Children.Add(_calculatorPage);
+        _toolPage.Children.Add(BuildClipboardPage());
         Deactivated += (_, _) => OnDeactivated();
         RefreshToolBar();
         return _toolPage;
@@ -150,6 +152,7 @@ public sealed partial class NotchWindow
         (_notesPage, _notesToolBtn, Tool.Notes),
         (_remindersPage, _remindersToolBtn, Tool.Reminders),
         (_calculatorPage, _calculatorToolBtn, Tool.Calculator),
+        (_clipboardPage, _clipboardToolBtn, Tool.Clipboard),
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
@@ -186,6 +189,7 @@ public sealed partial class NotchWindow
         if (tool == Tool.Notes) ShowNotes();
         else if (tool == Tool.Reminders) ShowRemindersPage();
         else if (tool == Tool.Calculator) OnCalcChanged();
+        else if (tool == Tool.Clipboard) ShowClipboardPage();
         if (_state == NotchState.Expanded) ApplyState(animate: true); // a page has its own height
     }
 
@@ -195,6 +199,7 @@ public sealed partial class NotchWindow
         _notesToolBtn.IsVisible = _settings.Notes;
         _remindersToolBtn.IsVisible = _settings.Reminders;
         _calculatorToolBtn.IsVisible = _settings.Calculator;
+        _clipboardToolBtn.IsVisible = _settings.ClipboardHistory;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())
         {
