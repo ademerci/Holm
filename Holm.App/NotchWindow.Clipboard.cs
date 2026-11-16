@@ -52,11 +52,12 @@ public sealed partial class NotchWindow
         ForgetClipFiles();
         _clipboardPlatform = platform.Clipboard;
         _clipboardPlatform.Changed += () => Dispatcher.UIThread.Post(OnClipboardChanged);
+        _wipeTimer.Tick += (_, _) => WipePassword();
     }
 
     void StartClipboard()
     {
-        if (_settings.ClipboardHistory) _clipboardPlatform.Start();
+        FollowClipboard();
     }
 
     Control BuildClipboardPage()
@@ -82,6 +83,9 @@ public sealed partial class NotchWindow
 
     void OnClipboardChanged()
     {
+        uint sequence = ++_clipSequence;
+        if (_settings.ClearPasswords)
+            DispatcherTimer.RunOnce(() => _ = CheckPasswordAsync(sequence), TimeSpan.FromMilliseconds(120));
         if (!_settings.ClipboardHistory || _clipCapturePending) return;
         _clipCapturePending = true;
         // Let the app that copied finish with the clipboard first.
@@ -297,8 +301,8 @@ public sealed partial class NotchWindow
     {
         _settings.ClipboardHistory = on;
         _settings.Save();
-        if (on) _clipboardPlatform.Start();
-        else { _clipboardPlatform.Stop(); ClearClips(); }
+        FollowClipboard();
+        if (!on) ClearClips();
         RefreshToolBar();
     }
 }

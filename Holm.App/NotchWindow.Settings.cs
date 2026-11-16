@@ -74,6 +74,8 @@ public sealed partial class NotchWindow
                 Switch("Pause music during calls", "\uE769", "Music pauses when a call starts and plays on after.", s => s.PauseForCalls, SetPauseForCalls),
                 Switch("Microphone and camera dot", "\uE720", "A dot beside the notch while an app uses the microphone or camera.", s => s.Privacy, SetPrivacy),
                 Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
+                Switch("Clear copied passwords after 30 s", "\uE8D7", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read.",
+                    s => s.ClearPasswords, SetClearPasswords),
             }),
         };
         return groups;
