@@ -71,21 +71,7 @@ public sealed partial class NotchWindow
                 Switch("Focumon", "\uE7FC", "Show your Focumon monster and timer in the closed notch (instead of weather) and in the open bar. Needs the Focumon for Holm browser extension (extension/focumon in the repo).",
                     s => s.Focumon, SetFocumon),
             }),
-            new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", new[]
-            {
-                Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
-                Switch("Screenshots", "\uE722", "A new screenshot pops out with Send and Shelf.", s => s.Screenshots, SetScreenshots),
-                Switch("Copy text from screenshots", "\uE8D2", OperatingSystem.IsWindows() ? "Read the text in a screenshot with Windows' own OCR." : "Read the text in a screenshot with tesseract, on this computer.",
-                    s => s.ScreenshotText, on => { _settings.ScreenshotText = on; Save(); }),
-                Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
-                Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
-                        ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."
-                        : "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in your desktop to keep its own banners away; they still reach Holm.",
-                    s => s.AllNotifications, SetAllNotifications),
-                Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
-                Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
-                Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
-            }),
+            new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", PopoutSwitches()),
             new("beam", "Beam", "\uE724", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new[]
             {
                 Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
@@ -100,11 +86,7 @@ public sealed partial class NotchWindow
                 Switch("Chat pop-outs", "\uE8BD", "A friend's message pops out of the notch with Reply. It's in Chat either way.", s => s.ChatPopups, on => { _settings.ChatPopups = on; Save(); }),
                 Switch("Achievement pop-outs", "\uE734", "A trophy pops out of the notch when you unlock an achievement.", s => s.AchievementPopups, on => { _settings.AchievementPopups = on; Save(); }),
             }),
-            new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new[]
-            {
-                Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",
-                    s => s.SkyColors, SetSkyColors),
-            }),
+            new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", WeatherSwitches()),
             new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
             {
                 Switch("Calls", "\uE717", "Shows a call with its time and a mute button.", s => s.Calls, SetCalls),
@@ -141,10 +123,48 @@ public sealed partial class NotchWindow
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
-        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; UpdateStreamMask(); };
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); };
         _settingsWindow.Opened += (_, _) => KeepOutOfStream();
         _settingsWindow.Show();
         _settingsWindow.Activate();
+    }
+
+    List<SettingsSwitch> PopoutSwitches()
+    {
+        var list = new List<SettingsSwitch>
+        {
+            Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
+            Switch("Screenshots", "\uE722", "A new screenshot pops out with Send and Shelf.", s => s.Screenshots, SetScreenshots),
+            Switch("Copy text from screenshots", "\uE8D2", OperatingSystem.IsWindows() ? "Read the text in a screenshot with Windows' own OCR." : "Read the text in a screenshot with tesseract, on this computer.",
+                s => s.ScreenshotText, on => { _settings.ScreenshotText = on; Save(); }),
+            Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
+            Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
+                    ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."
+                    : "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in your desktop to keep its own banners away; they still reach Holm.",
+                s => s.AllNotifications, SetAllNotifications),
+        };
+        if (_mediaKeys.IsSupported)
+            list.Add(Switch("Volume and media only in the notch", "\uE995", "Holm takes the volume and media keys and changes the volume or track itself, so Windows' own pop-up doesn't show and the notch does. Brightness keys stay with Windows.",
+                s => s.NotchOnlyPopups, SetNotchOnlyPopups));
+        list.AddRange(new[]
+        {
+            Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
+            Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
+            Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
+        });
+        return list;
+        void Save() => _settings.Save();
+    }
+
+    List<SettingsSwitch> WeatherSwitches()
+    {
+        var list = new List<SettingsSwitch>();
+        if (_location.IsSupported)
+            list.Add(Switch("Set up weather using approximate location", "\uE81D", "Uses Windows location once if no city is set. Coordinates are rounded and sent only to Open-Meteo for the forecast; no IP lookup.",
+                s => s.WeatherAutoLocation, SetWeatherAutoLocation));
+        list.Add(Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",
+            s => s.SkyColors, SetSkyColors));
+        return list;
     }
 
     void ApplyBounce() => Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;

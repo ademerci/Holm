@@ -11,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Holm.Platform;
 using WinNotch;
 
 namespace Holm.App;
@@ -18,18 +19,20 @@ namespace Holm.App;
 /// <summary>
 /// The weather where you say you are (the WPF app's MainWindow.Weather.cs, with its Weather.cs linked): the
 /// temperature and a symbol in the idle notch, the sky and the next hour's rain beside the clock in the open notch.
-/// From Open-Meteo, at most every 30 minutes, for a city you type. Finding the place by itself (the WPF app asks
-/// Windows' location once) is not ported: no system offers that the same way, so every system asks for the city.
+/// From Open-Meteo, at most every 30 minutes, for a city you type or approximate system location where supported.
 /// </summary>
 public sealed partial class NotchWindow
 {
     static readonly IBrush RainBlue = Brush("#FF64D2FF");
 
+    ILocationPlatform _location = null!;
     WeatherNow? _weather;
     DateTime? _weatherAt;
     readonly DispatcherTimer _weatherTick = new() { Interval = Weather.Every };
-    bool _fetchingWeather, _choosingPlace;
-    CancellationTokenSource? _placeSearch;
+    bool _fetchingWeather, _choosingPlace, _locatingWeather, _locationAttempted, _weatherClosed;
+    CancellationTokenSource? _locationCancel, _placeSearch;
+
+    void InitWeather(IPlatformServices platform) => _location = platform.Location;
 
     readonly StackPanel _idleWeather = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
     readonly Border _idleWeatherIcon = new() { VerticalAlignment = VerticalAlignment.Center };
@@ -91,9 +94,54 @@ public sealed partial class NotchWindow
     {
         _weatherTick.Stop();
         ShowWeather();
-        if (!_settings.Weather || _settings.WeatherLatitude == null || _settings.WeatherLongitude == null) return;
+        if (!_settings.Weather) { _locationCancel?.Cancel(); return; }
+        if (_settings.WeatherLatitude == null || _settings.WeatherLongitude == null)
+        {
+            _ = LocateWeatherAsync();
+            return;
+        }
         _weatherTick.Start();
         _ = RefreshWeatherAsync();
+    }
+
+    async Task LocateWeatherAsync()
+    {
+        if (_weatherClosed || !_location.IsSupported || !_settings.Weather || !_settings.WeatherAutoLocation || _locatingWeather
+            || _locationAttempted || _choosingPlace || (_settings.WeatherLatitude != null && _settings.WeatherLongitude != null)) return;
+        _locationAttempted = true;
+        _locatingWeather = true;
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        _locationCancel = cancel;
+        ShowWeather();
+        try
+        {
+            var place = await _location.TryGetApproximateAsync(cancel.Token);
+            cancel.Token.ThrowIfCancellationRequested();
+            if (place is not { } found || _weatherClosed || !_settings.Weather || !_settings.WeatherAutoLocation || _choosingPlace) return;
+            _settings.WeatherPlace = found.Label;
+            _settings.WeatherLatitude = found.Latitude;
+            _settings.WeatherLongitude = found.Longitude;
+            _settings.Save();
+            StartWeather();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Diag.Log("Approximate weather location: " + ex.GetType().Name);
+        }
+        finally
+        {
+            _locationCancel = null;
+            _locatingWeather = false;
+            if (!_weatherClosed) ShowWeather();
+        }
+    }
+
+    void SetWeatherAutoLocation(bool on)
+    {
+        _settings.WeatherAutoLocation = on;
+        _settings.Save();
+        if (!on) _locationCancel?.Cancel();
+        else { _locationAttempted = false; StartWeather(); }
     }
 
     /// <summary>Asks Open-Meteo, unless it was asked less than 30 minutes ago (for this place).</summary>
@@ -140,7 +188,8 @@ public sealed partial class NotchWindow
         _weatherLine.IsVisible = weather != null && !_choosingPlace;
         _weatherSetup.IsVisible = _settings.Weather && _choosingPlace;
         _weatherAdd.IsVisible = _settings.Weather && !_choosingPlace && weather == null;
-        _weatherAdd.Text = _settings.WeatherLatitude == null ? "+ Weather"
+        _weatherAdd.Text = _locatingWeather ? "Finding approximate location…"
+            : _settings.WeatherLatitude == null ? (_locationAttempted ? "Choose weather city" : "+ Weather")
             : _fetchingWeather ? "Loading weather…" : "Weather unavailable · will retry"; // a place is saved: the fetch failed, not the city
         if (weather != null)
         {
@@ -159,6 +208,7 @@ public sealed partial class NotchWindow
 
     void ChoosePlace()
     {
+        _locationCancel?.Cancel();
         _placeSearch?.Cancel(); // a search from an earlier visit must not save a place later
         _placeSearch = null;
         ShowTool(Tool.None);
@@ -228,6 +278,25 @@ public sealed partial class NotchWindow
             BeginTyping(_weatherBox, untouched: true);
         };
         menu.Items.Add(place);
+        if (_location.IsSupported)
+        {
+            var automatic = new MenuItem { Header = "Use approximate location", IsEnabled = _settings.Weather && !_locatingWeather };
+            ToolTip.SetTip(automatic, "Uses system location services once. Rounded coordinates go to Open-Meteo. No IP lookup service.");
+            automatic.Click += async (_, _) =>
+            {
+                _settings.WeatherAutoLocation = true;
+                _settings.WeatherPlace = null;
+                _settings.WeatherLatitude = _settings.WeatherLongitude = null;
+                _weather = null;
+                _weatherAt = null;
+                _settings.Save();
+                _locationAttempted = false;
+                _choosingPlace = false;
+                RefreshMediaUi();
+                await LocateWeatherAsync();
+            };
+            menu.Items.Add(automatic);
+        }
         menu.Items.Add(new MenuItem { Header = "From Open-Meteo, every 30 minutes", IsEnabled = false });
     }
 }

@@ -1,5 +1,5 @@
 # Draws Holm's icon - the notch as a small island on the horizon: a black pill where a warm sky
-# meets the sea - and writes WinNotch\notch.ico (16 to 256 px) and docs\icon.png. Windows PowerShell:
+# meets the sea - and writes Holm.App\Assets\notch.ico (16 to 256 px) and docs\icon.png. Windows PowerShell:
 #   powershell -ExecutionPolicy Bypass -File tools\MakeIcon.ps1 [-Preview path.png]
 param([string]$Preview)
 
@@ -70,7 +70,7 @@ for ($i = 0; $i -lt $sizes.Count; $i++) {
 }
 foreach ($png in $pngs) { $w.Write($png) }
 $w.Flush()
-[System.IO.File]::WriteAllBytes((Join-Path $root 'WinNotch\notch.ico'), $out.ToArray())
+[System.IO.File]::WriteAllBytes((Join-Path $root 'Holm.App\Assets\notch.ico'), $out.ToArray())
 
 if ($Preview) {
     # All sizes side by side on light and dark, at 1:1 and 4x, to judge the small ones.

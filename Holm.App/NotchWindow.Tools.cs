@@ -28,7 +28,7 @@ public sealed partial class NotchWindow
     readonly StackPanel _toolBar = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(36, 0, 36, 0) };
     readonly StackPanel _homePanel = new();
     readonly Grid _toolPage = new() { IsVisible = false };
-    NotchButton _notesToolBtn = null!, _remindersToolBtn = null!, _calculatorToolBtn = null!;
+    NotchButton _notesToolBtn = null!, _remindersToolBtn = null!, _calculatorToolBtn = null!, _chatsToolBtn = null!;
     Tool _tool;
     bool _typing;
     bool _typingUntouched; // the field took the keyboard when its tool opened and nothing was typed yet
@@ -95,6 +95,17 @@ public sealed partial class NotchWindow
         _notesToolBtn = ToolButton("", Tool.Notes, "Notes");
         _remindersToolBtn = ToolButton(BellGlyph, Tool.Reminders, "Reminders");
         _calculatorToolBtn = ToolButton("", Tool.Calculator, "Calculator");
+        _chatsToolBtn = new NotchButton(new TextBlock { Text = "\uE8BD", FontFamily = IconFont, FontSize = 14, Foreground = Dim })
+        {
+            Width = 32, Height = 32, Margin = new Thickness(2, 0),
+        };
+        ToolTip.SetTip(_chatsToolBtn, "Chats");
+        _chatsToolBtn.Click += () =>
+        {
+            SetExpanded(false);
+            Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
+        };
+        _toolBar.Children.Add(_chatsToolBtn);
         _clipboardToolBtn = ToolButton(ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton(MixerGlyph, Tool.Mixer, "Volume per app");
         BuildColorPickerButton();

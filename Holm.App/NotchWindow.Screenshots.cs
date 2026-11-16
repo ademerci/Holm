@@ -34,6 +34,12 @@ public sealed partial class NotchWindow
         _taskThumb.PointerReleased += (_, e) =>
         {
             e.Handled = true;
+            if (_taskGif is { } gif)
+            {
+                HideTask();
+                OpenChat(gif.Friend);
+                return;
+            }
             if (_shotPath is not { } path) return;
             HideTask();
             try { _shell.Open(path); }

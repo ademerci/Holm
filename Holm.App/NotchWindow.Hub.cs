@@ -24,6 +24,8 @@ public sealed partial class NotchWindow
     SocialContext? _social;
     ChatStore _chats = null!;
     string? _lastOfferedInvite;
+    (Friend Friend, string Id)? _taskGif;
+    Action? _stopTaskGif;
 
     void InitHub()
     {
@@ -91,10 +93,16 @@ public sealed partial class NotchWindow
         Withdraw = p => _ = WithdrawAsync(p),
         LongCode = () => _settings.Beam ? _friends.EnsureMe().FriendCode : null,
         SendFiles = SendChatFiles,
+        SendGif = SendGif,
         React = ReactTo,
         Wave = WaveAt,
         Stream = StreamTo,
         QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
+        SetQuickReactions = list => { _settings.QuickReactions = list.ToList(); _settings.Save(); },
+        RecentGifs = () => _settings.RecentGifs,
+        GifKey = () => GifSearch.Key(_settings),
+        SetGifKey = key => { _settings.GifSearchKey = string.IsNullOrWhiteSpace(key) ? null : key.Trim(); _settings.Save(); },
+        Animate = () => _settings.Animations,
         Copy = TrySetClipboardAsync,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
     };
@@ -239,8 +247,39 @@ public sealed partial class NotchWindow
         ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), friend.Name, preview, null,
                  ("Reply", () => { HideTask(); OpenChat(friend); }), (quick[1], () => InstantReact(friend, message, quick[1])), textIcon: true);
         ShowTaskExtra(quick[0], () => InstantReact(friend, message, quick[0]));
+        if (message.Gif != null)
+        {
+            _taskGif = (friend, message.Id);
+            _ = ShowTaskGifAsync(message.Gif, message.Id);
+        }
         _taskHide.Interval = TimeSpan.FromSeconds(10);
         _taskHide.Start();
+    }
+
+    void StopTaskGif()
+    {
+        _stopTaskGif?.Invoke();
+        _stopTaskGif = null;
+        if (_taskGif != null) _taskThumb.Background = null;
+    }
+
+    async Task ShowTaskGifAsync(string url, string messageId)
+    {
+        try
+        {
+            var gif = await GifCache.LoadAsync(url, 96);
+            if (gif == null || gif.Frames.Count == 0 || !_taskVisible || _taskGif?.Id != messageId) return;
+            var brush = new Avalonia.Media.ImageBrush(gif.Frames[0]) { Stretch = Avalonia.Media.Stretch.UniformToFill };
+            if (_settings.Animations && gif.Frames.Count > 1 && gif.Duration > TimeSpan.Zero)
+                _stopTaskGif = GifPlayer.PlayBrush(brush, gif);
+            _taskThumb.Background = brush;
+            _taskThumb.IsVisible = true;
+            _taskIconCircle.IsVisible = false;
+        }
+        catch (Exception ex) when (ex is not (StackOverflowException or AccessViolationException))
+        {
+            Diag.Log("GIF not shown in the notch: " + ex.GetType().Name + ": " + ex.Message);
+        }
     }
 
     /// <summary>A reaction from the notification: sent, and the notch says so for a moment.</summary>

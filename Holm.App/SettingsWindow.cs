@@ -233,7 +233,11 @@ sealed class SettingsWindow : Window
             e.Handled = true;
             if (_dialog.IsVisible) HideDialog(); else Close();
         };
-        Activated += (_, _) => { if (!HasChanges && !_dialog.IsVisible) Refresh(); };
+        Activated += (_, _) =>
+        {
+            if (!HasChanges && !_dialog.IsVisible) Refresh();
+            (_shownView as ChatPage)?.Seen();
+        };
         Closing += (_, e) =>
         {
             if (_allowClose || !HasChanges && !_dialog.IsVisible) return;

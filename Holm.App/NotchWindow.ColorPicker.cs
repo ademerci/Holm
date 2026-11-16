@@ -56,7 +56,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             await Task.Delay(250);
 
-            var screen = Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
+            var screen = ChosenScreen() ?? Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
             if (screen == null) return;
             var bounds = screen.Bounds;
             var shot = await _screen.CaptureAsync(bounds.X, bounds.Y, bounds.Width, bounds.Height);

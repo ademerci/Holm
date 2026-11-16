@@ -72,6 +72,8 @@ public sealed partial class NotchWindow : Window
         InitDiskSpace();
         InitConnectivity(platform);
         InitCapsLock(platform);
+        InitMediaKeys(platform);
+        InitWeather(platform);
         InitHotKey(platform);
         InitClickAway(platform);
         InitFullscreen(platform);
@@ -160,6 +162,7 @@ public sealed partial class NotchWindow : Window
         StartWeather();
         ShowSleep();
         StartCapsLock();
+        StartMediaKeys();
         StartHotKey();
         StartScreenshots();
         StartUsb();
@@ -187,6 +190,9 @@ public sealed partial class NotchWindow : Window
         StopDownloads();
         _connectivity.Stop();
         _capsLock.Stop();
+        _mediaKeys.Stop();
+        _weatherClosed = true;
+        _locationCancel?.Cancel();
         _hotKey.Stop();
         _clickAway.Watch(false);
         StopScreenshots();

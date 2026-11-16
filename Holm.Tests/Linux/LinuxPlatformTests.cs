@@ -182,3 +182,43 @@ public class RemovableDriveTests : IDisposable
         Assert.False(Holm.Platform.Linux.LinuxRemovableDrivesPlatform.IsMountPoint("/run/media/me/OTHER", _mounts));
     }
 }
+
+public class LinuxScreenTests
+{
+    static byte[] MakePng(int w, int h, SkiaSharp.SKColor rightHalf)
+    {
+        using var bmp = new SkiaSharp.SKBitmap(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Opaque);
+        using var canvas = new SkiaSharp.SKCanvas(bmp);
+        canvas.Clear(new SkiaSharp.SKColor(10, 20, 30));
+        using var paint = new SkiaSharp.SKPaint { Color = rightHalf };
+        canvas.DrawRect(w / 2f, 0, w / 2f, h, paint);
+        using var data = bmp.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    [Fact]
+    public void Decodes_and_crops_multi_monitor_portal_screenshot()
+    {
+        byte[] png = MakePng(200, 100, new SkiaSharp.SKColor(0x11, 0x22, 0x33));
+        var crop = LinuxScreenPlatform.DecodeImage(png, 100, 0, 100, 100, allowScaledWhole: true);
+        Assert.NotNull(crop);
+        Assert.Equal((100, 100), (crop!.Width, crop.Height));
+        Assert.Equal((byte)0x33, crop.Bgra[0]);
+        Assert.Equal((byte)0x22, crop.Bgra[1]);
+        Assert.Equal((byte)0x11, crop.Bgra[2]);
+        Assert.Equal((byte)0xFF, crop.Bgra[3]);
+    }
+
+    [Fact]
+    public void Keeps_full_resolution_when_single_screen_scale_differs()
+    {
+        byte[] png = MakePng(200, 100, new SkiaSharp.SKColor(0x44, 0x55, 0x66));
+        var shot = LinuxScreenPlatform.DecodeImage(png, 0, 0, 100, 50, allowScaledWhole: true);
+        Assert.NotNull(shot);
+        Assert.Equal((200, 100), (shot!.Width, shot.Height));
+    }
+
+    [Fact]
+    public void Returns_null_for_corrupt_screenshot_bytes()
+        => Assert.Null(LinuxScreenPlatform.DecodeImage(new byte[] { 1, 2, 3, 4 }, 0, 0, 10, 10, allowScaledWhole: true));
+}

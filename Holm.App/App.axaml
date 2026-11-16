@@ -6,6 +6,13 @@
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector="FlyoutPresenter.bare">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MaxWidth" Value="520" />
+            <Setter Property="MaxHeight" Value="520" />
+        </Style>
     </Application.Styles>
 
     <Application.Resources>

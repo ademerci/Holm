@@ -32,7 +32,7 @@ sealed class ColorPickerWindow : Window
     readonly Canvas _canvas = new();
     /// <summary>The pixel under the pointer, in the picture's pixels.</summary>
     int _x, _y;
-    bool _done;
+    bool _done, _activated;
 
     /// <summary>The colour picked as "#RRGGBB" with its colour, or null when cancelled. Raised once.</summary>
     public event Action<string?, Color>? Done;
@@ -49,13 +49,19 @@ sealed class ColorPickerWindow : Window
         Position = bounds.Position;
         Width = bounds.Width / scaling;
         Height = bounds.Height / scaling;
+        if (OperatingSystem.IsLinux()) WindowState = WindowState.FullScreen;
         Background = Brushes.Black;
         Cursor = new Cursor(StandardCursorType.Cross);
         FontFamily = Fonts.Text;
         Fonts.ApplyRendering(this);
 
         var full = new WriteableBitmap(new PixelSize(shot.Width, shot.Height), new Vector(96 * scaling, 96 * scaling), PixelFormat.Bgra8888, AlphaFormat.Opaque);
-        using (var buffer = full.Lock()) Marshal.Copy(shot.Bgra, 0, buffer.Address, Math.Min(shot.Bgra.Length, buffer.RowBytes * shot.Height));
+        using (var buffer = full.Lock())
+        {
+            int rowBytes = shot.Width * 4;
+            for (int y = 0; y < shot.Height; y++)
+                Marshal.Copy(shot.Bgra, y * rowBytes, buffer.Address + y * buffer.RowBytes, rowBytes);
+        }
         var screen = new Image { Source = full, Width = Width, Height = Height, Stretch = Stretch.Fill };
         RenderOptions.SetBitmapInterpolationMode(screen, Avalonia.Media.Imaging.BitmapInterpolationMode.None);
 
@@ -92,7 +98,8 @@ sealed class ColorPickerWindow : Window
             else if (point.Properties.IsLeftButtonPressed) { MoveTo(point.Position); Finish(pick: true); }
         };
         KeyDown += OnKeyDown;
-        Deactivated += (_, _) => Finish(pick: false);
+        Activated += (_, _) => _activated = true;
+        Deactivated += (_, _) => { if (_activated) Finish(pick: false); };
         Opened += (_, _) =>
         {
             Activate();
@@ -121,6 +128,7 @@ sealed class ColorPickerWindow : Window
 
     void MoveTo(Point position)
     {
+        if (Bounds.Width <= 0 || Bounds.Height <= 0) return;
         _x = Math.Clamp((int)(position.X / Bounds.Width * _shot.Width), 0, _shot.Width - 1);
         _y = Math.Clamp((int)(position.Y / Bounds.Height * _shot.Height), 0, _shot.Height - 1);
         Redraw();

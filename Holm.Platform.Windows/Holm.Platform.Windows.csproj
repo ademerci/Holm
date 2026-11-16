@@ -9,26 +9,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <!-- Windows-only services of the WPF app that never touch WPF: linked, not copied, like the sources in
-       Holm.Core. See docs/cross-platform/WORKFLOW.md. -->
-  <ItemGroup>
-    <Compile Include="..\WinNotch\AudioMeter.cs" Link="Linked\AudioMeter.cs" />
-    <Compile Include="..\WinNotch\BluetoothBattery.cs" Link="Linked\BluetoothBattery.cs" />
-    <Compile Include="..\WinNotch\Native.cs" Link="Linked\Native.cs" />
-    <Compile Include="..\WinNotch\VolumeService.cs" Link="Linked\VolumeService.cs" />
-    <Compile Include="..\WinNotch\AppVolumes.cs" Link="Linked\AppVolumes.cs" />
-    <Compile Include="..\WinNotch\BluetoothControl.cs" Link="Linked\BluetoothControl.cs" />
-    <Compile Include="..\WinNotch\CameraActivity.cs" Link="Linked\CameraActivity.cs" />
-    <Compile Include="..\WinNotch\MicrophoneActivity.cs" Link="Linked\MicrophoneActivity.cs" />
-    <Compile Include="..\WinNotch\SensorRecord.cs" Link="Linked\SensorRecord.cs" />
-    <Compile Include="..\WinNotch\ScreenText.cs" Link="Linked\ScreenText.cs" />
-    <Compile Include="..\WinNotch\HandyBridge.cs" Link="Linked\HandyBridge.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <!-- Power source changes, without a window of our own to receive them. -->
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.0" />
-    <!-- DPAPI for the friends key, as the WPF app keeps it. -->
+    <!-- DPAPI for the friends key, as the app keeps it. -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 

@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The version Avalonia already brings along for its own Linux support: no second copy in the app. -->
+    <!-- The versions Avalonia already brings along for its own Linux support: no second copy in the app. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
   </ItemGroup>
 

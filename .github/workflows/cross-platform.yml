@@ -1,11 +1,10 @@
-# Builds and tests the cross-platform rewrite (docs/cross-platform/). Separate from test.yml on purpose:
-# the WPF app's checks are not affected by this branch, and this one is not affected by WPF-only changes.
+# Builds and tests Holm on Windows and Linux.
 name: Cross-platform
 
 on:
   push:
-    paths: ["Holm.*/**", "Holm.slnx", "WinNotch/**", "WinNotch.Tests/**", ".github/workflows/cross-platform.yml"]
-    branches: ["experimental/cross-platform", "dev"]
+    paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
+    branches: ["main", "dev"]
   pull_request:
     paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
   workflow_dispatch:

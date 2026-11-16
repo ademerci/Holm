@@ -24,4 +24,6 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public INotificationsPlatform Notifications { get; } = new LinuxNotificationsPlatform();
     public IIdentityPlatform Identity { get; } = new UnixIdentityPlatform(WinNotch.Diag.Folder);
     public IDictationPlatform Dictation { get; } = new LinuxDictationPlatform();
+    public IMediaKeysPlatform MediaKeys { get; } = new NoMediaKeysPlatform();
+    public ILocationPlatform Location { get; } = new NoLocationPlatform();
 }

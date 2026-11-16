@@ -35,12 +35,24 @@ internal sealed class SocialContext
     public Action<Friend> Wave { get; init; } = _ => { };
     /// <summary>Invites a friend to watch our screen (null: streaming isn't offered).</summary>
     public Action<Friend>? Stream { get; init; }
+    /// <summary>Sends a GIF (its link).</summary>
+    public Action<Friend, string> SendGif { get; init; } = (_, _) => { };
     /// <summary>Sends selected files to a friend using Beam.</summary>
     public Action<Friend, string[]> SendFiles { get; init; } = (_, _) => { };
     /// <summary>Reacts to a message with an emoji, or takes our reaction away (null).</summary>
     public Action<Friend, FriendMessage, string?> React { get; init; } = (_, _, _) => { };
     /// <summary>The quick reactions in the reaction bar, in order.</summary>
     public Func<IReadOnlyList<string>> QuickReactions { get; init; } = () => ChatReaction.Defaults;
+    /// <summary>Saves new quick reactions.</summary>
+    public Action<IReadOnlyList<string>> SetQuickReactions { get; init; } = _ => { };
+    /// <summary>GIFs sent or received lately, newest first.</summary>
+    public Func<IReadOnlyList<string>> RecentGifs { get; init; } = () => Array.Empty<string>();
+    /// <summary>The key GIF search uses; null when there is none.</summary>
+    public Func<string?> GifKey { get; init; } = () => null;
+    /// <summary>Saves a GIPHY key typed into the picker.</summary>
+    public Action<string?> SetGifKey { get; init; } = _ => { };
+    /// <summary>Whether GIFs move (off with Animations).</summary>
+    public Func<bool> Animate { get; init; } = () => true;
     /// <summary>How many achievements a friend has, if their notch said.</summary>
     public Func<Friend, int?> TrophiesOf { get; init; } = _ => null;
     /// <summary>Our invite code (a new one with true), or why there's none.</summary>

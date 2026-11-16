@@ -47,6 +47,8 @@ internal sealed class ChatPage : HubView
     readonly TextBlock _counter = null!;
     readonly Border _send = null!;
     Friend? _friend;
+    string? _justReacted;
+    readonly Dictionary<string, (string Look, Control View)> _bubbles = new();
     int _shown = ShownAtFirst;
     HashSet<string>? _changed;
 
@@ -106,8 +108,8 @@ internal sealed class ChatPage : HubView
         Grid.SetRow(_scroll, 1);
         conversation.Children.Add(_scroll);
 
-        // The message box: attachments on the left, send on the right.
-        var box = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        // The message box: attachments on the left, GIF and send on the right.
+        var box = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
         var attach = RoundButton(HubTheme.Glyph("", 14, HubTheme.Dim), "Send files", 30, Brushes.Transparent, HubTheme.Hover);
         attach.Margin = new Thickness(5, 0, 0, 0);
         attach.VerticalAlignment = VerticalAlignment.Center;
@@ -121,6 +123,17 @@ internal sealed class ChatPage : HubView
             _input.Focus();
         };
         box.Children.Add(attach);
+        var gif = Chip("GIF", "Send a GIF");
+        gif.Margin = new Thickness(2, 0, 2, 0);
+        gif.VerticalAlignment = VerticalAlignment.Center;
+        gif.PointerReleased += (_, e) =>
+        {
+            e.Handled = true;
+            if (_friend is not { } to) return;
+            ChatExtras.ShowGifPicker(gif, _social, url => { _social.SendGif(to, url); _input.Focus(); });
+        };
+        Grid.SetColumn(gif, 2);
+        box.Children.Add(gif);
         _input = HubTheme.Field("Message…", multiline: true);
         _input.Background = Brushes.Transparent;
         _input.BorderThickness = new Thickness(0);
@@ -154,7 +167,7 @@ internal sealed class ChatPage : HubView
         _send.Margin = new Thickness(4, 4, 5, 4);
         _send.VerticalAlignment = VerticalAlignment.Bottom;
         _send.PointerReleased += (_, e) => { e.Handled = true; SendInput(); };
-        Grid.SetColumn(_send, 2);
+        Grid.SetColumn(_send, 3);
         box.Children.Add(_send);
         _input.TextChanged += (_, _) => RefreshComposer();
         var composer = new Border
@@ -184,6 +197,12 @@ internal sealed class ChatPage : HubView
     {
         _social.Chats.Changed -= OnChanged;
         _social.Changed -= OnFriendsChanged;
+    }
+
+    /// <summary>Marks the shown conversation read when the window comes forward.</summary>
+    public void Seen()
+    {
+        if (_friend != null && TopLevel.GetTopLevel(this) is Window { IsActive: true }) _social.Chats.MarkRead(_friend.Key);
     }
 
     /// <summary>Someone came online or changed their picture or status.</summary>
@@ -219,7 +238,11 @@ internal sealed class ChatPage : HubView
 
     public void Select(Friend friend)
     {
-        if (_friend?.Key != friend.Key) _shown = ShownAtFirst;
+        if (_friend?.Key != friend.Key)
+        {
+            _bubbles.Clear();
+            _shown = ShownAtFirst;
+        }
         _friend = _social.Friends().FirstOrDefault(f => f.Key == friend.Key) ?? friend;
         ShowHeader();
         ShowMessages();
@@ -282,13 +305,26 @@ internal sealed class ChatPage : HubView
             Grid.SetColumn(when, 1);
             words.Children.Add(when);
         }
-        string text = last == null ? friend.Status ?? (_social.IsOnline(friend) ? "Active now" : "Say hi 👋")
-                    : (last.Mine ? "You: " : "") + (last.Gif != null ? "GIF" : last.Text.Replace('\n', ' '));
-        var preview = new TextBlock
+        Control preview;
+        IBrush previewColor = unread > 0 ? Brushes.White : HubTheme.Dim;
+        if (last?.Gif is { } gif)
         {
-            Text = text, FontSize = 12, Foreground = unread > 0 ? Brushes.White : HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis,
-            FontWeight = unread > 0 ? FontWeight.SemiBold : FontWeight.Normal, Margin = new Thickness(0, 3, 0, 0),
-        };
+            var line = new StackPanel { Orientation = Orientation.Horizontal };
+            line.Children.Add(GifPlayer.View(gif, 24, 16, 4, animate: false, maxSide: 48));
+            line.Children.Add(new TextBlock { Text = (last.Mine ? "You: " : "") + "GIF", FontSize = 12, Margin = new Thickness(6, 0, 0, 0), Foreground = previewColor, VerticalAlignment = VerticalAlignment.Center });
+            preview = line;
+        }
+        else
+        {
+            string text = last == null ? friend.Status ?? (_social.IsOnline(friend) ? "Active now" : "Say hi 👋")
+                        : (last.Mine ? "You: " : "") + last.Text.Replace('\n', ' ');
+            preview = new TextBlock
+            {
+                Text = text, FontSize = 12, Foreground = previewColor, TextTrimming = TextTrimming.CharacterEllipsis,
+                FontWeight = unread > 0 ? FontWeight.SemiBold : FontWeight.Normal,
+            };
+        }
+        preview.Margin = new Thickness(0, 3, 0, 0);
         Grid.SetRow(preview, 1);
         words.Children.Add(preview);
         if (unread > 0)
@@ -388,6 +424,7 @@ internal sealed class ChatPage : HubView
         }
         // The face and the friend's name at the top, as messengers start a conversation.
         else _messages.Children.Add(Welcome(_friend, small: true));
+        var used = new HashSet<string>();
         for (int i = first; i < messages.Count; i++)
         {
             var message = messages[i];
@@ -398,10 +435,20 @@ internal sealed class ChatPage : HubView
             if (newTime) _messages.Children.Add(TimeLabel(DateTimeOffset.FromUnixTimeSeconds(message.Sent).LocalDateTime));
             bool joinsPrevious = !newTime && Together(previous, message);
             bool joinsNext = next != null && Together(message, next) && next.Sent - message.Sent < TimeGapSeconds;
-            _messages.Children.Add(Bubble(message, joinsPrevious, joinsNext, message.Mine && next == null));
+            bool lastOfMine = message.Mine && next == null;
+            string look = BubbleLook(message, joinsPrevious, joinsNext, lastOfMine);
+            if (_justReacted == message.Id || !_bubbles.TryGetValue(message.Id, out var kept) || kept.Look != look)
+                _bubbles[message.Id] = kept = (look, Bubble(message, joinsPrevious, joinsNext, lastOfMine));
+            used.Add(message.Id);
+            _messages.Children.Add(kept.View);
         }
+        foreach (string gone in _bubbles.Keys.Where(id => !used.Contains(id)).ToList()) _bubbles.Remove(gone);
+        _justReacted = null;
         if (scrollToEnd) Dispatcher.UIThread.Post(() => _scroll.ScrollToEnd(), DispatcherPriority.Loaded);
     }
+
+    internal static string BubbleLook(FriendMessage message, bool joinsPrevious, bool joinsNext, bool lastOfMine)
+        => string.Join("\u001F", message.State, message.MyReaction, message.TheirReaction, message.Gif, message.Text, message.Sent, joinsPrevious, joinsNext, lastOfMine);
 
     static bool Together(FriendMessage? a, FriendMessage? b)
         => a != null && b != null && a.Mine == b.Mine && b.Sent - a.Sent < GroupSeconds
@@ -441,7 +488,9 @@ internal sealed class ChatPage : HubView
 
     void React(FriendMessage message, string? emoji)
     {
-        if (_friend != null) _social.React(_friend, message, emoji);
+        if (_friend == null) return;
+        _justReacted = emoji == null ? null : message.Id;
+        _social.React(_friend, message, emoji);
     }
 
     /// <summary>The reactions under a bubble: a small pill over its lower edge with both sides' emoji. A click takes ours away.</summary>
@@ -496,7 +545,7 @@ internal sealed class ChatPage : HubView
         bool gif = message.Gif != null;
         bool big = !gif && IsBigEmoji(message.Text);
         Control content = gif
-            ? new TextBlock { Text = "GIF · " + message.Gif, FontSize = 12, Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 300 }
+            ? GifPlayer.View(message.Gif!, 220, 160, 0, _social.Animate(), maxSide: 320, fitHeight: true)
             : big ? new TextBlock { Text = message.Text.Trim(), FontSize = 40 }
             : new SelectableTextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Brushes.White };
 
@@ -507,9 +556,9 @@ internal sealed class ChatPage : HubView
             : new CornerRadius(joinsPrevious ? joined : round, round, round, joinsNext ? joined : round);
         var bubble = new Border
         {
-            Background = big ? Brushes.Transparent : message.Mine ? MyBubble : TheirBubble,
-            CornerRadius = corners, Padding = big ? new Thickness(0) : new Thickness(13, 8, 13, 9), MaxWidth = 380, Child = content,
-            Opacity = message.State == ChatState.Sending ? 0.6 : 1,
+            Background = gif || big ? Brushes.Transparent : message.Mine ? MyBubble : TheirBubble,
+            CornerRadius = corners, Padding = gif || big ? new Thickness(0) : new Thickness(13, 8, 13, 9), MaxWidth = 380, Child = content,
+            Opacity = message.State == ChatState.Sending ? 0.6 : 1, ClipToBounds = gif,
         };
         ToolTip.SetTip(bubble, DateTimeOffset.FromUnixTimeSeconds(message.Sent).LocalDateTime.ToString("g", CultureInfo.CurrentCulture));
         // A double click gives a heart (or takes it away), like a double tap on Instagram.
@@ -522,7 +571,7 @@ internal sealed class ChatPage : HubView
         var copy = new MenuItem { Header = gif ? "Copy GIF link" : "Copy" };
         copy.Click += async (_, _) => { if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) try { await clipboard.SetTextAsync(message.Gif ?? message.Text); } catch { } };
         var reactItem = new MenuItem { Header = "React…" };
-        reactItem.Click += (_, _) => ShowReactionBar(bubble, message);
+        reactItem.Click += (_, _) => ChatExtras.ShowReactionBar(bubble, _social, message.MyReaction, emoji => React(message, emoji));
         bubble.ContextMenu = new ContextMenu { Items = { reactItem, copy } };
 
         // The smiley beside the bubble on hover opens the reaction bar.
@@ -530,7 +579,7 @@ internal sealed class ChatPage : HubView
         smiley.VerticalAlignment = VerticalAlignment.Center;
         smiley.Margin = new Thickness(6, 0, 6, 0);
         smiley.Opacity = 0;
-        smiley.PointerReleased += (_, e) => { e.Handled = true; ShowReactionBar(bubble, message); };
+        smiley.PointerReleased += (_, e) => { e.Handled = true; ChatExtras.ShowReactionBar(bubble, _social, message.MyReaction, emoji => React(message, emoji)); };
 
         var withReactions = new StackPanel();
         withReactions.Children.Add(bubble);
@@ -581,25 +630,6 @@ internal sealed class ChatPage : HubView
             });
         }
         return stack;
-    }
-
-    /// <summary>The reaction bar over a message: the quick reactions, the one already given marked (a click takes it away).</summary>
-    void ShowReactionBar(Control target, FriendMessage message)
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4) };
-        var flyout = new Flyout { Placement = PlacementMode.Top, ShowMode = FlyoutShowMode.Transient };
-        foreach (string emoji in _social.QuickReactions())
-        {
-            string e = emoji;
-            bool mine = e == message.MyReaction;
-            var button = RoundButton(new TextBlock { Text = e, FontSize = 22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                                     e, 40, mine ? HubTheme.Selected : Brushes.Transparent, HubTheme.CardStrong);
-            button.PointerReleased += (_, ev) => { ev.Handled = true; flyout.Hide(); React(message, mine ? null : e); };
-            row.Children.Add(button);
-        }
-        flyout.Content = new Border { Background = HubTheme.Panel, BorderBrush = HubTheme.Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(26), Child = row };
-        flyout.FlyoutPresenterClasses.Add("bare");
-        flyout.ShowAt(target);
     }
 
     // ───────────── small pieces ─────────────

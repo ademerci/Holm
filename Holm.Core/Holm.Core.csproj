@@ -7,64 +7,6 @@
     <RootNamespace>WinNotch</RootNamespace>
   </PropertyGroup>
 
-  <!-- Shared sources stay in WinNotch/ and are only linked here, so the WPF app on main keeps building them and
-       every change made there arrives in the rewrite with a plain merge. Move a file into this folder only at the
-       final cutover, when WinNotch/ is deleted. See docs/cross-platform/WORKFLOW.md. -->
-  <ItemGroup>
-    <Compile Include="..\WinNotch\AiUsage.cs" Link="Linked\AiUsage.cs" />
-    <Compile Include="..\WinNotch\AppVolumeList.cs" Link="Linked\AppVolumeList.cs" />
-    <Compile Include="..\WinNotch\BigClock.cs" Link="Linked\BigClock.cs" />
-    <Compile Include="..\WinNotch\Browsers.cs" Link="Linked\Browsers.cs" />
-    <Compile Include="..\WinNotch\Calculator.cs" Link="Linked\Calculator.cs" />
-    <Compile Include="..\WinNotch\CapsKey.cs" Link="Linked\CapsKey.cs" />
-    <Compile Include="..\WinNotch\CallPause.cs" Link="Linked\CallPause.cs" />
-    <Compile Include="..\WinNotch\Calls.cs" Link="Linked\Calls.cs" />
-    <Compile Include="..\WinNotch\SpeedTest.cs" Link="Linked\SpeedTest.cs" />
-    <Compile Include="..\WinNotch\NetworkInfo.cs" Link="Linked\NetworkInfo.cs" />
-    <Compile Include="..\WinNotch\Achievements.cs" Link="Linked\Achievements.cs" />
-    <Compile Include="..\WinNotch\FriendsService.cs" Link="Linked\FriendsService.cs" />
-    <Compile Include="..\WinNotch\Notify\NotificationBadges.cs" Link="Linked\NotificationBadges.cs" />
-    <Compile Include="..\WinNotch\SensorUse.cs" Link="Linked\SensorUse.cs" />
-    <Compile Include="..\WinNotch\ClipboardHistory.cs" Link="Linked\ClipboardHistory.cs" />
-    <Compile Include="..\WinNotch\ColorPick.cs" Link="Linked\ColorPick.cs" />
-    <Compile Include="..\WinNotch\Countdown.cs" Link="Linked\Countdown.cs" />
-    <Compile Include="..\WinNotch\CoverMath.cs" Link="Linked\CoverMath.cs" />
-    <Compile Include="..\WinNotch\DiskSpace.cs" Link="Linked\DiskSpace.cs" />
-    <Compile Include="..\WinNotch\Focumon.cs" Link="Linked\Focumon.cs" />
-    <Compile Include="..\WinNotch\FolderPack.cs" Link="Linked\FolderPack.cs" />
-    <Compile Include="..\WinNotch\LevelEnvelope.cs" Link="Linked\LevelEnvelope.cs" />
-    <Compile Include="..\WinNotch\NotchPlacement.cs" Link="Linked\NotchPlacement.cs" />
-    <Compile Include="..\WinNotch\Notepad.cs" Link="Linked\Notepad.cs" />
-    <Compile Include="..\WinNotch\Outage.cs" Link="Linked\Outage.cs" />
-    <Compile Include="..\WinNotch\Notify\DownloadWatcher.cs" Link="Linked\Notify\DownloadWatcher.cs" />
-    <Compile Include="..\WinNotch\Notify\Messengers.cs" Link="Linked\Notify\Messengers.cs" />
-    <Compile Include="..\WinNotch\QuietHours.cs" Link="Linked\QuietHours.cs" />
-    <Compile Include="..\WinNotch\Reminders.cs" Link="Linked\Reminders.cs" />
-    <Compile Include="..\WinNotch\SendLater.cs" Link="Linked\SendLater.cs" />
-    <Compile Include="..\WinNotch\Settings.cs" Link="Linked\Settings.cs" />
-    <Compile Include="..\WinNotch\Sharing\Chat.cs" Link="Linked\Sharing\Chat.cs" />
-    <Compile Include="..\WinNotch\Sharing\FileTransfer.cs" Link="Linked\Sharing\FileTransfer.cs" />
-    <Compile Include="..\WinNotch\Sharing\FriendInvite.cs" Link="Linked\Sharing\FriendInvite.cs" />
-    <Compile Include="..\WinNotch\Sharing\Friends.cs" Link="Linked\Sharing\Friends.cs" />
-    <Compile Include="..\WinNotch\Sharing\NearbyService.cs" Link="Linked\Sharing\NearbyService.cs" />
-    <Compile Include="..\WinNotch\Sharing\PhoneShare.cs" Link="Linked\Sharing\PhoneShare.cs" />
-    <Compile Include="..\WinNotch\Sharing\RelayLink.cs" Link="Linked\Sharing\RelayLink.cs" />
-    <Compile Include="..\WinNotch\Sharing\ScreenStream.cs" Link="Linked\Sharing\ScreenStream.cs" />
-    <Compile Include="..\WinNotch\Sharing\SecureChannel.cs" Link="Linked\Sharing\SecureChannel.cs" />
-    <Compile Include="..\WinNotch\Sharing\ShareCode.cs" Link="Linked\Sharing\ShareCode.cs" />
-    <Compile Include="..\WinNotch\Shelf.cs" Link="Linked\Shelf.cs" />
-    <Compile Include="..\WinNotch\Sky.cs" Link="Linked\Sky.cs" />
-    <Compile Include="..\WinNotch\SleepTimer.cs" Link="Linked\SleepTimer.cs" />
-    <Compile Include="..\WinNotch\Spring.cs" Link="Linked\Spring.cs" />
-    <Compile Include="..\WinNotch\Today.cs" Link="Linked\Today.cs" />
-    <Compile Include="..\WinNotch\UsbDrives.cs" Link="Linked\UsbDrives.cs" />
-    <Compile Include="..\WinNotch\VpnNames.cs" Link="Linked\VpnNames.cs" />
-    <Compile Include="..\WinNotch\Updates\UpdateInstaller.cs" Link="Linked\Updates\UpdateInstaller.cs" />
-    <Compile Include="..\WinNotch\Updates\UpdateService.cs" Link="Linked\Updates\UpdateService.cs" />
-    <Compile Include="..\WinNotch\Waves.cs" Link="Linked\Waves.cs" />
-    <Compile Include="..\WinNotch\Weather.cs" Link="Linked\Weather.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="Holm.App" />
     <InternalsVisibleTo Include="Holm.Tests" />

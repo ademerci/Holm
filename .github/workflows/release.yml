@@ -1,12 +1,12 @@
-# Builds a release on Windows and publishes it, started by hand (Actions › Release › Run workflow).
-# Needs the version in WinNotch.csproj, a CHANGELOG entry and publish/release-<version>-release-notes.md on main.
+# Builds a release on Windows and Linux and publishes it, started by hand (Actions › Release › Run workflow).
+# Needs the version in Holm.App.csproj, a CHANGELOG entry and publish/release-<version>-release-notes.md.
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release, as in WinNotch.csproj (e.g. 1.7.0)"
+        description: "Version to release, as in Holm.App.csproj (e.g. 1.13.0)"
         required: true
 
 permissions:
@@ -14,7 +14,15 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
     env:
       VERSION: ${{ inputs.version }}
     steps:
@@ -27,39 +35,59 @@ jobs:
       - name: Check the version and the notes
         shell: pwsh
         run: |
-          $csproj = [xml](Get-Content WinNotch/WinNotch.csproj)
+          $csproj = [xml](Get-Content Holm.App/Holm.App.csproj)
           $version = @($csproj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
-          if ($version -ne $env:VERSION) { throw "WinNotch.csproj says $version, not $env:VERSION" }
+          if ($version -ne $env:VERSION) { throw "Holm.App.csproj says $version, not $env:VERSION" }
           if (-not (Test-Path "publish/release-$env:VERSION-release-notes.md")) { throw "publish/release-$env:VERSION-release-notes.md is missing" }
           if (git ls-remote --tags origin "v$env:VERSION") { throw "v$env:VERSION exists already" }
 
       # Local tests need hardware; online and manual tests use external services or user interaction.
       - name: Test
-        shell: pwsh
-        run: dotnet test WinNotch.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
+        shell: bash
+        run: |
+          filter="Category!=Local&Category!=Online&Category!=Manual"
+          if [ "${{ runner.os }}" != "Windows" ]; then filter="$filter&FullyQualifiedName!~UpdateInstallerTests"; fi
+          dotnet test Holm.Tests -c Release --filter "$filter"
 
-      - name: Self-contained zip
+      - name: Self-contained bundle
         shell: pwsh
         env:
           GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }} # built in for GIF search
         run: |
           if ([string]::IsNullOrWhiteSpace($env:GIPHY_API_KEY)) { throw "The GIPHY_API_KEY Actions secret is required for a release." }
-          dotnet publish WinNotch -c Release -r win-x64 -p:SelfContained=true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -p:IncludeNativeLibrariesForSelfExtract=true -o out/sc
+          dotnet publish Holm.App -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/sc
           New-Item -ItemType Directory -Force assets | Out-Null
-          Copy-Item out/sc/Holm.exe assets/Holm.exe
-          # Only Holm.exe, LICENSE and text files: anything else and the updater refuses the archive.
-          New-Item -ItemType Directory -Force zip | Out-Null
-          Copy-Item out/sc/Holm.exe zip/Holm.exe
-          Copy-Item LICENSE zip/LICENSE
-          Set-Content zip/README.txt "Holm $env:VERSION for Windows x64`r`n`r`nRun Holm.exe. No .NET installation required.`r`nSee https://github.com/ademerci/Holm for details." -NoNewline
-          Compress-Archive -Path zip/* -DestinationPath "assets/Holm-$env:VERSION-win-x64.zip"
-          Get-ChildItem assets | Format-Table Name, Length
+          New-Item -ItemType Directory -Force pkg | Out-Null
+          Copy-Item LICENSE pkg/LICENSE
+          if ("${{ matrix.rid }}" -eq "win-x64") {
+            Copy-Item out/sc/Holm.App.exe assets/Holm.exe
+            Copy-Item out/sc/Holm.App.exe pkg/Holm.exe
+            Set-Content pkg/README.txt "Holm $env:VERSION for Windows x64`r`n`r`nRun Holm.exe. No .NET installation required.`r`nSee https://github.com/ademerci/Holm for details." -NoNewline
+            Compress-Archive -Path pkg/* -DestinationPath "assets/Holm-$env:VERSION-win-x64.zip"
+          } else {
+            Copy-Item out/sc/Holm.App pkg/Holm
+            Set-Content pkg/README.txt "Holm $env:VERSION for Linux x64`n`nRun ./Holm. No .NET installation required.`nSee https://github.com/ademerci/Holm for details." -NoNewline
+            tar -czf "assets/Holm-$env:VERSION-linux-x64.tar.gz" -C pkg .
+          }
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.rid }}
+          path: assets/
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: assets
+          merge-multiple: true
       - name: Publish the release
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$env:VERSION" --target $env:GITHUB_SHA --title "Holm $env:VERSION" `
-            --notes-file "publish/release-$env:VERSION-release-notes.md" --latest `
-            "assets/Holm-$env:VERSION-win-x64.zip" "assets/Holm.exe"
+          gh release create "v${{ inputs.version }}" assets/* --target "${{ github.sha }}" --title "Holm ${{ inputs.version }}" `
+            --notes-file "publish/release-${{ inputs.version }}-release-notes.md" --latest

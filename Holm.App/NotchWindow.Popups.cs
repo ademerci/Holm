@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Holm.App.Controls;
+using Holm.Platform;
 
 namespace Holm.App;
 
@@ -115,7 +116,9 @@ public sealed partial class NotchWindow
         _taskIcon.FontFamily = textIcon ? FontFamily.Default : IconFont;
         _taskIcon.FontWeight = textIcon ? FontWeight.SemiBold : FontWeight.Normal;
         _taskIconCircle.Background = circle;
-        // A screenshot's picture takes the icon's place; every other card has its icon.
+        // A screenshot's picture or a chat GIF takes the icon's place; every other card has its icon.
+        StopTaskGif();
+        _taskGif = null;
         _taskThumb.IsVisible = false;
         _taskIconCircle.IsVisible = true;
         _taskTitle.Text = title;
@@ -159,8 +162,51 @@ public sealed partial class NotchWindow
     {
         _taskHide.Stop();
         _primaryAction = _secondaryAction = _extraAction = null;
+        StopTaskGif();
+        _taskGif = null;
         if (!_taskVisible) return;
         _taskVisible = false;
         ApplyState(animate: true);
+    }
+
+    // ───────────── volume and media keys ─────────────
+
+    IMediaKeysPlatform _mediaKeys = null!;
+
+    void InitMediaKeys(IPlatformServices platform) => _mediaKeys = platform.MediaKeys;
+
+    void SetNotchOnlyPopups(bool on)
+    {
+        _settings.NotchOnlyPopups = on;
+        _settings.Save();
+        StartMediaKeys();
+    }
+
+    void StartMediaKeys()
+    {
+        _mediaKeys.Stop();
+        if (!_settings.NotchOnlyPopups || !_mediaKeys.IsSupported) return;
+        _mediaKeys.Start(TakesMediaKey, key => Dispatcher.UIThread.Post(() => PressMediaKey(key)));
+    }
+
+    bool TakesMediaKey(MediaKey key)
+        => !_hiddenForFullscreen && (key is MediaKey.VolumeMute or MediaKey.VolumeDown or MediaKey.VolumeUp || _info != null);
+
+    void PressMediaKey(MediaKey key)
+    {
+        switch (key)
+        {
+            case MediaKey.VolumeMute:
+                _audio.ToggleMute();
+                break;
+            case MediaKey.VolumeUp or MediaKey.VolumeDown when _audio.TryGetVolume(out float level, out bool muted):
+                if (muted) _audio.SetMute(false);
+                _audio.SetVolume(MediaKeysMath.Step(level, key == MediaKey.VolumeUp));
+                break;
+            case MediaKey.PlayPause: _media.PlayPause(); break;
+            case MediaKey.NextTrack: _media.Next(); break;
+            case MediaKey.PreviousTrack: _media.Previous(); break;
+            case MediaKey.StopMedia: _media.Pause(); break;
+        }
     }
 }
