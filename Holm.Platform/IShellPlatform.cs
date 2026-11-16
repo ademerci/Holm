@@ -12,6 +12,9 @@ public interface IShellPlatform
     /// <summary>Opens a file or folder with the app the system picks for it.</summary>
     void Open(string path);
 
+    /// <summary>Starts an installed app by the id its notifications or badge came with (Windows: its AppUserModelID; Linux: its desktop file; macOS: its bundle id). False if that didn't work.</summary>
+    bool OpenApp(string appId);
+
     /// <summary>Shows a file selected in its folder.</summary>
     void Reveal(string path);
 
@@ -33,6 +36,7 @@ public sealed class NoShellPlatform : IShellPlatform
 {
     public string DownloadsFolder() => System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Downloads");
     public void Open(string path) { }
+    public bool OpenApp(string appId) => false;
     public void Reveal(string path) { }
     public string SystemDrive() => "/";
     public void OpenStorage() { }

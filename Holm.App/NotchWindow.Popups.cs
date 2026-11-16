@@ -76,7 +76,7 @@ public sealed partial class NotchWindow
     void ShowPeek(string? glyph, string text, string value, IBrush? valueBrush, double seconds = 3, IBrush? glyphBrush = null,
                   int? battery = null, bool charging = false)
     {
-        if (_state == NotchState.Expanded) return;
+        if (_hiddenForFullscreen || _state == NotchState.Expanded) return;
 
         _peekIcon.Text = glyph ?? "";
         _peekIcon.Foreground = glyphBrush ?? Brushes.White;
@@ -91,6 +91,7 @@ public sealed partial class NotchWindow
 
         bool wasPeek = _state == NotchState.Peek;
         _peekActive = true;
+        _peekMessage = false;
         _peekTimer.Stop();
         _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
         _peekTimer.Start();

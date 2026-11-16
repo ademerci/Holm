@@ -46,6 +46,18 @@ public sealed class LinuxShellPlatform : IShellPlatform
 
     public void Open(string path) => XdgOpen(path);
 
+    public bool OpenApp(string appId)
+    {
+        try
+        {
+            var start = new ProcessStartInfo("gtk-launch") { UseShellExecute = false };
+            start.ArgumentList.Add(appId);
+            using var process = Process.Start(start);
+            return process != null && process.WaitForExit(3000) && process.ExitCode == 0;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
+    }
+
     /// <summary>
     /// GNOME, KDE's Spectacle and most tools save into Pictures/Screenshots (the XDG pictures folder, in the user's
     /// language); without that folder, Pictures itself.

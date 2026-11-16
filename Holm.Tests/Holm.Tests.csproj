@@ -46,6 +46,7 @@
     <Compile Include="..\WinNotch.Tests\NotepadTests.cs" Link="Linked\NotepadTests.cs" />
     <Compile Include="..\WinNotch.Tests\OutageTests.cs" Link="Linked\OutageTests.cs" />
     <Compile Include="..\WinNotch.Tests\QuietHoursTests.cs" Link="Linked\QuietHoursTests.cs" />
+    <Compile Include="..\WinNotch.Tests\MessengersTests.cs" Link="Linked\MessengersTests.cs" />
     <Compile Include="..\WinNotch.Tests\RelayTests.cs" Link="Linked\RelayTests.cs" />
     <Compile Include="..\WinNotch.Tests\ReminderTests.cs" Link="Linked\ReminderTests.cs" />
     <Compile Include="..\WinNotch.Tests\SecureChannelTests.cs" Link="Linked\SecureChannelTests.cs" />

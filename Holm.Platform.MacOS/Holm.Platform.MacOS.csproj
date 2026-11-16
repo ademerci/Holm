@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

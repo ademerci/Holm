@@ -78,7 +78,11 @@ public sealed partial class NotchWindow
         var weather = new MenuItem { Header = "Weather" };
         var collapsedSize = new MenuItem { Header = "Collapsed size" };
         var expandedSize = new MenuItem { Header = "Expanded size" };
+        var messages = new MenuItem { Header = "Messages" };
+        var quiet = new MenuItem { Header = "Quiet hours" };
         var customize = new MenuItem { Header = "Customize" };
+        customize.Items.Add(messages);
+        customize.Items.Add(quiet);
         customize.Items.Add(weather);
         customize.Items.Add(collapsedSize);
         customize.Items.Add(expandedSize);
@@ -101,6 +105,8 @@ public sealed partial class NotchWindow
             FillBounceMenu(bounceLevel);
             ListScreens(menu);
             FillWeatherMenu(weather);
+            FillMessagesMenu(messages);
+            FillQuietMenu(quiet);
             FillSizeMenu(collapsedSize, expanded: false);
             FillSizeMenu(expandedSize, expanded: true);
         };

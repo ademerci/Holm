@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Timer, Media, Download, Call, Peek, Volume, Task, Share, Expanded }
+    enum NotchState { Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -103,11 +103,12 @@ public sealed partial class NotchWindow : Window
         InitUsb(platform);
         InitVpn();
         InitPrivacy(platform);
+        InitMessages(platform);
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
-        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
+        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
             _homePanel.Children.Remove(row);
-        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
+        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -154,6 +155,7 @@ public sealed partial class NotchWindow : Window
         StartVpn();
         StartFullscreen();
         StartPrivacy();
+        StartMessages();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -173,6 +175,7 @@ public sealed partial class NotchWindow : Window
         StopScreenshots();
         _drives.Stop();
         _sensors.Stop();
+        _notifications.Stop();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -208,25 +211,28 @@ public sealed partial class NotchWindow : Window
                    : _sharing ? NotchState.Share
                    : _taskVisible ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
-                   : _peekActive ? NotchState.Peek
+                   : _peekActive ? (_peekMessage ? NotchState.Message : NotchState.Peek)
                    : _call != null ? NotchState.Call
                    // A running download shows while nothing plays; over music only for a moment when it starts.
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
+                   : _messages.Count > 0 ? NotchState.Badge
                    : NotchState.Idle;
 
         // Over a maximized browser the notch is the idle pill, so the tabs under it can be clicked.
         // Alerts, calls and privacy indicators still get their normal space.
         bool browserMini = _browserInFront && !_hiddenForFullscreen && SensorsInUse.Count == 0
-                           && target is NotchState.Idle or NotchState.Media or NotchState.Timer;
+                           && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer;
         if (browserMini) target = NotchState.Idle;
+        PlacePrivacyDots(target == NotchState.Badge);
         // Minimize when idle: a small pill without shoulders while nothing is going on.
         bool mini = browserMini || (target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0);
         double w, h, r;
         switch (target)
         {
             case NotchState.Expanded:
+                ShowQuietNote();
                 if (_clockPanel.IsVisible) ShowToday();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
@@ -241,6 +247,8 @@ public sealed partial class NotchWindow : Window
             case NotchState.Task: (w, h, r) = (420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
+            case NotchState.Message: (w, h, r) = (350, 54, 24); break;
+            case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
@@ -270,6 +278,8 @@ public sealed partial class NotchWindow : Window
             SetView(_volumeView, target == NotchState.Volume, animate);
             SetView(_downloadView, target == NotchState.Download, animate);
             SetView(_peekView, target == NotchState.Peek, animate);
+            SetView(_messageView, target == NotchState.Message, animate);
+            SetView(_badgeView, target == NotchState.Badge, animate);
             SetView(_taskView, target == NotchState.Task, animate);
             SetView(_shareView, target == NotchState.Share, animate);
             SetView(_expandedView, target == NotchState.Expanded, animate);

@@ -89,7 +89,7 @@ public sealed partial class NotchWindow
         _cameraDot.IsVisible = uses.Any(u => u.Sensor == Sensor.Camera);
         // The camera dot keeps its gap only after the microphone's.
         _cameraDot.Margin = new Thickness(_microphoneDot.IsVisible ? 4 : 0, 0, 0, 0);
-        _privacyHost.IsVisible = uses.Count > 0 && !_hovered;
+        PlacePrivacyDots(_state == NotchState.Badge);
         if (_hovered) RefreshPrivacyRows();
         ShowCall();
         UpdateCallPause();

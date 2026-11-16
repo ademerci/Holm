@@ -21,4 +21,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IClickAwayPlatform ClickAway { get; } = new LinuxClickAwayPlatform();
     public IForegroundPlatform Foreground { get; } = new LinuxForegroundPlatform();
     public ISensorPlatform Sensors { get; } = new LinuxSensorPlatform();
+    public INotificationsPlatform Notifications { get; } = new LinuxNotificationsPlatform();
 }

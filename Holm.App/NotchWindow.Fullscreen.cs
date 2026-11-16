@@ -62,5 +62,6 @@ public sealed partial class NotchWindow
             UpdateEqualizer();
         }
         if (_browserInFront != wasBrowser || (wasFullscreen && !front.Fullscreen)) ApplyState(animate: true);
+        MarkFrontRead();
     }
 }

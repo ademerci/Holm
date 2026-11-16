@@ -12,6 +12,16 @@ public sealed class MacShellPlatform : IShellPlatform
 
     public void Open(string path) => Run(path);
 
+    public bool OpenApp(string appId)
+    {
+        try
+        {
+            using var process = Process.Start("/usr/bin/open", new[] { "-b", appId });
+            return process != null && process.WaitForExit(3000) && process.ExitCode == 0;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
+    }
+
     public void Reveal(string path) => Run("-R", path);
 
     public string SystemDrive() => "/";

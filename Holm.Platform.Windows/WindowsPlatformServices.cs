@@ -21,4 +21,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IClickAwayPlatform ClickAway { get; } = new WindowsClickAwayPlatform();
     public IForegroundPlatform Foreground { get; } = new WindowsForegroundPlatform();
     public ISensorPlatform Sensors { get; } = new WindowsSensorPlatform();
+    public INotificationsPlatform Notifications { get; } = new WindowsNotificationsPlatform();
 }

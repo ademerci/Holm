@@ -57,10 +57,16 @@ public sealed partial class NotchWindow
             new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", new[]
             {
                 Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
-                Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
                 Switch("Screenshots", "\uE722", "A new screenshot pops out with Shelf and Show.", s => s.Screenshots, SetScreenshots),
-                Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
                 Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
+                Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
+                        ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."
+                        : OperatingSystem.IsMacOS()
+                        ? "Every app's notification would pop out in the notch, not only messages. macOS doesn't let apps read other apps' notifications, so only Dock badges reach Holm here."
+                        : "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in your desktop to keep its own banners away; they still reach Holm.",
+                    s => s.AllNotifications, SetAllNotifications),
+                Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
+                Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
                 Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
             }),
             new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new[]

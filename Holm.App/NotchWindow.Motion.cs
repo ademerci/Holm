@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Holm.Platform;
 using WinNotch;
 
 namespace Holm.App;
@@ -92,7 +93,7 @@ public sealed partial class NotchWindow
 
     void InitMotion()
     {
-        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _callView, _expandedView })
+        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _callView, _badgeView, _messageView, _expandedView })
         {
             view.RenderTransform = new ScaleTransform(1, 1);
             // The open notch grows out of the closed one at the top; the small views pop from their middle.
@@ -147,6 +148,9 @@ public sealed partial class NotchWindow
         }
         ApplyState(animate: true);
         ShowPrivacy();
+        // Access may have been granted in the system's settings since we last asked.
+        if (expand && _settings.Messages && _notificationsRunning && _notifications.Access is not (NotificationAccess.Allowed or NotificationAccess.Unavailable))
+            _ = StartNotificationsAsync(ask: false);
     }
 
     /// <summary>Shows or hides one of the notch's views: the WPF app's pop and fade, or at once.</summary>

@@ -18,6 +18,17 @@ public sealed class WindowsShellPlatform : IShellPlatform
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
     }
 
+    public bool OpenApp(string appId)
+    {
+        try
+        {
+            AllowSetForegroundWindow(-1);
+            Process.Start(new ProcessStartInfo("explorer.exe", @"shell:AppsFolder\" + appId) { UseShellExecute = true })?.Dispose();
+            return true;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
+    }
+
     public void Reveal(string path)
     {
         AllowSetForegroundWindow(-1);
