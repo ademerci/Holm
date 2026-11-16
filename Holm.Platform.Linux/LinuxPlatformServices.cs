@@ -11,4 +11,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IBluetoothPlatform Bluetooth { get; } = new LinuxBluetoothPlatform();
     public IAutostartPlatform Autostart { get; } = new LinuxAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new LinuxClipboardPlatform();
+    public IScreenPlatform Screen { get; } = new LinuxScreenPlatform();
 }

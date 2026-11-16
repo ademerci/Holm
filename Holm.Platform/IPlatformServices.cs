@@ -10,6 +10,7 @@ public interface IPlatformServices
     IBluetoothPlatform Bluetooth { get; }
     IAutostartPlatform Autostart { get; }
     IClipboardPlatform Clipboard { get; }
+    IScreenPlatform Screen { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -22,4 +23,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IBluetoothPlatform Bluetooth { get; } = new NoBluetoothPlatform();
     public IAutostartPlatform Autostart { get; } = new NoAutostartPlatform();
     public IClipboardPlatform Clipboard { get; } = new NoClipboardPlatform();
+    public IScreenPlatform Screen { get; } = new NoScreenPlatform();
 }

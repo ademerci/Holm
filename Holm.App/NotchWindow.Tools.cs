@@ -95,6 +95,7 @@ public sealed partial class NotchWindow
         _remindersToolBtn = ToolButton(BellGlyph, Tool.Reminders);
         _calculatorToolBtn = ToolButton("", Tool.Calculator);
         _clipboardToolBtn = ToolButton(ClipboardGlyph, Tool.Clipboard);
+        BuildColorPickerButton();
         var row = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 32, VerticalAlignment = VerticalAlignment.Top };
         row.Children.Add(_toolBar);
         return row;
@@ -200,13 +201,14 @@ public sealed partial class NotchWindow
         _remindersToolBtn.IsVisible = _settings.Reminders;
         _calculatorToolBtn.IsVisible = _settings.Calculator;
         _clipboardToolBtn.IsVisible = _settings.ClipboardHistory;
+        _colorPickerBtn.IsVisible = _settings.ColorPicker;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())
         {
             if (button.IsVisible) any = true;
             else if (which == _tool) ShowTool(Tool.None); // its switch was turned off while it was open
         }
-        _toolBar.IsVisible = any;
+        _toolBar.IsVisible = any || _colorPickerBtn.IsVisible;
     }
 
     // ───────────── notes ─────────────

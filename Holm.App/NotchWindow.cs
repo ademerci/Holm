@@ -62,6 +62,7 @@ public sealed partial class NotchWindow : Window
         _autostart = platform.Autostart;
         InitDevices(platform);
         InitClipboard(platform);
+        InitColorPicker(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
@@ -90,7 +91,7 @@ public sealed partial class NotchWindow : Window
         _root.Children.Add(_island);
         Content = _root;
 
-        _island.PointerEntered += (_, _) => { if (_taskVisible) return; _hovered = true; ApplyState(animate: true); };
+        _island.PointerEntered += (_, _) => { if (_taskVisible || _picking) return; _hovered = true; ApplyState(animate: true); };
         _island.PointerExited += (_, _) => { if (KeepOpenForTyping || _menuOpen) return; _hovered = false; ApplyState(animate: true); };
 
         BuildContextMenu();

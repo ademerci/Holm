@@ -31,6 +31,7 @@
     <Compile Include="..\WinNotch.Tests\CalculatorTests.cs" Link="Linked\CalculatorTests.cs" />
     <Compile Include="..\WinNotch.Tests\CallPauseTests.cs" Link="Linked\CallPauseTests.cs" />
     <Compile Include="..\WinNotch.Tests\ChatTests.cs" Link="Linked\ChatTests.cs" />
+    <Compile Include="..\WinNotch.Tests\ColorPickTests.cs" Link="Linked\ColorPickTests.cs" />
     <Compile Include="..\WinNotch.Tests\ClipboardHistoryTests.cs" Link="Linked\ClipboardHistoryTests.cs" />
     <Compile Include="..\WinNotch.Tests\CountdownTests.cs" Link="Linked\CountdownTests.cs" />
     <Compile Include="..\WinNotch.Tests\DiskSpaceTests.cs" Link="Linked\DiskSpaceTests.cs" />
