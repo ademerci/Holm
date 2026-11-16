@@ -38,6 +38,15 @@ for picture in ("closed.png", "open.png"):
         worst = list(ImageChops.lighter(ImageChops.lighter(*diff.split()[:2]), ImageChops.lighter(*diff.split()[2:])).tobytes())
         share = sum(1 for w in worst if w >= NOTICEABLE) / len(worst)
         print(f"{picture}: {a} vs {b}: {share:.3%} of pixels noticeably different, largest difference {max(worst)}")
+        # Where: the picture cut into 40 x 40 pixel cells, the cells with the most different pixels first.
+        width = ia.size[0]
+        cells = {}
+        for i, w in enumerate(worst):
+            if w >= NOTICEABLE:
+                key = (i % width // 40, i // width // 40)
+                cells[key] = cells.get(key, 0) + 1
+        for (cx, cy), n in sorted(cells.items(), key=lambda kv: -kv[1])[:8]:
+            print(f"    {n:4} px in x {cx * 40}-{cx * 40 + 39}, y {cy * 40}-{cy * 40 + 39}")
         if share > MAX_SHARE:
             failed = True
         scaled = diff.convert("RGB").point(lambda v: min(255, v * 4))

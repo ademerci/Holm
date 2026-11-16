@@ -73,11 +73,15 @@ public sealed partial class NotchWindow
         UpdateLayout();
     }
 
-    /// <summary>The window's content as drawn, at a scale of 2 on every system so pictures can be laid over each other.</summary>
+    /// <summary>
+    /// The notch as drawn, at a scale of 2 on every system so pictures can be laid over each other. The picture is
+    /// as high as the notch needs, not as the window is: Windows keeps windows at least 39 px high, which only adds
+    /// see-through rows.
+    /// </summary>
     void Snapshot(string file)
     {
         const double scale = 2;
-        var size = new PixelSize((int)Math.Ceiling(Bounds.Width * scale), (int)Math.Ceiling(Bounds.Height * scale));
+        var size = new PixelSize((int)Math.Ceiling(BaseWidth * scale), (int)Math.Ceiling(NeededWindowHeight(_shapeH) * scale));
         using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
         bitmap.Render(_root);
         bitmap.Save(file, new PngBitmapEncoderOptions());
