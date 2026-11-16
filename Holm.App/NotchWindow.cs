@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Badge, Timer, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
+    enum NotchState { Idle, Badge, Timer, Focumon, Media, Download, Call, Peek, Message, Volume, Task, Share, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -110,6 +110,7 @@ public sealed partial class NotchWindow : Window
         InitActivity();
         InitSendLater();
         InitUpdates();
+        BuildFocumon();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -165,6 +166,7 @@ public sealed partial class NotchWindow : Window
         StartSharing();
         StartSendLater();
         StartUpdates();
+        StartFocumon();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -187,6 +189,7 @@ public sealed partial class NotchWindow : Window
         _notifications.Stop();
         StopSharing();
         StopUpdates();
+        StopFocumon();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -229,13 +232,14 @@ public sealed partial class NotchWindow : Window
                    : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
+                   : HasFocumon ? NotchState.Focumon
                    : _messages.Count > 0 || HasUpdateNotification ? NotchState.Badge
                    : NotchState.Idle;
 
         // Over a maximized browser the notch is the idle pill, so the tabs under it can be clicked.
         // Alerts, calls and privacy indicators still get their normal space.
         bool browserMini = _browserInFront && !_hiddenForFullscreen && SensorsInUse.Count == 0
-                           && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer;
+                           && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
         if (browserMini) target = NotchState.Idle;
         PlacePrivacyDots(target == NotchState.Badge);
         // Minimize when idle: a small pill without shoulders while nothing is going on.
@@ -265,6 +269,7 @@ public sealed partial class NotchWindow : Window
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
+            case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
 
@@ -286,6 +291,7 @@ public sealed partial class NotchWindow : Window
             SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
+            SetView(_focumonView, target == NotchState.Focumon, animate);
             SetView(_callView, target == NotchState.Call, animate);
             SetView(_volumeView, target == NotchState.Volume, animate);
             SetView(_downloadView, target == NotchState.Download, animate);

@@ -93,7 +93,7 @@ public sealed partial class NotchWindow
 
     void InitMotion()
     {
-        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _callView, _badgeView, _messageView, _expandedView })
+        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _callView, _badgeView, _messageView, _focumonView, _expandedView })
         {
             view.RenderTransform = new ScaleTransform(1, 1);
             // The open notch grows out of the closed one at the top; the small views pop from their middle.
