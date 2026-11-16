@@ -261,7 +261,7 @@ public class NotchSizingTests
     }
 
     [Fact]
-    public void AiUsageBubblesSitBesideTheClosedNotchAndFlattenBesideTheMiniPill()
+    public void TheAiBubbleSitsBesideTheClosedNotchAndFlattensBesideTheMiniPill()
     {
         WithWindow(window =>
         {
@@ -271,36 +271,36 @@ public class NotchSizingTests
             Invoke(window, "ApplyState", false);
             window.ShowAiUsage(new[] { codex, claude });
 
+            // One bubble: the agent at work wins over the one further along.
             Assert.True(window.AiDockShown);
-            Assert.Equal(new[] { AiTool.ClaudeCode, AiTool.Codex }, window.AiBubbles.Select(b => b.Tool)); // always in the same order
-            Assert.All(window.AiBubbles, b => Assert.Equal((UsageBubble.Size, UsageBubble.Size), (b.Root.Width, b.Root.Height)));
+            Assert.Equal(AiTool.ClaudeCode, window.AiBubble!.Shown.Tool);
+            Assert.Equal((UsageBubble.Size, UsageBubble.Size), (window.AiBubble.Root.Width, window.AiBubble.Root.Height));
+            Assert.Equal(AiTool.Codex, MainWindow.Leading(new[] { claude with { Active = Array.Empty<AiSession>() }, codex })!.Tool);
             Assert.Same(HubTheme.Red, UsageBubble.ColorOf(codex)); // nearly used up
 
-            // Beside the minimized notch they are capsules no taller than it, so the window needn't grow.
+            // Beside the minimized notch it is a capsule no taller than it, so the window needn't grow.
             Settings(window).MiniIdle = true;
             Invoke(window, "ApplyState", false);
             Assert.True(window.AiDockShown);
-            Assert.All(window.AiBubbles, b => Assert.Equal(UsageBubble.MiniHeight, b.Root.Height));
+            Assert.Equal(UsageBubble.MiniHeight, window.AiBubble.Root.Height);
             Assert.True(window.Height <= 10);
 
-            // The open notch takes the room; switched off or with nothing to show, they're gone.
+            // The open notch takes the room; with nothing to show it's gone.
             SetField(window, "_expanded", true);
             Invoke(window, "ApplyState", false);
             Assert.False(window.AiDockShown);
             SetField(window, "_expanded", false);
             Invoke(window, "ApplyState", false);
             Assert.True(window.AiDockShown);
-            window.ShowAiUsage(new[] { claude });
-            Assert.Single(window.AiBubbles);
             window.ShowAiUsage(Array.Empty<AiUsageSnapshot>());
             Assert.False(window.AiDockShown);
 
-            // Both cards lay out, with and without agents at work.
-            foreach (var usage in new[] { claude, codex })
+            // The card lays out with one agent and with both.
+            foreach (var usage in new[] { new[] { codex }, new[] { claude, codex } })
             {
                 var card = MainWindow.BuildAiCard(usage);
                 card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Assert.InRange(card.DesiredSize.Height, 150, 420);
+                Assert.InRange(card.DesiredSize.Height, 120, 460);
             }
         });
     }

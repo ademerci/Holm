@@ -1775,6 +1775,14 @@ public partial class MainWindow : Window
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _chat.Changed -= OnMessagesChanged;
+        // Nor a friend's real chat message, GIF or reaction: they would pop out over a pose.
+        _settings.ChatPopups = false; // and none that is already on its way pops out either (not saved: snapshots are read-only)
+        _peekActive = false;
+        _peekTimer.Stop();
+        if (TaskShowing) HideTask(); // a friend's message that popped out before the poses took over
+        _friends.ChatReceived -= OnChatReceived;
+        _friends.GifReceived -= OnGifReceived;
+        _friends.ReactionReceived -= OnReactionReceived;
         _messages = Array.Empty<ChatMessage>(); // your real messages came in meanwhile: they must not end up in a picture
         RefreshMessages();
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
