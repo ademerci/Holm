@@ -100,9 +100,6 @@ public sealed class LinuxPowerPlatform : IPowerPlatform
 /// </summary>
 public sealed class LinuxBluetoothPlatform : IBluetoothPlatform
 {
-    const string Headphones = "", Mouse = "", Keyboard = "", Controller = "", Pen = "",
-                 Phone = "", Computer = "", Other = "";
-
     readonly Bus _bus;
 
     public LinuxBluetoothPlatform() : this(Bus.System) { }
@@ -136,14 +133,14 @@ public sealed class LinuxBluetoothPlatform : IBluetoothPlatform
     /// <summary>BlueZ names the kind of device with an icon name from the freedesktop naming specification.</summary>
     internal static string GlyphFor(string icon) => icon switch
     {
-        "audio-headset" or "audio-headphones" or "audio-card" or "audio-speakers" => Headphones,
-        "input-mouse" => Mouse,
-        "input-keyboard" => Keyboard,
-        "input-gaming" => Controller,
-        "input-tablet" => Pen,
-        "phone" => Phone,
-        "computer" => Computer,
-        _ => Other,
+        "audio-headset" or "audio-headphones" or "audio-card" or "audio-speakers" => DeviceGlyphs.Headphones,
+        "input-mouse" => DeviceGlyphs.Mouse,
+        "input-keyboard" => DeviceGlyphs.Keyboard,
+        "input-gaming" => DeviceGlyphs.Controller,
+        "input-tablet" => DeviceGlyphs.Pen,
+        "phone" => DeviceGlyphs.Phone,
+        "computer" => DeviceGlyphs.Computer,
+        _ => DeviceGlyphs.Other,
     };
 
     static string Text(Dictionary<string, VariantValue> values, string key)

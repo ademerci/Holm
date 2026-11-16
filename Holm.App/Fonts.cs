@@ -25,7 +25,6 @@ static class Fonts
     /// </summary>
     public static void ApplyRendering(Visual root)
     {
-        RenderOptions.SetTextRenderingMode(root, TextRenderingMode.Antialias);
         TextOptions.SetTextRenderingMode(root, TextRenderingMode.Antialias);
         TextOptions.SetTextHintingMode(root, TextHintingMode.None);
         TextOptions.SetBaselinePixelAlignment(root, BaselinePixelAlignment.Unaligned);

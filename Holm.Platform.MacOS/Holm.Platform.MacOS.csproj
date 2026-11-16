@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The macOS backend: AppKit through the Objective-C runtime, CoreAudio, IOKit, and the players' own
+       scripting for media, behind the interfaces of Holm.Platform. Plain net10.0 with no Apple workload: it builds
+       on every system, and is only loaded on macOS. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Holm.Tests" />
+  </ItemGroup>
+
+</Project>

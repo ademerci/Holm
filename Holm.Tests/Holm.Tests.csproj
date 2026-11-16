@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
     <!-- Plain net10.0: builds everywhere. Its tests only touch the parts that need no Linux desktop. -->
     <ProjectReference Include="..\Holm.Platform.Linux\Holm.Platform.Linux.csproj" />
+    <ProjectReference Include="..\Holm.Platform.MacOS\Holm.Platform.MacOS.csproj" />
   </ItemGroup>
 
   <!-- Tests stay in WinNotch.Tests/ and are linked, like the sources in Holm.Core: one copy, tested on both sides.

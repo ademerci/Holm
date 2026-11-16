@@ -20,5 +20,7 @@ class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
+            // macOS: a notch is no app to switch to, so no Dock icon (Windows: ShowInTaskbar; Linux: the dock type).
+            .With(new MacOSPlatformOptions { ShowInDock = false })
             .LogToTrace();
 }

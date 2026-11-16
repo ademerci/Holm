@@ -43,5 +43,6 @@
     <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
     <ProjectReference Include="..\Holm.Platform.Windows\Holm.Platform.Windows.csproj" Condition="'$(HolmWindows)' == 'true'" />
     <ProjectReference Include="..\Holm.Platform.Linux\Holm.Platform.Linux.csproj" Condition="'$(HolmWindows)' != 'true'" />
+    <ProjectReference Include="..\Holm.Platform.MacOS\Holm.Platform.MacOS.csproj" Condition="'$(HolmWindows)' != 'true'" />
   </ItemGroup>
 </Project>

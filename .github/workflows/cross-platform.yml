@@ -43,7 +43,32 @@ jobs:
       # The updater replaces Holm.exe through PowerShell: Windows only by design, so its tests stay out here.
       - name: Test (Linux, macOS)
         if: matrix.os != 'windows-latest'
+        # macOS: reported, but the steps after it still run (the self-test is the check that matters there).
+        continue-on-error: ${{ matrix.os == 'macos-latest' }}
         run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual&FullyQualifiedName!~UpdateInstallerTests"
+
+      # The app itself, started on each system without a person: it opens the notch, reads what the backend offers,
+      # saves a picture of the closed and the open notch and quits. A native call declared wrong crashes it here, and
+      # the three systems' pictures, laid over each other, show whether the notch still looks the same everywhere.
+      - name: Self-test (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 3
+        run: HOLM_SELFTEST="$PWD/selftest" xvfb-run -a -s "-screen 0 1920x1080x24" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Self-test (macOS, Windows)
+        if: matrix.os != 'ubuntu-latest'
+        timeout-minutes: 3
+        shell: bash
+        run: HOLM_SELFTEST="$PWD/selftest" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Upload self-test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-${{ runner.os }}
+          path: selftest/
+          retention-days: 7
+          if-no-files-found: warn
 
       # The Linux build as people would get it: self-contained, one file. Kept for a few days to try out; it is
       # a test build of an experimental branch, not a release.
@@ -57,4 +82,17 @@ jobs:
         with:
           name: Holm-linux-x64-test-build.${{ github.run_number }}
           path: out/linux-x64/
+          retention-days: 7
+
+      # The same for Apple silicon Macs: one file, started from the Terminal for now (no .app bundle yet).
+      - name: Publish (macOS)
+        if: matrix.os == 'macos-latest'
+        run: dotnet publish Holm.App -c Release -r osx-arm64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/osx-arm64
+
+      - name: Upload (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-macos-arm64-test-build.${{ github.run_number }}
+          path: out/osx-arm64/
           retention-days: 7

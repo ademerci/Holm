@@ -110,6 +110,7 @@ public sealed partial class NotchWindow : Window
         StartDevices();
         _audio.Start();
         _ = _media.StartAsync();
+        StartSelfTest();
     }
 
     protected override void OnClosed(EventArgs e)

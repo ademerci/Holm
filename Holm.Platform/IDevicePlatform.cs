@@ -51,3 +51,13 @@ public sealed class NoBluetoothPlatform : IBluetoothPlatform
 {
     public List<BluetoothDeviceState> ScanBatteries() => new();
 }
+
+/// <summary>
+/// The icons for kinds of Bluetooth device, as glyphs of the icon font: the same ones the WPF app picks
+/// (WinNotch/BluetoothBattery.cs), so a backend only has to say which kind a device is.
+/// </summary>
+public static class DeviceGlyphs
+{
+    public const string Headphones = "", Mouse = "", Keyboard = "", Controller = "",
+        Pen = "", Phone = "", Computer = "", Other = "";
+}
