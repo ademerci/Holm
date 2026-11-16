@@ -196,7 +196,8 @@ internal sealed class ColorPicker : IDisposable
         if (!GetMonitorInfo(MonitorFromPoint(cursor, 2 /* MONITOR_DEFAULTTONEAREST */), ref info)) return;
         var dpi = VisualTreeHelper.GetDpi(_loupe);
         int width = (int)Math.Ceiling(_loupe.ActualWidth * dpi.DpiScaleX), height = (int)Math.Ceiling(_loupe.ActualHeight * dpi.DpiScaleY);
-        var (x, y) = ColorPick.LoupeAt(cursor.X, cursor.Y, width, height, info.rcMonitor);
+        var (x, y) = ColorPick.LoupeAt(cursor.X, cursor.Y, width, height,
+            new ColorPick.Area(info.rcMonitor.Left, info.rcMonitor.Top, info.rcMonitor.Right, info.rcMonitor.Bottom));
         Native.SetWindowPos(_loupeHwnd, Native.HWND_TOPMOST, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
     }
 

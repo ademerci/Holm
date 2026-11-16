@@ -23,7 +23,7 @@ public class ColorPickTests
         Assert.Equal(((byte)0, (byte)0, (byte)0), ColorPick.At(bgra, stride, 0, 1));
     }
 
-    static readonly Native.RECT Display = new() { Left = 0, Top = 0, Right = 1920, Bottom = 1080 };
+    static readonly ColorPick.Area Display = new(0, 0, 1920, 1080);
 
     [Fact]
     public void Magnifier_sits_below_right_of_the_cursor() => Assert.Equal((524, 324), ColorPick.LoupeAt(500, 300, 140, 160, Display));
@@ -38,7 +38,7 @@ public class ColorPickTests
     [Fact]
     public void Magnifier_stays_on_a_display_left_of_the_main_one()
     {
-        var left = new Native.RECT { Left = -2560, Top = -200, Right = 0, Bottom = 1240 };
+        var left = new ColorPick.Area(-2560, -200, 0, 1240);
         Assert.Equal((-2560 + 10 + 24, -200 + 24), ColorPick.LoupeAt(-2560 + 10, -200, 140, 160, left));
         Assert.Equal((-10 - 24 - 140, 1240 - 10 - 24 - 160), ColorPick.LoupeAt(-10, 1240 - 10, 140, 160, left));
     }

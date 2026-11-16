@@ -33,11 +33,14 @@ internal static class ColorPick
         };
     }
 
+    /// <summary>A display's rectangle in physical pixels, without the Win32 type, so this file builds anywhere.</summary>
+    public readonly record struct Area(int Left, int Top, int Right, int Bottom);
+
     /// <summary>
     /// Top-left of the magnifier: below and right of the cursor, flipped to the other side where it would leave
     /// the display. All in physical pixels.
     /// </summary>
-    public static (int X, int Y) LoupeAt(int cursorX, int cursorY, int width, int height, Native.RECT display, int gap = 24)
+    public static (int X, int Y) LoupeAt(int cursorX, int cursorY, int width, int height, Area display, int gap = 24)
     {
         int x = cursorX + gap, y = cursorY + gap;
         if (x + width > display.Right) x = cursorX - gap - width;
