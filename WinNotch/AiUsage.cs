@@ -33,7 +33,7 @@ public sealed record AiSession(AiTool Tool, string Project, string? Step, DateTi
 
 /// <summary>
 /// One tool's usage. <see cref="Percent"/> is 0–100 or null when unknown. Codex logs its own limits, so its percent is
-/// the real one (<see cref="IsLimit"/>); Claude Code logs only tokens, so its percent compares the current 5-hour
+/// the last reported one (<see cref="IsLimit"/>), with durations in Limits; Claude Code logs only tokens, so its percent compares the current 5-hour
 /// window with the busiest one of the past week.
 /// </summary>
 public sealed record AiUsageSnapshot(AiTool Tool, double? Percent, string Label, DateTime? ResetsAt, long TokensInWindow, IReadOnlyList<AiSession> Active)
@@ -42,7 +42,7 @@ public sealed record AiUsageSnapshot(AiTool Tool, double? Percent, string Label,
     public IReadOnlyList<AiUsageLimit> Limits { get; init; } = Array.Empty<AiUsageLimit>();
     public DateTime? ReportedAt { get; init; }
     public bool IsStale { get; init; }
-    /// <summary>Codex: how much of the weekly limit is used.</summary>
+    /// <summary>Codex: the reported weekly percentage, only when a 7-day duration is supplied.</summary>
     public double? WeekPercent { get; init; }
     /// <summary>Claude Code: the tokens of the busiest 5-hour window in the past week.</summary>
     public long BusiestTokens { get; init; }

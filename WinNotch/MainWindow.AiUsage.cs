@@ -389,7 +389,7 @@ public partial class MainWindow
         head.Children.Add(mark);
         if (usage.ResetsAt is { } resets && (usage.IsLimit || usage.TokensInWindow > 0))
         {
-            var when = Small("Resets " + Clock(resets), HubTheme.Faint);
+            var when = Small("Resets " + LimitReset(resets), HubTheme.Faint);
             when.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(when, Dock.Right);
             head.Children.Add(when);
@@ -403,7 +403,7 @@ public partial class MainWindow
         if (usage.Percent != null) number.Inlines.Add(new Run(" %") { FontSize = 17, FontWeight = FontWeights.Light, Foreground = HubTheme.Dim });
         section.Children.Add(number);
         string meaning = usage.IsLimit
-            ? "of the 5-hour limit" + (usage.WeekPercent is { } week ? string.Create(CultureInfo.InvariantCulture, $" · {week:0} % this week") : "")
+            ? (usage.Limits.FirstOrDefault() is { } first ? $"of the {first.Name}" : "No limits reported yet")
             : usage.TokensInWindow > 0 ? "of your busiest 5 hours this week" : "Nothing in the last 5 hours";
         section.Children.Add(Small(meaning, HubTheme.Dim));
 
@@ -413,6 +413,22 @@ public partial class MainWindow
             Width = percent <= 0 ? 0 : Math.Max(4, inner * percent / 100),
         };
         section.Children.Add(new Grid { Height = 4, Margin = new Thickness(0, 12, 0, 0), Children = { new Border { CornerRadius = new CornerRadius(2), Background = AiTrack }, fill } });
+
+        foreach (var limit in usage.Limits.Skip(1))
+        {
+            var text = Small(string.Create(CultureInfo.InvariantCulture, $"{limit.UsedPercent:0} % of the {limit.Name}"), HubTheme.Dim);
+            text.Margin = new Thickness(0, 10, 0, 0);
+            section.Children.Add(text);
+            if (limit.ResetsAt is { } reset)
+                section.Children.Add(Small("Resets " + LimitReset(reset), HubTheme.Faint));
+        }
+        if (usage.IsStale)
+        {
+            var updated = Small("Last reported " + (usage.ReportedAt is { } at ? LimitReset(at) : "earlier") + " · may be outdated", HubTheme.Faint);
+            updated.TextWrapping = TextWrapping.Wrap;
+            updated.Margin = new Thickness(0, 10, 0, 0);
+            section.Children.Add(updated);
+        }
 
         // The sessions at work, one quiet line each.
         foreach (var session in usage.Active.Take(3))
@@ -437,7 +453,8 @@ public partial class MainWindow
 
     static TextBlock Small(string text, Brush brush) => new() { Text = text, FontSize = 12, Foreground = brush, TextTrimming = TextTrimming.CharacterEllipsis };
 
-    static string Clock(DateTime utc) => utc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
+    internal static string LimitReset(DateTime utc)
+        => utc.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.InvariantCulture);
 
 #if DEBUG
     /// <summary>Snapshot poses with made-up usage: the bubble idle, with music and minimized, and the card.</summary>
@@ -451,7 +468,11 @@ public partial class MainWindow
             new AiSession(AiTool.ClaudeCode, "holm", "Bash: Run the tests", now),
             new AiSession(AiTool.ClaudeCode, "website", "Edit: home.css", now),
         }) { BusiestTokens = 2_000_000 };
-        var codex = new AiUsageSnapshot(AiTool.Codex, 28, "", now.AddHours(3.2), 310_000, Array.Empty<AiSession>()) { IsLimit = true, WeekPercent = 12 };
+        var codex = new AiUsageSnapshot(AiTool.Codex, 28, "", now.AddHours(3.2), 310_000, Array.Empty<AiSession>()) { IsLimit = true, WeekPercent = 12, Limits = new[]
+        {
+            new AiUsageLimit(28, 300, now.AddHours(3.2)),
+            new AiUsageLimit(12, 10080, now.AddDays(3)),
+        }, ReportedAt = now };
 
         _peekActive = false; // nothing else may stand beside the notch in these pictures
         _peekTimer.Stop();

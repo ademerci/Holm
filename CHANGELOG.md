@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix Codex usage showing a weekly allowance as a five-hour limit. Read each limit's actual window from Codex's local logs, show reset dates and additional reported limits, and mark old readings as potentially outdated rather than assuming a reset means zero usage.
+
 ## 1.12.6 – 2026-11-16
 
 ### Added
