@@ -104,6 +104,9 @@ public sealed partial class NotchWindow
     {
         _taskIcon.Text = icon;
         _taskIconCircle.Background = circle;
+        // A screenshot's picture takes the icon's place; every other card has its icon.
+        _taskThumb.IsVisible = false;
+        _taskIconCircle.IsVisible = true;
         _taskTitle.Text = title;
         _taskSubtitle.Text = subtitle;
         _taskSubtitle.IsVisible = subtitle.Length > 0;

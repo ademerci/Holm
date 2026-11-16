@@ -56,6 +56,7 @@ public sealed partial class NotchWindow
             {
                 Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
                 Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
+                Switch("Screenshots", "\uE722", "A new screenshot pops out with Shelf and Show.", s => s.Screenshots, SetScreenshots),
                 Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
                 Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
             }),
