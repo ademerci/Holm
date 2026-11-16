@@ -47,7 +47,7 @@ public sealed partial class NotchWindow : Window
     SpringValue _earSpring = new(MaxEar, 0.1, 1.5);
 
     NotchState _state = NotchState.Idle;
-    bool _motionRunning, _hovered, _opened, _volumePeek;
+    bool _motionRunning, _hovered, _opened, _volumePeek, _mini;
     /// <summary>Work that opening needs but that doesn't change the open notch's size: done once it has landed.</summary>
     bool _openSettling;
     long _motionLastTick;
@@ -182,6 +182,8 @@ public sealed partial class NotchWindow : Window
                    : _timer != null ? NotchState.Timer
                    : NotchState.Idle;
 
+        // Minimize when idle: a small pill without shoulders while nothing is going on.
+        bool mini = target == NotchState.Idle && _settings.MiniIdle;
         double w, h, r;
         switch (target)
         {
@@ -202,21 +204,22 @@ public sealed partial class NotchWindow : Window
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
-            default: (w, h, r) = (150, 30, 15); break;
+            default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
 
         // Media apps report every few seconds; only animate when the shape really changes.
-        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR)
+        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || mini != _mini)
         {
             bool grow = w * h > _wSpring.Value * _hSpring.Value;
             (_shapeW, _shapeH, _shapeR) = (w, h, r);
-            if (animate) MoveShapeTo(w, h, r, MaxEar, grow);
-            else SnapShape(w, h, r, MaxEar);
+            double ear = mini ? 0 : MaxEar;
+            if (animate) MoveShapeTo(w, h, r, ear, grow);
+            else SnapShape(w, h, r, ear);
         }
 
-        if (target != _state || !animate)
+        if (target != _state || mini != _mini || !animate)
         {
-            SetView(_idleView, target == NotchState.Idle, animate);
+            SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
             SetView(_volumeView, target == NotchState.Volume, animate);
@@ -227,6 +230,7 @@ public sealed partial class NotchWindow : Window
             SetView(_expandedView, target == NotchState.Expanded, animate);
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
+            _mini = mini;
             if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); _openSettling = true; _live.Start(); }
             else _live.Stop();
         }

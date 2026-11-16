@@ -34,6 +34,8 @@ public sealed partial class NotchWindow
                     s => s.Bounce, on => { _settings.Bounce = on; Save(); ApplyBounce(); }),
                 Switch("Equalizer follows the music", "", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded.",
                     s => s.ReactiveEqualizer, on => { _settings.ReactiveEqualizer = on; Save(); UpdateEqualizer(); }),
+                Switch("Minimize when idle", "\uE921", "The notch shrinks to a small pill while nothing is going on.", s => s.MiniIdle,
+                    on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
                 Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
                     s => s.HotKey, SetHotKey),
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
