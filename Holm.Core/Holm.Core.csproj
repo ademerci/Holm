@@ -25,6 +25,7 @@
     <Compile Include="..\WinNotch\FolderPack.cs" Link="Linked\FolderPack.cs" />
     <Compile Include="..\WinNotch\LevelEnvelope.cs" Link="Linked\LevelEnvelope.cs" />
     <Compile Include="..\WinNotch\Notepad.cs" Link="Linked\Notepad.cs" />
+    <Compile Include="..\WinNotch\Outage.cs" Link="Linked\Outage.cs" />
     <Compile Include="..\WinNotch\Notify\DownloadWatcher.cs" Link="Linked\Notify\DownloadWatcher.cs" />
     <Compile Include="..\WinNotch\Notify\Messengers.cs" Link="Linked\Notify\Messengers.cs" />
     <Compile Include="..\WinNotch\QuietHours.cs" Link="Linked\QuietHours.cs" />
