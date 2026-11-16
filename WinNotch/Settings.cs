@@ -18,6 +18,10 @@ internal sealed class AppSettings
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Allow moving the notch along the selected display's top edge.</summary>
+    public bool Draggable { get; set; }
+    /// <summary>Saved horizontal centre as a fraction of the display width; null means centred.</summary>
+    public double? NotchPosition { get; set; }
     /// <summary>Shrink to the mini pill while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
     public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
@@ -101,6 +105,8 @@ internal sealed class AppSettings
     public bool Weather { get; set; } = true;
     /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
     public bool SkyColors { get; set; } = true;
+    /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
+    public bool AiUsage { get; set; } = true;
     /// <summary>Large clock view: show seconds next to the time.</summary>
     public bool ClockShowSeconds { get; set; } = true;
     /// <summary>Large clock view: show the date under the time.</summary>

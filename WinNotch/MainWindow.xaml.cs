@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -102,6 +102,7 @@ public partial class MainWindow : Window
         TaskProgressHost.Child = TaskProgress;
         (_artFront, _artBack) = (ArtLayerA, ArtLayerB);
         _bars = new[] { Bar1, Bar2, Bar3, Bar4 }.Select(b => (ScaleTransform)b.RenderTransform).ToArray();
+        InitPositionDrag();
         InitMotion();
         InitSky();
 
@@ -113,7 +114,7 @@ public partial class MainWindow : Window
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
-        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
+        _expandDelay = MakeTimer(140, () => { if (!_positionHeld && Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
             if (PinnedClockOpen) return;
@@ -249,6 +250,7 @@ public partial class MainWindow : Window
         StartMediaKeys();
         StartDictation();
         StartHotKey();
+        StartAiUsage();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -260,6 +262,7 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopAiUsage();
         StopMotion();
         StopHotKey();
         _bluetoothStopped = true;
@@ -367,7 +370,7 @@ public partial class MainWindow : Window
 
         var dpi = VisualTreeHelper.GetDpi(this);
         int width = (int)Math.Round(Width * dpi.DpiScaleX), height = (int)Math.Round(Height * dpi.DpiScaleY);
-        int x = screen.Bounds.Left + (screen.Bounds.Right - screen.Bounds.Left - width) / 2;
+        int x = NotchPlacement.Left(screen.Bounds.Left, screen.Bounds.Right, width, _settings.NotchPosition);
         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, x, screen.Bounds.Top, width, height, Native.SWP_NOACTIVATE);
     }
 
@@ -567,6 +570,7 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
+        ShowAiDock();
     }
 
     void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
@@ -650,6 +654,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
+        PlaceAiDock(w, h, e);
     }
 
     /// <summary>
@@ -1350,6 +1355,7 @@ public partial class MainWindow : Window
 
     void Island_MouseEnter(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _collapseDelay.Stop();
         _pickClose.Stop();
         if (!_expanded)
@@ -1361,6 +1367,7 @@ public partial class MainWindow : Window
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _expandDelay.Stop();
         SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
@@ -1771,6 +1778,14 @@ public partial class MainWindow : Window
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _chat.Changed -= OnMessagesChanged;
+        // Nor a friend's real chat message, GIF or reaction: they would pop out over a pose.
+        _settings.ChatPopups = false; // and none that is already on its way pops out either (not saved: snapshots are read-only)
+        _peekActive = false;
+        _peekTimer.Stop();
+        if (TaskShowing) HideTask(); // a friend's message that popped out before the poses took over
+        _friends.ChatReceived -= OnChatReceived;
+        _friends.GifReceived -= OnGifReceived;
+        _friends.ReactionReceived -= OnReactionReceived;
         _messages = Array.Empty<ChatMessage>(); // your real messages came in meanwhile: they must not end up in a picture
         RefreshMessages();
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
@@ -1779,6 +1794,8 @@ public partial class MainWindow : Window
         ShowVpn();
         StopPrivacy(); // and only demo apps use the microphone
         ShowPrivacy();
+
+        await SnapAiUsageAsync(dir); // its own pictures, with made-up usage; gone again for all the others
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);

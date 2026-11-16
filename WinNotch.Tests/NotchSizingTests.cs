@@ -260,6 +260,129 @@ public class NotchSizingTests
         });
     }
 
+    [Fact]
+    public void TheAiBubbleSitsBesideTheClosedNotchAndFlattensBesideTheMiniPill()
+    {
+        WithWindow(window =>
+        {
+            var claude = new AiUsageSnapshot(AiTool.ClaudeCode, 62, "", DateTime.UtcNow.AddHours(2), 1_240_000,
+                new[] { new AiSession(AiTool.ClaudeCode, "holm", "Bash: Run the tests", DateTime.UtcNow) }) { BusiestTokens = 2_000_000 };
+            var codex = new AiUsageSnapshot(AiTool.Codex, 95, "", null, 0, Array.Empty<AiSession>()) { IsLimit = true, WeekPercent = 40 };
+            Invoke(window, "ApplyState", false);
+            window.ShowAiUsage(new[] { codex, claude });
+
+            // One bubble: the agent at work wins over the one further along.
+            Assert.True(window.AiDockShown);
+            Assert.Equal(AiTool.ClaudeCode, window.AiBubble!.Shown.Tool);
+            Assert.Equal((UsageBubble.Size, UsageBubble.Size), (window.AiBubble.Root.Width, window.AiBubble.Root.Height));
+            Assert.Equal(AiTool.Codex, MainWindow.Leading(new[] { claude with { Active = Array.Empty<AiSession>() }, codex })!.Tool);
+            Assert.Same(HubTheme.Red, UsageBubble.ColorOf(codex)); // nearly used up
+
+            // Beside the minimized notch it is a capsule no taller than it, so the window needn't grow.
+            Settings(window).MiniIdle = true;
+            Invoke(window, "ApplyState", false);
+            Assert.True(window.AiDockShown);
+            Assert.Equal(UsageBubble.MiniHeight, window.AiBubble.Root.Height);
+            Assert.True(window.Height <= 10);
+
+            // The open notch takes the room; with nothing to show it's gone.
+            SetField(window, "_expanded", true);
+            Invoke(window, "ApplyState", false);
+            Assert.False(window.AiDockShown);
+            SetField(window, "_expanded", false);
+            Invoke(window, "ApplyState", false);
+            Assert.True(window.AiDockShown);
+            window.ShowAiUsage(Array.Empty<AiUsageSnapshot>());
+            Assert.False(window.AiDockShown);
+
+            // The card lays out with one agent and with both.
+            foreach (var usage in new[] { new[] { codex }, new[] { claude, codex } })
+            {
+                var card = MainWindow.BuildAiCard(usage);
+                card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Assert.InRange(card.DesiredSize.Height, 120, 460);
+            }
+        });
+    }
+
+    [Fact]
+    public void AiCardUsesReportedWindowsAndShowsStaleReadings()
+    {
+        WithWindow(_ =>
+        {
+            var now = DateTime.UtcNow;
+            var weekly = new AiUsageSnapshot(AiTool.Codex, 31, "", now.AddDays(2), 0, Array.Empty<AiSession>())
+            {
+                IsLimit = true, IsStale = true, ReportedAt = now.AddHours(-1),
+                Limits = new[] { new AiUsageLimit(31, 10080, now.AddDays(2)) },
+            };
+            static IEnumerable<string> Texts(DependencyObject node)
+            {
+                if (node is TextBlock text) yield return text.Text;
+                foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
+                    foreach (var value in Texts(child)) yield return value;
+            }
+            var texts = Texts(MainWindow.BuildAiCard(new[] { weekly })).ToArray();
+            Assert.Contains("of the weekly limit", texts);
+            Assert.DoesNotContain(texts, text => text.Contains("5-hour"));
+            Assert.Contains("Resets " + MainWindow.LimitReset(now.AddDays(2)), texts);
+            Assert.Contains(texts, text => text.Contains("may be outdated"));
+
+            var both = weekly with { IsStale = false, Percent = 10, Limits = new[]
+            {
+                new AiUsageLimit(10, 300, now.AddHours(1)),
+                new AiUsageLimit(31, 10080, now.AddDays(2)),
+            } };
+            texts = Texts(MainWindow.BuildAiCard(new[] { both })).ToArray();
+            Assert.Contains("of the 5-hour limit", texts);
+            Assert.Contains("31 % of the weekly limit", texts);
+            Assert.DoesNotContain(texts, text => text.Contains("may be outdated"));
+            texts = Texts(MainWindow.BuildAiCard(new[] { weekly with
+            {
+                Percent = null, ResetsAt = null, Limits = Array.Empty<AiUsageLimit>(), IsStale = false,
+            } })).ToArray();
+            Assert.Contains("No limits reported yet", texts);
+        });
+    }
+
+    [Fact]
+    public void PositionResetActionSitsNextToTheSwitchWithoutTogglingIt()
+    {
+        WithWindow(_ =>
+        {
+            int resets = 0;
+            var item = new MenuItem { Name = "MenuDraggable", Header = "Drag notch position", IsCheckable = true };
+            var setting = new SettingsSwitch(item, "", "Move along the top edge", "Reset Position", () => resets++);
+            var group = new SettingsGroup("general", "General", "", Colors.Gray, "", new[] { setting });
+            var hub = new SettingsWindow(new[] { group }, "test", false, () => { });
+            try
+            {
+                var row = (FrameworkElement)typeof(SettingsWindow).GetMethod("Row", PrivateInstance)!
+                    .Invoke(hub, new object[] { setting, Colors.Gray, true, true })!;
+                static IEnumerable<DependencyObject> Children(DependencyObject node)
+                {
+                    yield return node;
+                    foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
+                        foreach (var descendant in Children(child)) yield return descendant;
+                }
+                var reset = Assert.Single(Children(row).OfType<Button>());
+                Assert.Equal("Reset Position", reset.Content);
+                var toggle = Assert.Single(Children(row).OfType<ToggleSwitch>());
+                Assert.False(toggle.IsOn);
+                reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, reset));
+                Assert.Equal(1, resets);
+                Assert.False(toggle.IsOn);
+                row.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0,
+                    System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                Assert.True(toggle.IsOn);
+                reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, reset));
+                Assert.Equal(2, resets);
+                Assert.True(toggle.IsOn);
+            }
+            finally { hub.Close(); }
+        });
+    }
+
     // Never show the window: Loaded starts the real media, notification and sharing services.
     // Settings are changed only in memory, and no menu click or Save method is invoked.
     static void WithWindow(Action<MainWindow> test)

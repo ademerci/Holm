@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.7 – 2026-11-16
+
+### Added
+- **Put the notch where you want it.** *Settings › General › Drag notch position* lets you hold the notch by its top edge and move it left or right along the selected screen. Its position is remembered after a restart and stays put when dragging is switched off. The small *Reset Position* button beside the switch brings it back to the centre.
+
+### Fixed
+- **Codex usage follows the reported limit.** A weekly allowance could show as a five-hour limit because Holm assumed the first limit was always five hours. The card now reads each limit's actual duration from Codex's local logs, shows additional limits only when reported, and includes the date in reset times. Old readings say they may be outdated; passing the reset time no longer invents zero usage.
+
+## 1.12.6 – 2026-11-16
+
+### Added
+- **AI usage beside the notch.** A small black circle sits at the notch's right shoulder, like a second activity on the iPhone's island: the mark of the coding agent that matters most right now (Claude Code's spark or OpenAI's knot for Codex) inside a thin ring that fills with its usage. It shows in every closed state, also while music plays; beside the minimized notch it flattens into a capsule with a bar, and the open notch grows over it. Hovering it (which doesn't open the notch) shows a calm card with each agent you use: the percentage, when it resets, and the sessions at work with their project and latest step. Codex logs its real 5-hour and weekly limits; Claude Code logs only tokens, so its ring compares the current 5-hour window with your busiest one this week. Read from the tools' own logs on this PC at most once a minute, off the UI thread and only what was added since the last look; nothing is sent or shared. *Settings › General › AI usage ring* turns it off.
+
+### Fixed
+- **Snapshots stay private.** Holm's `--snap` picture mode no longer lets a friend's real chat message pop out over a pose.
+
 ## 1.12.5 – 2026-11-15
 
 ### Changed

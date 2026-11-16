@@ -262,6 +262,7 @@
                             <MenuItem x:Name="MenuMediaControls" Header="Media controls" ToolTip="Show music and video controls, artwork and track details. On by default." IsCheckable="True" Click="MenuMediaControls_Click"/>
                             <MenuItem x:Name="MenuWeatherAutoLocation" Header="Set up weather using approximate location" ToolTip="If no city is saved, use Windows location once. Rounded coordinates go to Open-Meteo. Respects Windows location services; no IP lookup service." IsCheckable="True" Click="MenuWeatherAutoLocation_Click"/>
                             <MenuItem x:Name="MenuSkyColors" Header="Sky colours" IsCheckable="True" Click="MenuSkyColors_Click"/>
+                            <MenuItem x:Name="MenuAiUsage" Header="AI usage ring" IsCheckable="True" Click="MenuAiUsage_Click"/>
                             <MenuItem x:Name="MenuAnim" Header="Animations" IsCheckable="True" Click="MenuAnim_Click"/>
                             <MenuItem x:Name="MenuBounce" Header="Bouncy motion" IsCheckable="True" Click="MenuBounce_Click"/>
                             <MenuItem x:Name="MenuReactiveEq" Header="Equalizer follows the music" IsCheckable="True" Click="MenuReactiveEq_Click"/>
@@ -280,6 +281,7 @@
                             <MenuItem x:Name="MenuAllNotifications" Header="All notifications in the notch" IsCheckable="True" Click="MenuAllNotifications_Click"/>
                             <MenuItem x:Name="MenuNotchOnlyPopups" Header="Volume and media only in the notch" IsCheckable="True" Click="MenuNotchOnlyPopups_Click"/>
                             <MenuItem x:Name="MenuDictation" Header="Dictation with Handy" IsCheckable="True" Click="MenuDictation_Click"/>
+                            <MenuItem x:Name="MenuDraggable" Header="Drag notch position" IsCheckable="True" Click="MenuDraggable_Click"/>
                             <MenuItem x:Name="MenuHotKey" Header="Ctrl+H opens and closes the notch" IsCheckable="True" Click="MenuHotKey_Click"/>
                             <MenuItem x:Name="MenuDiskWarning" Header="Low disk space warning" IsCheckable="True" Click="MenuDiskWarning_Click"/>
                             <MenuItem x:Name="MenuUsbDrives" Header="USB drives" IsCheckable="True" Click="MenuUsbDrives_Click"/>
