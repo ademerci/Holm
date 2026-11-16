@@ -16,6 +16,18 @@ namespace WinNotch;
 
 public enum AiTool { ClaudeCode, Codex }
 
+public sealed record AiUsageLimit(double UsedPercent, int? WindowMinutes, DateTime? ResetsAt)
+{
+    public string Name => WindowMinutes switch
+    {
+        10080 => "weekly limit",
+        1440 => "daily limit",
+        > 0 when WindowMinutes % 60 == 0 => $"{WindowMinutes / 60}-hour limit",
+        > 0 => $"{WindowMinutes}-minute limit",
+        _ => "reported limit",
+    };
+}
+
 /// <summary>An agent session at work: the folder it works in and its latest step.</summary>
 public sealed record AiSession(AiTool Tool, string Project, string? Step, DateTime LastActive);
 
@@ -27,6 +39,9 @@ public sealed record AiSession(AiTool Tool, string Project, string? Step, DateTi
 public sealed record AiUsageSnapshot(AiTool Tool, double? Percent, string Label, DateTime? ResetsAt, long TokensInWindow, IReadOnlyList<AiSession> Active)
 {
     public bool IsLimit { get; init; }
+    public IReadOnlyList<AiUsageLimit> Limits { get; init; } = Array.Empty<AiUsageLimit>();
+    public DateTime? ReportedAt { get; init; }
+    public bool IsStale { get; init; }
     /// <summary>Codex: how much of the weekly limit is used.</summary>
     public double? WeekPercent { get; init; }
     /// <summary>Claude Code: the tokens of the busiest 5-hour window in the past week.</summary>
@@ -92,6 +107,7 @@ internal sealed class AiLog
 
     // Codex: the limits it last reported, and the session's running total.
     public double? Primary, Secondary;
+    public readonly List<AiUsageLimit> Limits = new();
     public DateTime? LimitsAt, ResetsAt, WeekResetsAt;
     public long TotalTokens;
 
@@ -178,6 +194,7 @@ internal sealed class AiUsageReader
         log.Ids.Clear();
         log.ToolStep = null;
         log.Primary = log.Secondary = null;
+        log.Limits.Clear();
         log.LimitsAt = log.ResetsAt = log.WeekResetsAt = null;
         log.TotalTokens = 0;
     }
@@ -363,8 +380,16 @@ internal sealed class AiUsageReader
             if (!(payload.TryGetProperty("rate_limits", out var rates) && rates.ValueKind == JsonValueKind.Object)
                 && !(info.ValueKind == JsonValueKind.Object && info.TryGetProperty("rate_limits", out rates) && rates.ValueKind == JsonValueKind.Object)) return;
             var at = Time(doc.RootElement, "timestamp");
-            if (Limit(rates, "primary", at) is (var used, var resets)) (log.Primary, log.ResetsAt, log.LimitsAt) = (used, resets, at);
-            if (Limit(rates, "secondary", at) is (var week, var weekResets)) (log.Secondary, log.WeekResetsAt) = (week, weekResets);
+            // Primary and secondary are positions, not fixed durations. Replace the whole
+            // snapshot so a removed secondary limit cannot survive from an older event.
+            log.LimitsAt = at;
+            log.Limits.Clear();
+            var primary = Limit(rates, "primary", at);
+            var secondary = Limit(rates, "secondary", at);
+            if (primary != null) log.Limits.Add(primary);
+            if (secondary != null) log.Limits.Add(secondary);
+            (log.Primary, log.ResetsAt) = (primary?.UsedPercent, primary?.ResetsAt);
+            (log.Secondary, log.WeekResetsAt) = (secondary?.UsedPercent, secondary?.ResetsAt);
         }
         else if (call && kind is "function_call" or "local_shell_call" or "custom_tool_call")
         {
@@ -374,7 +399,7 @@ internal sealed class AiUsageReader
         }
     }
 
-    static (double Used, DateTime? Resets)? Limit(JsonElement rates, string name, DateTime? at)
+    static AiUsageLimit? Limit(JsonElement rates, string name, DateTime? at)
     {
         if (!rates.TryGetProperty(name, out var limit) || limit.ValueKind != JsonValueKind.Object) return null;
         if (!limit.TryGetProperty("used_percent", out var used) || used.ValueKind != JsonValueKind.Number) return null;
@@ -383,7 +408,8 @@ internal sealed class AiUsageReader
             resets = DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime;
         else if (at != null && limit.TryGetProperty("resets_in_seconds", out var seconds) && seconds.ValueKind == JsonValueKind.Number)
             resets = at.Value.AddSeconds(seconds.GetDouble());
-        return (Math.Clamp(used.GetDouble(), 0, 100), resets);
+        int? minutes = limit.TryGetProperty("window_minutes", out var window) && window.ValueKind == JsonValueKind.Number && window.TryGetInt32(out int value) && value > 0 ? value : null;
+        return new AiUsageLimit(Math.Clamp(used.GetDouble(), 0, 100), minutes, resets);
     }
 
     /// <summary>The command of a tool call: its arguments are JSON in a string, the command a list or a line.</summary>
@@ -412,14 +438,17 @@ internal sealed class AiUsageReader
     AiUsageSnapshot Codex(DateTime nowUtc)
     {
         var newest = _logs.Values.Where(l => l.LimitsAt != null).OrderByDescending(l => l.LimitsAt).FirstOrDefault();
-        double? percent = newest?.Primary, week = newest?.Secondary;
-        DateTime? resets = newest?.ResetsAt;
-        // A window that has run out since Codex last spoke starts empty.
-        if (resets <= nowUtc) (percent, resets) = (0, null);
-        if (newest?.WeekResetsAt <= nowUtc) week = 0;
+        var limits = newest?.Limits.ToArray() ?? Array.Empty<AiUsageLimit>();
+        var first = limits.FirstOrDefault();
+        bool stale = newest?.LimitsAt is { } at && (nowUtc - at > TimeSpan.FromMinutes(15)
+            || limits.Any(l => l.ResetsAt <= nowUtc));
         long tokens = _logs.Values.Where(l => nowUtc - l.LastWrite <= Window).Sum(l => l.TotalTokens);
-        string label = percent is { } used ? string.Create(CultureInfo.InvariantCulture, $"{used:0} % of the 5-hour limit") : "No limits reported yet";
-        return new AiUsageSnapshot(AiTool.Codex, percent, label, resets, tokens, Sessions(nowUtc)) { IsLimit = true, WeekPercent = week };
+        string label = first == null ? "No limits reported yet" : $"of the {first.Name}";
+        return new AiUsageSnapshot(AiTool.Codex, first?.UsedPercent, label, first?.ResetsAt, tokens, Sessions(nowUtc))
+        {
+            IsLimit = true, Limits = limits, ReportedAt = newest?.LimitsAt, IsStale = stale,
+            WeekPercent = limits.FirstOrDefault(l => l.WindowMinutes == 10080)?.UsedPercent,
+        };
     }
 
     // ───────────── shared ─────────────

@@ -161,7 +161,7 @@ public class AiUsageTests
         });
 
     [Fact]
-    public void Codex_starts_empty_once_its_window_has_run_out()
+    public void Codex_keeps_the_last_reported_usage_when_its_window_has_run_out()
         => WithTemp(dir =>
         {
             var now = DateTime.UtcNow;
@@ -172,17 +172,54 @@ public class AiUsageTests
             var usage = new AiUsageReader(AiTool.Codex, dir).Read(now)!;
             Assert.True(usage.IsLimit);
             Assert.Equal(42.0, usage.Percent);
-            Assert.Equal(12.5, usage.WeekPercent);
+            Assert.Null(usage.WeekPercent); // missing duration must not be assumed weekly
             var session = Assert.Single(usage.Active);
             Assert.Equal(("Holm", "shell: npm test"), (session.Project, session.Step));
 
             File.WriteAllText(log, CodexLimits(Stamp(now.AddMinutes(-10)), 42, 60) + "\n{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_complete\"}}\n"); // ran out nine minutes ago
             var later = new AiUsageReader(AiTool.Codex, dir).Read(now)!;
-            Assert.Equal(0, later.Percent);
-            Assert.Null(later.ResetsAt);
-            Assert.Equal(12.5, later.WeekPercent);
+            Assert.Equal(42, later.Percent);
+            Assert.True(later.IsStale);
+            Assert.NotNull(later.ResetsAt);
+            Assert.Null(later.WeekPercent);
             Assert.Empty(later.Active);
         });
+
+    [Fact]
+    public void Codex_weekly_primary_uses_the_reported_duration_and_clears_removed_limits()
+        => WithTemp(dir =>
+        {
+            var now = DateTime.UtcNow;
+            string log = Path.Combine(Directory.CreateDirectory(Path.Combine(dir, "sessions")).FullName, "rollout-weekly.jsonl");
+            File.WriteAllText(log, CodexLimits(Stamp(now.AddMinutes(-1)), 10, 3600) + "\n");
+            var reader = new AiUsageReader(AiTool.Codex, dir);
+            Assert.Equal(2, reader.Read(now)!.Limits.Count);
+            var entry = new
+            {
+                timestamp = Stamp(now), type = "event_msg",
+                payload = new { type = "token_count", rate_limits = new
+                {
+                    primary = new { used_percent = 31, window_minutes = 10080, resets_at = new DateTimeOffset(now.AddDays(2)).ToUnixTimeSeconds() },
+                    secondary = (object?)null,
+                } },
+            };
+            File.AppendAllText(log, System.Text.Json.JsonSerializer.Serialize(entry) + "\n");
+            var usage = reader.Read(now)!;
+            Assert.Equal(31, usage.Percent);
+            Assert.Equal(31, usage.WeekPercent);
+            Assert.Equal("weekly limit", Assert.Single(usage.Limits).Name);
+            Assert.False(usage.IsStale);
+            Assert.True(reader.Read(now.AddMinutes(16))!.IsStale);
+        });
+
+    [Theory]
+    [InlineData(300, "5-hour limit")]
+    [InlineData(10080, "weekly limit")]
+    [InlineData(1440, "daily limit")]
+    [InlineData(90, "90-minute limit")]
+    [InlineData(null, "reported limit")]
+    public void Limit_names_follow_the_duration(int? minutes, string expected)
+        => Assert.Equal(expected, new AiUsageLimit(31, minutes, null).Name);
 
     [Fact]
     public void Missing_folders_mean_nothing_to_show()
