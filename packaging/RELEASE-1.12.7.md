@@ -31,3 +31,12 @@ Holm 1.12.7 (changes since the live Store version 1.11.1)
 - Verified Store identity HolmTeam.HolmforWindows, package version 1.12.7.0, Windows.Desktop minimum 10.0.19041.0 and existing capability/startup declarations.
 - MSIX SHA256: 4EAE0E8F1321CFC3954FBFCDC43A04D06268313DCA32BD8873C18311F6D94A15.
 - Windows App Certification Kit, clean-machine upgrade, sign-in startup and hardware integration retests were not run; these limits are disclosed in the reviewer instructions.
+
+## Store submission
+
+- Submitted on November 16, 2026 in Partner Center, submission 6 (1152921505702422202).
+- Partner Center validated the uploaded 1.12.7.0 x64 package. The existing runFullTrust capability warning was shown; the reviewer notes explain its use.
+- Customer-facing release notes cover changes since live Store version 1.11.1, including the 1.12.0 changes. Certification notes were updated and saved successfully.
+- Existing nine screenshots, artwork and launch trailer retained. The linked privacy policy now describes local AI usage, Cloudflare speed tests and Handy integration.
+- Verified status: Update in certification; Submission complete, Pre-processing in progress. Publishing begins automatically after certification passes.
+- Submission receipt: artifacts/store-1.12.7/submission-status.jpg (local, ignored by Git).
