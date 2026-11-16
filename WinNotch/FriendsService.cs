@@ -6,7 +6,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Threading;
 using WinNotch.Sharing;
 
 namespace WinNotch;
@@ -20,7 +19,7 @@ internal enum InviteResult { Added, Sent, AlreadyFriends, OwnCode, NotFound }
 /// Friends on this PC: our identity (the private key is encrypted for this Windows account), the friends list,
 /// and our inbox, followed while Beam is on and we have a friend code. Settings are only touched on the UI thread.
 /// </summary>
-internal sealed class FriendsService
+internal sealed partial class FriendsService
 {
     static readonly byte[] KeyEntropy = "WinNotch friends key"u8.ToArray(); // former name: keys saved before the rename must still open
 
@@ -39,7 +38,8 @@ internal sealed class FriendsService
     const long WaitingSeconds = 24 * 60 * 60;
 
     readonly AppSettings _settings;
-    readonly Dispatcher _ui;
+    /// <summary>Runs on the UI thread (the WPF app: its Dispatcher, see FriendsService.Wpf.cs).</summary>
+    readonly Func<Action, Task> _ui;
     FriendIdentity? _me;
     bool _loaded;
     CancellationTokenSource? _follow;
@@ -96,7 +96,15 @@ internal sealed class FriendsService
     /// <summary>Profile versions on their way, by friend key: one note each, however often we're asked to sync.</summary>
     readonly Dictionary<string, string> _profilesOut = new(StringComparer.Ordinal);
 
-    public FriendsService(AppSettings settings, Dispatcher ui)
+    /// <summary>
+    /// How the identity's private key is kept in the settings file, for this user only, and the account's name.
+    /// The WPF app: Windows' DPAPI and the Windows account (FriendsService.Wpf.cs); the cross-platform app sets its own.
+    /// </summary>
+    internal static Func<byte[], byte[], byte[]> ProtectKey = (_, _) => throw new PlatformNotSupportedException();
+    internal static Func<byte[], byte[], byte[]> UnprotectKey = (_, _) => throw new PlatformNotSupportedException();
+    internal static Func<string> AccountName = () => Environment.UserName;
+
+    public FriendsService(AppSettings settings, Func<Action, Task> ui)
     {
         _settings = settings;
         _ui = ui;
@@ -205,7 +213,7 @@ internal sealed class FriendsService
         if (_settings.FriendsTopic == null || _settings.FriendsKey == null) return null;
         try
         {
-            byte[] pkcs8 = ProtectedData.Unprotect(Convert.FromBase64String(_settings.FriendsKey), KeyEntropy, DataProtectionScope.CurrentUser);
+            byte[] pkcs8 = UnprotectKey(Convert.FromBase64String(_settings.FriendsKey), KeyEntropy);
             var key = ECDiffieHellman.Create();
             key.ImportPkcs8PrivateKey(pkcs8, out _);
             CryptographicOperations.ZeroMemory(pkcs8);
@@ -225,7 +233,7 @@ internal sealed class FriendsService
         if (Me is { } me) return me;
         me = FriendIdentity.Create(MyName, _settings.FriendsServer);
         byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
-        _settings.FriendsKey = Convert.ToBase64String(ProtectedData.Protect(pkcs8, KeyEntropy, DataProtectionScope.CurrentUser));
+        _settings.FriendsKey = Convert.ToBase64String(ProtectKey(pkcs8, KeyEntropy));
         CryptographicOperations.ZeroMemory(pkcs8);
         _settings.FriendsTopic = me.Topic;
         // Catch up from now on: a friend may write while Holm isn't running.
@@ -238,7 +246,7 @@ internal sealed class FriendsService
     }
 
     /// <summary>The name in our profile, or the Windows account's.</summary>
-    public string MyName => FriendProfile.CleanText(_settings.ProfileName, FriendProfile.MaxName) ?? Native.DisplayName();
+    public string MyName => FriendProfile.CleanText(_settings.ProfileName, FriendProfile.MaxName) ?? AccountName();
 
     /// <summary>Our profile as friends get it.</summary>
     public FriendProfile MyProfile()
@@ -285,7 +293,7 @@ internal sealed class FriendsService
                 bool sent = false;
                 try { await FriendInbox.PostAsync(friend, text, CancellationToken.None); sent = true; }
                 catch (IOException ex) { Diag.Log($"Friends: couldn't send the profile to {friend.Name}: {ex.Message}"); }
-                await _ui.InvokeAsync(() =>
+                await _ui(() =>
                 {
                     if (_profilesOut.TryGetValue(friend.Key, out var v) && v == version) _profilesOut.Remove(friend.Key);
                     if (!sent || Find(friend.Key) is not { } current) return;
@@ -535,8 +543,8 @@ internal sealed class FriendsService
         _follow = cts;
         long? since = _settings.FriendsSince;
         _ = Task.Run(() => FriendInbox.FollowAsync(me, since,
-            (id, age, text) => _ui.InvokeAsync(() => { if (_follow == cts) Handle(me, id, age, text); }).Task,
-            time => _ui.InvokeAsync(() => { if (_follow == cts) { _settings.FriendsSince = time; _settings.Save(); } }),
+            (id, age, text) => _ui(() => { if (_follow == cts) Handle(me, id, age, text); }),
+            time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsSince = time; _settings.Save(); } }),
             Diag.Log, cts.Token));
         SyncProfiles();
     }
