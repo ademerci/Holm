@@ -1,0 +1,398 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Media;
+
+namespace Holm.App;
+
+/// <summary>One switch in the settings: its words, an icon, and how to read and apply it.</summary>
+sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default);
+
+/// <summary>A page of switches.</summary>
+sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
+
+/// <summary>
+/// The Holm window's settings, as in the WPF app (WinNotch/SettingsWindow.cs): a sidebar with one page per group,
+/// each a card of switches. Flipping a switch stages it; Apply sets them, Reset to defaults stages the defaults, and
+/// closing with changes asks first. Dark and rounded on every system; the window draws its own frame.
+/// </summary>
+sealed class SettingsWindow : Window
+{
+    static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
+    static readonly IBrush Panel = B(0xFA1E1E20), Sidebar = B(0xFF171719), Edge = B(0x2EFFFFFF), Card = B(0x14FFFFFF),
+        Hover = B(0x10FFFFFF), Selected = B(0x26FFFFFF), Line = B(0x14FFFFFF), Dim = B(0x99FFFFFF), Accent = B(0xFF0A84FF);
+
+    readonly List<(SettingsSwitch Setting, ToggleSwitch Toggle)> _rows = new();
+    readonly Dictionary<string, (Border Item, TextBlock Glyph)> _navItems = new();
+    readonly Dictionary<string, Control> _pages = new();
+    readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
+    readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
+    readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0) };
+    readonly Border _pageHost = new();
+    readonly Button _apply;
+    readonly Border _surface, _dialog;
+    readonly Func<bool> _animations;
+    bool _allowClose;
+
+    public string Page { get; private set; } = "";
+
+    bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn);
+
+    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations)
+    {
+        _animations = animations;
+        Title = "Holm";
+        WindowDecorations = WindowDecorations.None;
+        TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+        Background = Brushes.Transparent;
+        CanResize = false;
+        Width = 980;
+        Height = 740;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        FontFamily = Fonts.Text;
+        FontSize = 13;
+        Foreground = Brushes.White;
+        Fonts.ApplyRendering(this);
+
+        // ── sidebar ──
+        var nav = new StackPanel();
+        var sidebar = new DockPanel();
+        var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
+        brand.Children.Add(new Border
+        {
+            Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Brushes.Black,
+            BorderBrush = Edge, BorderThickness = new Thickness(1),
+            Child = new Border { Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Brushes.White, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) },
+        });
+        var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeight.SemiBold });
+        brandText.Children.Add(new TextBlock { Text = "Version " + version, FontSize = 11, Foreground = Dim });
+        brand.Children.Add(brandText);
+        brand.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
+        DockPanel.SetDock(brand, Dock.Top);
+        sidebar.Children.Add(brand);
+        sidebar.Children.Add(Scroller(nav));
+
+        nav.Children.Add(Caption("Settings"));
+        foreach (var group in groups)
+        {
+            _titles[group.Key] = (group.Title, group.Subtitle);
+            nav.Children.Add(NavItem(group.Key, group.Glyph, group.Title));
+            _pages[group.Key] = GroupPage(group);
+        }
+        var sideBorder = new Border
+        {
+            Background = Sidebar, CornerRadius = new CornerRadius(14, 0, 0, 14), Padding = new Thickness(14, 16, 10, 16), Child = sidebar,
+        };
+
+        // ── content ──
+        var content = new DockPanel { Margin = new Thickness(28, 18, 22, 20) };
+        var header = new Grid { Background = Brushes.Transparent, Margin = new Thickness(0, 0, 0, 16), ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        header.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
+        var titles = new StackPanel();
+        titles.Children.Add(_pageTitle);
+        titles.Children.Add(_pageSubtitle);
+        header.Children.Add(titles);
+        var close = new Border
+        {
+            Width = 30, Height = 30, CornerRadius = new CornerRadius(15), Background = Card, Cursor = new Cursor(StandardCursorType.Hand),
+            VerticalAlignment = VerticalAlignment.Top, Child = Glyph("", 11),
+        };
+        ToolTip.SetTip(close, "Close (Esc)");
+        close.PointerEntered += (_, _) => close.Background = Edge;
+        close.PointerExited += (_, _) => close.Background = Card;
+        close.PointerPressed += (_, e) => e.Handled = true; // not the start of a drag
+        close.PointerReleased += (_, _) => Close();
+        Grid.SetColumn(close, 1);
+        header.Children.Add(close);
+        DockPanel.SetDock(header, Dock.Top);
+        content.Children.Add(header);
+
+        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
+        var reset = Action("Reset to defaults");
+        reset.Margin = new Thickness(0, 0, 10, 0);
+        _apply = Action("Apply", primary: true);
+        _apply.Padding = new Thickness(20, 6, 20, 6);
+        reset.Click += (_, _) => ShowDialog("Reset settings?", "Restore the switches to their defaults? Click Apply afterwards to save them.",
+            ("Cancel", () => { }), ("Reset to defaults", ResetDefaults));
+        _apply.Click += (_, _) => ApplyChanges();
+        footer.Children.Add(reset);
+        footer.Children.Add(_apply);
+        DockPanel.SetDock(footer, Dock.Bottom);
+        content.Children.Add(footer);
+        content.Children.Add(_pageHost);
+
+        var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("232,*") };
+        columns.Children.Add(sideBorder);
+        Grid.SetColumn(content, 1);
+        columns.Children.Add(content);
+
+        _surface = new Border
+        {
+            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
+            Margin = new Thickness(16), Child = columns,
+            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
+        };
+        _dialog = new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)), CornerRadius = new CornerRadius(14), Margin = new Thickness(16),
+            IsVisible = false,
+        };
+        var layers = new Grid();
+        layers.Children.Add(_surface);
+        layers.Children.Add(_dialog);
+        Content = layers;
+
+        Navigate(groups[0].Key);
+        RefreshApplyState();
+        KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Escape) return;
+            e.Handled = true;
+            if (_dialog.IsVisible) HideDialog(); else Close();
+        };
+        Activated += (_, _) => { if (!HasChanges && !_dialog.IsVisible) Refresh(); };
+        Closing += (_, e) =>
+        {
+            if (_allowClose || !HasChanges && !_dialog.IsVisible) return;
+            e.Cancel = true;
+            if (_dialog.IsVisible) return;
+            ShowDialog("Unapplied changes", "Your changes have not been applied. Apply them before closing, or discard them?",
+                ("Keep editing", () => { }),
+                ("Discard", () => { _allowClose = true; Close(); }),
+                ("Apply and close", () => { ApplyChanges(); if (!HasChanges) Close(); }));
+        };
+    }
+
+    public void Navigate(string key)
+    {
+        if (!_pages.TryGetValue(key, out var page)) return;
+        Page = key;
+        _pageHost.Child = page;
+        (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
+        foreach (var (k, item) in _navItems)
+        {
+            bool on = k == key;
+            item.Item.Background = on ? Selected : Brushes.Transparent;
+            item.Glyph.Foreground = on ? Accent : Dim;
+        }
+    }
+
+    /// <summary>Shows each switch as the setting stands now.</summary>
+    public void Refresh()
+    {
+        foreach (var (setting, toggle) in _rows) toggle.Set(setting.Get(), animate: false);
+        RefreshApplyState();
+    }
+
+    void RefreshApplyState()
+    {
+        _apply.IsEnabled = HasChanges;
+        _apply.Background = HasChanges ? Accent : Card;
+    }
+
+    Border NavItem(string key, string glyph, string title)
+    {
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*") };
+        var icon = Glyph(glyph, 15, Dim);
+        icon.HorizontalAlignment = HorizontalAlignment.Left;
+        grid.Children.Add(icon);
+        var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, FontSize = 13.5 };
+        Grid.SetColumn(label, 1);
+        grid.Children.Add(label);
+        var item = new Border
+        {
+            CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
+            Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = grid,
+        };
+        item.PointerEntered += (_, _) => { if (Page != key) item.Background = Hover; };
+        item.PointerExited += (_, _) => { if (Page != key) item.Background = Brushes.Transparent; };
+        item.PointerReleased += (_, _) => Navigate(key);
+        _navItems[key] = (item, icon);
+        return item;
+    }
+
+    Control GroupPage(SettingsGroup group)
+    {
+        var rows = new StackPanel();
+        for (int i = 0; i < group.Switches.Count; i++)
+        {
+            if (i > 0) rows.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
+            rows.Children.Add(Row(group.Switches[i], group.Color, first: i == 0, last: i == group.Switches.Count - 1));
+        }
+        var card = new Border { Background = Card, CornerRadius = new CornerRadius(12), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+        return Scroller(card);
+    }
+
+    Control Row(SettingsSwitch setting, Color color, bool first, bool last)
+    {
+        var toggle = new ToggleSwitch { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
+        toggle.Set(setting.Get(), animate: false);
+        _rows.Add((setting, toggle));
+
+        var row = new Grid { Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), MinHeight = 56 };
+        var hover = new Border { CornerRadius = new CornerRadius(first ? 12 : 0, first ? 12 : 0, last ? 12 : 0, last ? 12 : 0) };
+        row.Children.Add(hover);
+        var content = new Grid { Margin = new Thickness(14, 10, 16, 10), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var tile = new Border
+        {
+            Width = 30, Height = 30, CornerRadius = new CornerRadius(30 * 0.27), Background = new SolidColorBrush(color).ToImmutable(),
+            Child = Glyph(setting.Glyph, 30 * 0.47), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
+        };
+        content.Children.Add(tile);
+        var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        words.Children.Add(new TextBlock { Text = setting.Header, FontSize = 14, TextWrapping = TextWrapping.Wrap });
+        if (setting.Help != null)
+            words.Children.Add(new TextBlock { Text = setting.Help, Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        Grid.SetColumn(words, 1);
+        content.Children.Add(words);
+        Grid.SetColumn(toggle, 2);
+        content.Children.Add(toggle);
+        row.Children.Add(content);
+
+        row.PointerEntered += (_, _) => hover.Background = Hover;
+        row.PointerExited += (_, _) => hover.Background = null;
+        row.PointerReleased += (_, _) => { toggle.Set(!toggle.IsOn, _animations()); RefreshApplyState(); };
+        return row;
+    }
+
+    void ApplyChanges()
+    {
+        foreach (var (setting, toggle) in _rows)
+        {
+            if (setting.Get() == toggle.IsOn) continue;
+            try { setting.Set(toggle.IsOn); }
+            catch (Exception ex) { WinNotch.Diag.Error(ex); }
+        }
+        Refresh();
+    }
+
+    void ResetDefaults()
+    {
+        foreach (var (setting, toggle) in _rows) toggle.Set(setting.Default, animate: false);
+        RefreshApplyState();
+    }
+
+    /// <summary>A question over the window; each choice closes it and runs.</summary>
+    void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
+    {
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeight.SemiBold });
+        content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Dim, Margin = new Thickness(0, 10, 0, 20) });
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        foreach (var (label, run) in choices)
+        {
+            var button = Action(label);
+            button.Padding = new Thickness(12, 6, 12, 6);
+            button.Margin = new Thickness(6, 0, 0, 0);
+            button.Click += (_, _) => { HideDialog(); run(); };
+            actions.Children.Add(button);
+        }
+        content.Children.Add(actions);
+        _dialog.Child = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(32, 32, 34)), BorderBrush = Edge, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12), Padding = new Thickness(22), Width = 460,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 24, Color = Color.FromArgb(0x73, 0, 0, 0) }), Child = content,
+        };
+        _surface.Effect = new BlurEffect { Radius = 5 };
+        _surface.IsEnabled = false;
+        _dialog.IsVisible = true;
+    }
+
+    void HideDialog()
+    {
+        _dialog.IsVisible = false;
+        _dialog.Child = null;
+        _surface.Effect = null;
+        _surface.IsEnabled = true;
+    }
+
+    static TextBlock Glyph(string glyph, double size, IBrush? foreground = null) => new()
+    {
+        Text = glyph, FontFamily = Fonts.Icons, FontSize = size, Foreground = foreground ?? Brushes.White,
+        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    static TextBlock Caption(string title) => new()
+    {
+        Text = title.ToUpperInvariant(), Foreground = Dim, FontSize = 11, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 0, 0, 6),
+    };
+
+    static ScrollViewer Scroller(Control content) => new()
+    {
+        Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        Padding = new Thickness(0, 0, 6, 0),
+    };
+
+    /// <summary>The WPF app's action button: a soft rounded pill, blue when it is the one that matters.</summary>
+    static Button Action(string label, bool primary = false)
+    {
+        var button = new Button
+        {
+            Content = label, Padding = new Thickness(14, 6, 14, 6), Foreground = Brushes.White, FontSize = 12, FontWeight = FontWeight.SemiBold,
+            MinHeight = 32, CornerRadius = new CornerRadius(7), BorderThickness = new Thickness(1),
+            Background = primary ? Accent : Card, BorderBrush = primary ? Brushes.Transparent : B(0x24FFFFFF),
+            Cursor = new Cursor(StandardCursorType.Hand), VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        // The theme repaints a button under the mouse; ours only dims, as in the WPF app.
+        foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" })
+        {
+            button.Resources["ButtonBackground" + state] = button.Background;
+            button.Resources["ButtonForeground" + state] = Brushes.White;
+            button.Resources["ButtonBorderBrush" + state] = button.BorderBrush;
+        }
+        button.PointerEntered += (_, _) => button.Opacity = 0.82;
+        button.PointerExited += (_, _) => button.Opacity = 1;
+        button.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsEnabledProperty) button.Opacity = button.IsEnabled ? 1 : 0.4;
+            if (e.Property == BackgroundProperty)
+                foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) button.Resources["ButtonBackground" + state] = button.Background;
+        };
+        return button;
+    }
+}
+
+/// <summary>An on/off switch: a pill that turns green with the knob sliding to the right (the WPF app's ToggleSwitch).</summary>
+sealed class ToggleSwitch : Control
+{
+    public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ToggleSwitch, double>(nameof(Position));
+
+    static readonly Color Off = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF), On = Color.FromRgb(0x30, 0xD1, 0x58);
+
+    static ToggleSwitch() => AffectsRender<ToggleSwitch>(PositionProperty);
+
+    double Position { get => GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
+
+    public bool IsOn { get; private set; }
+
+    public void Set(bool on, bool animate)
+    {
+        IsOn = on;
+        Transitions = animate
+            ? new Transitions { new DoubleTransition { Property = PositionProperty, Duration = TimeSpan.FromMilliseconds(240), Easing = new BackEaseOut() } }
+            : null;
+        Position = on ? 1 : 0;
+    }
+
+    protected override Size MeasureOverride(Size availableSize) => new(40, 24);
+
+    public override void Render(DrawingContext dc)
+    {
+        double t = Math.Clamp(Position, 0, 1);
+        var track = new SolidColorBrush(Color.FromArgb(
+            (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
+            (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
+        dc.DrawRectangle(track, null, new RoundedRect(new Rect(0, 0, 40, 24), 12));
+        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
+    }
+}

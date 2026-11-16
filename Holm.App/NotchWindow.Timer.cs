@@ -64,26 +64,31 @@ public sealed partial class NotchWindow
         _timerRow.Children.Add(buttons);
     }
 
-    /// <summary>The right-click menu of the notch. So far: the timer and Quit.</summary>
+    /// <summary>
+    /// The right-click menu of the notch, as in the WPF app: what you use (the timer), Settings… with the switches,
+    /// Customize with the settings that need a choice, and Quit.
+    /// </summary>
     void BuildContextMenu()
     {
         var quit = new MenuItem { Header = "Quit" };
         quit.Click += (_, _) => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
-        // The same words on every system: the switch does the same thing everywhere.
-        var autostart = new MenuItem { Header = "Start at sign-in", ToggleType = MenuItemToggleType.CheckBox };
-        autostart.Click += (_, _) => { _autostart.Set(!_autostart.IsEnabled); autostart.IsChecked = _autostart.IsEnabled; };
+        var settings = new MenuItem { Header = "Settings…" };
+        settings.Click += (_, _) => OpenSettings();
+        var bounceLevel = new MenuItem { Header = "Bounce" };
+        var customize = new MenuItem { Header = "Customize" };
+        customize.Items.Add(bounceLevel);
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
         menu.Items.Add(new Separator());
-        menu.Items.Add(autostart);
+        menu.Items.Add(settings);
+        menu.Items.Add(customize);
         menu.Items.Add(new Separator());
         menu.Items.Add(quit);
         menu.Opening += (_, _) =>
         {
             _menuOpen = true;
             FillTimerMenu();
-            autostart.IsChecked = _autostart.IsEnabled;
-            autostart.IsEnabled = _autostart.CanChange;
+            FillBounceMenu(bounceLevel);
         };
         // The notch stays as it is while its menu is open; once it has closed, it closes too if the mouse has gone.
         menu.Closed += (_, _) =>

@@ -14,6 +14,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Menus and tooltips open in windows of their own: they draw text the same way as the notch.
+        Avalonia.Controls.Control.LoadedEvent.AddClassHandler<Avalonia.Controls.Primitives.PopupRoot>(
+            (popup, _) => Fonts.ApplyRendering(popup), handledEventsToo: true);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new NotchWindow(CreatePlatform());
