@@ -1,898 +1,478 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
-namespace WinNotch
+namespace WinNotch;
+
+// How much of their limits the AI coding agents on this PC have used, and what they are doing right now, read from the
+// logs they keep themselves: Claude Code under ~/.claude/projects, Codex under ~/.codex/sessions. Read only: nothing
+// is written, and nothing here ever leaves the PC. A reader remembers how far it got in each log, so a refresh only
+// reads what was appended since the last one.
+
+public enum AiTool { ClaudeCode, Codex }
+
+/// <summary>An agent session at work: the folder it works in and its latest step.</summary>
+public sealed record AiSession(AiTool Tool, string Project, string? Step, DateTime LastActive);
+
+/// <summary>
+/// One tool's usage. <see cref="Percent"/> is 0–100 or null when unknown. Codex logs its own limits, so its percent is
+/// the real one (<see cref="IsLimit"/>); Claude Code logs only tokens, so its percent compares the current 5-hour
+/// window with the busiest one of the past week.
+/// </summary>
+public sealed record AiUsageSnapshot(AiTool Tool, double? Percent, string Label, DateTime? ResetsAt, long TokensInWindow, IReadOnlyList<AiSession> Active)
 {
-    /// <summary>
-    /// Represents the supported AI coding agent tools.
-    /// </summary>
-    public enum AiTool
+    public bool IsLimit { get; init; }
+    /// <summary>Codex: how much of the weekly limit is used.</summary>
+    public double? WeekPercent { get; init; }
+    /// <summary>Claude Code: the tokens of the busiest 5-hour window in the past week.</summary>
+    public long BusiestTokens { get; init; }
+}
+
+public static class AiUsage
+{
+    /// <summary>A session counts as working while its turn hasn't ended and its log changed this recently.</summary>
+    public static TimeSpan ActiveWithin = TimeSpan.FromMinutes(5);
+
+    /// <summary>Null when the folder doesn't exist or holds no logs from the last 7 days.</summary>
+    public static AiUsageSnapshot? ReadClaudeCode(string claudeDir, DateTime nowUtc) => new AiUsageReader(AiTool.ClaudeCode, claudeDir).Read(nowUtc);
+
+    /// <summary>Null when the folder doesn't exist or holds no logs from the last 7 days.</summary>
+    public static AiUsageSnapshot? ReadCodex(string codexDir, DateTime nowUtc) => new AiUsageReader(AiTool.Codex, codexDir).Read(nowUtc);
+
+    // ───────────── for tests: the same parsing, fed with lines ─────────────
+
+    internal static (long Tokens, DateTime? WindowStart, long Busiest) ClaudeWindows(IEnumerable<string> lines, DateTime nowUtc)
     {
-        ClaudeCode,
-        Codex
+        var log = Parsed(AiTool.ClaudeCode, lines);
+        log.Usage.Sort((a, b) => a.Ticks.CompareTo(b.Ticks));
+        return AiUsageReader.Windows(log.Usage, nowUtc);
+    }
+
+    internal static string? ClaudeStep(IEnumerable<string> lines) => Parsed(AiTool.ClaudeCode, lines).ShownStep;
+
+    internal static (double? Primary, double? Secondary, DateTime? ResetsAt) CodexLimits(IEnumerable<string> lines)
+    {
+        var log = Parsed(AiTool.Codex, lines);
+        return (log.Primary, log.Secondary, log.ResetsAt);
+    }
+
+    internal static string? CodexStep(IEnumerable<string> lines) => Parsed(AiTool.Codex, lines).ToolStep;
+
+    static AiLog Parsed(AiTool tool, IEnumerable<string> lines)
+    {
+        var log = new AiLog();
+        foreach (string line in lines)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(line);
+            if (tool == AiTool.ClaudeCode) AiUsageReader.ParseClaude(log, bytes);
+            else AiUsageReader.ParseCodex(log, bytes);
+        }
+        return log;
+    }
+}
+
+/// <summary>What a reader keeps of one log file.</summary>
+internal sealed class AiLog
+{
+    /// <summary>How far the file has been read: the byte after the last complete line.</summary>
+    public long Offset;
+    public DateTime LastWrite;
+    public bool Subagent;
+    public string? Cwd, ToolStep;
+    public bool LastWasUser, Ended;
+
+    // Claude Code: one entry per assistant message.
+    public readonly List<(long Ticks, long Tokens)> Usage = new();
+    public readonly Dictionary<string, int> Ids = new();
+
+    // Codex: the limits it last reported, and the session's running total.
+    public double? Primary, Secondary;
+    public DateTime? LimitsAt, ResetsAt, WeekResetsAt;
+    public long TotalTokens;
+
+    /// <summary>The latest tool call, else whether the agent is writing or thinking.</summary>
+    public string ShownStep => ToolStep ?? (LastWasUser ? "Thinking" : "Writing");
+}
+
+/// <summary>Reads one tool's logs, a little more on every call.</summary>
+internal sealed class AiUsageReader
+{
+    /// <summary>A log seen for the first time is read from this far before its end: enough for days of work.</summary>
+    internal static long FirstRead = 8 * 1024 * 1024;
+    static readonly TimeSpan Kept = TimeSpan.FromDays(7), Window = TimeSpan.FromHours(5);
+    const long QuietBusiest = 2_000_000; // a first day's few tokens shouldn't read as "100 %"
+
+    readonly AiTool _tool;
+    readonly string _dir;
+    readonly Dictionary<string, AiLog> _logs = new(StringComparer.OrdinalIgnoreCase);
+
+    public AiUsageReader(AiTool tool, string dir)
+    {
+        _tool = tool;
+        _dir = dir ?? "";
+    }
+
+    delegate void LineHandler(ReadOnlySpan<byte> line);
+
+    public AiUsageSnapshot? Read(DateTime nowUtc)
+    {
+        string root = Path.Combine(_dir, _tool == AiTool.ClaudeCode ? "projects" : "sessions");
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (_dir.Length == 0 || !Directory.Exists(root)) { _logs.Clear(); return null; }
+            var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+            string pattern = _tool == AiTool.ClaudeCode ? "*.jsonl" : "rollout-*.jsonl";
+            foreach (var file in new DirectoryInfo(root).EnumerateFiles(pattern, options))
+            {
+                if (nowUtc - file.LastWriteTimeUtc > Kept) continue;
+                seen.Add(file.FullName);
+                if (!_logs.TryGetValue(file.FullName, out var log))
+                    _logs[file.FullName] = log = new AiLog { Subagent = file.FullName.Contains(@"\subagents\", StringComparison.OrdinalIgnoreCase) };
+                log.LastWrite = file.LastWriteTimeUtc;
+                Update(file, log);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException) { }
+
+        foreach (string gone in _logs.Keys.Where(path => !seen.Contains(path)).ToList()) _logs.Remove(gone);
+        if (_logs.Count == 0) return null;
+        return _tool == AiTool.ClaudeCode ? Claude(nowUtc) : Codex(nowUtc);
+    }
+
+    // ───────────── reading ─────────────
+
+    void Update(FileInfo file, AiLog log)
+    {
+        long length = file.Length;
+        if (length == log.Offset) return;
+        try
+        {
+            using var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.SequentialScan);
+            length = stream.Length;
+            if (length < log.Offset) Forget(log); // replaced by a shorter file: start over
+            long start = log.Offset;
+            bool midLine = false;
+            if (start == 0 && length > FirstRead)
+            {
+                start = length - FirstRead;
+                midLine = true;
+                // A Codex log names its folder only in its first line.
+                if (_tool == AiTool.Codex) ReadLines(stream, 0, Math.Min(length, 64 * 1024), false, line => ParseCodex(log, line));
+            }
+            LineHandler parse = _tool == AiTool.ClaudeCode ? line => ParseClaude(log, line) : line => ParseCodex(log, line);
+            log.Offset = ReadLines(stream, start, length, midLine, parse);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // locked right now: next time
+    }
+
+    static void Forget(AiLog log)
+    {
+        log.Offset = 0;
+        log.Usage.Clear();
+        log.Ids.Clear();
+        log.ToolStep = null;
+        log.Primary = log.Secondary = null;
+        log.LimitsAt = log.ResetsAt = log.WeekResetsAt = null;
+        log.TotalTokens = 0;
     }
 
     /// <summary>
-    /// Represents an active session of an AI coding agent.
+    /// Hands every complete line between <paramref name="start"/> and <paramref name="end"/> to the handler and returns
+    /// the position after the last one: a line still being written is read next time.
     /// </summary>
-    public sealed record AiSession(AiTool Tool, string Project, string? Step, DateTime LastActive);
-
-    /// <summary>
-    /// Represents the current usage and active sessions snapshot for an AI tool.
-    /// </summary>
-    public sealed record AiUsageSnapshot(AiTool Tool, double? Percent, string Label, DateTime? ResetsAt, long TokensInWindow, IReadOnlyList<AiSession> Active);
-
-    /// <summary>
-    /// Provides logic to read local logs of AI coding agents and compute usage and active sessions.
-    /// </summary>
-    public static class AiUsage
+    static long ReadLines(FileStream stream, long start, long end, bool skipFirst, LineHandler handle)
     {
-        /// <summary>
-        /// A session counts as working if its log changed within this duration.
-        /// </summary>
-        public static TimeSpan ActiveWithin = TimeSpan.FromMinutes(2);
-
-        /// <summary>
-        /// Reads Claude Code usage and active sessions from the specified directory.
-        /// </summary>
-        public static AiUsageSnapshot? ReadClaudeCode(string claudeDir, DateTime nowUtc)
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
+        MemoryStream? carry = null; // the start of a line that runs across buffers
+        long consumed = start, position = start;
+        try
         {
-            if (string.IsNullOrWhiteSpace(claudeDir))
+            stream.Seek(start, SeekOrigin.Begin);
+            while (position < end)
             {
-                return null;
-            }
-
-            string projectsDir = Path.Combine(claudeDir, "projects");
-            if (!Directory.Exists(projectsDir))
-            {
-                return null;
-            }
-
-            DateTime threshold = nowUtc.AddDays(-7);
-            List<string> recentFiles = new List<string>();
-
-            try
-            {
-                foreach (string dir in Directory.EnumerateDirectories(projectsDir))
+                int read = stream.Read(buffer, 0, (int)Math.Min(buffer.Length, end - position));
+                if (read <= 0) break;
+                int from = 0;
+                while (from < read)
                 {
-                    foreach (string file in Directory.EnumerateFiles(dir, "*.jsonl"))
+                    int newline = Array.IndexOf(buffer, (byte)'\n', from, read - from);
+                    if (newline < 0) break;
+                    if (skipFirst) skipFirst = false;
+                    else if (carry is { Length: > 0 })
                     {
-                        try
-                        {
-                            FileInfo fi = new FileInfo(file);
-                            if (fi.LastWriteTimeUtc >= threshold)
-                            {
-                                recentFiles.Add(file);
-                            }
-                        }
-                        catch
-                        {
-                            // Skip unreadable files/info
-                        }
+                        carry.Write(buffer, from, newline - from);
+                        handle(Trimmed(carry.GetBuffer().AsSpan(0, (int)carry.Length)));
                     }
+                    else handle(Trimmed(buffer.AsSpan(from, newline - from)));
+                    carry?.SetLength(0);
+                    from = newline + 1;
+                    consumed = position + from;
                 }
-            }
-            catch
-            {
-                return null;
-            }
-
-            if (recentFiles.Count == 0)
-            {
-                return null;
-            }
-
-            List<ParsedClaudeLine> allLines = new List<ParsedClaudeLine>();
-            List<AiSession> activeSessions = new List<AiSession>();
-
-            foreach (string file in recentFiles)
-            {
-                FileInfo fi = new FileInfo(file);
-                bool isActive = (nowUtc - fi.LastWriteTimeUtc) <= ActiveWithin;
-                List<string> fileLines = ReadLastBytes(file);
-                List<ParsedClaudeLine> parsedLines = new List<ParsedClaudeLine>();
-                string? latestCwd = null;
-
-                foreach (string line in fileLines)
-                {
-                    ParsedClaudeLine? parsed = ParseClaudeLine(line);
-                    if (parsed != null)
-                    {
-                        parsedLines.Add(parsed.Value);
-                        if (!string.IsNullOrEmpty(parsed.Value.Cwd))
-                        {
-                            latestCwd = parsed.Value.Cwd;
-                        }
-                    }
-                }
-
-                if (parsedLines.Count > 0)
-                {
-                    allLines.AddRange(parsedLines);
-
-                    if (isActive)
-                    {
-                        string project = GetProjectName(latestCwd);
-                        string? step = ClaudeStep(parsedLines.Select(p => p.RawLine));
-                        activeSessions.Add(new AiSession(AiTool.ClaudeCode, project, step, fi.LastWriteTimeUtc));
-                    }
-                }
-            }
-
-            if (allLines.Count == 0)
-            {
-                return null;
-            }
-
-            var windowResult = ClaudeWindows(allLines.Select(p => p.RawLine), nowUtc);
-            double? percent = null;
-            string label = "quiet";
-
-            if (windowResult.Busiest > 0 || windowResult.Tokens > 0)
-            {
-                long denom = Math.Max(2000000, windowResult.Busiest);
-                percent = Math.Round(((double)windowResult.Tokens / denom) * 100.0, 1);
-                if (windowResult.Tokens == 0)
-                {
-                    label = "quiet";
-                    percent = 0;
-                }
-                else
-                {
-                    label = string.Format(CultureInfo.InvariantCulture, "about {0:0}% of your busiest 5 hours", percent.Value);
-                }
-            }
-
-            DateTime? resetsAt = null;
-            if (windowResult.WindowStart.HasValue)
-            {
-                resetsAt = windowResult.WindowStart.Value.AddHours(5);
-            }
-
-            return new AiUsageSnapshot(
-                AiTool.ClaudeCode,
-                percent,
-                label,
-                resetsAt,
-                windowResult.Tokens,
-                activeSessions
-            );
-        }
-
-        /// <summary>
-        /// Reads Codex usage and active sessions from the specified directory.
-        /// </summary>
-        public static AiUsageSnapshot? ReadCodex(string codexDir, DateTime nowUtc)
-        {
-            if (string.IsNullOrWhiteSpace(codexDir))
-            {
-                return null;
-            }
-
-            string sessionsDir = Path.Combine(codexDir, "sessions");
-            if (!Directory.Exists(sessionsDir))
-            {
-                return null;
-            }
-
-            DateTime threshold = nowUtc.AddDays(-7);
-            List<string> recentFiles = new List<string>();
-
-            try
-            {
-                foreach (string file in Directory.EnumerateFiles(sessionsDir, "rollout-*.jsonl", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        FileInfo fi = new FileInfo(file);
-                        if (fi.LastWriteTimeUtc >= threshold)
-                        {
-                            recentFiles.Add(file);
-                        }
-                    }
-                    catch
-                    {
-                        // Skip unreadable files
-                    }
-                }
-            }
-            catch
-            {
-                return null;
-            }
-
-            if (recentFiles.Count == 0)
-            {
-                return null;
-            }
-
-            List<string> allTokenLines = new List<string>();
-            List<AiSession> activeSessions = new List<AiSession>();
-            long totalTokensInWindow = 0;
-            DateTime windowThreshold = nowUtc.AddHours(-5);
-
-            foreach (string file in recentFiles)
-            {
-                FileInfo fi = new FileInfo(file);
-                bool isActive = (nowUtc - fi.LastWriteTimeUtc) <= ActiveWithin;
-                List<string> fileLines = ReadLastBytes(file);
-                
-                string? latestCwd = null;
-                List<string> fileRawLines = new List<string>();
-                long? fileLastTokens = null;
-
-                foreach (string line in fileLines)
-                {
-                    fileRawLines.Add(line);
-                    try
-                    {
-                        using (JsonDocument doc = JsonDocument.Parse(line))
-                        {
-                            JsonElement root = doc.RootElement;
-                            if (root.TryGetProperty("type", out JsonElement typeElem))
-                            {
-                                string? type = typeElem.GetString();
-                                if (type == "session_meta" && root.TryGetProperty("payload", out JsonElement payload))
-                                {
-                                    if (payload.TryGetProperty("cwd", out JsonElement cwdElem))
-                                    {
-                                        latestCwd = cwdElem.GetString();
-                                    }
-                                }
-                                else if (type == "event_msg" && root.TryGetProperty("payload", out JsonElement ev))
-                                {
-                                    if (ev.TryGetProperty("type", out JsonElement pt) && pt.GetString() == "token_count")
-                                    {
-                                        allTokenLines.Add(line);
-                                        long tokens = ExtractTotalTokens(ev);
-                                        if (tokens > 0)
-                                        {
-                                            fileLastTokens = tokens;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Skip invalid JSON
-                    }
-                }
-
-                if (fileLastTokens.HasValue && fi.LastWriteTimeUtc >= windowThreshold)
-                {
-                    totalTokensInWindow += fileLastTokens.Value;
-                }
-
-                if (fileRawLines.Count > 0 && isActive)
-                {
-                    string project = GetProjectName(latestCwd);
-                    string? step = CodexStep(fileRawLines);
-                    activeSessions.Add(new AiSession(AiTool.Codex, project, step, fi.LastWriteTimeUtc));
-                }
-            }
-
-            var limits = CodexLimits(allTokenLines);
-            double? primary = limits.Primary;
-            double? secondary = limits.Secondary;
-            DateTime? resetsAt = limits.ResetsAt;
-
-            string label = "quiet";
-            if (primary.HasValue)
-            {
-                if (secondary.HasValue)
-                {
-                    label = string.Format(CultureInfo.InvariantCulture, "{0:0}% of your 5-hour limit · {1:0}% this week", primary.Value, secondary.Value);
-                }
-                else
-                {
-                    label = string.Format(CultureInfo.InvariantCulture, "{0:0}% of your 5-hour limit", primary.Value);
-                }
-            }
-
-            return new AiUsageSnapshot(
-                AiTool.Codex,
-                primary,
-                label,
-                resetsAt,
-                totalTokensInWindow,
-                activeSessions
-            );
-        }
-
-        internal static (long Tokens, DateTime? WindowStart, long Busiest) ClaudeWindows(IEnumerable<string> lines, DateTime nowUtc)
-        {
-            List<AssistantMessage> messages = new List<AssistantMessage>();
-
-            foreach (string line in lines)
-            {
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(line))
-                    {
-                        JsonElement root = doc.RootElement;
-                        if (root.TryGetProperty("type", out JsonElement typeElem) && typeElem.GetString() == "assistant")
-                        {
-                            if (root.TryGetProperty("timestamp", out JsonElement tsElem) && tsElem.TryGetDateTime(out DateTime ts))
-                            {
-                                string? messageId = null;
-                                if (root.TryGetProperty("message", out JsonElement msgObj))
-                                {
-                                    if (msgObj.TryGetProperty("id", out JsonElement idElem))
-                                    {
-                                        messageId = idElem.GetString();
-                                    }
-
-                                    long inputTokens = 0;
-                                    long cacheCreation = 0;
-                                    long outputTokens = 0;
-
-                                    if (msgObj.TryGetProperty("usage", out JsonElement usageObj))
-                                    {
-                                        if (usageObj.TryGetProperty("input_tokens", out JsonElement it))
-                                        {
-                                            inputTokens = it.GetInt64();
-                                        }
-                                        if (usageObj.TryGetProperty("cache_creation_input_tokens", out JsonElement cct))
-                                        {
-                                            cacheCreation = cct.GetInt64();
-                                        }
-                                        if (usageObj.TryGetProperty("output_tokens", out JsonElement ot))
-                                        {
-                                            outputTokens = ot.GetInt64();
-                                        }
-                                    }
-
-                                    long total = inputTokens + cacheCreation + outputTokens;
-                                    messages.Add(new AssistantMessage(messageId, ts, total));
-                                }
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Skip malformed
-                }
-            }
-
-            // Deduplicate by message.id when present
-            Dictionary<string, AssistantMessage> uniqueById = new Dictionary<string, AssistantMessage>();
-            List<AssistantMessage> orderedMessages = new List<AssistantMessage>();
-
-            foreach (var m in messages.OrderBy(m => m.Timestamp))
-            {
-                if (!string.IsNullOrEmpty(m.MessageId))
-                {
-                    uniqueById[m.MessageId] = m;
-                }
-                else
-                {
-                    orderedMessages.Add(m);
-                }
-            }
-
-            var allMsgs = uniqueById.Values.Concat(orderedMessages).OrderBy(m => m.Timestamp).ToList();
-
-            if (allMsgs.Count == 0)
-            {
-                return (0, null, 0);
-            }
-
-            List<WindowData> windows = new List<WindowData>();
-            DateTime windowStart = RoundDownToHour(allMsgs[0].Timestamp);
-            DateTime windowEnd = windowStart.AddHours(5);
-            long currentWindowTokens = 0;
-
-            foreach (var m in allMsgs)
-            {
-                if (m.Timestamp >= windowEnd)
-                {
-                    windows.Add(new WindowData(windowStart, currentWindowTokens));
-                    windowStart = RoundDownToHour(m.Timestamp);
-                    windowEnd = windowStart.AddHours(5);
-                    currentWindowTokens = 0;
-                }
-
-                currentWindowTokens += m.TotalTokens;
-            }
-
-            windows.Add(new WindowData(windowStart, currentWindowTokens));
-
-            long busiest = windows.Count > 0 ? windows.Max(w => w.Tokens) : 0;
-
-            // Find current window containing nowUtc
-            long tokensInCurrentWindow = 0;
-            DateTime? activeWindowStart = null;
-
-            foreach (var w in windows)
-            {
-                if (nowUtc >= w.Start && nowUtc < w.Start.AddHours(5))
-                {
-                    tokensInCurrentWindow = w.Tokens;
-                    activeWindowStart = w.Start;
-                }
-            }
-
-            return (tokensInCurrentWindow, activeWindowStart, busiest);
-        }
-
-        internal static string? ClaudeStep(IEnumerable<string> lines)
-        {
-            ParsedToolUse? latestToolUse = null;
-            string? latestAssistantText = null;
-            string? latestUserText = null;
-
-            foreach (string line in lines)
-            {
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(line))
-                    {
-                        JsonElement root = doc.RootElement;
-                        if (root.TryGetProperty("type", out JsonElement typeElem))
-                        {
-                            string? type = typeElem.GetString();
-                            if (type == "assistant")
-                            {
-                                if (root.TryGetProperty("message", out JsonElement msgObj))
-                                {
-                                    if (msgObj.TryGetProperty("content", out JsonElement contentElem) && contentElem.ValueKind == JsonValueKind.Array)
-                                    {
-                                        foreach (JsonElement content in contentElem.EnumerateArray())
-                                        {
-                                            if (content.TryGetProperty("type", out JsonElement ct) && ct.GetString() == "tool_use")
-                                            {
-                                                string? name = content.TryGetProperty("name", out JsonElement nameElem) ? nameElem.GetString() : null;
-                                                if (!string.IsNullOrEmpty(name))
-                                                {
-                                                    string? desc = null;
-                                                    if (content.TryGetProperty("input", out JsonElement inputObj))
-                                                    {
-                                                        if (inputObj.TryGetProperty("description", out JsonElement descElem))
-                                                        {
-                                                            desc = descElem.GetString();
-                                                        }
-                                                        else if (inputObj.TryGetProperty("file_path", out JsonElement fpElem))
-                                                        {
-                                                            string? fp = fpElem.GetString();
-                                                            if (!string.IsNullOrEmpty(fp))
-                                                            {
-                                                                desc = Path.GetFileName(fp);
-                                                            }
-                                                        }
-                                                        else if (inputObj.TryGetProperty("command", out JsonElement cmdElem))
-                                                        {
-                                                            string? cmd = cmdElem.GetString();
-                                                            if (!string.IsNullOrEmpty(cmd))
-                                                            {
-                                                                desc = cmd.Length > 40 ? cmd.Substring(0, 40) : cmd;
-                                                            }
-                                                        }
-                                                    }
-                                                    latestToolUse = new ParsedToolUse(name, desc);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    latestAssistantText = "Writing";
-                                }
-                            }
-                            else if (type == "user")
-                            {
-                                latestUserText = "Thinking";
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Skip
-                }
-            }
-
-            if (latestToolUse.HasValue)
-            {
-                var tu = latestToolUse.Value;
-                string stepText = string.IsNullOrEmpty(tu.Description) ? tu.Name : tu.Name + ": " + tu.Description;
-                if (stepText.Length > 60)
-                {
-                    stepText = stepText.Substring(0, 59) + "…";
-                }
-                return stepText;
-            }
-
-            return latestAssistantText ?? latestUserText;
-        }
-
-        internal static (double? Primary, double? Secondary, DateTime? ResetsAt) CodexLimits(IEnumerable<string> lines)
-        {
-            DateTime? newestTs = null;
-            double? primary = null;
-            double? secondary = null;
-            long? resetsInSeconds = null;
-
-            foreach (string line in lines)
-            {
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(line))
-                    {
-                        JsonElement root = doc.RootElement;
-                        DateTime? lineTs = null;
-                        if (root.TryGetProperty("timestamp", out JsonElement tsElem) && tsElem.TryGetDateTime(out DateTime ts))
-                        {
-                            lineTs = ts;
-                        }
-
-                        if (root.TryGetProperty("payload", out JsonElement payload))
-                        {
-                            JsonElement rateLimitsObj = default;
-                            bool hasRateLimits = false;
-
-                            if (payload.TryGetProperty("rate_limits", out rateLimitsObj))
-                            {
-                                hasRateLimits = true;
-                            }
-                            else if (payload.TryGetProperty("info", out JsonElement infoObj) && infoObj.TryGetProperty("rate_limits", out rateLimitsObj))
-                            {
-                                hasRateLimits = true;
-                            }
-
-                            if (hasRateLimits)
-                            {
-                                if (lineTs.HasValue && (!newestTs.HasValue || lineTs.Value > newestTs.Value))
-                                {
-                                    newestTs = lineTs.Value;
-                                    ParseRateLimits(rateLimitsObj, out primary, out secondary, out resetsInSeconds);
-                                }
-                                else if (!newestTs.HasValue)
-                                {
-                                    ParseRateLimits(rateLimitsObj, out primary, out secondary, out resetsInSeconds);
-                                }
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Skip
-                }
-            }
-
-            DateTime? resetsAt = null;
-            if (newestTs.HasValue && resetsInSeconds.HasValue)
-            {
-                resetsAt = newestTs.Value.AddSeconds(resetsInSeconds.Value);
-            }
-
-            return (primary, secondary, resetsAt);
-        }
-
-        internal static string? CodexStep(IEnumerable<string> lines)
-        {
-            ParsedCodexFunctionCall? latestCall = null;
-
-            foreach (string line in lines)
-            {
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(line))
-                    {
-                        JsonElement root = doc.RootElement;
-                        if (root.TryGetProperty("type", out JsonElement typeElem) && typeElem.GetString() == "response_item")
-                        {
-                            if (root.TryGetProperty("payload", out JsonElement payload))
-                            {
-                                if (payload.TryGetProperty("type", out JsonElement pt) && pt.GetString() == "function_call")
-                                {
-                                    string? name = payload.TryGetProperty("name", out JsonElement nameElem) ? nameElem.GetString() : null;
-                                    string? args = payload.TryGetProperty("arguments", out JsonElement argElem) ? argElem.GetString() : null;
-                                    if (!string.IsNullOrEmpty(name))
-                                    {
-                                        latestCall = new ParsedCodexFunctionCall(name, args);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Skip
-                }
-            }
-
-            if (latestCall.HasValue)
-            {
-                var call = latestCall.Value;
-                string commandPart = ExtractCommandFromArguments(call.Arguments);
-                string stepText = string.IsNullOrEmpty(commandPart) ? call.Name : call.Name + ": " + commandPart;
-                if (stepText.Length > 60)
-                {
-                    stepText = stepText.Substring(0, 59) + "…";
-                }
-                return stepText;
-            }
-
-            return "Working";
-        }
-
-        private static List<string> ReadLastBytes(string filePath)
-        {
-            List<string> lines = new List<string>();
-            try
-            {
-                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    long length = fs.Length;
-                    long bufferSize = 256 * 1024;
-                    long offset = length - bufferSize;
-                    if (offset < 0)
-                    {
-                        offset = 0;
-                    }
-
-                    fs.Seek(offset, SeekOrigin.Begin);
-
-                    using (StreamReader reader = new StreamReader(fs, System.Text.Encoding.UTF8))
-                    {
-                        string? text = reader.ReadToEnd();
-                        string[] rawLines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-
-                        bool skipFirst = offset > 0;
-                        bool skipped = false;
-
-                        foreach (string rawLine in rawLines)
-                        {
-                            if (skipFirst && !skipped)
-                            {
-                                skipped = true;
-                                continue;
-                            }
-                            if (!string.IsNullOrEmpty(rawLine))
-                            {
-                                lines.Add(rawLine);
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Return empty if unreadable
-            }
-            return lines;
-        }
-
-        private static ParsedClaudeLine? ParseClaudeLine(string line)
-        {
-            try
-            {
-                using (JsonDocument doc = JsonDocument.Parse(line))
-                {
-                    JsonElement root = doc.RootElement;
-                    string? cwd = null;
-                    if (root.TryGetProperty("cwd", out JsonElement cwdElem))
-                    {
-                        cwd = cwdElem.GetString();
-                    }
-                    return new ParsedClaudeLine(cwd, line);
-                }
-            }
-            catch
-            {
-                return null;
+                if (from < read && !skipFirst) (carry ??= new MemoryStream()).Write(buffer, from, read - from);
+                position += read;
             }
         }
+        finally { ArrayPool<byte>.Shared.Return(buffer); }
+        return consumed;
+    }
 
-        private static string GetProjectName(string? cwd)
+    static ReadOnlySpan<byte> Trimmed(ReadOnlySpan<byte> line) => line.Length > 0 && line[^1] == (byte)'\r' ? line[..^1] : line;
+
+    // ───────────── Claude Code ─────────────
+
+    /// <summary>
+    /// One line of a Claude Code log. Only the assistant's lines are parsed (they carry the tokens and the tool calls);
+    /// the user's, which hold whole files and tool results, are only noticed.
+    /// </summary>
+    internal static void ParseClaude(AiLog log, ReadOnlySpan<byte> line)
+    {
+        if (line.IndexOf("\"type\":\"assistant\""u8) < 0)
         {
-            if (string.IsNullOrEmpty(cwd))
-            {
-                return "Unknown";
-            }
-
-            try
-            {
-                string cleaned = cwd.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                int lastIdx = cleaned.LastIndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
-                if (lastIdx >= 0 && lastIdx < cleaned.Length - 1)
-                {
-                    return cleaned.Substring(lastIdx + 1);
-                }
-                return cleaned;
-            }
-            catch
-            {
-                return "Unknown";
-            }
+            if (line.IndexOf("\"type\":\"user\""u8) < 0) return;
+            log.LastWasUser = true; // a prompt or a tool's result: the agent goes on
+            log.Ended = false;
+            log.Cwd ??= QuickString(line, "\"cwd\":\""u8);
+            return;
         }
+        using var doc = Json(line);
+        if (doc == null) return;
+        var root = doc.RootElement;
+        if (Text(root, "type") != "assistant" || !root.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object) return;
 
-        private static DateTime RoundDownToHour(DateTime dt)
+        if (Text(root, "cwd") is { Length: > 0 } cwd) log.Cwd = cwd;
+        log.LastWasUser = false;
+        // A turn is over when the model stops for a reason other than calling a tool.
+        log.Ended = Text(message, "stop_reason") is { } stop && stop != "tool_use";
+
+        if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            foreach (var block in content.EnumerateArray())
+                if (Text(block, "type") == "tool_use" && Text(block, "name") is { Length: > 0 } name)
+                    log.ToolStep = ClaudeStepText(name, block.TryGetProperty("input", out var input) ? input : default);
+
+        if (!message.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object || Time(root, "timestamp") is not { } at) return;
+        // What was read from the cache again isn't new work.
+        long tokens = Number(usage, "input_tokens") + Number(usage, "cache_creation_input_tokens") + Number(usage, "output_tokens");
+        // One message is logged once per block, each time with its usage so far: the last one counts.
+        if (Text(message, "id") is { Length: > 0 } id)
         {
-            return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, 0, 0, dt.Kind);
+            if (log.Ids.TryGetValue(id, out int index) && index < log.Usage.Count) { log.Usage[index] = (log.Usage[index].Ticks, tokens); return; }
+            if (log.Ids.Count > 512) log.Ids.Clear(); // a message's lines follow each other closely
+            log.Ids[id] = log.Usage.Count;
         }
+        log.Usage.Add((at.Ticks, tokens));
+    }
 
-        private static long ExtractTotalTokens(JsonElement payload)
+    static string ClaudeStepText(string name, JsonElement input)
+    {
+        if (name.StartsWith("mcp__", StringComparison.Ordinal) && name.LastIndexOf("__", StringComparison.Ordinal) is > 4 and var cut) name = name[(cut + 2)..];
+        string? detail = null;
+        if (input.ValueKind == JsonValueKind.Object)
+            detail = Text(input, "description") is { Length: > 0 } description ? description
+                   : Text(input, "file_path") is { Length: > 0 } file ? Path.GetFileName(file)
+                   : Text(input, "command") is { Length: > 0 } command ? Cut(OneLine(command), 40)
+                   : Text(input, "pattern") is { Length: > 0 } pattern ? Cut(OneLine(pattern), 40)
+                   : null;
+        return Cut(detail == null ? name : $"{name}: {OneLine(detail)}", 60);
+    }
+
+    AiUsageSnapshot Claude(DateTime nowUtc)
+    {
+        long oldest = (nowUtc - Kept).Ticks;
+        var all = new List<(long Ticks, long Tokens)>();
+        foreach (var log in _logs.Values)
         {
-            try
+            if (log.Usage.Count > 0 && log.Usage[0].Ticks < oldest - TimeSpan.TicksPerDay)
             {
-                JsonElement usageObj = default;
-                bool found = false;
-
-                if (payload.TryGetProperty("info", out JsonElement info) && info.TryGetProperty("total_token_usage", out usageObj))
-                {
-                    found = true;
-                }
-                else if (payload.TryGetProperty("total_token_usage", out usageObj))
-                {
-                    found = true;
-                }
-
-                if (found && usageObj.TryGetProperty("total_tokens", out JsonElement tt))
-                {
-                    return tt.GetInt64();
-                }
+                log.Usage.RemoveAll(u => u.Ticks < oldest);
+                log.Ids.Clear();
             }
-            catch
-            {
-                // Ignore
-            }
-            return 0;
+            foreach (var use in log.Usage) if (use.Ticks >= oldest) all.Add(use);
         }
+        all.Sort((a, b) => a.Ticks.CompareTo(b.Ticks));
+        var (tokens, start, busiest) = Windows(all, nowUtc);
+        double percent = tokens <= 0 ? 0 : Math.Min(100, Math.Round(tokens * 100.0 / Math.Max(QuietBusiest, busiest), 1));
+        string label = tokens <= 0 ? "Quiet right now" : string.Create(CultureInfo.InvariantCulture, $"{percent:0} % of your busiest 5 hours");
+        return new AiUsageSnapshot(AiTool.ClaudeCode, percent, label, start + Window, tokens, Sessions(nowUtc)) { BusiestTokens = busiest };
+    }
 
-        private static void ParseRateLimits(JsonElement rateLimitsObj, out double? primary, out double? secondary, out long? resetsInSeconds)
+    /// <summary>
+    /// Five-hour windows as Claude's limits count them: one opens on the full hour of the first message after the
+    /// last one closed. Returns the window around now (if any) and the largest one.
+    /// </summary>
+    internal static (long Tokens, DateTime? WindowStart, long Busiest) Windows(List<(long Ticks, long Tokens)> sorted, DateTime nowUtc)
+    {
+        long busiest = 0, current = 0, sum = 0;
+        DateTime? currentStart = null;
+        DateTime start = default, end = default;
+        bool open = false;
+        void Close()
         {
-            primary = null;
-            secondary = null;
-            resetsInSeconds = null;
-
-            try
-            {
-                if (rateLimitsObj.TryGetProperty("primary", out JsonElement primaryObj))
-                {
-                    if (primaryObj.TryGetProperty("used_percent", out JsonElement up))
-                    {
-                        primary = up.GetDouble();
-                    }
-                    if (primaryObj.TryGetProperty("resets_in_seconds", out JsonElement ris))
-                    {
-                        resetsInSeconds = ris.GetInt64();
-                    }
-                }
-
-                if (rateLimitsObj.TryGetProperty("secondary", out JsonElement secondaryObj))
-                {
-                    if (secondaryObj.TryGetProperty("used_percent", out JsonElement sup))
-                    {
-                        secondary = sup.GetDouble();
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore
-            }
+            if (!open) return;
+            busiest = Math.Max(busiest, sum);
+            if (nowUtc >= start && nowUtc < end) (current, currentStart) = (sum, start);
         }
-
-        private static string ExtractCommandFromArguments(string? argsJson)
+        foreach (var (ticks, tokens) in sorted)
         {
-            if (string.IsNullOrEmpty(argsJson))
+            var at = new DateTime(ticks, DateTimeKind.Utc);
+            if (!open || at >= end)
             {
-                return string.Empty;
+                Close();
+                start = new DateTime(at.Year, at.Month, at.Day, at.Hour, 0, 0, DateTimeKind.Utc);
+                end = start + Window;
+                sum = 0;
+                open = true;
             }
-
-            try
-            {
-                using (JsonDocument doc = JsonDocument.Parse(argsJson))
-                {
-                    JsonElement root = doc.RootElement;
-                    List<string> parts = new List<string>();
-
-                    if (root.TryGetProperty("command", out JsonElement cmdElem))
-                    {
-                        if (cmdElem.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (JsonElement el in cmdElem.EnumerateArray())
-                            {
-                                string? s = el.GetString();
-                                if (!string.IsNullOrEmpty(s))
-                                {
-                                    parts.Add(s);
-                                }
-                            }
-                        }
-                        else if (cmdElem.ValueKind == JsonValueKind.String)
-                        {
-                            string? s = cmdElem.GetString();
-                            if (!string.IsNullOrEmpty(s))
-                            {
-                                parts.Add(s);
-                            }
-                        }
-                    }
-
-                    if (parts.Count > 0)
-                    {
-                        string joined = string.Join(" ", parts);
-                        return joined.Length > 40 ? joined.Substring(0, 40) : joined;
-                    }
-                }
-            }
-            catch
-            {
-                // Fallback
-            }
-
-            return argsJson.Length > 40 ? argsJson.Substring(0, 40) : argsJson;
+            sum += tokens;
         }
+        Close();
+        return (current, currentStart, busiest);
+    }
 
-        private readonly struct ParsedClaudeLine
+    // ───────────── Codex ─────────────
+
+    internal static void ParseCodex(AiLog log, ReadOnlySpan<byte> line)
+    {
+        bool limits = line.IndexOf("\"token_count\""u8) >= 0, meta = !limits && line.IndexOf("\"session_meta\""u8) >= 0;
+        bool call = !limits && !meta && (line.IndexOf("\"function_call\""u8) >= 0 || line.IndexOf("\"local_shell_call\""u8) >= 0 || line.IndexOf("\"custom_tool_call\""u8) >= 0);
+        if (!limits && !meta && !call)
         {
-            public string? Cwd { get; }
-            public string RawLine { get; }
-
-            public ParsedClaudeLine(string? cwd, string rawLine)
-            {
-                Cwd = cwd;
-                RawLine = rawLine;
-            }
+            if (line.IndexOf("\"task_complete\""u8) >= 0 || line.IndexOf("\"turn_aborted\""u8) >= 0) log.Ended = true;
+            else if (line.IndexOf("\"task_started\""u8) >= 0 || line.IndexOf("\"user_message\""u8) >= 0) log.Ended = false;
+            return;
         }
+        using var doc = Json(line);
+        if (doc == null || !doc.RootElement.TryGetProperty("payload", out var payload) || payload.ValueKind != JsonValueKind.Object) return;
+        string? type = Text(doc.RootElement, "type"), kind = Text(payload, "type");
 
-        private readonly struct AssistantMessage
+        if (type == "session_meta")
         {
-            public string? MessageId { get; }
-            public DateTime Timestamp { get; }
-            public long TotalTokens { get; }
-
-            public AssistantMessage(string? messageId, DateTime timestamp, long totalTokens)
-            {
-                MessageId = messageId;
-                Timestamp = timestamp;
-                TotalTokens = totalTokens;
-            }
+            if (Text(payload, "cwd") is { Length: > 0 } cwd) log.Cwd = cwd;
         }
-
-        private readonly struct WindowData
+        else if (kind == "token_count")
         {
-            public DateTime Start { get; }
-            public long Tokens { get; }
-
-            public WindowData(DateTime start, long tokens)
-            {
-                Start = start;
-                Tokens = tokens;
-            }
+            var info = payload.TryGetProperty("info", out var i) && i.ValueKind == JsonValueKind.Object ? i : default;
+            if (info.ValueKind == JsonValueKind.Object && info.TryGetProperty("total_token_usage", out var total) && Number(total, "total_tokens") is > 0 and var sum)
+                log.TotalTokens = sum;
+            // The limits sit beside the token counts, or inside them in older logs.
+            if (!(payload.TryGetProperty("rate_limits", out var rates) && rates.ValueKind == JsonValueKind.Object)
+                && !(info.ValueKind == JsonValueKind.Object && info.TryGetProperty("rate_limits", out rates) && rates.ValueKind == JsonValueKind.Object)) return;
+            var at = Time(doc.RootElement, "timestamp");
+            if (Limit(rates, "primary", at) is (var used, var resets)) (log.Primary, log.ResetsAt, log.LimitsAt) = (used, resets, at);
+            if (Limit(rates, "secondary", at) is (var week, var weekResets)) (log.Secondary, log.WeekResetsAt) = (week, weekResets);
         }
-
-        private readonly struct ParsedToolUse
+        else if (call && kind is "function_call" or "local_shell_call" or "custom_tool_call")
         {
-            public string Name { get; }
-            public string? Description { get; }
-
-            public ParsedToolUse(string name, string? description)
-            {
-                Name = name;
-                Description = description;
-            }
-        }
-
-        private readonly struct ParsedCodexFunctionCall
-        {
-            public string Name { get; }
-            public string? Arguments { get; }
-
-            public ParsedCodexFunctionCall(string name, string? arguments)
-            {
-                Name = name;
-                Arguments = arguments;
-            }
+            log.Ended = false;
+            string name = Text(payload, "name") ?? (kind == "local_shell_call" ? "shell" : "tool");
+            log.ToolStep = Cut(CodexCommand(payload) is { Length: > 0 } command ? $"{name}: {Cut(command, 40)}" : name, 60);
         }
     }
+
+    static (double Used, DateTime? Resets)? Limit(JsonElement rates, string name, DateTime? at)
+    {
+        if (!rates.TryGetProperty(name, out var limit) || limit.ValueKind != JsonValueKind.Object) return null;
+        if (!limit.TryGetProperty("used_percent", out var used) || used.ValueKind != JsonValueKind.Number) return null;
+        DateTime? resets = null;
+        if (limit.TryGetProperty("resets_at", out var when) && when.ValueKind == JsonValueKind.Number && when.TryGetInt64(out long unix))
+            resets = DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime;
+        else if (at != null && limit.TryGetProperty("resets_in_seconds", out var seconds) && seconds.ValueKind == JsonValueKind.Number)
+            resets = at.Value.AddSeconds(seconds.GetDouble());
+        return (Math.Clamp(used.GetDouble(), 0, 100), resets);
+    }
+
+    /// <summary>The command of a tool call: its arguments are JSON in a string, the command a list or a line.</summary>
+    static string? CodexCommand(JsonElement payload)
+    {
+        try
+        {
+            JsonElement arguments = default;
+            JsonDocument? parsed = null;
+            if (payload.TryGetProperty("arguments", out var raw) && raw.ValueKind == JsonValueKind.String) arguments = (parsed = JsonDocument.Parse(raw.GetString() ?? "{}")).RootElement;
+            else if (payload.TryGetProperty("action", out var action)) arguments = action;
+            using (parsed)
+            {
+                if (arguments.ValueKind != JsonValueKind.Object || !arguments.TryGetProperty("command", out var command)) return null;
+                return command.ValueKind switch
+                {
+                    JsonValueKind.String => OneLine(command.GetString() ?? ""),
+                    JsonValueKind.Array => OneLine(string.Join(' ', command.EnumerateArray().Where(p => p.ValueKind == JsonValueKind.String).Select(p => p.GetString()))),
+                    _ => null,
+                };
+            }
+        }
+        catch (JsonException) { return null; }
+    }
+
+    AiUsageSnapshot Codex(DateTime nowUtc)
+    {
+        var newest = _logs.Values.Where(l => l.LimitsAt != null).OrderByDescending(l => l.LimitsAt).FirstOrDefault();
+        double? percent = newest?.Primary, week = newest?.Secondary;
+        DateTime? resets = newest?.ResetsAt;
+        // A window that has run out since Codex last spoke starts empty.
+        if (resets <= nowUtc) (percent, resets) = (0, null);
+        if (newest?.WeekResetsAt <= nowUtc) week = 0;
+        long tokens = _logs.Values.Where(l => nowUtc - l.LastWrite <= Window).Sum(l => l.TotalTokens);
+        string label = percent is { } used ? string.Create(CultureInfo.InvariantCulture, $"{used:0} % of the 5-hour limit") : "No limits reported yet";
+        return new AiUsageSnapshot(AiTool.Codex, percent, label, resets, tokens, Sessions(nowUtc)) { IsLimit = true, WeekPercent = week };
+    }
+
+    // ───────────── shared ─────────────
+
+    List<AiSession> Sessions(DateTime nowUtc)
+        => _logs.Values.Where(l => !l.Subagent && !l.Ended && nowUtc - l.LastWrite <= AiUsage.ActiveWithin)
+                .OrderByDescending(l => l.LastWrite)
+                .Select(l => new AiSession(_tool, ProjectName(l.Cwd), _tool == AiTool.ClaudeCode ? l.ShownStep : l.ToolStep ?? "Working", l.LastWrite))
+                .ToList();
+
+    static string ProjectName(string? cwd)
+    {
+        string name = string.IsNullOrWhiteSpace(cwd) ? "" : Path.GetFileName(cwd.TrimEnd('\\', '/'));
+        return name.Length > 0 ? name : "A session";
+    }
+
+    static JsonDocument? Json(ReadOnlySpan<byte> line)
+    {
+        try
+        {
+            var reader = new Utf8JsonReader(line);
+            return JsonDocument.ParseValue(ref reader);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    static string? Text(JsonElement element, string name)
+        => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    static long Number(JsonElement element, string name)
+        => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+           ? value.TryGetInt64(out long whole) ? whole : (long)value.GetDouble() : 0;
+
+    static DateTime? Time(JsonElement element, string name)
+        => Text(element, name) is { } text && DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var time) ? time : null;
+
+    /// <summary>A string value found by its key without parsing the line around it.</summary>
+    static string? QuickString(ReadOnlySpan<byte> line, ReadOnlySpan<byte> key)
+    {
+        int at = line.IndexOf(key);
+        if (at < 0) return null;
+        var rest = line[(at + key.Length - 1)..]; // from the opening quote
+        for (int i = 1; i < rest.Length && i < 1024; i++)
+        {
+            if (rest[i] == (byte)'\\') { i++; continue; }
+            if (rest[i] != (byte)'"') continue;
+            try { return JsonSerializer.Deserialize<string>(rest[..(i + 1)]); }
+            catch (JsonException) { return null; }
+        }
+        return null;
+    }
+
+    static string OneLine(string text) => text.ReplaceLineEndings(" ").Trim();
+
+    static string Cut(string text, int length) => text.Length <= length ? text : text[..(length - 1)].TrimEnd() + "…";
 }

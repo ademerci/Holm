@@ -569,11 +569,10 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
-        PlaceAiRing(); // out of the way while the notch is open
+        ShowAiDock();
     }
 
-    // At least as tall as the AI usage ring beside the notch while it shows (the mini pill alone is 6 px).
-    void FitWindowHeight() => Height = Math.Max(Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2, AiRingShown ? 28 : 0);
+    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
 
     double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
     double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
@@ -654,7 +653,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
-        PlaceAiRing(); // the usage ring follows the notch's edge
+        PlaceAiDock(w, h, e);
     }
 
     /// <summary>
@@ -1784,6 +1783,8 @@ public partial class MainWindow : Window
         ShowVpn();
         StopPrivacy(); // and only demo apps use the microphone
         ShowPrivacy();
+
+        await SnapAiUsageAsync(dir); // its own pictures, with made-up usage; gone again for all the others
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);

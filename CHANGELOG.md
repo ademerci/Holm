@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- **AI usage ring.** A small ring beside the notch, also while music plays, shows how much of Claude Code's or Codex's limit you have used, with its logo inside. Hover it for the details: usage, when it resets, tokens in the current window, and which agents are working right now on which project and step. Read only from their own logs on this PC, never sent or shared. Codex shows its real limit; Claude Code doesn't log one, so its ring compares the current 5 hours with your busiest 5 hours of the past week. *Settings › General › AI usage ring* turns it off.
+- **AI usage beside the notch.** A small black bubble sits at the notch's right shoulder for each coding agent you use (Claude Code, Codex): a ring that fills with how much of its limit is gone, the tool's mark in the middle and a green dot while one of its agents is working. It shows in every closed state, also while music plays; beside the minimized notch it flattens into a capsule with a bar, and the open notch grows over it. Hovering a bubble (which doesn't open the notch) shows a card: the percentage, when the window starts over, and each session at work with its project and latest step. Codex logs its real 5-hour and weekly limits; Claude Code logs only tokens, so its ring compares the current 5-hour window with your busiest one of the past week. Everything is read from the tools' own logs on this PC (`~/.claude/projects`, `~/.codex/sessions`), at most once a minute off the UI thread and only what was appended since the last look; nothing is sent or shared. *Settings › General › AI usage ring* turns it off.
 
 ## 1.12.5 – 2026-11-15
 

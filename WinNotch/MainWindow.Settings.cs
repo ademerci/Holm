@@ -21,7 +21,7 @@ public partial class MainWindow
             new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
-            new(MenuAiUsage, "", "A small ring beside the notch shows how much of Claude Code's and Codex's limits you have used, and what their agents are doing. Read from their logs on this PC only."),
+            new(MenuAiUsage, "", "A small bubble beside the notch fills with how much of Claude Code's and Codex's limits you have used; hover it to see what their agents are working on. Read from their logs on this PC, never shared."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
             new(MenuHotKey, "", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on."),
             new(MenuHideOverBrowsers, ""),
