@@ -182,8 +182,10 @@ public sealed partial class NotchWindow
 
     void ShowTool(Tool tool)
     {
+        bool changed = tool != _tool;
         if (tool == Tool.None) EndTyping();
         _tool = tool;
+        Control? activePage = null;
         _homePanel.IsVisible = tool == Tool.None;
         _toolPage.IsVisible = tool != Tool.None;
         foreach (var (page, button, which) in ToolPages())
@@ -191,6 +193,7 @@ public sealed partial class NotchWindow
             bool match = which == tool;
             page.IsVisible = match;
             button.Rest = match ? ToolLit : Brushes.Transparent;
+            if (match) activePage = page;
         }
         if (tool != Tool.Mixer) HideMixer();
         if (tool == Tool.Notes) ShowNotes();
@@ -198,6 +201,7 @@ public sealed partial class NotchWindow
         else if (tool == Tool.Calculator) OnCalcChanged();
         else if (tool == Tool.Clipboard) ShowClipboardPage();
         else if (tool == Tool.Mixer) ShowMixerPage();
+        if (changed && _hovered && _state == NotchState.Expanded) AnimateToolSwitch(activePage ?? _homePanel);
         if (_state == NotchState.Expanded) ApplyState(animate: true); // a page has its own height
     }
 
@@ -282,8 +286,7 @@ public sealed partial class NotchWindow
             if (e.Key != Key.Escape) { _typingUntouched = false; return; }
             e.Handled = true;
             EndTyping();
-            _hovered = false;
-            ApplyState(animate: true);
+            SetExpanded(false);
         }, RoutingStrategies.Tunnel);
     }
 
@@ -316,6 +319,6 @@ public sealed partial class NotchWindow
     {
         if (!_typing) return;
         EndTyping();
-        if (!_island.IsPointerOver) { _hovered = false; ApplyState(animate: true); }
+        if (!_island.IsPointerOver) SetExpanded(false);
     }
 }

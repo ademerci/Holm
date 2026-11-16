@@ -27,16 +27,14 @@ public sealed partial class NotchWindow
     /// <summary>Ctrl+H: open the notch, or close it if it's open.</summary>
     void ToggleFromKeyboard()
     {
+        _expandDelay.Stop();
+        _collapseDelay.Stop();
         if (_hovered)
         {
             EndTyping();
-            _hovered = false;
+            SetExpanded(false);
         }
-        else
-        {
-            _hovered = true; // stays open until Ctrl+H again or the mouse comes and goes
-        }
-        ApplyState(animate: true);
+        else SetExpanded(true); // stays open until Ctrl+H again or the mouse comes and goes
     }
 
     void SetHotKey(bool on)

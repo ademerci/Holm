@@ -27,8 +27,10 @@ public sealed partial class NotchWindow
     static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color)).ToImmutable();
 
     // Backdrop
-    readonly Border _artLayer = new() { Opacity = 0, IsHitTestVisible = false };
-    readonly Border _artShade = new() { Background = Brushes.Black, Opacity = 0.5 };
+    // Two layers for the cover's colours: a new cover fades in on top of the old one.
+    readonly Border _artLayerA = new() { Opacity = 0, IsHitTestVisible = false, Child = new Border { Background = Brushes.Black, Opacity = 0.5 } };
+    readonly Border _artLayerB = new() { Opacity = 0, IsHitTestVisible = false, Child = new Border { Background = Brushes.Black, Opacity = 0.5 } };
+    Border _artFront = null!, _artBack = null!;
     Bitmap? _shownBackdrop;
 
     // Idle
@@ -111,10 +113,10 @@ public sealed partial class NotchWindow
     void BuildViews()
     {
         // One backdrop for the notch and its concave "shoulders", so the cover colours flow into both.
-        _artLayer.Child = _artShade;
-        _artLayer.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(400) } };
+        (_artFront, _artBack) = (_artLayerA, _artLayerB);
         _backdrop.Children.Add(new Rectangle { Fill = Brushes.Black });
-        _backdrop.Children.Add(_artLayer);
+        _backdrop.Children.Add(_artLayerA);
+        _backdrop.Children.Add(_artLayerB);
 
         _idleView.Children.Add(_idleClock);
 
@@ -156,7 +158,7 @@ public sealed partial class NotchWindow
 
     void BuildExpanded()
     {
-        var panel = new StackPanel();
+        var panel = _expandedPanel;
         // Tools: each opens its page in place of home; click again to go back
         panel.Children.Add(BuildToolRow());
 
@@ -188,9 +190,19 @@ public sealed partial class NotchWindow
         _nextBtn = new NotchButton(IconPath(NextGeo, 21, 15)) { Width = 42, Height = 42 };
         _repeatBtn = new NotchButton(_repeatIcon) { Width = 34, Height = 34, Margin = new Thickness(14, 0, 0, 0) };
         _shuffleBtn.Click += () => { if (_info?.Shuffle is { } on) _media.SetShuffle(!on); };
-        _prevBtn.Click += _media.Previous;
-        _playBtn.Click += _media.PlayPause;
-        _nextBtn.Click += _media.Next;
+        _prevBtn.Click += () => { PulseElement(_prevBtn); _media.Previous(); };
+        _playBtn.Click += () =>
+        {
+            PulseElement(_playBtn);
+            if (_info != null)
+            {
+                // Feels instant; the real state follows a moment later.
+                _playIcon.Data = _info.IsPlaying ? PlayGeo : PauseGeo;
+                _playIcon.Margin = new Thickness(_info.IsPlaying ? 3 : 0, 0, 0, 0);
+            }
+            _media.PlayPause();
+        };
+        _nextBtn.Click += () => { PulseElement(_nextBtn); _media.Next(); };
         // Off, all, this song, and round again.
         _repeatBtn.Click += () => { if (_info?.Repeat is { } mode) _media.SetRepeat(mode switch { 0 => 2, 2 => 1, _ => 0 }); };
         var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
@@ -232,16 +244,6 @@ public sealed partial class NotchWindow
         bottom.Children.Add(sound);
         panel.Children.Add(bottom);
         _expandedView.Children.Add(panel);
-    }
-
-    /// <summary>Shows or hides one of the notch's views, with a short fade when animated.</summary>
-    static void SetView(Control view, bool show, bool animate)
-    {
-        view.IsHitTestVisible = show;
-        view.Transitions = animate
-            ? new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(show ? 180 : 100) } }
-            : null;
-        view.Opacity = show ? 1 : 0;
     }
 
     void StartClock()
@@ -361,7 +363,7 @@ public sealed partial class NotchWindow
         _volumeTimer.Stop();
         _volumeTimer.Start();
         ApplyState(animate: true);
-        if (wasVolume && _state == NotchState.Volume) PulseNotch(16, 10);
+        if (wasVolume && _state == NotchState.Volume) PulseNotch(16, 10, 0.04);
     }
 
     void OnDefaultDeviceChanged()
@@ -423,14 +425,42 @@ public sealed partial class NotchWindow
         => t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : $"{(int)t.TotalMinutes}:{t.Seconds:00}";
 
     /// <summary>Washes the notch in the colours of the cover while something plays (or while the player is open).</summary>
+    /// <summary>
+    /// Washes the notch in the colours of the cover while something plays (or while the player is open). A new cover
+    /// fades in on top of the old one (the WPF app's UpdateBackdrop).
+    /// </summary>
     void UpdateBackdrop()
     {
         var wanted = _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
         if (ReferenceEquals(wanted, _shownBackdrop)) return;
         _shownBackdrop = wanted;
-        if (wanted == null) { _artLayer.Opacity = 0; return; }
-        _artLayer.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
-        _artShade.Opacity = _info!.BackdropShade;
-        _artLayer.Opacity = 1;
+        if (!_settings.Animations)
+        {
+            StopTween(_artLayerA, "opacity");
+            StopTween(_artLayerB, "opacity");
+            _artFront.Opacity = wanted != null ? 1 : 0;
+            _artBack.Opacity = 0;
+            if (wanted != null && _info != null)
+            {
+                _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
+                ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+            }
+            return;
+        }
+        if (wanted == null || _info == null)
+        {
+            Animate(_artLayerA, "opacity", v => _artLayerA.Opacity = v, _artLayerA.Opacity, 0, 500, 0, t => t);
+            Animate(_artLayerB, "opacity", v => _artLayerB.Opacity = v, _artLayerB.Opacity, 0, 500, 0, t => t);
+            return;
+        }
+        (_artFront, _artBack) = (_artBack, _artFront);
+        _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
+        ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+        _artFront.ZIndex = 2;
+        _artBack.ZIndex = 1;
+        var back = _artBack;
+        var front = _artFront;
+        Animate(front, "opacity", v => front.Opacity = v, 0, 1, 700, 0, t => Math.Sin(t * Math.PI / 2), // WPF's SineEase, easing out
+            () => { if (back == _artBack) { StopTween(back, "opacity"); back.Opacity = 0; } }); // another cover arrived meanwhile otherwise
     }
 }

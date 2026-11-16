@@ -43,7 +43,7 @@ public sealed partial class NotchWindow
         menu.Closed += (_, _) =>
         {
             _menuOpen = false;
-            if (_hovered && !_island.IsPointerOver && !_typing) { _hovered = false; ApplyState(animate: true); }
+            if (_hovered && !_island.IsPointerOver && !_typing) SetExpanded(false);
         };
         _sleepBtn.ContextMenu = menu;
         _sleepBtn.Click += () =>

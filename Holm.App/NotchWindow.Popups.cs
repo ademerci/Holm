@@ -95,7 +95,7 @@ public sealed partial class NotchWindow
         _peekTimer.Interval = TimeSpan.FromSeconds(seconds);
         _peekTimer.Start();
         ApplyState(animate: true);
-        if (wasPeek && _state == NotchState.Peek) PulseNotch(28, 16);
+        if (wasPeek && _state == NotchState.Peek) PulseNotch();
     }
 
     /// <summary>Shows a card with up to two buttons in place of the closed notch; it stays until <see cref="HideTask"/>.</summary>

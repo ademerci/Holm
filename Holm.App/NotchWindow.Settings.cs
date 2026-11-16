@@ -77,8 +77,7 @@ public sealed partial class NotchWindow
     void OpenSettings()
     {
         // The notch closes first, so it can't hide the window.
-        _hovered = false;
-        ApplyState(animate: true);
+        SetExpanded(false);
         if (_settingsWindow != null) { _settingsWindow.Activate(); return; }
         string version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "";
         _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations);

@@ -223,8 +223,7 @@ public sealed partial class NotchWindow
         var place = new MenuItem { Header = _settings.WeatherPlace is { } name ? $"Place: {name}…" : "Choose the place…", IsEnabled = _settings.Weather };
         place.Click += (_, _) =>
         {
-            _hovered = true;
-            ApplyState(animate: true);
+            SetExpanded(true);
             ChoosePlace();
             BeginTyping(_weatherBox, untouched: true);
         };

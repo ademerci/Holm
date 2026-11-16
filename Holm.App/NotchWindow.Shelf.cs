@@ -117,8 +117,7 @@ public sealed partial class NotchWindow
         _shareHint.Text = "Drop it on Shelf to keep it here and drag it out later.";
         _sharing = true;
         EndTyping();
-        _hovered = false;
-        ApplyState(animate: true);
+        SetExpanded(false);
     }
 
     void EndShare()
@@ -215,8 +214,7 @@ public sealed partial class NotchWindow
             if (press == null) return;
             press = null;
             e.Handled = true;
-            _hovered = false;
-            ApplyState(animate: true);
+            SetExpanded(false);
             try { _shell.Open(path); }
             catch (Exception) { ShowPeek(ErrorGlyph, "Can't open " + Shelf.DisplayName(path), "", null); }
         };

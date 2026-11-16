@@ -76,8 +76,12 @@ public sealed partial class NotchWindow
         settings.Click += (_, _) => OpenSettings();
         var bounceLevel = new MenuItem { Header = "Bounce" };
         var weather = new MenuItem { Header = "Weather" };
+        var collapsedSize = new MenuItem { Header = "Collapsed size" };
+        var expandedSize = new MenuItem { Header = "Expanded size" };
         var customize = new MenuItem { Header = "Customize" };
         customize.Items.Add(weather);
+        customize.Items.Add(collapsedSize);
+        customize.Items.Add(expandedSize);
         customize.Items.Add(bounceLevel);
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
@@ -94,12 +98,14 @@ public sealed partial class NotchWindow
             FillSleepMenu();
             FillBounceMenu(bounceLevel);
             FillWeatherMenu(weather);
+            FillSizeMenu(collapsedSize, expanded: false);
+            FillSizeMenu(expandedSize, expanded: true);
         };
         // The notch stays as it is while its menu is open; once it has closed, it closes too if the mouse has gone.
         menu.Closed += (_, _) =>
         {
             _menuOpen = false;
-            if (_hovered && !_island.IsPointerOver && !_typing) { _hovered = false; ApplyState(animate: true); }
+            if (_hovered && !_island.IsPointerOver && !_typing) SetExpanded(false);
         };
         _island.ContextMenu = menu;
     }

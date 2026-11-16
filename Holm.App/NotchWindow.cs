@@ -45,13 +45,17 @@ public sealed partial class NotchWindow : Window
     SpringValue _hSpring = new(30);
     SpringValue _rSpring = new(15, 0.15, 2.0);
     SpringValue _earSpring = new(MaxEar, 0.1, 1.5);
+    SpringValue _scaleSpring = new(1, 0.0008, 0.015);
+    /// <summary>The notch's size preference (Customize › Collapsed / Expanded size), applied to everything in it.</summary>
+    readonly ScaleTransform _notchScale = new(1, 1);
 
     NotchState _state = NotchState.Idle;
     bool _motionRunning, _hovered, _opened, _volumePeek, _mini;
     /// <summary>Work that opening needs but that doesn't change the open notch's size: done once it has landed.</summary>
     bool _openSettling;
     long _motionLastTick;
-    double _shapeW = 150, _shapeH = 30, _shapeR = 15;
+    double _shapeW = 150, _shapeH = 30, _shapeR = 15, _shapeScale = 1;
+    bool _shapeAnimating, _hoverBoost;
     MediaInfo? _info;
 
     public NotchWindow(IPlatformServices platform)
@@ -99,10 +103,16 @@ public sealed partial class NotchWindow : Window
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
+        // The notch's size preference scales everything about the top centre, as the WPF app's layout transform does.
+        _root.Width = BaseWidth;
+        _root.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        _root.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+        _root.RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative);
+        _root.RenderTransform = _notchScale;
         Content = _root;
+        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
 
-        _island.PointerEntered += (_, _) => { if (_taskVisible || _picking) return; _hovered = true; ApplyState(animate: true); };
-        _island.PointerExited += (_, _) => { if (KeepOpenForTyping || _menuOpen) return; _hovered = false; ApplyState(animate: true); };
+        InitMotion();
 
         BuildContextMenu();
         _media.Changed += OnMediaChanged;
@@ -117,7 +127,7 @@ public sealed partial class NotchWindow : Window
         _opened = true;
         if (TryGetPlatformHandle() is { } handle) _platform.MakeOverlay(handle.Handle);
         PositionWindow();
-        UpdateHitRegion(_shapeW, _shapeH);
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
         StartClock();
         ShowIdleStatus();
         CheckReminders();
@@ -159,7 +169,7 @@ public sealed partial class NotchWindow : Window
     {
         var screen = Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
         if (screen == null) return;
-        int width = (int)Math.Round(BaseWidth * screen.Scaling);
+        int width = (int)Math.Round(Width * screen.Scaling);
         int top = screen.Bounds.Y;
 #if DEBUG
         // HOLM_DEV_TOP=300 puts the notch that many pixels down, to run it next to an installed Holm while developing.
@@ -216,17 +226,20 @@ public sealed partial class NotchWindow : Window
         }
 
         // Media apps report every few seconds; only animate when the shape really changes.
-        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || mini != _mini)
+        double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
+        if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || mini != _mini || scale != _shapeScale)
         {
-            bool grow = w * h > _wSpring.Value * _hSpring.Value;
-            (_shapeW, _shapeH, _shapeR) = (w, h, r);
+            double currentScale = _scaleSpring.Value;
+            bool grow = w * h * scale * scale > _wSpring.Value * _hSpring.Value * currentScale * currentScale;
+            (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
             double ear = mini ? 0 : MaxEar;
-            if (animate) MoveShapeTo(w, h, r, ear, grow);
-            else SnapShape(w, h, r, ear);
+            if (animate) MoveShapeTo(w, h, r, ear, scale, grow, mini);
+            else SnapShape(w, h, r, ear, scale);
         }
 
         if (target != _state || mini != _mini || !animate)
         {
+            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded) Unfold();
             SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
@@ -247,58 +260,106 @@ public sealed partial class NotchWindow : Window
         ShowSky();
     }
 
-    /// <summary>Room for a shape this high, including the spring's overshoot.</summary>
-    static double NeededWindowHeight(double height) => Math.Ceiling(Math.Max(height, 1) * 1.15) + 2;
+    /// <summary>Room for a shape this high at this scale, including the spring's overshoot.</summary>
+    static double NeededWindowHeight(double height, double scale = 1) => Math.Ceiling(Math.Max(height, 1) * Math.Max(scale, 0.1) * 1.15) + 2;
 
-    void SnapShape(double w, double h, double r, double ear)
+    double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
+    double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
+
+    void SnapShape(double w, double h, double r, double ear, double scale)
     {
+        _hoverBoost = false;
         _motionRunning = false;
-        Height = NeededWindowHeight(h);
+        _shapeAnimating = false;
         _wSpring.Snap(w);
         _hSpring.Snap(h);
         _rSpring.Snap(r);
         _earSpring.Snap(ear);
-        ApplyShape(w, h, r, ear);
-        UpdateHitRegion(w, h);
+        _scaleSpring.Snap(scale);
+        ApplyShape(w, h, r, ear, scale);
+        FitWindowHeight();
+        UpdateHitRegion(w, h, scale);
     }
 
-    void MoveShapeTo(double w, double h, double r, double ear, bool grow)
+    void MoveShapeTo(double w, double h, double r, double ear, double scale, bool grow, bool mini)
     {
+        _hoverBoost = false;
         // Opening is slightly softer on height than width for a liquid squash-and-stretch feel;
-        // shrinking into a normal pill still snaps in with a touch of bounce.
-        _wSpring.Retarget(w, grow ? 0.34 : 0.30, grow ? 0.63 : 0.73);
-        _hSpring.Retarget(h, grow ? 0.38 : 0.33, grow ? 0.60 : 0.75);
-        _rSpring.Retarget(r, grow ? 0.36 : 0.30, grow ? 0.64 : 0.75);
-        _earSpring.Retarget(ear, grow ? 0.34 : 0.28, grow ? 0.68 : 0.85);
+        // shrinking into a normal pill still snaps in with a touch of bounce, while mini glides cleanly onto the edge.
+        double wResp = grow ? 0.34 : 0.30;
+        double hResp = grow ? 0.38 : (mini ? 0.27 : 0.33);
+        double wDamp = grow ? 0.63 : (mini ? 0.78 : 0.73);
+        double hDamp = grow ? 0.60 : (mini ? 1.0 : 0.75);
+        double rDamp = grow ? 0.64 : (mini ? 1.0 : 0.75);
+        double earDamp = grow ? 0.68 : (mini ? 1.0 : 0.85);
+        double sDamp = grow ? 0.63 : (mini ? 0.82 : 0.74);
+        _wSpring.Retarget(w, wResp, wDamp);
+        _hSpring.Retarget(h, hResp, hDamp);
+        _rSpring.Retarget(r, grow ? 0.36 : 0.30, rDamp);
+        _earSpring.Retarget(ear, grow ? 0.34 : 0.28, earDamp);
+        _scaleSpring.Retarget(scale, grow ? 0.36 : 0.30, sDamp);
 
         // Reserve room for both the outgoing and the incoming shape before anything moves.
-        double needed = NeededWindowHeight(Math.Max(h, _hSpring.Value));
+        double needed = NeededWindowHeight(Math.Max(h, _hSpring.Value), Math.Max(scale, _scaleSpring.Value));
         if (needed > Height) Height = needed;
-
         // While it moves, the mouse region covers both where the shape is and where it is going.
-        UpdateHitRegion(Math.Max(w, _wSpring.Value), Math.Max(h, _hSpring.Value));
+        UpdateHitRegion(Math.Max(w, _wSpring.Value), Math.Max(h, _hSpring.Value), Math.Max(scale, _scaleSpring.Value));
 
-        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled)
+        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled && _scaleSpring.IsSettled)
         {
             _motionRunning = false;
-            ApplyShape(w, h, r, ear);
-            Height = NeededWindowHeight(h);
-            UpdateHitRegion(w, h);
+            ApplyShape(w, h, r, ear, scale);
+            if (_shapeAnimating) OnShapeSettled();
             return;
         }
+        _shapeAnimating = true;
         StartMotion();
     }
 
-    /// <summary>Adds a small physical bounce when a live pill updates in place (volume step).</summary>
-    void PulseNotch(double widthVelocity, double heightVelocity)
+    /// <summary>Gives the closed notch a subtle springy swell under the cursor before it opens.</summary>
+    void SetHoverBoost(bool boost)
     {
-        if (!_settings.Animations || _state == NotchState.Expanded) return;
+        if (_hoverBoost == boost) return;
+        _hoverBoost = boost;
+        if (!_settings.Animations || _hovered || _shapeW <= 0) return;
+        double targetW = boost ? _shapeW + 8 : _shapeW;
+        double targetH = boost ? _shapeH + 2 : _shapeH;
+        double targetR = boost ? _shapeR + 1 : _shapeR;
+        double targetScale = boost ? _shapeScale * 1.03 : _shapeScale;
+        _wSpring.Retarget(targetW, 0.28, 0.62);
+        _hSpring.Retarget(targetH, 0.30, 0.62);
+        _rSpring.Retarget(targetR, 0.28, 0.65);
+        _scaleSpring.Retarget(targetScale, 0.28, 0.62);
+        double needed = NeededWindowHeight(targetH, targetScale);
+        if (needed > Height) Height = needed;
+        UpdateHitRegion(targetW, targetH, targetScale);
+        _shapeAnimating = true;
+        StartMotion();
+    }
+
+    /// <summary>Adds a small physical bounce when a live pill updates in place (volume step, back-to-back peek).</summary>
+    void PulseNotch(double widthVelocity = 28, double heightVelocity = 16, double scaleVelocity = 0.08)
+    {
+        if (!_settings.Animations || _hovered || _shapeW <= 0) return;
+        double needed = NeededWindowHeight(_shapeH + 6, _shapeScale * 1.05);
+        if (needed > Height) Height = needed;
         _wSpring.Kick(widthVelocity, 0.30, 0.58);
         _hSpring.Kick(heightVelocity, 0.32, 0.58);
-        double needed = NeededWindowHeight(_shapeH + 6);
-        if (needed > Height) Height = needed;
-        UpdateHitRegion(_shapeW + 12, _shapeH + 6);
+        _scaleSpring.Kick(scaleVelocity, 0.30, 0.58);
+        UpdateHitRegion(_shapeW + 12, _shapeH + 6, _shapeScale * 1.05);
+        _shapeAnimating = true;
         StartMotion();
+    }
+
+    void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
+
+    void OnShapeSettled()
+    {
+        FitWindowHeight();
+        _shapeAnimating = false;
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        UpdateEqualizer();
+        FinishOpening();
     }
 
     /// <summary>The open notch has landed: now the work that would have cost frames on the way.</summary>
@@ -329,25 +390,29 @@ public sealed partial class NotchWindow : Window
         bool settled = _wSpring.Step(dt)
                      & _hSpring.Step(dt)
                      & _rSpring.Step(dt)
-                     & _earSpring.Step(dt);
+                     & _earSpring.Step(dt)
+                     & _scaleSpring.Step(dt);
 
-        ApplyShape(Math.Max(1, _wSpring.Value), Math.Max(12, _hSpring.Value), Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value));
+        double hMin = _mini && !_hoverBoost ? 1 : 12;
+        double h = Math.Max(_shapeH < hMin ? 1 : hMin, _hSpring.Value);
+        double scale = Math.Max(0.1, _scaleSpring.Value);
+        double frameNeed = NeededWindowHeight(h, scale);
+        if (frameNeed > Height) Height = frameNeed;
+        ApplyShape(Math.Max(1, _wSpring.Value), h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
         {
             // No further frame is asked for: nothing runs while the notch rests.
             _motionRunning = false;
-            Height = NeededWindowHeight(_shapeH);
-            UpdateHitRegion(_shapeW, _shapeH);
-            UpdateEqualizer();
-            FinishOpening();
+            OnShapeSettled();
             return;
         }
         RequestAnimationFrame(OnMotionFrame);
     }
 
-    void ApplyShape(double w, double h, double radius, double earSize)
+    void ApplyShape(double w, double h, double radius, double earSize, double scale)
     {
+        _notchScale.ScaleX = _notchScale.ScaleY = scale;
         double r = Math.Clamp(radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(earSize, 0, Math.Min(MaxEar, h - r));
         double x = (BaseWidth - w) / 2;
@@ -383,12 +448,12 @@ public sealed partial class NotchWindow : Window
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
-    void UpdateHitRegion(double w, double h)
+    void UpdateHitRegion(double w, double h, double notchScale)
     {
         if (!_opened || TryGetPlatformHandle() is not { } handle) return;
         double scale = RenderScaling;
-        double width = (w + 2 * MaxEar) * 1.12, height = h * 1.15 + 2;
-        double x = (BaseWidth - width) / 2;
+        double width = (w + 2 * MaxEar) * 1.12 * notchScale, height = h * notchScale * 1.15 + 2;
+        double x = (Width - width) / 2;
         _platform.SetHitRegion(handle.Handle,
             (int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
     }

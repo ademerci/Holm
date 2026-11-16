@@ -54,6 +54,7 @@ public sealed partial class NotchWindow
         {
             // Close first, and give the notch a moment to shrink, so what was under it can be picked too.
             EndTyping();
+            ShowTool(Tool.None);
             _hovered = false;
             ApplyState(animate: false);
             await Task.Delay(250);
