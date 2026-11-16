@@ -31,7 +31,10 @@ public class FileTransferTests
         Assert.NotNull(saved);
         Assert.Equal(big, File.ReadAllBytes(Path.Combine(target.Path, "photo.jpg")));
         Assert.Empty(File.ReadAllBytes(Path.Combine(target.Path, "empty.txt")));
-        Assert.Contains("ZoneId=3", File.ReadAllText(Path.Combine(target.Path, "photo.jpg") + ":Zone.Identifier"));
+        if (OperatingSystem.IsWindows())
+            Assert.Contains("ZoneId=3", File.ReadAllText(Path.Combine(target.Path, "photo.jpg") + ":Zone.Identifier"));
+        else // no stray "photo.jpg:Zone.Identifier" file where streams don't exist
+            Assert.Equal(new[] { "empty.txt", "photo.jpg" }, Directory.GetFiles(target.Path).Select(Path.GetFileName).Order());
     }
 
     [Fact]
