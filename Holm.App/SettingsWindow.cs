@@ -43,7 +43,7 @@ sealed class SettingsWindow : Window
 
     readonly List<(SettingsSwitch Setting, ToggleSwitch Toggle)> _rows = new();
     readonly Dictionary<string, (Border Item, TextBlock Glyph, Border Badge, TextBlock BadgeText)> _navItems = new();
-    readonly IReadOnlyList<HubPage> _social, _extra;
+    readonly IReadOnlyList<HubPage> _social, _extra, _tools;
     HubView? _shownView;
     Control _footer = null!;
     readonly Dictionary<string, Control> _pages = new();
@@ -67,8 +67,9 @@ sealed class SettingsWindow : Window
 
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
-                          IReadOnlyList<HubPage>? extra = null)
+                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
     {
+        _tools = tools ?? Array.Empty<HubPage>();
         _extra = extra ?? Array.Empty<HubPage>();
         _animations = animations;
         _profile = profile;
@@ -123,6 +124,16 @@ sealed class SettingsWindow : Window
         {
             nav.Children.Add(Caption("Friends"));
             foreach (var page in _social)
+            {
+                _titles[page.Key] = (page.Title, page.Subtitle);
+                nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
+            }
+            nav.Children.Add(new Border { Height = 14 });
+        }
+        if (_tools.Count > 0)
+        {
+            nav.Children.Add(Caption("Tools"));
+            foreach (var page in _tools)
             {
                 _titles[page.Key] = (page.Title, page.Subtitle);
                 nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
@@ -242,7 +253,7 @@ sealed class SettingsWindow : Window
         _shownView?.Detach();
         _shownView = null;
         bool settings = _pages.TryGetValue(key, out var page);
-        if (!settings && _social.Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
+        if (!settings && _social.Concat(_tools).Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
         (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];

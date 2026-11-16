@@ -85,4 +85,23 @@ public sealed class WindowsConnectivityPlatform : IConnectivityPlatform
         if (_manager != null) { Marshal.ReleaseComObject(_manager); _manager = null; }
         _state = -1;
     }
+
+    /// <summary>The connection as Windows reports it (the WPF app's SpeedTest.CurrentLink).</summary>
+    public NetworkLinkInfo? CurrentLink()
+    {
+        try
+        {
+            var profile = global::Windows.Networking.Connectivity.NetworkInformation.GetInternetConnectionProfile();
+            if (profile == null) return null;
+            ulong bits = profile.NetworkAdapter?.InboundMaxBitsPerSecond ?? 0;
+            string? adapter = profile.NetworkAdapter?.NetworkAdapterId.ToString("B").ToUpperInvariant();
+            if (!profile.IsWlanConnectionProfile) return new NetworkLinkInfo(false, null, null, bits, adapter);
+            string? ssid = null;
+            try { ssid = profile.WlanConnectionProfileDetails?.GetConnectedSsid(); }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Runtime.InteropServices.COMException) { }
+            int? signal = profile.GetSignalBars() is { } b ? b : null;
+            return new NetworkLinkInfo(true, ssid, signal, bits, adapter);
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or InvalidCastException) { return null; }
+    }
 }

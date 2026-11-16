@@ -57,4 +57,10 @@ public sealed partial class NotchWindow
         _settings.Save();
         StartConnectivity();
     }
+
+    /// <summary>The connection now, as the speed test's page shows it.</summary>
+    NetworkLink? CurrentLink()
+        => _connectivity.CurrentLink() is { } link
+            ? new NetworkLink(link.IsWifi, link.Ssid, link.SignalBars, link.LinkBitsPerSecond, Guid.TryParse(link.AdapterId, out var id) ? id : null)
+            : null;
 }

@@ -16,7 +16,13 @@ public interface IConnectivityPlatform
 
     void Start();
     void Stop();
+
+    /// <summary>The connection to the internet now: Wi-Fi (name, bars of 5) or Ethernet, and its link speed. Null when unknown.</summary>
+    NetworkLinkInfo? CurrentLink();
 }
+
+/// <param name="AdapterId">The adapter, as <see cref="System.Net.NetworkInformation.NetworkInterface.Id"/> knows it.</param>
+public sealed record NetworkLinkInfo(bool IsWifi, string? Ssid, int? SignalBars, ulong LinkBitsPerSecond, string? AdapterId);
 
 /// <summary>For systems without a backend yet: never knows.</summary>
 public sealed class NoConnectivityPlatform : IConnectivityPlatform
@@ -25,4 +31,5 @@ public sealed class NoConnectivityPlatform : IConnectivityPlatform
     public bool? Online => null;
     public void Start() { }
     public void Stop() { }
+    public NetworkLinkInfo? CurrentLink() => null;
 }

@@ -79,4 +79,60 @@ public sealed class LinuxConnectivityPlatform : IConnectivityPlatform
         _fallback = false;
         _state = -1;
     }
+
+    /// <summary>
+    /// The connection that carries the default route: Wi-Fi when the kernel calls it wireless, with the network's
+    /// name, signal and bit rate from NetworkManager (nmcli), else Ethernet with the speed the driver reports.
+    /// </summary>
+    public NetworkLinkInfo? CurrentLink()
+    {
+        try
+        {
+            string? device = DefaultRouteDevice();
+            if (device == null) return null;
+            string id = device;
+            if (!System.IO.Directory.Exists($"/sys/class/net/{device}/wireless"))
+            {
+                ulong speed = 0;
+                try { if (ulong.TryParse(System.IO.File.ReadAllText($"/sys/class/net/{device}/speed").Trim(), out ulong mbps)) speed = mbps * 1_000_000; }
+                catch (System.IO.IOException) { }
+                return new NetworkLinkInfo(false, null, null, speed, id);
+            }
+            string? ssid = null; int? bars = null; ulong bits = 0;
+            foreach (string line in Run("nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL,RATE", "device", "wifi", "list", "ifname", device).Split('\n'))
+            {
+                // yes:Home:72:540 Mbit/s (colons in the name come escaped as \:)
+                var fields = System.Text.RegularExpressions.Regex.Split(line, @"(?<!\\):");
+                if (fields.Length < 4 || fields[0] != "yes") continue;
+                ssid = fields[1].Replace("\\:", ":");
+                if (int.TryParse(fields[2], out int signal)) bars = Math.Clamp((signal + 19) / 20, 0, 5);
+                if (ulong.TryParse(fields[3].Split(' ')[0], out ulong rate)) bits = rate * 1_000_000;
+                break;
+            }
+            return new NetworkLinkInfo(true, ssid, bars, bits, id);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or System.IO.IOException) { return null; }
+    }
+
+    /// <summary>The interface of the default route (/proc/net/route: destination 00000000).</summary>
+    static string? DefaultRouteDevice()
+    {
+        foreach (string line in System.IO.File.ReadLines("/proc/net/route"))
+        {
+            var fields = line.Split('\t');
+            if (fields.Length > 1 && fields[1] == "00000000") return fields[0];
+        }
+        return null;
+    }
+
+    static string Run(string program, params string[] arguments)
+    {
+        var start = new System.Diagnostics.ProcessStartInfo(program) { RedirectStandardOutput = true, UseShellExecute = false };
+        foreach (string argument in arguments) start.ArgumentList.Add(argument);
+        using var process = System.Diagnostics.Process.Start(start);
+        if (process == null) return "";
+        string output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit(3000);
+        return output;
+    }
 }
