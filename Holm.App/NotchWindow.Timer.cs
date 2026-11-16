@@ -89,6 +89,8 @@ public sealed partial class NotchWindow
         menu.Items.Add(new Separator());
         menu.Items.Add(settings);
         menu.Items.Add(customize);
+        menu.Items.Add(_monitorSeparator);
+        // one entry per display is inserted here when the menu opens
         menu.Items.Add(new Separator());
         menu.Items.Add(quit);
         menu.Opening += (_, _) =>
@@ -97,6 +99,7 @@ public sealed partial class NotchWindow
             FillTimerMenu();
             FillSleepMenu();
             FillBounceMenu(bounceLevel);
+            ListScreens(menu);
             FillWeatherMenu(weather);
             FillSizeMenu(collapsedSize, expanded: false);
             FillSizeMenu(expandedSize, expanded: true);

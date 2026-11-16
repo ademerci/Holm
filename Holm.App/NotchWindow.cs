@@ -133,6 +133,7 @@ public sealed partial class NotchWindow : Window
         _opened = true;
         if (TryGetPlatformHandle() is { } handle) _platform.MakeOverlay(handle.Handle);
         PositionWindow();
+        Screens.Changed += (_, _) => PositionWindow(); // a display came or went
         UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
         StartClock();
         ShowIdleStatus();
@@ -174,7 +175,7 @@ public sealed partial class NotchWindow : Window
     /// <summary>Top centre of the primary screen.</summary>
     void PositionWindow()
     {
-        var screen = Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
+        var screen = ChosenScreen();
         if (screen == null) return;
         int width = (int)Math.Round(Width * screen.Scaling);
         int top = screen.Bounds.Y;
