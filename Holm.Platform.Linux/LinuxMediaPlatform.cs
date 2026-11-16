@@ -46,11 +46,17 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
         if (_started) return;
         _started = true;
         // A player came or went.
+        // Filtered here rather than by an arg0namespace rule: Tmds.DBus writes that key as "arg0Namespace", which
+        // dbus-daemon rejects as invalid, and the whole watch was lost.
         await _bus.WatchAsync(new MatchRule
         {
-            Type = MessageType.Signal, Sender = "org.freedesktop.DBus", Interface = "org.freedesktop.DBus",
-            Member = "NameOwnerChanged", Arg0Namespace = Root,
-        }, _ => { lock (_gate) _players = null; Changed?.Invoke(true); }).ConfigureAwait(false);
+            Type = MessageType.Signal, Sender = "org.freedesktop.DBus", Interface = "org.freedesktop.DBus", Member = "NameOwnerChanged",
+        }, signal =>
+        {
+            if (signal.Arg0 != Root && !signal.Arg0.StartsWith(Root + ".", StringComparison.Ordinal)) return;
+            lock (_gate) _players = null;
+            Changed?.Invoke(true);
+        }).ConfigureAwait(false);
         // A player says something about itself changed (track, playing or paused, shuffle, ...).
         await _bus.WatchAsync(new MatchRule
         {
