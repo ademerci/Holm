@@ -110,16 +110,19 @@ Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): th
 | No internet / back online | Network List Manager | NetworkManager | Network framework path monitor |
 | Caps Lock hint | keyboard hook on that key | XKB indicator events | modifier state, read four times a second |
 | Ctrl+H | RegisterHotKey | X key grab | Carbon hot key (Control+H) |
-| Weather, sky, greeting, sleep timer, shelf (drag and drop), menus, tooltips, settings window | shared | shared | shared |
+| Screenshots pop out | known Screenshots folder | XDG Pictures/Screenshots | screenshot location (Desktop), macOS's screen-capture mark |
+| USB drives (Open, Eject) | WM_DEVICECHANGE, UsbDrives (linked) | automounter folders, gio/udisksctl | /Volumes (external only), diskutil |
+| VPN lock | adapters (VpnNames, linked) | same rules + wg/tun/ppp | same rules + utun with IPv4 |
+| Weather, sky, greeting, sleep timer, shelf (drag and drop), mini idle, menus, tooltips, settings window | shared | shared | shared |
 
 Weather asks for the city on every system (the WPF app's one-time Windows location lookup is not ported). The shelf's
 drag and drop goes through Avalonia; it has not been tried with a real drag on each system yet.
 
 Still missing from the WPF app: Beam (friends, chat, nearby, phone, streaming, achievements, profile, the Holm window's
-social pages), notifications and message badges, calls and the microphone/camera dot, screenshots and their text,
-USB drives, VPN, quiet hours, dictation, Focumon, the AI button, updates, mini idle, notch sizes, monitor choice,
-hiding over full-screen apps and browser tabs, the big clock view, today cards; views fade but do not pop or unfold
-yet, and a new cover fades in over black instead of cross-fading.
+social pages), notifications and message badges, quiet hours, calls and the microphone/camera dot, screenshot text
+(OCR), dictation, Focumon, the AI button, updates, notch sizes, monitor choice, hiding over full-screen apps and
+browser tabs, the big clock view, today cards; views fade but do not pop or unfold yet, and a new cover fades in over
+black instead of cross-fading.
 
 **Fonts: the same on every system.** Text is set in Inter (bundled with Avalonia) and icons come from
 `Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points. Both ship inside the app,
@@ -158,6 +161,11 @@ cherry-picked into a pull request against `main`.
 | Received file names are cleaned of what Windows forbids on every system | `Sharing/FileTransfer.cs` |
 | A shelf item's name is split by hand, so Windows paths read the same elsewhere | `Shelf.cs` |
 | A partial download present before watching began is ignored (macOS reported it as new) | `Notify/DownloadWatcher.cs` |
+| The colour picker's arithmetic without the Win32 RECT | `ColorPick.cs`, `ColorPicker.cs` |
+| Outage rules in a file of their own | new `Outage.cs`, `NetworkWatcher.cs` |
+| CapsKey in a file of its own | new `CapsKey.cs`, `CapsLockWatcher.cs` |
+| The sky's colours without WPF | new `Sky.cs`, `MainWindow.Sky.cs`, `MainWindow.ClockView.cs` |
+| The VPN rules in a file of their own (plus the Linux/macOS tunnel names) | new `VpnNames.cs`, `VpnWatcher.cs` |
 
 **Linux:** `Holm.Platform.Linux` is the backend, checked by running the app under Xvfb with openbox, a compositor,
 PulseAudio and pretend MPRIS and BlueZ services on a private bus (not yet on a real desktop):
@@ -216,5 +224,5 @@ there.
 | `Notify/Messengers.cs` tests | Need `BadgeCounter`. |
 | `UpdateServiceTests.cs` | Expects a built `Holm.exe` next to the test assembly. |
 
-**Next in `Holm.App`:** mini idle and the notch sizes, screenshots, USB drives, VPN, quiet hours, then calls and
-notifications.
+**Next in `Holm.App`:** the microphone/camera dot and calls, notch sizes, then notifications and quiet hours; Beam
+is the largest piece left.
