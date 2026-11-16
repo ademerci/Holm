@@ -15,6 +15,7 @@
     <Compile Include="..\WinNotch\BigClock.cs" Link="Linked\BigClock.cs" />
     <Compile Include="..\WinNotch\Browsers.cs" Link="Linked\Browsers.cs" />
     <Compile Include="..\WinNotch\Calculator.cs" Link="Linked\Calculator.cs" />
+    <Compile Include="..\WinNotch\CapsKey.cs" Link="Linked\CapsKey.cs" />
     <Compile Include="..\WinNotch\CallPause.cs" Link="Linked\CallPause.cs" />
     <Compile Include="..\WinNotch\ClipboardHistory.cs" Link="Linked\ClipboardHistory.cs" />
     <Compile Include="..\WinNotch\ColorPick.cs" Link="Linked\ColorPick.cs" />
