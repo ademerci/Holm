@@ -113,7 +113,13 @@ an empty box on every system, so it shows up at once.
 **Self-test.** `HOLM_SELFTEST=folder` runs the app without a person: it opens the notch by itself, writes what the
 backend reports (`report.txt`) and a picture of the closed and the open notch at scale 2, and quits. CI runs it on
 Windows, Linux and macOS and keeps the three folders as artifacts (`selftest-<system>`), so the pictures can be laid
-over each other.
+over each other. A `compare` job does that: it fails when a picture's size differs between systems or more than
+1 % of its pixels differ noticeably, and lists where they differ.
+
+What it shows today: sizes, shapes, positions and colours are the same on all three. What remains are the edges of
+glyphs (the date, the clock, the icons; 0.2 % of the open notch's pixels between Windows and Linux, 0.65 % to
+macOS), because Skia rasterises text through each system's own font engine (DirectWrite, FreeType, CoreText) even
+for the bundled fonts. Not visible at normal size; making it pixel-exact would mean drawing all text as outlines.
 
 **On every system alike:** one instance at a time (a lock file in the data folder), and "Start at sign-in" in the
 context menu (Windows: the Run key, only shown next to an installed Holm; Linux: `~/.config/autostart/holm.desktop`;
