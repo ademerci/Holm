@@ -32,9 +32,9 @@ public sealed partial class NotchWindow
     readonly TextBlock _taskTitle = new() { FontSize = 13, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _taskSubtitle = new() { FontSize = 12, Foreground = Dim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
     readonly MiniSlider _taskProgress = new() { IsInteractive = false, Margin = new Thickness(0, 4, 0, 0), IsVisible = false };
-    readonly NotchButton _taskSecondary = NotchButton.Pill(), _taskPrimary = NotchButton.Pill(ShareBlue);
+    readonly NotchButton _taskSecondary = NotchButton.Pill(), _taskPrimary = NotchButton.Pill(ShareBlue), _taskExtra = NotchButton.Pill();
     readonly DispatcherTimer _taskHide = new() { Interval = TimeSpan.FromSeconds(5) };
-    Action? _primaryAction, _secondaryAction;
+    Action? _primaryAction, _secondaryAction, _extraAction;
     bool _taskVisible;
 
     void BuildPopups()
@@ -57,12 +57,16 @@ public sealed partial class NotchWindow
         Grid.SetColumn(texts, 1);
         _taskPrimary.Margin = new Thickness(6, 0, 0, 0);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        _taskExtra.Margin = new Thickness(0, 0, 6, 0);
+        _taskExtra.IsVisible = false;
+        buttons.Children.Add(_taskExtra);
         buttons.Children.Add(_taskSecondary);
         buttons.Children.Add(_taskPrimary);
         Grid.SetColumn(buttons, 2);
         _taskView.Children.AddRange(new Control[] { _taskIconCircle, texts, buttons });
         _taskPrimary.Click += () => _primaryAction?.Invoke();
         _taskSecondary.Click += () => _secondaryAction?.Invoke();
+        _taskExtra.Click += () => _extraAction?.Invoke();
         // Stays while the mouse rests on it.
         _taskHide.Tick += (_, _) =>
         {
@@ -103,6 +107,8 @@ public sealed partial class NotchWindow
     void ShowTask(string icon, IBrush circle, string title, string subtitle, double? progress,
                   (string Label, Action Act)? primary, (string Label, Action Act)? secondary, bool textIcon = false)
     {
+        _taskExtra.IsVisible = false; // a third button belongs to the task that asked for it
+        _extraAction = null;
         _taskIcon.Text = icon;
         // A person's initials in their circle, an icon otherwise.
         _taskIcon.FontFamily = textIcon ? FontFamily.Default : IconFont;
@@ -138,10 +144,19 @@ public sealed partial class NotchWindow
         ApplyState(animate: true);
     }
 
+    /// <summary>A third button, left of the other two, for the task shown last; the notch grows to fit it.</summary>
+    void ShowTaskExtra(string label, Action act)
+    {
+        _taskExtra.Label = label;
+        _taskExtra.IsVisible = true;
+        _extraAction = act;
+        ApplyState(animate: true);
+    }
+
     void HideTask()
     {
         _taskHide.Stop();
-        _primaryAction = _secondaryAction = null;
+        _primaryAction = _secondaryAction = _extraAction = null;
         if (!_taskVisible) return;
         _taskVisible = false;
         ApplyState(animate: true);

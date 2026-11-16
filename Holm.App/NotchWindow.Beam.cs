@@ -728,6 +728,7 @@ public sealed partial class NotchWindow
         {
             if (await PrivacyOfClipboardAsync(clipboard) != ClipPrivacy.Keep) return; // a password: not ours to read
             string? text = await clipboard.TryGetTextAsync();
+            if (OfferCopiedInvite(text)) return;
             if (FriendIdentity.ParseFriendCode(text) is { } card)
             {
                 if (_friends.IsMe(card) || _friends.Find(card.Key) != null || card.Key == _lastOfferedFriend) return;
@@ -887,18 +888,17 @@ public sealed partial class NotchWindow
         _ = ReceiveWithCodeAsync(secret);
     }
 
-    /// <summary>Friends › Copy my friend code, Add back…, requests, Remove friend ›</summary>
+    /// <summary>Friends › Add a friend…, Chat…, Add back…, requests, Remove friend ›</summary>
     void FillFriendsMenu(MenuItem menu)
     {
         menu.Items.Clear();
         menu.IsEnabled = _settings.Beam;
-        var copy = new MenuItem { Header = "Copy my friend code" };
-        copy.Click += async (_, _) =>
-        {
-            string code = _friends.EnsureMe().FriendCode;
-            ShowPeek("", await TrySetClipboardAsync(code) ? "Friend code copied – send it to a friend" : "Clipboard busy – try again", "", null, seconds: 4);
-        };
-        menu.Items.Add(copy);
+        var add = new MenuItem { Header = "Add a friend…" };
+        add.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("add"), DispatcherPriority.Background);
+        menu.Items.Add(add);
+        var chat = new MenuItem { Header = "Chat…" };
+        chat.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
+        menu.Items.Add(chat);
         foreach (var card in _addBack.ToList())
         {
             var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
@@ -925,6 +925,7 @@ public sealed partial class NotchWindow
             item.Click += async (_, _) =>
             {
                 bool notified = await _friends.RemoveAsync(friend);
+                _chats.Forget(friend.Key);
                 ShowPeek("", $"{friend.Name} removed", "", null);
                 if (!notified) ShowPeek("", $"Couldn't notify {friend.Name}", "They may still have you as a friend", RedBrush, seconds: 5);
             };

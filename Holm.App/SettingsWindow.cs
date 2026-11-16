@@ -23,6 +23,18 @@ sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color,
 /// each a card of switches. Flipping a switch stages it; Apply sets them, Reset to defaults stages the defaults, and
 /// closing with changes asks first. Dark and rounded on every system; the window draws its own frame.
 /// </summary>
+/// <summary>A page of the Holm window other than the switches (friends, chat, achievements). Told when it goes away.</summary>
+abstract class HubView : Border
+{
+    /// <summary>The page is no longer shown: stop listening for events.</summary>
+    public virtual void Detach() { }
+}
+
+/// <summary>An entry in the Holm window's sidebar.</summary>
+/// <param name="Build">Makes the page, each time it's opened.</param>
+/// <param name="Badge">A count to show beside the entry (unread messages), or 0.</param>
+sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null);
+
 sealed class SettingsWindow : Window
 {
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
@@ -30,7 +42,10 @@ sealed class SettingsWindow : Window
         Hover = B(0x10FFFFFF), Selected = B(0x26FFFFFF), Line = B(0x14FFFFFF), Dim = B(0x99FFFFFF), Accent = B(0xFF0A84FF);
 
     readonly List<(SettingsSwitch Setting, ToggleSwitch Toggle)> _rows = new();
-    readonly Dictionary<string, (Border Item, TextBlock Glyph)> _navItems = new();
+    readonly Dictionary<string, (Border Item, TextBlock Glyph, Border Badge, TextBlock BadgeText)> _navItems = new();
+    readonly IReadOnlyList<HubPage> _social;
+    HubView? _shownView;
+    Control _footer = null!;
     readonly Dictionary<string, Control> _pages = new();
     readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
     readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
@@ -45,9 +60,11 @@ sealed class SettingsWindow : Window
 
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn);
 
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations)
+    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
+                          IReadOnlyList<HubPage>? social = null, string? start = null)
     {
         _animations = animations;
+        _social = social ?? Array.Empty<HubPage>();
         Title = "Holm";
         WindowDecorations = WindowDecorations.None;
         TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
@@ -80,6 +97,16 @@ sealed class SettingsWindow : Window
         sidebar.Children.Add(brand);
         sidebar.Children.Add(Scroller(nav));
 
+        if (_social.Count > 0)
+        {
+            nav.Children.Add(Caption("Friends"));
+            foreach (var page in _social)
+            {
+                _titles[page.Key] = (page.Title, page.Subtitle);
+                nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
+            }
+            nav.Children.Add(new Border { Height = 14 });
+        }
         nav.Children.Add(Caption("Settings"));
         foreach (var group in groups)
         {
@@ -125,6 +152,7 @@ sealed class SettingsWindow : Window
         _apply.Click += (_, _) => ApplyChanges();
         footer.Children.Add(reset);
         footer.Children.Add(_apply);
+        _footer = footer;
         DockPanel.SetDock(footer, Dock.Bottom);
         content.Children.Add(footer);
         content.Children.Add(_pageHost);
@@ -150,7 +178,7 @@ sealed class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
-        Navigate(groups[0].Key);
+        Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
         KeyDown += (_, e) =>
         {
@@ -171,19 +199,41 @@ sealed class SettingsWindow : Window
         };
     }
 
+    /// <summary>Opens a page: a friends page by its key, or a group of switches by its key.</summary>
     public void Navigate(string key)
     {
-        if (!_pages.TryGetValue(key, out var page)) return;
+        if (!_titles.ContainsKey(key)) return;
+        _shownView?.Detach();
+        _shownView = null;
+        bool settings = _pages.TryGetValue(key, out var page);
+        if (!settings && _social.FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
         (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
+        _footer.IsVisible = settings;
         foreach (var (k, item) in _navItems)
         {
             bool on = k == key;
             item.Item.Background = on ? Selected : Brushes.Transparent;
             item.Glyph.Foreground = on ? Accent : Dim;
         }
+        RefreshBadges();
     }
+
+    /// <summary>Updates the counts beside the friends pages (unread messages).</summary>
+    public void RefreshBadges()
+    {
+        foreach (var page in _social)
+        {
+            if (!_navItems.TryGetValue(page.Key, out var nav)) continue;
+            int count = page.Badge?.Invoke() ?? 0;
+            nav.BadgeText.Text = count > 99 ? "99+" : count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            nav.Badge.IsVisible = count > 0;
+        }
+    }
+
+    /// <summary>The page shown now, if it's one of the friends pages.</summary>
+    public HubView? ShownView => _shownView;
 
     /// <summary>Shows each switch as the setting stands now.</summary>
     public void Refresh()
@@ -200,13 +250,21 @@ sealed class SettingsWindow : Window
 
     Border NavItem(string key, string glyph, string title)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*") };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*,Auto") };
         var icon = Glyph(glyph, 15, Dim);
         icon.HorizontalAlignment = HorizontalAlignment.Left;
         grid.Children.Add(icon);
         var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, FontSize = 13.5 };
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
+        var badgeText = new TextBlock { FontSize = 11, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var badge = new Border
+        {
+            Background = B(0xFFFF453A), CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
+            Child = badgeText, IsVisible = false, VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(badge, 2);
+        grid.Children.Add(badge);
         var item = new Border
         {
             CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
@@ -215,7 +273,7 @@ sealed class SettingsWindow : Window
         item.PointerEntered += (_, _) => { if (Page != key) item.Background = Hover; };
         item.PointerExited += (_, _) => { if (Page != key) item.Background = Brushes.Transparent; };
         item.PointerReleased += (_, _) => Navigate(key);
-        _navItems[key] = (item, icon);
+        _navItems[key] = (item, icon, badge, badgeText);
         return item;
     }
 

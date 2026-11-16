@@ -93,13 +93,21 @@ public sealed partial class NotchWindow
         return groups;
     }
 
-    void OpenSettings()
+    void OpenSettings() => ShowHub(SettingsGroups()[0].Key);
+
+    /// <summary>Opens the Holm window on a page: a friends page ("chat", "add", …) or a group of settings.</summary>
+    void ShowHub(string page)
     {
         // The notch closes first, so it can't hide the window.
         SetExpanded(false);
-        if (_settingsWindow != null) { _settingsWindow.Activate(); return; }
+        if (_settingsWindow != null)
+        {
+            _settingsWindow.Navigate(page);
+            _settingsWindow.Activate();
+            return;
+        }
         string version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "";
-        _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations);
+        _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page);
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;

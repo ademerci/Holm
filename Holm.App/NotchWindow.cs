@@ -105,6 +105,7 @@ public sealed partial class NotchWindow : Window
         InitPrivacy(platform);
         InitMessages(platform);
         InitBeam(platform);
+        InitHub();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
         foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
@@ -247,7 +248,7 @@ public sealed partial class NotchWindow : Window
                 _shareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(_shareView.DesiredSize.Height) + 6, 28);
                 break;
-            case NotchState.Task: (w, h, r) = (420, 60, 26); break;
+            case NotchState.Task: (w, h, r) = (_taskExtra.IsVisible ? 490 : 420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
