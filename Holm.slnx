@@ -2,7 +2,6 @@
   <Project Path="Holm.App/Holm.App.csproj" />
   <Project Path="Holm.Core/Holm.Core.csproj" />
   <Project Path="Holm.Platform.Linux/Holm.Platform.Linux.csproj" />
-  <Project Path="Holm.Platform.MacOS/Holm.Platform.MacOS.csproj" />
   <Project Path="Holm.Platform.Windows/Holm.Platform.Windows.csproj" />
   <Project Path="Holm.Platform/Holm.Platform.csproj" />
   <Project Path="Holm.Tests/Holm.Tests.csproj" />

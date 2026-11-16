@@ -28,7 +28,6 @@ public partial class App : Application
     /// <summary>The backend for the system the app was built for; the only place that knows which one that is.</summary>
 #if !HOLM_WINDOWS
     static IPlatformServices CreateLinux() => new Holm.Platform.Linux.LinuxPlatformServices();
-    static IPlatformServices CreateMacOS() => new Holm.Platform.MacOS.MacPlatformServices();
 #endif
 
     static IPlatformServices CreatePlatform()
@@ -38,7 +37,6 @@ public partial class App : Application
 #else
         // Each backend sits behind a method of its own, so that its code is only touched on its system.
         if (System.OperatingSystem.IsLinux()) return CreateLinux();
-        if (System.OperatingSystem.IsMacOS()) return CreateMacOS();
         return new NoPlatformServices();
 #endif
     }

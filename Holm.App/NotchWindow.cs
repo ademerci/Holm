@@ -31,8 +31,8 @@ public sealed partial class NotchWindow : Window
     readonly IAudioPlatform _audio;
     readonly IAutostartPlatform _autostart;
     // Read only on Windows for now: there the port shares the installed app's settings file and must not write to
-    // it yet. With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there. On Linux and
-    // macOS there is no other Holm: the file is this app's own, and it saves.
+    // it yet. With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there. On Linux
+    // there is no other Holm: the file is this app's own, and it saves.
     readonly AppSettings _settings = AppSettings.Load();
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>

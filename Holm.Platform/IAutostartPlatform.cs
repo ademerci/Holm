@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Holm.Platform;
 
-/// <summary>Whether Holm starts when the user signs in (Windows: the Run key; Linux: XDG autostart; macOS: a LaunchAgent).</summary>
+/// <summary>Whether Holm starts when the user signs in (Windows: the Run key; Linux: XDG autostart).</summary>
 public interface IAutostartPlatform
 {
     /// <summary>False where the switch may not be touched (the port next to an installed Holm on Windows).</summary>

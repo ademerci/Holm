@@ -29,7 +29,7 @@ public sealed partial class NotchWindow
     const string ClipboardGlyph = "";
     const int MaxClipPixels = 40_000_000;
     static readonly string ClipFolder = Path.Combine(Path.GetTempPath(), "Holm", "Clipboard");
-    static readonly string PasteKeys = OperatingSystem.IsMacOS() ? "⌘V" : "Ctrl+V";
+    const string PasteKeys = "Ctrl+V";
 
     readonly ClipboardHistory _clips = new();
     readonly StackPanel _clipboardPage = new() { IsVisible = false };

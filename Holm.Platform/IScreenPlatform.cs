@@ -7,8 +7,7 @@ namespace Holm.Platform;
 public sealed record ScreenImage(int Width, int Height, byte[] Bgra);
 
 /// <summary>
-/// Reads what the screen shows, for the colour picker (Windows: GDI; Linux: X11; macOS: the system's screencapture
-/// tool, which asks once for the screen recording permission). Everything else about picking is the app's own,
+/// Reads what the screen shows, for the colour picker (Windows: GDI; Linux: X11). Everything else about picking is the app's own,
 /// the same on every system.
 /// </summary>
 public interface IScreenPlatform

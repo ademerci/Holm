@@ -3,8 +3,7 @@ using System;
 namespace Holm.Platform;
 
 /// <summary>
-/// Ctrl+H from anywhere (Windows: RegisterHotKey; Linux: a key grab on the X root window; macOS: the Carbon hot key
-/// service, Control+H). While registered the system hands the combination to Holm alone.
+/// Ctrl+H from anywhere (Windows: RegisterHotKey; Linux: a key grab on the X root window). While registered the system hands the combination to Holm alone.
 /// </summary>
 public interface IHotKeyPlatform
 {

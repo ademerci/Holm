@@ -15,8 +15,7 @@ namespace Holm.App;
 /// <summary>
 /// A small lock while a VPN is connected, in the idle notch and beside the batteries, and a word when it comes or
 /// goes (the WPF app's VpnWatcher, with its rules in VpnNames linked). Every system says when addresses change
-/// (.NET's NetworkChange), so nothing is polled. Linux and macOS name tunnels their own way: tun, wg, ppp, and on
-/// macOS a utun that holds an IPv4 address (macOS keeps a few utun of its own, with only IPv6 link-local addresses).
+/// (.NET's NetworkChange), so nothing is polled. Linux names tunnels its own way: tun, wg, ppp.
 /// </summary>
 public sealed partial class NotchWindow
 {

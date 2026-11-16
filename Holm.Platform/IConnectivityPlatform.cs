@@ -4,7 +4,7 @@ namespace Holm.Platform;
 
 /// <summary>
 /// Whether the computer reaches the internet, told by the system the moment it changes (Windows: the Network List
-/// Manager; Linux: NetworkManager; macOS: the Network framework's path monitor). Nothing is pinged or polled.
+/// Manager; Linux: NetworkManager). Nothing is pinged or polled.
 /// </summary>
 public interface IConnectivityPlatform
 {

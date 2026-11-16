@@ -15,7 +15,7 @@ public interface IIdentityPlatform
 }
 
 /// <summary>
-/// Linux and macOS: sealed with AES-GCM under a key of this user's own, in a file only they can read (as ssh and
+/// Linux: sealed with AES-GCM under a key of this user's own, in a file only they can read (as ssh and
 /// gpg keep theirs). Copying the settings to another computer leaves the secret behind, as with Windows' DPAPI.
 /// </summary>
 public class UnixIdentityPlatform : IIdentityPlatform

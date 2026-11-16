@@ -7,7 +7,7 @@ namespace Holm.Platform;
 public readonly record struct PowerState(bool HasBattery, int Percent, bool OnAc, bool Charging);
 
 /// <summary>
-/// The computer's battery (Windows: GetSystemPowerStatus; Linux: UPower; macOS: IOKit). Event driven: a backend
+/// The computer's battery (Windows: GetSystemPowerStatus; Linux: UPower). Event driven: a backend
 /// reports plugging in and unplugging and must not poll.
 /// </summary>
 public interface IPowerPlatform
@@ -27,7 +27,7 @@ public interface IPowerPlatform
 /// <param name="Battery">0 to 100.</param>
 public sealed record BluetoothDeviceState(string Address, string Name, string Glyph, int Battery, bool IsConnected);
 
-/// <summary>Bluetooth devices and their batteries (Windows: the device registry; Linux: BlueZ; macOS: IOBluetooth).</summary>
+/// <summary>Bluetooth devices and their batteries (Windows: the device registry; Linux: BlueZ).</summary>
 public interface IBluetoothPlatform
 {
     /// <summary>

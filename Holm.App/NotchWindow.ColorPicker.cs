@@ -29,9 +29,6 @@ public sealed partial class NotchWindow
     void InitColorPicker(IPlatformServices platform)
     {
         _screen = platform.Screen;
-#if !HOLM_WINDOWS
-        Holm.Platform.MacOS.MacScreenPlatform.DecodePng = DecodePng;
-#endif
     }
 
     /// <summary>Not a page: it sits in the tool row after the mixer, as in the WPF app.</summary>
@@ -84,25 +81,5 @@ public sealed partial class NotchWindow
                 glyphBrush: new SolidColorBrush(swatch).ToImmutable());
         }
         finally { _picking = false; }
-    }
-
-    /// <summary>For macOS, whose screen arrives as a PNG: its pixels as BGRA.</summary>
-    static ScreenImage? DecodePng(byte[] png)
-    {
-        try
-        {
-            using var bitmap = new Bitmap(new MemoryStream(png));
-            var size = bitmap.PixelSize;
-            using var target = new WriteableBitmap(size, new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
-            var bgra = new byte[size.Width * size.Height * 4];
-            using (var buffer = target.Lock())
-            {
-                bitmap.CopyPixels(buffer);
-                for (int row = 0; row < size.Height; row++)
-                    Marshal.Copy(buffer.Address + row * buffer.RowBytes, bgra, row * size.Width * 4, size.Width * 4);
-            }
-            return new ScreenImage(size.Width, size.Height, bgra);
-        }
-        catch { return null; }
     }
 }

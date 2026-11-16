@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Lays the self-test pictures of the three systems over each other (docs/cross-platform/WORKFLOW.md).
+"""Lays the self-test pictures of Windows and Linux over each other (docs/cross-platform/WORKFLOW.md).
 
     pip install pillow
-    python3 compare.py <folder with selftest-Windows, selftest-Linux, selftest-macOS> <output folder>
+    python3 compare.py <folder with selftest-Windows, selftest-Linux> <output folder>
 
 For each picture (closed.png, open.png) it reports, per pair of systems, whether the sizes match, how many pixels
 differ noticeably and by how much at most, and writes a difference image (brighter = more different). Exit code 1

@@ -61,8 +61,6 @@ public sealed partial class NotchWindow
                 Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
                 Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
                         ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."
-                        : OperatingSystem.IsMacOS()
-                        ? "Every app's notification would pop out in the notch, not only messages. macOS doesn't let apps read other apps' notifications, so only Dock badges reach Holm here."
                         : "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in your desktop to keep its own banners away; they still reach Holm.",
                     s => s.AllNotifications, SetAllNotifications),
                 Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),

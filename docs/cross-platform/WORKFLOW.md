@@ -3,6 +3,10 @@
 > **Experimental.** This branch is a work-in-progress rewrite. It is not released, not supported and far from
 > feature-complete; the app people use is built from `main` (`WinNotch/`). Do not ship builds from here.
 
+**Scope: Windows and Linux.** macOS was dropped on 2026-11-16 (its backend, tests and CI job are gone); older
+notes below that mention it describe the past. Dev builds for testing come from `.github/workflows/dev-release.yml`
+(a tag `dev-v<version>.<n>` on `dev`).
+
 The plan itself is in [PLAN.md](PLAN.md). This file is about the mechanics: where the work lives, what may be
 touched, and how it gets back into `main`.
 
@@ -88,41 +92,42 @@ tool opens, the reminder hint when no time is found, the double-click guard on r
   and a device connecting (the peeks are not yet seen running). Bluetooth is read at start and each time the
   notch has opened; nothing watches it in between yet.
 - On Windows notes and reminders live only as long as the port runs: settings are read-only there (see below).
-  On Linux and macOS the settings file is the port's own and it saves. No alarm sound yet.
+  On Linux the settings file is the port's own and it saves. No alarm sound yet.
 - `Holm.Platform.Windows`: overlay window styles and click region, media sessions (GSMTC), volume and
   levels (CoreAudio), battery, Bluetooth batteries. `VolumeService.cs`, `AudioMeter.cs`, `Native.cs` and
   `BluetoothBattery.cs` are linked from `WinNotch/` into this project:
   Windows-only files that never touch WPF need no rewrite, only an interface in front.
 
 On Windows the port reads the installed app's `settings.json` (animations, bounce, reactive equalizer) and never
-writes it (`AppSettings.ReadOnly`). On Linux (`~/.config/Holm`) and macOS there is no other Holm, so it saves. With `HOLM_DATA=folder` (Debug builds) it runs on a data folder of its own and saves there.
+writes it (`AppSettings.ReadOnly`). On Linux (`~/.config/Holm`) there is no other Holm, so it saves. With `HOLM_DATA=folder` (Debug builds) it runs on a data folder of its own and saves there.
 
 Run it next to an installed Holm with `HOLM_DEV_TOP=300` (Debug builds only): the notch sits 300 px down.
 
-**Ported since, on all three systems** (each backend behind an interface in `Holm.Platform`, the app code shared):
+**Ported, on both systems** (each backend behind an interface in `Holm.Platform`, the app code shared):
 
-| Feature | Windows | Linux | macOS |
-|---|---|---|---|
-| Clipboard history (privacy markers honoured) | clipboard listener | XFixes | pasteboard change count, read twice a second |
-| Colour picker (screen read once, picked in a window over it) | GDI | X root window | `screencapture` (asks for screen recording) |
-| Volume per app | Core Audio sessions (WPF code linked) | PulseAudio/PipeWire sink inputs | **not possible**: the page says so |
-| Downloads, low disk space | known folder, Explorer | XDG user dirs, FileManager1 / xdg-open | ~/Downloads, Finder |
-| No internet / back online | Network List Manager | NetworkManager | Network framework path monitor |
-| Caps Lock hint | keyboard hook on that key | XKB indicator events | modifier state, read four times a second |
-| Ctrl+H | RegisterHotKey | X key grab | Carbon hot key (Control+H) |
-| Screenshots pop out | known Screenshots folder | XDG Pictures/Screenshots | screenshot location (Desktop), macOS's screen-capture mark |
-| USB drives (Open, Eject) | WM_DEVICECHANGE, UsbDrives (linked) | automounter folders, gio/udisksctl | /Volumes (external only), diskutil |
-| VPN lock | adapters (VpnNames, linked) | same rules + wg/tun/ppp | same rules + utun with IPv4 |
-| Weather, sky, greeting, sleep timer, shelf (drag and drop), mini idle, menus, tooltips, settings window | shared | shared | shared |
+| Feature | Windows | Linux |
+|---|---|---|
+| Clipboard history (privacy markers honoured), copied passwords cleared after 30 s | clipboard listener | XFixes |
+| Colour picker (screen read once, picked in a window over it) | GDI | X root window |
+| Volume per app | Core Audio sessions (WPF code linked) | PulseAudio/PipeWire sink inputs |
+| Downloads, low disk space | known folder, Explorer | XDG user dirs, FileManager1 / xdg-open |
+| No internet / back online | Network List Manager | NetworkManager |
+| Caps Lock hint | keyboard hook on that key | XKB indicator events |
+| Ctrl+H | RegisterHotKey | X key grab |
+| Screenshots pop out (Send, Shelf) | known Screenshots folder | XDG Pictures/Screenshots |
+| USB drives (Open, Eject) | WM_DEVICECHANGE, UsbDrives (linked) | automounter folders, gio/udisksctl |
+| VPN lock | adapters (VpnNames, linked) | same rules + wg/tun/ppp |
+| Click elsewhere closes the notch | button state every 35 ms while open | XInput2 raw button events |
+| Hide for fullscreen, pill over a maximized browser | notification state, IsZoomed | EWMH state and size |
+| Microphone/camera dots, calls, music paused for calls | the WPF app's sources (SensorRecord, MicrophoneActivity, CameraActivity) | PulseAudio recording streams, `/dev/video*` opens (inotify) |
+| Messages: pop-outs, badges, list, quiet hours | notification center + badge database (as the WPF app) | notifications on the session bus (`dbus-monitor`), launcher badges |
+| Beam: friends, nearby, codes, folders as ZIP | shared (WinNotch/Sharing, FriendsService linked); key kept with DPAPI | shared; key sealed under a per-user key file |
+| Holm window: Chat, Add a friend | shared | shared |
+| Weather, sky, greeting, sleep timer, shelf, mini idle, sizes, display choice, big clock, today cards, motion | shared | shared |
 
-Weather asks for the city on every system (the WPF app's one-time Windows location lookup is not ported). The shelf's
-drag and drop goes through Avalonia; it has not been tried with a real drag on each system yet.
-
-Still missing from the WPF app: Beam (friends, chat, nearby, phone, streaming, achievements, profile, the Holm window's
-social pages), notifications and message badges, quiet hours, calls and the microphone/camera dot, screenshot text
-(OCR), dictation, Focumon, the AI button, updates, notch sizes, monitor choice, hiding over full-screen apps and
-browser tabs, the big clock view, today cards; views fade but do not pop or unfold yet, and a new cover fades in over
-black instead of cross-fading.
+Still missing from the WPF app: Beam text, send later, phone, screen streaming, waves, activity page, achievements,
+profile editor, GIFs in chat, screenshot text (OCR), dictation, Focumon, the AI button, updates, Wi-Fi and speed
+test, volume/media keys handled by Holm.
 
 **Fonts: the same on every system.** Text is set in Inter (bundled with Avalonia) and icons come from
 `Holm.App/Assets/HolmIcons.ttf`: Fluent System Icons (MIT) filed under Segoe's code points. Both ship inside the app,
@@ -134,18 +139,16 @@ an empty box on every system, so it shows up at once.
 
 **Self-test.** `HOLM_SELFTEST=folder` runs the app without a person: it opens the notch by itself, writes what the
 backend reports (`report.txt`) and a picture of the closed and the open notch at scale 2, and quits. CI runs it on
-Windows, Linux and macOS and keeps the three folders as artifacts (`selftest-<system>`), so the pictures can be laid
+Windows and Linux and keeps both folders as artifacts (`selftest-<system>`), so the pictures can be laid
 over each other. A `compare` job does that: it fails when a picture's size differs between systems or more than
 1 % of its pixels differ noticeably, and lists where they differ.
 
-What it shows today: sizes, shapes, positions and colours are the same on all three. What remains are the edges of
-glyphs (the date, the clock, the icons; 0.2 % of the open notch's pixels between Windows and Linux, 0.65 % to
-macOS), because Skia rasterises text through each system's own font engine (DirectWrite, FreeType, CoreText) even
+What it shows today: sizes, shapes, positions and colours are the same on both. What remains are the edges of
+glyphs (the date, the clock, the icons; 0.2 % of the open notch's pixels between Windows and Linux), because Skia rasterises text through each system's own font engine (DirectWrite, FreeType) even
 for the bundled fonts. Not visible at normal size; making it pixel-exact would mean drawing all text as outlines.
 
 **On every system alike:** one instance at a time (a lock file in the data folder), and "Start at sign-in" in the
-context menu (Windows: the Run key, only shown next to an installed Holm; Linux: `~/.config/autostart/holm.desktop`;
-macOS: `~/Library/LaunchAgents/app.holm.notch.plist`).
+context menu (Windows: the Run key, only shown next to an installed Holm; Linux: `~/.config/autostart/holm.desktop`).
 
 **Seams made so far.** These are the only edits under `WinNotch/` on this branch. They change no behavior (the
 WPF suite passes) and belong on `main`: commit them separately from the new folders, so that commit can be
@@ -188,41 +191,18 @@ PulseAudio and pretend MPRIS and BlueZ services on a private bus (not yet on a r
   about 50 MB of private memory, under 1 % of a core while the equalizer runs.
 - Missing: an update path, a `.desktop` file for the app menu, and packaging.
 
-All tests pass on Windows, Linux and macOS, and CI requires all three (the updater's stay excluded on Linux and
-macOS: it swaps `Holm.exe` through PowerShell, Windows only by design). Each backend's plain logic has tests of its
-own in `Holm.Tests/Linux/` and `Holm.Tests/MacOS/`, which run on every system.
-
-**macOS:** `Holm.Platform.MacOS` is the backend. CI starts the app on a Mac (the self-test) and runs the native
-calls in `MacNativeTests`; it has not yet been used by a person on a Mac, so hover, typing and media are unchecked
-there.
-
-- Window (`MacNotchWindowPlatform.cs`): status-bar level (above the menu bar), on every Space and next to
-  full-screen apps, out of the window cycle, no Dock icon (`Program.cs`). macOS has no input shape, so the window
-  ignores the mouse and two event monitors (mouse movement only, no permission needed) let it take the mouse while
-  the pointer is over the notch. The keyboard is taken by activating the app and handed back to the app that had it.
-- Media (`MacMediaPlatform.cs`): Spotify and Music through their scripting (`osascript`), woken by their own
-  change notifications and by apps starting and quitting. macOS has no public "now playing" for all apps (the
-  private MediaRemote refuses unsigned callers since 15.4), so browsers and other players are not shown yet. macOS
-  asks once whether Holm may control each player. A player that isn't running is never addressed.
-- Volume (`MacAudioPlatform.cs`): CoreAudio, with listeners for volume, mute and the default device. The equalizer
-  cannot follow the sound (that needs a recording permission): it bounces, as it does elsewhere when the sound can't
-  be read. This is the one visible difference to Windows and Linux.
-- Battery: IOKit power sources, with their change notification. Bluetooth batteries: `system_profiler`
-  (AirPods per bud, mice, keyboards, trackpads).
-- One file: `dotnet publish Holm.App -c Release -r osx-arm64 --self-contained -p:PublishSingleFile=true`; CI uploads
-  it. Missing: a signed `.app` bundle (with `LSUIElement` and the automation usage text), notarisation.
+All tests pass on Windows and Linux, and CI requires both (the updater's stay excluded on Linux: it swaps
+`Holm.exe` through PowerShell, Windows only by design). Each backend's plain logic has tests of its own in
+`Holm.Tests/Linux/`, which run on every system.
 
 **Still blocked,** each a candidate for the next seam:
 
 | Blocked files | Reason |
 |---|---|
 | `Achievements.cs`, `Weather.cs` tests (`Sky`), `BigClockTests.cs`, `MotionTests.cs` | Use `System.Windows.Media.Color`; need a small colour type of our own in Core. |
-| `FriendsService.cs` and the tests around it | WPF `Dispatcher` (use `IUiDispatcher`) and DPAPI (`ISecretStore`). |
 | `ExitWatchdog.cs`, `ColorPick.cs` | Call `Native` directly. |
-| `Calls.cs` | Needs `SensorUse` from `PrivacyMonitor.cs`. |
 | `NetworkInfo.cs` | Needs `NetworkLink` from `SpeedTest.cs` (WinRT). |
-| `Notify/Messengers.cs` tests | Need `BadgeCounter`. |
 | `UpdateServiceTests.cs` | Expects a built `Holm.exe` next to the test assembly. |
 
-**Next in `Holm.App`:** the microphone/camera dot and calls, notch sizes, then notifications and quiet hours; Beam
-is the largest piece left.
+**Next in `Holm.App`:** the rest of Beam (text, send later, phone, streaming, waves, activity, achievements,
+profile), then updates, Focumon, the AI button and dictation.

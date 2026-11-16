@@ -8,7 +8,7 @@ public readonly record struct ForegroundWindow(bool Fullscreen, string ProcessNa
 
 /// <summary>
 /// The window in front (Windows: the shell's notification state and the foreground window; Linux: the window
-/// manager's active window and its state; macOS: the frontmost window's bounds). Asked every 1.5 s, as the WPF app does.
+/// manager's active window and its state). Asked every 1.5 s, as the WPF app does.
 /// </summary>
 public interface IForegroundPlatform
 {

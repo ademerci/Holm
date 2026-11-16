@@ -19,9 +19,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # All three systems must pass: the app is meant to look and work the same on each.
+    # Both systems must pass: the app is meant to look and work the same on each.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -39,20 +39,96 @@ jobs:
         run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual"
 
       # The updater replaces Holm.exe through PowerShell: Windows only by design, so its tests stay out here.
-      - name: Test (Linux, macOS)
+      - name: Test (Linux)
         if: matrix.os != 'windows-latest'
         run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual&FullyQualifiedName!~UpdateInstallerTests"
 
       # The app itself, started on each system without a person: it opens the notch, reads what the backend offers,
       # saves a picture of the closed and the open notch and quits. A native call declared wrong crashes it here, and
-      # the three systems' pictures, laid over each other, show whether the notch still looks the same everywhere.
+      # both systems' pictures, laid over each other, show whether the notch still looks the same on each.
       - name: Self-test (Linux)
         if: matrix.os == 'ubuntu-latest'
         timeout-minutes: 3
         run: HOLM_SELFTEST="$PWD/selftest" xvfb-run -a -s "-screen 0 1920x1080x24" dotnet run --project Holm.App -c Release --no-build
 
-      - name: Self-test (macOS, Windows)
-        if: matrix.os != 'ubuntu-latest'
+      - name: Self-test (Windows)
+        if: matrix.os == 'windows-latest'
+        timeout-minutes: 3
+        shell: bash
+        run: HOLM_SELFTEST="$PWD/selftest" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Upload self-test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-${{ runner.os }}
+          path: selftest/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # The Linux build as people would get it: self-contained, one file. Kept for a few days to try out; it is
+      # a test build of an experimental branch, not a release.
+      - name: Publish (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet publish Holm.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/linux-x64
+
+      - name: Upload (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-linux-x64-test-build.${{ github.run_number }}
+          path: out/linux-x64/
+          retention-days: 7
+
+      # The Windows build as people would get it: self-contained, one file, named as a test build (AGENTS.md).
+      - name: Publish (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          dotnet publish Holm.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/win-x64
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Holm.App/Holm.App.csproj | head -1)
+          mv out/win-x64/Holm.App.exe "out/win-x64/Holm-$version-test-build.${{ github.run_number }}.exe"
+
+      - name: Upload (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-win-x64-test-build.${{ github.run_number }}
+          path: out/win-x64/
+          retention-days: 7
+
+  # Both systems must pass: the app is meant to look and work the same on each.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        # Not the solution: it also holds the Windows backend, which only builds on Windows.
+        run: dotnet build Holm.App -c Release && dotnet build Holm.Tests -c Release
+
+      - name: Test (Windows)
+        if: matrix.os == 'windows-latest'
+        run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual"
+
+      # The updater replaces Holm.exe through PowerShell: Windows only by design, so its tests stay out here.
+      - name: Test (Linux)
+        if: matrix.os != 'windows-latest'
+        run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual&FullyQualifiedName!~UpdateInstallerTests"
+
+      # The app itself, started on each system without a person: it opens the notch, reads what the backend offers,
+      # saves a picture of the closed and the open notch and quits. A native call declared wrong crashes it here, and
+      # both systems' pictures, laid over each other, show whether the notch still looks the same on each.
+      - name: Self-test (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 3
+        run: HOLM_SELFTEST="$PWD/selftest" xvfb-run -a -s "-screen 0 1920x1080x24" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Self-test (Windows)
+        if: matrix.os == 'windows-latest'
         timeout-minutes: 3
         shell: bash
         run: HOLM_SELFTEST="$PWD/selftest" dotnet run --project Holm.App -c Release --no-build
@@ -93,7 +169,7 @@ jobs:
           path: out/osx-arm64/
           retention-days: 7
 
-  # The three systems' self-test pictures laid over each other: the notch must look the same on each.
+  # Both systems' self-test pictures laid over each other: the notch must look the same on each.
   compare:
     needs: test
     runs-on: ubuntu-latest

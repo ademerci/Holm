@@ -13,7 +13,6 @@ public sealed record AppIcon(string? File, ScreenImage? Pixels);
 /// <summary>
 /// The volume of each app (Windows: Core Audio sessions; Linux: PulseAudio/PipeWire sink inputs). Follows the
 /// system's events only between <see cref="Start"/> and <see cref="Stop"/>, while the mixer page is open.
-/// macOS lets no app change another app's volume: there <see cref="Supported"/> is false.
 /// </summary>
 public interface IAppVolumePlatform
 {

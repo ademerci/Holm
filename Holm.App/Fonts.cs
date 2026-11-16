@@ -7,7 +7,7 @@ namespace Holm.App;
 /// The fonts the app draws with, the same on every system: text in Inter (bundled with Avalonia), icons from Holm
 /// Icons (Assets/HolmIcons.ttf), which files open-licensed icons under the code points of Segoe Fluent Icons. Both
 /// ship inside the app, so nothing depends on what a system has installed and the notch looks alike on Windows,
-/// Linux and macOS. The WPF app's Segoe fonts may not be redistributed, which is why they are not used even on
+/// Linux. The WPF app's Segoe fonts may not be redistributed, which is why they are not used even on
 /// Windows. See tools/icon-font.
 /// </summary>
 static class Fonts

@@ -51,7 +51,7 @@ public sealed partial class NotchWindow
         {
             var watcher = new FileSystemWatcher(folder, "*.png") { NotifyFilter = NotifyFilters.FileName, IncludeSubdirectories = false };
             watcher.Created += (_, e) => Dispatcher.UIThread.Post(() => SeenShot(e.FullPath));
-            // macOS writes a hidden file first and renames it.
+            // Some tools write a hidden file first and rename it.
             watcher.Renamed += (_, e) => { if (e.FullPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) Dispatcher.UIThread.Post(() => SeenShot(e.FullPath)); };
             watcher.EnableRaisingEvents = true;
             _shots = watcher;

@@ -2,7 +2,7 @@ namespace Holm.Platform;
 
 /// <summary>
 /// Files and the system's file manager: where downloads go, opening a file with its app, showing it in its folder
-/// (Windows: Explorer; Linux: the desktop's file manager; macOS: Finder).
+/// (Windows: Explorer; Linux: the desktop's file manager).
 /// </summary>
 public interface IShellPlatform
 {
@@ -12,7 +12,7 @@ public interface IShellPlatform
     /// <summary>Opens a file or folder with the app the system picks for it.</summary>
     void Open(string path);
 
-    /// <summary>Starts an installed app by the id its notifications or badge came with (Windows: its AppUserModelID; Linux: its desktop file; macOS: its bundle id). False if that didn't work.</summary>
+    /// <summary>Starts an installed app by the id its notifications or badge came with (Windows: its AppUserModelID; Linux: its desktop file). False if that didn't work.</summary>
     bool OpenApp(string appId);
 
     /// <summary>Shows a file selected in its folder.</summary>
@@ -27,7 +27,7 @@ public interface IShellPlatform
     /// <summary>Where the system saves screenshots, or null when it has no such folder.</summary>
     string? ScreenshotsFolder();
 
-    /// <summary>Whether a new picture in that folder is a screenshot (macOS marks its own; elsewhere the folder says it).</summary>
+    /// <summary>Whether a new picture in that folder is a screenshot (the folder says it).</summary>
     bool IsScreenshot(string path);
 }
 

@@ -27,7 +27,7 @@ public sealed class MediaState
 public readonly record struct MediaTimeline(TimeSpan Position, TimeSpan Duration, DateTimeOffset Stamp);
 
 /// <summary>
-/// The system's media sessions (Windows: GSMTC; Linux: MPRIS; macOS: MediaRemote). Event driven: a backend
+/// The system's media sessions (Windows: GSMTC; Linux: MPRIS). Event driven: a backend
 /// must not poll. What reaches the notch, and when, is decided above this in the shared MediaService.
 /// </summary>
 public interface IMediaPlatform

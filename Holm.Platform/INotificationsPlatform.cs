@@ -20,7 +20,7 @@ public sealed record NotificationSnapshot(IReadOnlyList<SystemNotification>? Toa
 /// <summary>
 /// Other apps' notifications and icon badges, for the messages in the notch. Nothing is changed or removed.
 /// Windows: the notification center (with the user's consent) and the taskbar badges. Linux: the notifications
-/// sent on the session bus and launcher badges. macOS: the Dock's badges (no app may read another's notifications).
+/// sent on the session bus and launcher badges.
 /// </summary>
 public interface INotificationsPlatform
 {

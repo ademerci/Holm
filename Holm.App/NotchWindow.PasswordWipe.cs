@@ -8,7 +8,7 @@ namespace Holm.App;
 
 /// <summary>
 /// A password copied from a password manager (marked private on the clipboard: Windows' monitor-exclusion format,
-/// KDE's password hint, macOS' concealed type) is wiped after 30 seconds if it is still there. Holm never reads it:
+/// KDE's password hint) is wiped after 30 seconds if it is still there. Holm never reads it:
 /// the formats and the count of clipboard changes tell it all it needs (the WPF app's MainWindow.PasswordWipe.cs).
 /// </summary>
 public sealed partial class NotchWindow

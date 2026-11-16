@@ -12,7 +12,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    /// <summary>Browser names as Linux and macOS give them, as the WPF app's Browsers list knows them.</summary>
+    /// <summary>Browser names as Linux gives them, as the WPF app's Browsers list knows them.</summary>
     static readonly Dictionary<string, string> BrowserAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Google Chrome"] = "chrome", ["google-chrome"] = "chrome", ["chromium-browse"] = "chromium", ["firefox-bin"] = "firefox",

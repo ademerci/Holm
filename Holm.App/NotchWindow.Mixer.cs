@@ -17,8 +17,8 @@ namespace Holm.App;
 
 /// <summary>
 /// The volume of each app, in the open notch: a slider per app that plays sound, the icon mutes it. It follows the
-/// system's events only while the page is open (the WPF app's MainWindow.Mixer.cs). macOS lets no app change
-/// another's volume; there the page says so.
+/// system's events only while the page is open (the WPF app's MainWindow.Mixer.cs). Where the system lets no
+/// app change another's volume, the page says so.
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -52,7 +52,7 @@ public sealed partial class NotchWindow
     {
         if (!_appVolumes.Supported)
         {
-            ShowMixerRows(new List<AppVolumeEntry>(), "macOS doesn't let other apps change an app's volume.");
+            ShowMixerRows(new List<AppVolumeEntry>(), "This system doesn't let other apps change an app's volume.");
             return;
         }
         if (!_mixerOpen)

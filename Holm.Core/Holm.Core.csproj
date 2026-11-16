@@ -65,7 +65,6 @@
     <InternalsVisibleTo Include="Holm.Tests" />
     <InternalsVisibleTo Include="Holm.Platform.Windows" />
     <InternalsVisibleTo Include="Holm.Platform.Linux" />
-    <InternalsVisibleTo Include="Holm.Platform.MacOS" />
   </ItemGroup>
 
 </Project>

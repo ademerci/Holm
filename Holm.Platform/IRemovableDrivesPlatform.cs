@@ -10,7 +10,7 @@ public sealed record RemovableDrive(string Id, string Name, string Root, long To
 
 /// <summary>
 /// Removable drives coming and going, told by the system (Windows: WM_DEVICECHANGE; Linux: the automounter's folder
-/// under /media or /run/media; macOS: /Volumes), and ejecting them safely.
+/// under /media or /run/media), and ejecting them safely.
 /// </summary>
 public interface IRemovableDrivesPlatform
 {

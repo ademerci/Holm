@@ -163,7 +163,7 @@ public class LinuxShellTests
     }
 }
 
-/// <summary>Which folders are mounted drives (Linux) and which volumes are external (macOS).</summary>
+/// <summary>Which folders are mounted drives.</summary>
 public class RemovableDriveTests : IDisposable
 {
     readonly string _mounts = Path.GetTempFileName();
@@ -181,13 +181,4 @@ public class RemovableDriveTests : IDisposable
         Assert.True(Holm.Platform.Linux.LinuxRemovableDrivesPlatform.IsMountPoint("/run/media/me/MY STICK", _mounts));
         Assert.False(Holm.Platform.Linux.LinuxRemovableDrivesPlatform.IsMountPoint("/run/media/me/OTHER", _mounts));
     }
-
-    [Theory]
-    [InlineData("   Device Location:           External\n   Protocol:                  USB", true)]
-    [InlineData("   Device Location:           Internal\n   Protocol:                  Apple Fabric", false)]
-    [InlineData("   Protocol:                  Disk Image\n   Internal:                  No", false)]
-    [InlineData("   Internal:                  No", true)]
-    [InlineData("", false)]
-    public void Only_external_physical_volumes_count_on_macOS(string info, bool external)
-        => Assert.Equal(external, Holm.Platform.MacOS.MacRemovableDrivesPlatform.IsExternal(info));
 }

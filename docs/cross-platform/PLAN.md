@@ -1,5 +1,8 @@
 # Cross-Platform Rewrite Plan: Holm on Windows, Linux & macOS (Write-Once Architecture)
 
+> **Scope changed (2026-11-16): Windows and Linux only.** macOS was dropped; its backend, tests and CI job were
+> removed. The macOS parts of this plan are kept as written but no longer apply. Current status: [WORKFLOW.md](WORKFLOW.md).
+
 ## Goal Description
 
 Holm ([WinNotch.csproj](../../WinNotch/WinNotch.csproj)) currently targets `net10.0-windows10.0.19041.0` with `<UseWPF>true</UseWPF>` and mixes UI, business logic, and Windows P/Invoke / COM / WinRT APIs across ~140 files.

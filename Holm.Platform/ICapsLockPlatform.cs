@@ -4,7 +4,7 @@ namespace Holm.Platform;
 
 /// <summary>
 /// Says when Caps Lock goes on or off (Windows: a keyboard hook that looks at that one key; Linux: the X keyboard
-/// extension's indicator events; macOS: the keyboard's modifier state). No other key is ever looked at.
+/// extension's indicator events). No other key is ever looked at.
 /// </summary>
 public interface ICapsLockPlatform
 {
