@@ -440,7 +440,10 @@ internal sealed class SettingsWindow : Window
         {
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var reset = HubTheme.Action(setting.ActionLabel);
-            reset.Padding = new Thickness(10, 6, 10, 6);
+            reset.Padding = new Thickness(10, 3, 10, 3);
+            reset.MinHeight = 28;
+            reset.Height = 28;
+            reset.VerticalAlignment = VerticalAlignment.Center;
             reset.Click += (_, e) => { e.Handled = true; setting.RunAction(); };
             // ButtonBase handles mouse-up; keep the action separate from the row toggle.
             reset.MouseLeftButtonUp += (_, e) => e.Handled = true;
