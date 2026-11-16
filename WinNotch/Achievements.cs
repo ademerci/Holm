@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Windows.Media;
 
 namespace WinNotch;
 
 /// <summary>One achievement: unlocked once <see cref="Counter"/> reaches <see cref="Goal"/>.</summary>
-internal sealed record Achievement(string Id, string Title, string Description, string Glyph, Color Color, string Counter, long Goal);
+/// <param name="Argb">Its colour as 0xAARRGGBB (the WPF side makes a Color of it: Achievements.Wpf.cs).</param>
+internal sealed partial record Achievement(string Id, string Title, string Description, string Glyph, uint Argb, string Counter, long Goal);
 
 /// <summary>
 /// Achievements for using Holm: counters that go up as things happen (a file sent, a timer done, a day in a row) and
@@ -23,9 +23,8 @@ internal sealed class AchievementBook
         Screenshots = "screenshots", Colors = "colors", Reminders = "reminders", Songs = "songs", ProfilePicture = "profile-picture",
         Night = "night", Streak = "streak", Notes = "notes";
 
-    static readonly Color Blue = Color.FromRgb(0x0A, 0x84, 0xFF), Pink = Color.FromRgb(0xFF, 0x37, 0x5F), Green = Color.FromRgb(0x30, 0xD1, 0x58),
-        Purple = Color.FromRgb(0x5E, 0x5C, 0xE6), Orange = Color.FromRgb(0xFF, 0x9F, 0x0A), Teal = Color.FromRgb(0x32, 0xAD, 0xE6),
-        Red = Color.FromRgb(0xFF, 0x45, 0x3A), Gold = Color.FromRgb(0xFF, 0xC4, 0x3D);
+    const uint Blue = 0xFF0A84FF, Pink = 0xFFFF375F, Green = 0xFF30D158, Purple = 0xFF5E5CE6, Orange = 0xFFFF9F0A, Teal = 0xFF32ADE6,
+        Red = 0xFFFF453A, Gold = 0xFFFFC43D;
 
     public static readonly IReadOnlyList<Achievement> All = new Achievement[]
     {
