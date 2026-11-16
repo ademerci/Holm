@@ -100,6 +100,11 @@ public sealed partial class NotchWindow : Window
         InitScreenshots();
         InitUsb(platform);
         InitVpn();
+        BuildToday();
+        // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
+        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _downloadRow, _usbRows, _timerRow, _shelfRow })
+            _homePanel.Children.Remove(row);
+        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _downloadRow, _usbRows, _timerRow, _shelfRow });
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -206,6 +211,7 @@ public sealed partial class NotchWindow : Window
         switch (target)
         {
             case NotchState.Expanded:
+                if (_clockPanel.IsVisible) ShowToday();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
                 UpdateLayout();

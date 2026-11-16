@@ -224,7 +224,6 @@ public sealed partial class NotchWindow
 
         _homePanel.Children.Add(_mediaPanel);
         _homePanel.Children.Add(_clockPanel);
-        _homePanel.Children.Add(_timerRow);
         _homePanel.Children.Add(_downloadRow);
         panel.Children.Add(_homePanel);
         panel.Children.Add(BuildToolPages());
@@ -263,9 +262,22 @@ public sealed partial class NotchWindow
     void UpdateClock()
     {
         var now = DateTime.Now;
-        _idleClock.Text = now.ToString("HH:mm");
-        _clockBig.Text = now.ToString("HH:mm");
+        string time = now.ToString("HH:mm");
+        bool turnedOver = _clockBig.Text != null && _clockBig.Text != time && _state == NotchState.Expanded && !_shapeAnimating;
+        _idleClock.Text = time;
+        _clockBig.Text = time;
         _dateText.Text = now.ToString("dddd, MMMM d", CultureInfo.GetCultureInfo("en-US"));
+        UpdateMediaClock(now);
+        if (turnedOver) RollClock();
+    }
+
+    /// <summary>The clock turns over to a new minute: the new time rolls up into place (the WPF app's RollClock).</summary>
+    void RollClock()
+    {
+        if (!_settings.Animations || !_clockPanel.IsVisible) return;
+        if (_clockBig.RenderTransform is not TranslateTransform roll) _clockBig.RenderTransform = roll = new TranslateTransform();
+        Animate(_clockBig, "roll", v => roll.Y = v, 9, 0, 420, 0, Bouncy);
+        Animate(_clockBig, "roll-fade", v => _clockBig.Opacity = v, 0.2, 1, 260, 0, t => t);
     }
 
     /// <summary>One brush per cover, shared by the compact and the open notch.</summary>
@@ -279,8 +291,14 @@ public sealed partial class NotchWindow
     void RefreshMediaUi()
     {
         var info = _info;
-        _mediaPanel.IsVisible = info != null;
-        _clockPanel.IsVisible = info == null;
+        bool media = _settings.MediaControls && info != null && !_choosingPlace;
+        _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
+        if (_mediaPanel.IsVisible != media)
+        {
+            _mediaPanel.IsVisible = media;
+            _clockPanel.IsVisible = !media;
+            FadeIn(media ? _mediaPanel : _clockPanel);
+        }
         _compactArt.Background = ArtBrush(info?.Art);
         RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }

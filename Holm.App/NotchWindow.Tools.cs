@@ -99,6 +99,7 @@ public sealed partial class NotchWindow
         _mixerToolBtn = ToolButton(MixerGlyph, Tool.Mixer, "Volume per app");
         BuildColorPickerButton();
         var row = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 32, VerticalAlignment = VerticalAlignment.Top };
+        row.Children.Add(_mediaClockHeader);
         row.Children.Add(_toolBar);
         row.Children.Add(BuildToolRowRight());
         return row;
