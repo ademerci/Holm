@@ -72,6 +72,7 @@ public sealed partial class NotchWindow
                 Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
                     s => s.Beam, SetBeam),
                 Switch("Send folders as ZIP", "\uE8B7", "Folders are packed as a ZIP before they're sent.", s => s.SendFolders, on => { _settings.SendFolders = on; Save(); }),
+                Switch("Send later when a friend is offline", "\uE823", "Files for an offline friend wait and go once they're back.", s => s.SendLater, SetSendLater),
             }),
             new("friends", "Friends", "\uE716", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new[]
             {

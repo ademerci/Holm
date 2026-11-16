@@ -87,6 +87,7 @@ public sealed partial class NotchWindow
         customize.Items.Add(collapsedSize);
         customize.Items.Add(expandedSize);
         customize.Items.Add(bounceLevel);
+        var beamText = new MenuItem { Header = "Beam text" };
         var receive = new MenuItem { Header = "Receive with copied code" };
         receive.Click += (_, _) => _ = ReceiveCopiedCodeAsync();
         var friends = new MenuItem { Header = "Friends" };
@@ -95,6 +96,7 @@ public sealed partial class NotchWindow
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
         menu.Items.Add(_menuSleep);
+        menu.Items.Add(beamText);
         menu.Items.Add(receive);
         menu.Items.Add(friends);
         menu.Items.Add(new Separator());
@@ -115,6 +117,7 @@ public sealed partial class NotchWindow
             FillWeatherMenu(weather);
             FillMessagesMenu(messages);
             FillFriendsMenu(friends);
+            FillBeamTextMenu(beamText);
             receive.IsEnabled = _settings.Beam;
             FillQuietMenu(quiet);
             FillSizeMenu(collapsedSize, expanded: false);

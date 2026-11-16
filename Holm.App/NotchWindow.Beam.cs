@@ -114,7 +114,9 @@ public sealed partial class NotchWindow
     void StartSharing()
     {
         if (!_settings.Beam) return;
-        _friends.Restart();
+        // A damaged friend card in the settings must not take the whole notch down.
+        try { _friends.Restart(); }
+        catch (Exception ex) when (ex is FormatException or CryptographicException or ArgumentException) { Diag.Log("Friends not started: " + ex.GetType().Name); }
         if (_nearby != null) return;
         var nearby = new NearbyService(_friends.MyName) { Incoming = OnNearbyIncoming };
         nearby.PeersChanged += () => Dispatcher.UIThread.Post(() => { if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); } });
@@ -200,6 +202,7 @@ public sealed partial class NotchWindow
         _shareWatch.Stop();
         _pickClose.Stop();
         _pickFiles = null;
+        ForgetPickedText();
         if (!_sharing) return;
         Diag.Log("Share view closed");
         _sharing = false;
@@ -223,9 +226,14 @@ public sealed partial class NotchWindow
     }
 
     /// <summary>Files dropped (or, after a screenshot, clicked) onto a chip in the share view.</summary>
-    void SendTo(ShareTarget? target, string[] dropped)
+    void SendTo(ShareTarget? target, string[] dropped, bool text = false)
     {
         if (_draggingOut || _busy) return;
+        if (text && target?.Place == ShareTarget.ShelfPlace)
+        {
+            ShowPeek(null, "A text can't go on the shelf", "", null);
+            return;
+        }
         if (target?.Place == ShareTarget.ShelfPlace)
         {
             AddToShelf(dropped); // folders too: only the paths are kept
@@ -249,15 +257,16 @@ public sealed partial class NotchWindow
             return;
         }
         if (folders.Count > 0) _ = PackAndSendAsync(target, paths, folders);
+        else if (text) _ = BeamTextFileAsync(target, paths[0]);
         else _ = SendFilesAsync(target, paths);
     }
 
     /// <summary>Sends to whoever the chip stands for; done when the transfer is over.</summary>
-    Task SendFilesAsync(ShareTarget target, List<string> paths)
+    Task SendFilesAsync(ShareTarget target, List<string> paths, bool text = false)
     {
-        if (target.Friend != null) return SendToFriendAsync(target.Friend, paths);
-        if (target.Peer != null) return SendNearbyAsync(target.Peer, paths);
-        return SendWithCodeAsync(paths);
+        if (target.Friend != null) return SendToFriendAsync(target.Friend, paths, text);
+        if (target.Peer != null) return SendNearbyAsync(target.Peer, paths, text);
+        return SendWithCodeAsync(paths, text);
     }
 
     /// <summary>A folder dropped on a person goes as a ZIP: packed into Holm's temp folder, sent like any file, deleted afterwards.</summary>
@@ -309,7 +318,7 @@ public sealed partial class NotchWindow
     {
         int files = _dragFiles.Length;
         bool beam = _settings.Beam;
-        string what = files == 1 ? $"“{Path.GetFileName(_dragFiles[0].TrimEnd(Path.DirectorySeparatorChar))}”" : $"{files} files";
+        string what = _pickText != null ? "the copied text" : files == 1 ? $"“{Path.GetFileName(_dragFiles[0].TrimEnd(Path.DirectorySeparatorChar))}”" : $"{files} files";
         _shareTitle.Text = beam ? "Send " + what : what;
         var peers = beam ? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _friends.Friends : Array.Empty<Friend>();
@@ -392,8 +401,10 @@ public sealed partial class NotchWindow
             if (_pickFiles is not { } files || !e.GetCurrentPoint(chip).Properties.IsLeftButtonPressed) return;
             e.Handled = true;
             Diag.Log($"Picked {target.Name}");
+            bool text = _pickText != null;
+            _pickText = null; // it's the sending's now
             EndShare();
-            SendTo(target, files);
+            SendTo(target, files, text);
         };
         chip.PointerEntered += (_, _) => { if (_pickFiles != null) HighlightChip(chip); };
         chip.PointerExited += (_, _) => { if (_pickFiles != null) HighlightChip(null); };
@@ -458,7 +469,7 @@ public sealed partial class NotchWindow
 
     // ───────────── sending ─────────────
 
-    async Task SendNearbyAsync(NearbyPeer peer, List<string> paths)
+    async Task SendNearbyAsync(NearbyPeer peer, List<string> paths, bool text = false)
     {
         var cts = BeginTask();
         ShowTask("", ShareBlue, $"Checking if {peer.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask));
@@ -476,7 +487,7 @@ public sealed partial class NotchWindow
             {
                 ShowTask("", ShareBlue, $"{peer.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
                 bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
-                    new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token);
+                    new Progress<double>(p => ShowProgress($"Sending to {peer.Name}", Summary(paths), p, sending: true)), cts.Token, text);
                 if (accepted) { EndTask("", GreenBrush, $"Sent to {peer.Name}", Summary(paths)); CountSent(paths); }
                 else EndTask("", RedBrush, $"{peer.Name} declined", Summary(paths));
             }
@@ -484,7 +495,7 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
 
-    async Task SendWithCodeAsync(List<string> paths)
+    async Task SendWithCodeAsync(List<string> paths, bool text = false)
     {
         var cts = BeginTask();
         byte[] secret = ShareCode.NewSecret();
@@ -499,7 +510,7 @@ public sealed partial class NotchWindow
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask("", ShareBlue, "Your friend is connected", "Waiting for them to accept…", null, null, ("Cancel", CancelTask));
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
-                new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token);
+                new Progress<double>(p => ShowProgress("Sending", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) { EndTask("", GreenBrush, "Sent", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, "Your friend declined", Summary(paths));
         }
@@ -514,7 +525,7 @@ public sealed partial class NotchWindow
     /// Like sending with a code, except that nobody has to pass the code on: it goes into the friend's inbox,
     /// sealed for them, and their notch comes to the relay by itself and asks them.
     /// </summary>
-    async Task SendToFriendAsync(Friend friend, List<string> paths)
+    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null)
     {
         var cts = BeginTask();
         ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
@@ -528,13 +539,29 @@ public sealed partial class NotchWindow
             await using var channel = new SecureChannel(stream, ShareCode.Key(secret), initiator: true);
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"{friend.Name}'s notch is open", "Waiting for them to accept…", null, null, ("Cancel", CancelTask), textIcon: true);
             bool accepted = await FileTransfer.SendAsync(channel, _friends.MyName, paths,
-                new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token);
+                new Progress<double>(p => ShowProgress($"Sending to {friend.Name}", Summary(paths), p, sending: true)), cts.Token, text);
             if (accepted) { EndTask("", GreenBrush, $"Sent to {friend.Name}", Summary(paths)); CountSent(paths); }
             else EndTask("", RedBrush, $"{friend.Name} declined", Summary(paths));
+            if (queued != null) Unqueue(queued); // delivered, or they said no
         }
         catch (OperationCanceledException) when (!cts.IsCancellationRequested)
         {
-            EndTask("", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
+            if (queued != null)
+            {
+                // Still not there: keep waiting, without a word.
+                _busy = false;
+                _friends.MarkOffline(friend);
+                HideTask();
+            }
+            else if (_settings.SendLater)
+            {
+                var send = Enqueue(friend, paths, text);
+                EndTask(LaterGlyph, TimerOrange, $"Couldn't reach {friend.Name} right now", "It goes once you're both online",
+                        ("Don't send", () => { HideTask(); Unqueue(send); }));
+                _taskHide.Interval = TimeSpan.FromSeconds(8);
+                _taskHide.Start();
+            }
+            else EndTask("", RedBrush, $"{friend.Name} isn't available", "They're offline or Holm is closed");
         }
         catch (Exception ex) { Fail(ex, cts, "Couldn't send"); }
     }
@@ -782,12 +809,17 @@ public sealed partial class NotchWindow
                     sender = offer.Sender;
                     return AskAsync(offer, decisionToken);
                 }),
-                _ => _shell.DownloadsFolder(),
+                offer => offer.IsText && _settings.BeamText ? TextInbox : _shell.DownloadsFolder(),
                 new Progress<double>(p => ShowProgress($"Receiving from {sender}", "Saving to Downloads", p, sending: false)), cts.Token);
         }
         catch (FileTransfer.SenderCancelledException)
         {
             EndTask("", RedBrush, "Sender cancelled", "They cancelled before you responded");
+            return;
+        }
+        if (saved != null && saved.Count == 1 && saved[0].StartsWith(TextInbox, StringComparison.OrdinalIgnoreCase))
+        {
+            await TakeBeamedTextAsync(saved[0], sender);
             return;
         }
         if (saved == null) { EndTask("", RedBrush, "Declined", $"Nothing was saved from {sender}"); return; }
@@ -805,13 +837,15 @@ public sealed partial class NotchWindow
     async Task<bool> AskAsync(ShareOffer offer, CancellationToken ct)
     {
         var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        ShowTask(FaceText(offer.Sender), FaceBrush(offer.Sender), $"{offer.Sender} wants to send you", Summary(offer), null,
-                 ("Accept", () => { _acceptTick = Environment.TickCount64; answer.TrySetResult(true); }), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
+        bool text = offer.IsText && _settings.BeamText;
+        ShowTask(FaceText(offer.Sender), FaceBrush(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
+                 text ? "Copy it to your clipboard?" : Summary(offer), null,
+                 (text ? "Copy" : "Accept", () => { _acceptTick = Environment.TickCount64; answer.TrySetResult(true); }), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
         using (ct.Register(() => answer.TrySetResult(false)))
         {
             var finished = await Task.WhenAny(answer.Task, Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None));
             bool accepted = finished == answer.Task && answer.Task.Result;
-            if (accepted) ShowTask("", ShareBlue, $"Receiving from {offer.Sender}", "Saving to Downloads", 0, null, ("Cancel", CancelTask));
+            if (accepted) ShowTask("", ShareBlue, $"Receiving from {offer.Sender}", text ? "Copying it" : "Saving to Downloads", 0, null, ("Cancel", CancelTask));
             return accepted;
         }
     }

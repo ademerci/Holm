@@ -108,11 +108,12 @@ public sealed partial class NotchWindow : Window
         InitHub();
         InitAchievements();
         InitActivity();
+        InitSendLater();
         BuildToday();
         // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
-        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
+        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
             _homePanel.Children.Remove(row);
-        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
+        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -161,6 +162,7 @@ public sealed partial class NotchWindow : Window
         StartPrivacy();
         StartMessages();
         StartSharing();
+        StartSendLater();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
