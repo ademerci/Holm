@@ -66,6 +66,10 @@ public sealed partial class NotchWindow
                 Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",
                     s => s.SkyColors, SetSkyColors),
             }),
+            new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
+            {
+                Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
+            }),
         };
         return groups;
     }

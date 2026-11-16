@@ -95,6 +95,7 @@ public sealed partial class NotchWindow : Window
         BuildShelf();
         InitScreenshots();
         InitUsb(platform);
+        InitVpn();
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -131,6 +132,7 @@ public sealed partial class NotchWindow : Window
         StartHotKey();
         StartScreenshots();
         StartUsb();
+        StartVpn();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();

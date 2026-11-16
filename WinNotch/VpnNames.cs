@@ -73,4 +73,23 @@ internal static class VpnNames
             _ => false,
         };
     }
+
+    /// <summary>
+    /// A tunnel by the names Linux and macOS give them (wg, ppp, and tun or utun holding an IPv4 address: macOS keeps
+    /// a few utun of its own with only IPv6 link-local addresses). Not used on Windows, whose adapters say what they are.
+    /// </summary>
+    internal static string? UnixTunnel(IEnumerable<NetAdapter> adapters)
+    {
+        foreach (var adapter in adapters)
+        {
+            if (!adapter.Up) continue;
+            string name = adapter.Name.ToLowerInvariant();
+            bool hasIpv4 = adapter.Addresses?.Any(a => a.AddressFamily == AddressFamily.InterNetwork) == true;
+            if (name.StartsWith("wg")) return "WireGuard";
+            if (name.StartsWith("ppp")) return "VPN";
+            if (name.StartsWith("tun") && hasIpv4) return "VPN";
+            if (name.StartsWith("utun") && hasIpv4) return "VPN";
+        }
+        return null;
+    }
 }

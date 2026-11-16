@@ -92,6 +92,13 @@ public sealed partial class NotchWindow
     {
         int before = _devicesPanel.Children.Count;
         _devicesPanel.Children.Clear();
+        // Just a green lock, so the batteries keep their room; the name is in the tooltip and the pop-out.
+        if (_vpn is { } vpn)
+        {
+            var lockChip = new TextBlock { Text = LockGlyph, FontFamily = IconFont, FontSize = 14, Foreground = Green, Background = Avalonia.Media.Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
+            ToolTip.SetTip(lockChip, vpn == "VPN" ? "VPN connected" : $"VPN connected: {vpn}");
+            _devicesPanel.Children.Add(lockChip);
+        }
         if (_power.HasBattery)
             _devicesPanel.Children.Add(DeviceChip("", null, _power.Percent, _power.OnAc));
         foreach (var d in _bt.Where(d => d.IsConnected))
