@@ -20,4 +20,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IRemovableDrivesPlatform Drives { get; } = new MacRemovableDrivesPlatform();
     public IClickAwayPlatform ClickAway { get; } = new MacClickAwayPlatform();
     public IForegroundPlatform Foreground { get; } = new MacForegroundPlatform();
+    public ISensorPlatform Sensors { get; } = new MacSensorPlatform();
 }

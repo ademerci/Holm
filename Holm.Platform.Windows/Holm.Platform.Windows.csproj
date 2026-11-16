@@ -17,6 +17,9 @@
     <Compile Include="..\WinNotch\Native.cs" Link="Linked\Native.cs" />
     <Compile Include="..\WinNotch\VolumeService.cs" Link="Linked\VolumeService.cs" />
     <Compile Include="..\WinNotch\AppVolumes.cs" Link="Linked\AppVolumes.cs" />
+    <Compile Include="..\WinNotch\CameraActivity.cs" Link="Linked\CameraActivity.cs" />
+    <Compile Include="..\WinNotch\MicrophoneActivity.cs" Link="Linked\MicrophoneActivity.cs" />
+    <Compile Include="..\WinNotch\SensorRecord.cs" Link="Linked\SensorRecord.cs" />
   </ItemGroup>
 
   <ItemGroup>

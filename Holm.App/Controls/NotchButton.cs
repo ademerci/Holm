@@ -18,7 +18,8 @@ public sealed class NotchButton : Border
     static IBrush White(byte alpha) => new SolidColorBrush(Color.FromArgb(alpha, 0xFF, 0xFF, 0xFF)).ToImmutable();
 
     static readonly IBrush Hover = White(0x1F), Pressed = White(0x33);
-    static readonly IBrush RowRest = White(0x14), RowHover = White(0x24), PillRest = White(0x2E);
+    static readonly IBrush RowRest = White(0x14), RowHover = White(0x24);
+    public static readonly IBrush PillRest = White(0x2E);
 
     readonly ScaleTransform _pressedScale;
     IBrush _rest = Brushes.Transparent, _hover = Hover;

@@ -191,6 +191,7 @@ public sealed class MediaService
 
     public void PlayPause() => _platform.PlayPause();
     public void Pause() => _platform.Pause();
+    public void Play() => _platform.Play();
     public void Next() => _platform.Next();
     public void Previous() => _platform.Previous();
     public void Seek(TimeSpan position) => _platform.Seek(position);

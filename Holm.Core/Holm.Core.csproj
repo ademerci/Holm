@@ -17,6 +17,8 @@
     <Compile Include="..\WinNotch\Calculator.cs" Link="Linked\Calculator.cs" />
     <Compile Include="..\WinNotch\CapsKey.cs" Link="Linked\CapsKey.cs" />
     <Compile Include="..\WinNotch\CallPause.cs" Link="Linked\CallPause.cs" />
+    <Compile Include="..\WinNotch\Calls.cs" Link="Linked\Calls.cs" />
+    <Compile Include="..\WinNotch\SensorUse.cs" Link="Linked\SensorUse.cs" />
     <Compile Include="..\WinNotch\ClipboardHistory.cs" Link="Linked\ClipboardHistory.cs" />
     <Compile Include="..\WinNotch\ColorPick.cs" Link="Linked\ColorPick.cs" />
     <Compile Include="..\WinNotch\Countdown.cs" Link="Linked\Countdown.cs" />

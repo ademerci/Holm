@@ -70,6 +70,9 @@ public sealed partial class NotchWindow
             }),
             new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
             {
+                Switch("Calls", "\uE717", "Shows a call with its time and a mute button.", s => s.Calls, SetCalls),
+                Switch("Pause music during calls", "\uE769", "Music pauses when a call starts and plays on after.", s => s.PauseForCalls, SetPauseForCalls),
+                Switch("Microphone and camera dot", "\uE720", "A dot beside the notch while an app uses the microphone or camera.", s => s.Privacy, SetPrivacy),
                 Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
             }),
         };

@@ -92,7 +92,7 @@ public sealed partial class NotchWindow
 
     void InitMotion()
     {
-        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _expandedView })
+        foreach (var view in new Control[] { _idleView, _compactView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _shareView, _callView, _expandedView })
         {
             view.RenderTransform = new ScaleTransform(1, 1);
             // The open notch grows out of the closed one at the top; the small views pop from their middle.
@@ -146,6 +146,7 @@ public sealed partial class NotchWindow
             ShowTool(Tool.None); // the next time it opens on home
         }
         ApplyState(animate: true);
+        ShowPrivacy();
     }
 
     /// <summary>Shows or hides one of the notch's views: the WPF app's pop and fade, or at once.</summary>

@@ -30,6 +30,7 @@
     <Compile Include="..\WinNotch.Tests\BrowsersTests.cs" Link="Linked\BrowsersTests.cs" />
     <Compile Include="..\WinNotch.Tests\CalculatorTests.cs" Link="Linked\CalculatorTests.cs" />
     <Compile Include="..\WinNotch.Tests\CallPauseTests.cs" Link="Linked\CallPauseTests.cs" />
+    <Compile Include="..\WinNotch.Tests\CallsTests.cs" Link="Linked\CallsTests.cs" />
     <Compile Include="..\WinNotch.Tests\CapsLockTests.cs" Link="Linked\CapsLockTests.cs" />
     <Compile Include="..\WinNotch.Tests\ChatTests.cs" Link="Linked\ChatTests.cs" />
     <Compile Include="..\WinNotch.Tests\ColorPickTests.cs" Link="Linked\ColorPickTests.cs" />

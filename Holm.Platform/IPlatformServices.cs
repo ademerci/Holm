@@ -19,6 +19,7 @@ public interface IPlatformServices
     IRemovableDrivesPlatform Drives { get; }
     IClickAwayPlatform ClickAway { get; }
     IForegroundPlatform Foreground { get; }
+    ISensorPlatform Sensors { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -40,4 +41,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IRemovableDrivesPlatform Drives { get; } = new NoRemovableDrivesPlatform();
     public IClickAwayPlatform ClickAway { get; } = new NoClickAwayPlatform();
     public IForegroundPlatform Foreground { get; } = new NoForegroundPlatform();
+    public ISensorPlatform Sensors { get; } = new NoSensorPlatform();
 }

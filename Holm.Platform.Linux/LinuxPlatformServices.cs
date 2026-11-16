@@ -20,4 +20,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IRemovableDrivesPlatform Drives { get; } = new LinuxRemovableDrivesPlatform();
     public IClickAwayPlatform ClickAway { get; } = new LinuxClickAwayPlatform();
     public IForegroundPlatform Foreground { get; } = new LinuxForegroundPlatform();
+    public ISensorPlatform Sensors { get; } = new LinuxSensorPlatform();
 }
