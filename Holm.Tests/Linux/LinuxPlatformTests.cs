@@ -149,3 +149,16 @@ public class LinuxPlatformTests : IDisposable
     public async Task A_cover_that_cannot_be_read_is_no_cover(string url)
         => Assert.Null(await LinuxMediaPlatform.LoadCoverAsync(url));
 }
+
+/// <summary>Where Linux desktops keep the Downloads folder.</summary>
+public class LinuxShellTests
+{
+    [Fact]
+    public void Downloads_folder_comes_from_user_dirs()
+    {
+        Assert.Equal("/home/me/Downloads", LinuxShellPlatform.DownloadDir(new[] { "# comment", "XDG_DESKTOP_DIR=\"$HOME/Desktop\"", "XDG_DOWNLOAD_DIR=\"$HOME/Downloads\"" }, "/home/me"));
+        Assert.Equal("/data/Herunterladen", LinuxShellPlatform.DownloadDir(new[] { "XDG_DOWNLOAD_DIR=\"/data/Herunterladen/\"" }, "/home/me"));
+        Assert.Null(LinuxShellPlatform.DownloadDir(new[] { "XDG_DOWNLOAD_DIR=\"relative\"" }, "/home/me"));
+        Assert.Null(LinuxShellPlatform.DownloadDir(Array.Empty<string>(), "/home/me"));
+    }
+}

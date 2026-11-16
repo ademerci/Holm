@@ -184,4 +184,5 @@ sealed class MessageWriterBox
     public void String(string value) => Steps.Add((ref MessageWriter w) => w.WriteString(value));
     public void ObjectPath(string value) => Steps.Add((ref MessageWriter w) => w.WriteObjectPath(value));
     public void Int64(long value) => Steps.Add((ref MessageWriter w) => w.WriteInt64(value));
+    public void Strings(string[] values) => Steps.Add((ref MessageWriter w) => w.WriteArray(values));
 }

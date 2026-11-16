@@ -143,7 +143,7 @@ public sealed partial class NotchWindow
         BuildPopups();
         BuildExpanded();
 
-        foreach (var view in new Control[] { _compactView, _idleView, _timerView, _volumeView, _peekView, _taskView, _expandedView })
+        foreach (var view in new Control[] { _compactView, _idleView, _timerView, _volumeView, _downloadView, _peekView, _taskView, _expandedView })
         {
             view.Opacity = 0;
             view.IsHitTestVisible = false;
@@ -207,6 +207,7 @@ public sealed partial class NotchWindow
         _homePanel.Children.Add(_mediaPanel);
         _homePanel.Children.Add(_clockPanel);
         _homePanel.Children.Add(_timerRow);
+        _homePanel.Children.Add(_downloadRow);
         panel.Children.Add(_homePanel);
         panel.Children.Add(BuildToolPages());
 

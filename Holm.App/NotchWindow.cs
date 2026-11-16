@@ -24,7 +24,7 @@ public sealed partial class NotchWindow : Window
     const double ExpandedWidth = 520;
     const double MaxEar = 10;
 
-    enum NotchState { Idle, Timer, Media, Peek, Volume, Task, Expanded }
+    enum NotchState { Idle, Timer, Media, Download, Peek, Volume, Task, Expanded }
 
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
@@ -64,6 +64,8 @@ public sealed partial class NotchWindow : Window
         InitClipboard(platform);
         InitColorPicker(platform);
         InitMixer(platform);
+        InitDownloads(platform);
+        InitDiskSpace();
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
@@ -114,6 +116,8 @@ public sealed partial class NotchWindow : Window
         CheckReminders();
         StartDevices();
         StartClipboard();
+        StartDownloads();
+        StartDiskSpace();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -125,6 +129,7 @@ public sealed partial class NotchWindow : Window
         _powerPlatform.Stop();
         _audio.Stop();
         _clipboardPlatform.Stop();
+        StopDownloads();
         ForgetClipFiles();
         base.OnClosed(e);
     }
@@ -158,6 +163,8 @@ public sealed partial class NotchWindow : Window
                    : _taskVisible ? NotchState.Task
                    : _volumePeek ? NotchState.Volume
                    : _peekActive ? NotchState.Peek
+                   // A running download shows while nothing plays; over music only for a moment when it starts.
+                   : _download != null && (_downloadPeek || _info?.IsPlaying != true) ? NotchState.Download
                    : _info?.IsPlaying == true ? NotchState.Media // a running timer shows in place of the equalizer
                    : _timer != null ? NotchState.Timer
                    : NotchState.Idle;
@@ -175,6 +182,7 @@ public sealed partial class NotchWindow : Window
             case NotchState.Task: (w, h, r) = (420, 60, 26); break;
             case NotchState.Volume: (w, h, r) = (250, 34, 17); break;
             case NotchState.Peek: (w, h, r) = (320, 38, 19); break;
+            case NotchState.Download: (w, h, r) = (330, 34, 17); break;
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             default: (w, h, r) = (150, 30, 15); break;
@@ -195,6 +203,7 @@ public sealed partial class NotchWindow : Window
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
             SetView(_volumeView, target == NotchState.Volume, animate);
+            SetView(_downloadView, target == NotchState.Download, animate);
             SetView(_peekView, target == NotchState.Peek, animate);
             SetView(_taskView, target == NotchState.Task, animate);
             SetView(_expandedView, target == NotchState.Expanded, animate);

@@ -13,4 +13,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IClipboardPlatform Clipboard { get; } = new MacClipboardPlatform();
     public IScreenPlatform Screen { get; } = new MacScreenPlatform();
     public IAppVolumePlatform AppVolumes { get; } = new NoAppVolumePlatform();
+    public IShellPlatform Shell { get; } = new MacShellPlatform();
 }
