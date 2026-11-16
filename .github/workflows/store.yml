@@ -1,0 +1,40 @@
+name: Store package
+
+on:
+  push:
+    branches: [codex/microsoft-store-msix]
+    paths: ["WinNotch/**", "WinNotch.Tests/**", "packaging/**", ".github/workflows/store.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Test
+        shell: pwsh
+        run: |
+          dotnet test WinNotch.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
+      - name: Build Store package
+        shell: pwsh
+        env:
+          GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GIPHY_API_KEY)) { throw 'GIPHY_API_KEY is required for the Store release.' }
+          ./packaging/build-msix.ps1 -Store
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Holm-Store
+          path: |
+            artifacts/msix/Holm-Store.msix
+            artifacts/msix/Holm-Store-tile-300.png
+            packaging/RELEASE-1.12.7.md
+          if-no-files-found: error
