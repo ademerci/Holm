@@ -17,7 +17,7 @@ public partial class MainWindow
     /// <summary>Something is open that a click elsewhere should close.</summary>
     bool ClosesOnClickAway =>
         !_hiddenForFullscreen
-        && (_expanded || _peekActive || _volumePeek || ScreenshotShowing || (TaskShowing && _taskHide?.IsEnabled == true));
+        && ((_expanded && !PinnedClockOpen) || _peekActive || _volumePeek || ScreenshotShowing || (TaskShowing && _taskHide?.IsEnabled == true));
 
     /// <summary>Starts or stops watching for clicks away as the notch opens and closes (from <see cref="ApplyState"/>).</summary>
     void WatchClicksAway()
@@ -62,7 +62,7 @@ public partial class MainWindow
         _peekActive = false;
         _volumePeek = false;
         if (ScreenshotShowing || (TaskShowing && _taskHide?.IsEnabled == true)) HideTask();
-        if (_expanded)
+        if (_expanded && !PinnedClockOpen)
         {
             EndTyping();
             SetExpanded(false); // also redraws

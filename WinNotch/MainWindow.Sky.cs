@@ -78,7 +78,7 @@ public partial class MainWindow
     /// <summary>Shows the sky while the open notch is on home without music, and takes it away otherwise.</summary>
     void ShowSky()
     {
-        bool on = _expanded && !_hiddenForFullscreen && (_settings.MediaControls ? _info : null) == null;
+        bool on = _settings.SkyColors && _expanded && !_hiddenForFullscreen && ((_settings.MediaControls ? _info : null) == null || _clockViewOpen);
         if (on)
         {
             var weather = _settings.Weather ? _weather : null;
@@ -88,8 +88,10 @@ public partial class MainWindow
                 SkyLayer.Background = Paint(look);
                 GreetingText.Foreground = Frozen(Mix(look.Left, Colors.White, 0.55));
                 _skyShown = look;
+                if (_clockViewOpen) RefreshBigClockStyle();
             }
         }
+        if (!_settings.SkyColors) GreetingText.Foreground = DimBrush; // no sky, no tint
         GreetingText.Text = Sky.Greeting(DateTime.Now, _settings.ProfileName);
         if (on == _skyOn) return;
         _skyOn = on;

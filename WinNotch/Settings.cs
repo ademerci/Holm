@@ -18,6 +18,10 @@ internal sealed class AppSettings
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
+    /// <summary>Allow moving the notch along the selected display's top edge.</summary>
+    public bool Draggable { get; set; }
+    /// <summary>Saved horizontal centre as a fraction of the display width; null means centred.</summary>
+    public double? NotchPosition { get; set; }
     /// <summary>Shrink to the mini pill while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
     public bool HideOverBrowsers { get; set; }
     /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
@@ -87,6 +91,8 @@ internal sealed class AppSettings
     public bool NotchOnlyPopups { get; set; }
     /// <summary>Holm shows Handy's dictation in the notch and keeps Handy's own overlay out of sight. Off by default.</summary>
     public bool Dictation { get; set; }
+    /// <summary>Ctrl+H opens and closes the notch from anywhere.</summary>
+    public bool HotKey { get; set; } = true;
     /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
     public bool DiskWarning { get; set; } = true;
     /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
@@ -97,6 +103,20 @@ internal sealed class AppSettings
     public bool Connectivity { get; set; } = true;
     /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
     public bool Weather { get; set; } = true;
+    /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
+    public bool SkyColors { get; set; } = true;
+    /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
+    public bool AiUsage { get; set; } = true;
+    /// <summary>Large clock view: show seconds next to the time.</summary>
+    public bool ClockShowSeconds { get; set; } = true;
+    /// <summary>Large clock view: show the date under the time.</summary>
+    public bool ClockShowDate { get; set; } = true;
+    /// <summary>Large clock view: show compact music controls at the bottom (on by default).</summary>
+    public bool ClockShowMedia { get; set; } = true;
+    /// <summary>Large clock view typography: "light", "bold" or "mono".</summary>
+    public string ClockStyle { get; set; } = BigClock.StyleLight;
+    /// <summary>Large clock view digit colour: "white", "sky", "amber", "cyan", "green" or "rose".</summary>
+    public string ClockColor { get; set; } = BigClock.ColorWhite;
     /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
     public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }
@@ -261,7 +281,14 @@ internal static class Autostart
 internal static class Diag
 {
     public static bool Enabled;
-    public static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+    public static readonly string Folder = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+
+    /// <summary>Dev and bench builds only: HOLM_DATA=folder runs Holm on test data beside your own Holm (measurements, snapshots).</summary>
+    public static string? DevFolder =>
+#if DEBUG || BENCH
+        Environment.GetEnvironmentVariable("HOLM_DATA") is { Length: > 0 } folder ? folder :
+#endif
+        null;
 
     public static void Log(string message)
     {

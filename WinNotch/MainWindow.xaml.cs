@@ -102,6 +102,7 @@ public partial class MainWindow : Window
         TaskProgressHost.Child = TaskProgress;
         (_artFront, _artBack) = (ArtLayerA, ArtLayerB);
         _bars = new[] { Bar1, Bar2, Bar3, Bar4 }.Select(b => (ScaleTransform)b.RenderTransform).ToArray();
+        InitPositionDrag();
         InitMotion();
         InitSky();
 
@@ -113,11 +114,12 @@ public partial class MainWindow : Window
 
         // Every timer below is either short-lived or only runs while the notch is open.
         // Not while a question or a transfer is shown: opening the notch would hide its buttons.
-        _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
+        _expandDelay = MakeTimer(140, () => { if (!_positionHeld && Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
+            if (PinnedClockOpen) return;
             // Dragging a slider, a menu open or typing: try again shortly.
-            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
+            if (Mouse.Captured != null || MenuOpen || KeepOpenForTyping) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -149,6 +151,7 @@ public partial class MainWindow : Window
         InitMixer();
         InitSendLater();
         InitToday();
+        InitClockView();
 
         Progress.ValueCommitted += v =>
         {
@@ -202,7 +205,6 @@ public partial class MainWindow : Window
         Native.AddClipboardFormatListener(_hwnd); // a copied Beam or friend code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
-        Native.EnableEcoQoS();
         PositionWindow();
     }
 
@@ -216,6 +218,8 @@ public partial class MainWindow : Window
         _btPoll.Start();
         _trimTimer.Start();
         UpdateAiButton();
+        // Efficiency mode only once the notch is up: on slow, low-power cores the start-up itself took much longer.
+        Dispatcher.InvokeAsync(Native.EnableEcoQoS, DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
@@ -245,6 +249,8 @@ public partial class MainWindow : Window
         StartCapsLock();
         StartMediaKeys();
         StartDictation();
+        StartHotKey();
+        StartAiUsage();
         StartDiskSpace();
         StartUsb();
         StartConnectivity();
@@ -256,7 +262,9 @@ public partial class MainWindow : Window
 
     void OnClosed(object? sender, EventArgs e)
     {
+        StopAiUsage();
         StopMotion();
+        StopHotKey();
         _bluetoothStopped = true;
         _btPoll.Stop();
         _btSoon.Stop();
@@ -327,6 +335,11 @@ public partial class MainWindow : Window
                 _btLate.Stop(); _btLate.Start();
                 break;
 
+            case WM_HOTKEY when wParam.ToInt32() == HotKeyId:
+                ToggleFromKeyboard();
+                handled = true;
+                break;
+
             case Native.WM_DISPLAYCHANGE:
             case Native.WM_DPICHANGED:
                 Dispatcher.InvokeAsync(PositionWindow, DispatcherPriority.Background);
@@ -357,7 +370,7 @@ public partial class MainWindow : Window
 
         var dpi = VisualTreeHelper.GetDpi(this);
         int width = (int)Math.Round(Width * dpi.DpiScaleX), height = (int)Math.Round(Height * dpi.DpiScaleY);
-        int x = screen.Bounds.Left + (screen.Bounds.Right - screen.Bounds.Left - width) / 2;
+        int x = NotchPlacement.Left(screen.Bounds.Left, screen.Bounds.Right, width, _settings.NotchPosition);
         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, x, screen.Bounds.Top, width, height, Native.SWP_NOACTIVATE);
     }
 
@@ -433,6 +446,7 @@ public partial class MainWindow : Window
         {
             _liveTimer.Stop();
             _trimTimer.Start();
+            SetClockView(false, animate: false);
             ShowTool(Tool.None); // the next time it opens on home
             if (_choosingPlace) { _choosingPlace = false; RefreshMediaUi(); ShowWeather(); }
             RefreshFocumon(); // closed Focumon view + its tick (live timer only runs while open)
@@ -556,6 +570,7 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
+        ShowAiDock();
     }
 
     void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
@@ -639,6 +654,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
+        PlaceAiDock(w, h, e);
     }
 
     /// <summary>
@@ -970,8 +986,8 @@ public partial class MainWindow : Window
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), 14);
-        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), 12);
+        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
+        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
         AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 
@@ -1063,6 +1079,10 @@ public partial class MainWindow : Window
         close.Click += (_, e) => { e.Handled = true; dismiss(); };
         return host;
     }
+
+    // App icons in the closed notch while notifications wait: as big as the album art (20) in the 30-high badge, a
+    // little smaller next to the art in the 32-high media notch, so they read at a glance.
+    const double BadgeLogoSize = 20, MediaBadgeLogoSize = 18;
 
     void PopulateAppLogos(Panel host, IEnumerable<string> apps, double size)
     {
@@ -1164,6 +1184,8 @@ public partial class MainWindow : Window
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();
+        RefreshBigClockMedia();
+        if (_clockViewOpen) RefreshBigClockStyle();
         var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
         {
@@ -1233,6 +1255,7 @@ public partial class MainWindow : Window
             RemainText.Text = "-" + FormatTime(info.Duration - pos);
         }
         if (ClockPanel.Visibility == Visibility.Visible || MediaClockHeader.Visibility == Visibility.Visible) UpdateClock();
+        if (_clockViewOpen) UpdateBigClock();
         ReadVolume();
         RefreshFocumon();
     }
@@ -1319,7 +1342,7 @@ public partial class MainWindow : Window
 
     static FrameworkElement DeviceChip(string glyph, string? name, int level, bool charging)
     {
-        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Center };
+        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 16, 6), VerticalAlignment = VerticalAlignment.Center };
         chip.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
         if (name != null)
             chip.Children.Add(new TextBlock { Text = name, FontSize = 12, Foreground = DimBrush, MaxWidth = 100, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
@@ -1332,6 +1355,7 @@ public partial class MainWindow : Window
 
     void Island_MouseEnter(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _collapseDelay.Stop();
         _pickClose.Stop();
         if (!_expanded)
@@ -1343,10 +1367,11 @@ public partial class MainWindow : Window
 
     void Island_MouseLeave(object sender, MouseEventArgs e)
     {
+        if (_positionHeld) return;
         _expandDelay.Stop();
         SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
-        if (_expanded) _collapseDelay.Start();
+        if (_expanded && !PinnedClockOpen) _collapseDelay.Start();
     }
 
     async void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -1765,6 +1790,14 @@ public partial class MainWindow : Window
         await Task.Delay(2500); // let the real sources report in once, then take over
         _media.Changed -= OnMediaChanged;
         _chat.Changed -= OnMessagesChanged;
+        // Nor a friend's real chat message, GIF or reaction: they would pop out over a pose.
+        _settings.ChatPopups = false; // and none that is already on its way pops out either (not saved: snapshots are read-only)
+        _peekActive = false;
+        _peekTimer.Stop();
+        if (TaskShowing) HideTask(); // a friend's message that popped out before the poses took over
+        _friends.ChatReceived -= OnChatReceived;
+        _friends.GifReceived -= OnGifReceived;
+        _friends.ReactionReceived -= OnReactionReceived;
         _messages = Array.Empty<ChatMessage>(); // your real messages came in meanwhile: they must not end up in a picture
         RefreshMessages();
         _bt = new List<BtDevice> { new() { Address = "DEMO", Name = "AirPods Pro", Battery = 80, Connected = true, ClassOfDevice = 0x240404 } };
@@ -1773,6 +1806,8 @@ public partial class MainWindow : Window
         ShowVpn();
         StopPrivacy(); // and only demo apps use the microphone
         ShowPrivacy();
+
+        await SnapAiUsageAsync(dir); // its own pictures, with made-up usage; gone again for all the others
 
         OnMediaChanged(null, false);
         await Snap(dir, "idle", 60);

@@ -18,6 +18,7 @@ public partial class MainWindow
     const string BellGlyph = "";
     ReminderList _reminders = null!;
     DispatcherTimer _reminderTick = null!;
+    long _lastReminderRemove; // a double-click on × must not also delete the row that slides into place
 
     void InitReminders()
     {
@@ -91,7 +92,11 @@ public partial class MainWindow
         if (e.Key != Key.Enter) return;
         e.Handled = true;
         var now = DateTime.Now;
-        if (!ReminderParser.TryParse(ReminderBox.Text, now, out var due, out var text)) return;
+        if (!ReminderParser.TryParse(ReminderBox.Text, now, out var due, out var text))
+        {
+            if (ReminderBox.Text.Trim().Length > 0) ReminderHint.Text = "Couldn’t find a time – try “20 min laundry” or “14:30 dentist”";
+            return;
+        }
         ReminderBox.Text = "";
         AddReminder(text, due.ToUniversalTime());
     }
@@ -116,9 +121,12 @@ public partial class MainWindow
             row.Children.Add(when);
             var remove = new Button { Style = (Style)FindResource("NotchButton"), Width = 24, Height = 24, Margin = new Thickness(6, 0, 0, 0), ToolTip = "Remove" };
             remove.Content = new TextBlock { Text = "", FontFamily = IconFont, FontSize = 9, Foreground = DimBrush };
+            System.Windows.Automation.AutomationProperties.SetName(remove, "Remove reminder: " + reminder.Text);
             string id = reminder.Id;
             remove.Click += (_, _) =>
             {
+                if (Environment.TickCount64 - _lastReminderRemove < 400) return;
+                _lastReminderRemove = Environment.TickCount64;
                 _reminders.Remove(id);
                 _settings.Save();
                 ShowReminderRows();

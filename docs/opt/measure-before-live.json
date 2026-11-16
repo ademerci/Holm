@@ -1,0 +1,72 @@
+{
+  "Date": "2026-11-15T18:50:49",
+  "Commit": "2a92abd",
+  "ExeMB": 212.96,
+  "ZipMB": 82.04,
+  "Live": {
+    "Runs": [
+      {
+        "StartMs": 1821.0,
+        "ReadyMs": 1821.0,
+        "StartCpuMs": 6625.0,
+        "IdleCpuMsPerMin": 2750.0,
+        "PrivateMB": 153.2,
+        "WorkingMB": 83.8,
+        "PeakWorkingMB": 240.7,
+        "Threads": 65,
+        "Handles": 1170
+      },
+      {
+        "StartMs": 1757.0,
+        "ReadyMs": 1759.0,
+        "StartCpuMs": 7438.0,
+        "IdleCpuMsPerMin": 1583.0,
+        "PrivateMB": 149.0,
+        "WorkingMB": 64.2,
+        "PeakWorkingMB": 241.9,
+        "Threads": 64,
+        "Handles": 1169
+      },
+      {
+        "StartMs": 2220.0,
+        "ReadyMs": 2220.0,
+        "StartCpuMs": 6500.0,
+        "IdleCpuMsPerMin": 188.0,
+        "PrivateMB": 140.1,
+        "WorkingMB": 73.9,
+        "PeakWorkingMB": 229.7,
+        "Threads": 63,
+        "Handles": 1165
+      }
+    ],
+    "StartMs": 1821.0,
+    "ReadyMs": 1821.0,
+    "StartCpuMs": 6625.0,
+    "IdleCpuMsPerMin": 1583.0,
+    "PrivateMB": 149.0,
+    "WorkingMB": 73.9,
+    "PeakWorkingMB": 240.7,
+    "Threads": 64.0,
+    "Handles": 1169.0
+  },
+  "Bench": {
+    "OpenCallMs": 25.2,
+    "OpenLongestFrameMs": 34.7,
+    "CloseCallMs": 25.2,
+    "CpuPerRoundMs": 822.0,
+    "OpenSkipped": 87.0,
+    "CloseSkipped": 44.0,
+    "Logs": [
+      "open steps (ms): media 10.3 devices 0.8 output 16.6 bluetooth 0.6 timer 0.0 focumon 0.0 ai 0.0 state 48.9 backdrop 0.3 privacy 9.6 shelf 1.9 layout 0.2\r\nopen : call median 31.2 ms (max 45.1), longest frame median 37.9 ms (max 50.3), skipped frames 123\r\nclose: call median 30.1 ms (max 40.2), longest frame median 33.9 ms (max 41.6), skipped frames 44\r\ncpu 7391 ms for 10 open+close rounds (739 ms each); the notch's thread: open median 109 ms, close median 109 ms\r\n",
+      "open steps (ms): media 13.4 devices 0.9 output 16.2 bluetooth 0.7 timer 0.0 focumon 0.0 ai 0.0 state 46.3 backdrop 0.3 privacy 7.8 shelf 2.2 layout 0.4\r\nopen : call median 25.2 ms (max 51.1), longest frame median 34.7 ms (max 40.9), skipped frames 87\r\nclose: call median 21.3 ms (max 111.2), longest frame median 40.4 ms (max 96.3), skipped frames 49\r\ncpu 8219 ms for 10 open+close rounds (822 ms each); the notch's thread: open median 94 ms, close median 125 ms\r\n",
+      "open steps (ms): media 8.0 devices 0.7 output 10.8 bluetooth 0.5 timer 0.0 focumon 0.0 ai 0.0 state 30.1 backdrop 0.2 privacy 5.4 shelf 1.2 layout 0.1\r\nopen : call median 24.7 ms (max 47.7), longest frame median 33.9 ms (max 50.3), skipped frames 86\r\nclose: call median 25.2 ms (max 32.9), longest frame median 33.9 ms (max 41.0), skipped frames 42\r\ncpu 8328 ms for 10 open+close rounds (833 ms each); the notch's thread: open median 109 ms, close median 78 ms\r\n"
+    ]
+  },
+  "SourceFiles": 129,
+  "SourceLines": 26428.0,
+  "AssetsKB": 385.1,
+  "PackageReferences": [
+    "QRCoder",
+    "Emoji.Wpf"
+  ]
+}

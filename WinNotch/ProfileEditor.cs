@@ -39,6 +39,9 @@ internal sealed class ProfileEditor : Border
     /// <summary>Something in the draft changed (to enable Apply).</summary>
     public event Action? Changed;
 
+    /// <summary>Enter in the name or status box: apply, like a form.</summary>
+    public event Action? Submit;
+
     public bool HasChanges => Draft().Clean() != _original.Clean();
 
     /// <param name="windowsName">The name used when none is typed, shown as the name box's hint.</param>
@@ -116,6 +119,8 @@ internal sealed class ProfileEditor : Border
         Child = all;
         _name.TextChanged += (_, _) => Show();
         _status.TextChanged += (_, _) => Show();
+        foreach (var box in new[] { _name, _status })
+            box.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) { e.Handled = true; Submit?.Invoke(); } };
         Load(_original);
     }
 

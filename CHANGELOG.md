@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.12.7 – 2026-11-16
+
+### Added
+- **Put the notch where you want it.** *Settings › General › Drag notch position* lets you hold the notch by its top edge and move it left or right along the selected screen. Its position is remembered after a restart and stays put when dragging is switched off. The small *Reset Position* button beside the switch brings it back to the centre.
+
+### Fixed
+- **Codex usage follows the reported limit.** A weekly allowance could show as a five-hour limit because Holm assumed the first limit was always five hours. The card now reads each limit's actual duration from Codex's local logs, shows additional limits only when reported, and includes the date in reset times. Old readings say they may be outdated; passing the reset time no longer invents zero usage.
+
+## 1.12.6 – 2026-11-16
+
+### Added
+- **AI usage beside the notch.** A small black circle sits at the notch's right shoulder, like a second activity on the iPhone's island: the mark of the coding agent that matters most right now (Claude Code's spark or OpenAI's knot for Codex) inside a thin ring that fills with its usage. It shows in every closed state, also while music plays; beside the minimized notch it flattens into a capsule with a bar, and the open notch grows over it. Hovering it (which doesn't open the notch) shows a calm card with each agent you use: the percentage, when it resets, and the sessions at work with their project and latest step. Codex logs its real 5-hour and weekly limits; Claude Code logs only tokens, so its ring compares the current 5-hour window with your busiest one this week. Read from the tools' own logs on this PC at most once a minute, off the UI thread and only what was added since the last look; nothing is sent or shared. *Settings › General › AI usage ring* turns it off.
+
+### Fixed
+- **Snapshots stay private.** Holm's `--snap` picture mode no longer lets a friend's real chat message pop out over a pose.
+
+## 1.12.5 – 2026-11-15
+
+### Changed
+- **Leaner and faster, part 1** (led by Djordje Mojsilovic, see `docs/opt/REPORT.md`; not finished yet). The notch is ready about a fifth sooner after start (median 1.56 → 1.27 s in 25 interleaved runs), because efficiency mode now starts once the notch is up, not during start-up. The Holm window's logo no longer carries a second copy of the 381 KB icon.
+- **Fewer clicks.** Opening notes, reminders, the calculator or the weather place puts the cursor in its field; if you only look, the notch still closes when the mouse leaves. Enter in the profile's name or status applies it.
+- **Keyboard and screen readers.** The Holm window's switches, sidebar and close button work with Tab and Space/Enter and say whether a switch is on; 21 icon-only notch buttons have names, and previous/play/next have tooltips.
+- **Clearer texts.** Beam says *Couldn't reach …* instead of blaming a friend as offline and shows plain words when a connection drops; the invite page says that anyone with the code becomes your friend and that *New code* doesn't stop the old one; settings explain the weather location, what the clipboard history keeps and that Beam looks at copied text for codes; the phone link warns that it isn't encrypted; unreadable reminders say why.
+
+### Fixed
+- **Double clicks.** A double click on a reminder's × no longer removes the next reminder too, and a double click on *Accept* no longer cancels the transfer it just accepted.
+- **Weather place search.** Only one search runs at a time, nothing is saved after you close the notch, and a failed forecast no longer asks you to choose a city again.
+- **Speed test.** A ping that gets no answer gives up after 5 seconds instead of hanging.
+
+## 1.12.4 – 2026-11-15
+
+### Added
+- **Large clock view in the open notch.** Clicking the clock in the open notch (on home or in the top bar while music plays) opens a large clock that fills the notch. Pin it open so it stays on screen, customize seconds, date, font style (*Light*, *Bold*, *Mono*) and colour, and control playback from the toggleable music bar at the bottom.
+
+### Changed
+- **More room for Bluetooth devices.** Battery chips in the open notch get vertical space between rows, and devices in the Bluetooth menu sit in taller rows.
+
+## 1.12.3 – 2026-11-15
+
+### Changed
+- **A smaller Holm.exe.** The self-contained exe drops from 213 to about 157 MB: the framework keeps its own precompiled code instead of being compiled again into one large image, with nothing left out.
+- **Bigger app icons in the closed notch.** While notifications wait, their app icons in the closed notch are as big as the album art, so they read at a glance.
+
+## 1.12.2 – 2026-11-15
+
+### Added
+- **Sky colours can be switched off.** *Settings › Weather › Sky colours*: off, the open notch stays plain black when nothing plays, and the greeting is grey instead of tinted. On by default.
+
+## 1.12.1 – 2026-11-15
+
+### Added
+- **Ctrl+H opens the notch.** Press Ctrl+H anywhere to open the notch, and again to close it (a click elsewhere closes it too). While it's on, other apps don't get Ctrl+H (browser history, Replace in editors); *Settings › General* turns it off.
+
 ## 1.12.0 – 2026-11-14
 
 ### Changed

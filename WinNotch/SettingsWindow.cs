@@ -11,7 +11,7 @@ using System.Windows.Media.Effects;
 namespace WinNotch;
 
 /// <summary>One switch in the settings: the hidden menu entry that holds its handler, an icon and a line of help.</summary>
-internal sealed record SettingsSwitch(MenuItem Item, string Glyph, string? Help = null);
+internal sealed record SettingsSwitch(MenuItem Item, string Glyph, string? Help = null, string? ActionLabel = null, Action? RunAction = null);
 
 /// <summary>A page of switches in the Holm window.</summary>
 internal sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
@@ -81,7 +81,8 @@ internal sealed class SettingsWindow : Window
         brand.Children.Add(new Image
         {
             Width = 30, Height = 30,
-            Source = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Holm;component/notch.ico")),
+            // The 128 px frame of notch.ico (the one this took before): sharp at any scaling, without a second 381 KB icon in the exe.
+            Source = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Holm;component/Assets/brand.png")),
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeights.SemiBold });
@@ -129,6 +130,7 @@ internal sealed class SettingsWindow : Window
             _titles[ProfileKey] = ("Profile", "How your friends see you");
             _nav.Children.Add(NavItem(ProfileKey, "", "Profile"));
             profile.Changed += RefreshApplyState;
+            profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _settingsPages[ProfileKey] = profile;
         }
         foreach (var group in groups)
@@ -172,6 +174,7 @@ internal sealed class SettingsWindow : Window
         close.MouseLeave += (_, _) => close.Background = HubTheme.Card;
         close.MouseLeftButtonDown += (_, e) => e.Handled = true; // not the start of a drag
         close.MouseLeftButtonUp += (_, _) => Close();
+        Keyboardable(close, "Close", Close);
         Grid.SetColumn(close, 1);
         header.Children.Add(close);
         DockPanel.SetDock(header, Dock.Top);
@@ -339,6 +342,27 @@ internal sealed class SettingsWindow : Window
         _apply.Background = HasChanges ? HubTheme.Accent : HubTheme.Card;
     }
 
+    /// <summary>Makes a mouse-only element reachable by keyboard: Tab, Space/Enter to act, and a name for screen readers.</summary>
+    static void Keyboardable(FrameworkElement el, string name, Action act)
+    {
+        el.Focusable = true;
+        System.Windows.Automation.AutomationProperties.SetName(el, name);
+        var ring = new FrameworkElementFactory(typeof(System.Windows.Shapes.Rectangle));
+        ring.SetValue(System.Windows.Shapes.Shape.StrokeProperty, HubTheme.Accent);
+        ring.SetValue(System.Windows.Shapes.Shape.StrokeThicknessProperty, 1.5);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusXProperty, 8.0);
+        ring.SetValue(System.Windows.Shapes.Rectangle.RadiusYProperty, 8.0);
+        ring.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        var style = new Style();
+        style.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate { VisualTree = ring }));
+        el.FocusVisualStyle = style;
+        el.KeyDown += (_, e) =>
+        {
+            if (e.Source != el || e.Key != Key.Space && e.Key != Key.Enter) return;
+            e.Handled = true;
+            act();
+        };
+    }
     Border NavItem(string key, string glyph, string title)
     {
         var grid = new Grid();
@@ -367,6 +391,7 @@ internal sealed class SettingsWindow : Window
         item.MouseEnter += (_, _) => { if (Page != key) item.Background = HubTheme.Hover; };
         item.MouseLeave += (_, _) => { if (Page != key) item.Background = Brushes.Transparent; };
         item.MouseLeftButtonUp += (_, _) => Navigate(key);
+        Keyboardable(item, title, () => Navigate(key));
         _navItems[key] = (item, icon, badge, badgeText);
         return item;
     }
@@ -411,13 +436,29 @@ internal sealed class SettingsWindow : Window
             words.Children.Add(new TextBlock { Text = help, Foreground = HubTheme.Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
         Grid.SetColumn(words, 1);
         content.Children.Add(words);
-        Grid.SetColumn(toggle, 2);
+        if (setting.RunAction != null && setting.ActionLabel != null)
+        {
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var reset = HubTheme.Action(setting.ActionLabel);
+            reset.Padding = new Thickness(10, 3, 10, 3);
+            reset.MinHeight = 28;
+            reset.Height = 28;
+            reset.VerticalAlignment = VerticalAlignment.Center;
+            reset.Click += (_, e) => { e.Handled = true; setting.RunAction(); };
+            // ButtonBase handles mouse-up; keep the action separate from the row toggle.
+            reset.MouseLeftButtonUp += (_, e) => e.Handled = true;
+            Grid.SetColumn(reset, 2);
+            content.Children.Add(reset);
+            Grid.SetColumn(toggle, 3);
+        }
+        else Grid.SetColumn(toggle, 2);
         content.Children.Add(toggle);
         row.Children.Add(content);
 
         row.MouseEnter += (_, _) => hover.Background = HubTheme.Hover;
         row.MouseLeave += (_, _) => hover.Background = null;
         row.MouseLeftButtonUp += (_, _) => Flip(item, toggle);
+        Keyboardable(row, $"{item.Header}, {(toggle.IsOn ? "on" : "off")}", () => Flip(item, toggle));
         return row;
     }
 
@@ -467,6 +508,8 @@ internal sealed class SettingsWindow : Window
         bool next = !toggle.IsOn;
         if (item.Name == "MenuAnim") _animate = next;
         toggle.Set(next, _animate);
+        // Screen readers hear the new state, not just the title.
+        if (((FrameworkElement)toggle.Parent).Parent is UIElement owner) System.Windows.Automation.AutomationProperties.SetName(owner, $"{item.Header}, {(next ? "on" : "off")}");
         if (!_animate) foreach (var row in _rows) row.Switch.Set(row.Switch.IsOn, false);
         RefreshApplyState();
     }

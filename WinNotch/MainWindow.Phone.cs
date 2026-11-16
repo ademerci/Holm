@@ -63,7 +63,7 @@ public partial class MainWindow
     {
         PhoneQrHost.Child = QrCode.Image(url, 132);
         PhoneSubtitle.Text = summary;
-        PhoneStatus.Text = "Your phone has to be on the same Wi-Fi as this PC.";
+        PhoneStatus.Text = "Your phone has to be on the same Wi-Fi as this PC. The link isn't encrypted, so avoid public Wi-Fi.";
         if (_taskVisible) HideTask();
         SetExpanded(false);
         ApplyState();

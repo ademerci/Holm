@@ -23,7 +23,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ex) => { if (ex.ExceptionObject is Exception error) Diag.Error(error); };
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ex) => { Diag.Error(ex.Exception); ex.SetObserved(); };
 
-        _singleInstance = new Mutex(true, @"Local\Holm.SingleInstance", out bool first);
+        _singleInstance = new Mutex(true, Diag.DevFolder == null ? @"Local\Holm.SingleInstance" : @"Local\Holm.SingleInstance.Dev", out bool first);
         if (!first)
         {
             MessageBox.Show(
@@ -65,8 +65,23 @@ public partial class App : Application
 #endif
 
         Diag.Enabled = e.Args.Contains("--diag");
-        FormerName.Migrate(); // before the window reads the settings
+        if (Diag.DevFolder == null) FormerName.Migrate(); // before the window reads the settings; test data leaves your autostart alone
         new MainWindow().Show();
+
+#if DEBUG || BENCH
+        // Measurement on test data: when the notch is ready (Loaded and the first frame done, the UI thread idle for the
+        // first time) and 10 s later, write ms since process start, JIT'd methods and JIT time to HOLM_DATA\ready.txt.
+        if (Diag.DevFolder is { } dev)
+        {
+            void Stamp(string label) => System.IO.File.AppendAllText(System.IO.Path.Combine(dev, "ready.txt"),
+                $"{label} {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:F0} " +
+                $"{System.Runtime.JitInfo.GetCompiledMethodCount()} {System.Runtime.JitInfo.GetCompilationTime().TotalMilliseconds:F0}{Environment.NewLine}");
+            Dispatcher.InvokeAsync(() => Stamp("ready"), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            var later = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            later.Tick += (_, _) => { later.Stop(); Stamp("10s"); };
+            later.Start();
+        }
+#endif
 
 #if DEBUG
         // Dev helpers to check that the process really ends: quit after N seconds like the menu's Quit

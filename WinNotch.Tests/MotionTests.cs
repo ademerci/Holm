@@ -4,6 +4,9 @@ namespace WinNotch.Tests;
 
 public class MotionTests
 {
+    // Tests that build a MainWindow apply the bounce from the settings on this machine; the curves here assume Normal.
+    public MotionTests() => Spring.Bounce = 1;
+
     static IEnumerable<double> Steps() => Enumerable.Range(0, 201).Select(i => i / 200.0);
 
     [Fact]

@@ -94,7 +94,8 @@ public partial class MainWindow
     {
         var device = entry.Device;
         bool connected = device.Connected == true;
-        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        // Taller than the menu's other rows, so the devices don't sit packed together.
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 5) };
         header.Children.Add(new TextBlock { Text = device.Glyph, FontFamily = IconFont, FontSize = 13, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
         header.Children.Add(new TextBlock { Text = device.Name, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
         if (connected && device.Battery >= 0)

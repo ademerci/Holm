@@ -117,6 +117,9 @@ internal static class AiLauncher
 
     // ───────────── marks, drawn on a 24 × 24 grid ─────────────
 
+    /// <summary>The bare mark of Claude or ChatGPT (the one Codex wears too), on the 24 × 24 grid.</summary>
+    internal static Geometry Mark(string key) => key == "claude" ? ClaudeMark.Value : ChatGptMark.Value;
+
     static Brush Brush(byte r, byte g, byte b)
     {
         var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
