@@ -136,7 +136,7 @@ public sealed partial class NotchWindow
 
     void SetExpanded(bool expand)
     {
-        if (_hovered == expand) return;
+        if (_hovered == expand || _hiddenForFullscreen) return;
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");

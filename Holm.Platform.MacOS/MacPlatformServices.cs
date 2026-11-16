@@ -19,4 +19,5 @@ public sealed class MacPlatformServices : IPlatformServices
     public IHotKeyPlatform HotKey { get; } = new MacHotKeyPlatform();
     public IRemovableDrivesPlatform Drives { get; } = new MacRemovableDrivesPlatform();
     public IClickAwayPlatform ClickAway { get; } = new MacClickAwayPlatform();
+    public IForegroundPlatform Foreground { get; } = new MacForegroundPlatform();
 }

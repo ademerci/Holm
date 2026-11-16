@@ -38,6 +38,8 @@ public sealed partial class NotchWindow
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
                 Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
                     s => s.HotKey, SetHotKey),
+                Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
+                    s => s.HideOverBrowsers, on => { _settings.HideOverBrowsers = on; Save(); WatchFullscreen(); }),
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
                 new SettingsSwitch("Start at sign-in", "", "Holm starts when you sign in.", () => _autostart.IsEnabled,
                     on => _autostart.Set(on), false),

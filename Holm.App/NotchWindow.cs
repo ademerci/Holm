@@ -74,6 +74,7 @@ public sealed partial class NotchWindow : Window
         InitCapsLock(platform);
         InitHotKey(platform);
         InitClickAway(platform);
+        InitFullscreen(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
@@ -150,6 +151,7 @@ public sealed partial class NotchWindow : Window
         StartScreenshots();
         StartUsb();
         StartVpn();
+        StartFullscreen();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -209,8 +211,12 @@ public sealed partial class NotchWindow : Window
                    : _timer != null ? NotchState.Timer
                    : NotchState.Idle;
 
+        // Over a maximized browser the notch is the idle pill, so the tabs under it can be clicked.
+        bool browserMini = _browserInFront && !_hiddenForFullscreen
+                           && target is NotchState.Idle or NotchState.Media or NotchState.Timer;
+        if (browserMini) target = NotchState.Idle;
         // Minimize when idle: a small pill without shoulders while nothing is going on.
-        bool mini = target == NotchState.Idle && _settings.MiniIdle;
+        bool mini = browserMini || (target == NotchState.Idle && _settings.MiniIdle);
         double w, h, r;
         switch (target)
         {
