@@ -78,6 +78,7 @@ public sealed partial class NotchWindow : Window
         // task switcher. It has to be said before the window shows; other systems ignore it.
         X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dock);
         FontFamily = Fonts.Text;
+        Fonts.ApplyRendering(this);
         Foreground = Brushes.White;
 
         BuildViews();
