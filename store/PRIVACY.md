@@ -1,6 +1,6 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 13, 2026**
+**Effective date: November 16, 2026**
 
 Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [contact@holmnotch.ch](mailto:contact@holmnotch.ch).
 
@@ -51,6 +51,13 @@ Short friend invite codes provide access to an encrypted friend card stored on t
 
 The audio-reactive equalizer reads the default audio output locally to animate its bars. These audio samples are not sent to the Holm Team or other services. You can disable this under General settings.
 
+## AI usage, network tools and dictation
+
+When AI usage ring is enabled, Holm reads Codex and Claude Code session logs on this PC to display usage, reset times and recent session activity, including project names and the latest step. It processes this information locally and does not send these logs or their contents to the Holm Team, friends or an AI service. Turn it off in Settings > General > AI usage ring. Codex figures reflect limits reported in its local logs; Claude Code usage is an estimate based on local token counts.
+
+The Wi-Fi tools read connection and adapter details locally, including network name, signal, local addresses, gateway, DNS servers and MAC address. Starting a speed test sends test requests and generated test data to Cloudflare's public speed-test service. Cloudflare receives your public IP address and request metadata, and Holm displays the public IP and test-server location returned by the service. The test runs only when you start it and stops when you leave the page. It can transfer about 600 MB on a very fast connection; it does not upload your personal files.
+
+Dictation with Handy detects the separately installed Handy app's listening overlay and reflects its state in the notch. Holm may start the installed Handy app in the tray and read its overlay setting; this integration does not capture dictation audio or send it to the Holm Team. Handy's own settings and privacy practices govern its processing. In the Store version, Get Handy opens Handy's official GitHub release page in your browser so you can install it separately.
 ## Other services
 
 If you use Focumon integration, its browser extension sends Focumon status to Holm on your PC; Holm may fetch artwork from the relevant service. Opening an AI assistant or another linked app takes you to that service, whose own privacy terms apply. The portable GitHub version can check GitHub for updates; the Microsoft Store version receives updates through Microsoft Store infrastructure. These services receive the network information needed to respond to requests. See the [GitHub privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Microsoft privacy statement](https://privacy.microsoft.com/privacystatement).
