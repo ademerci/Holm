@@ -20,6 +20,7 @@ public partial class MainWindow
             new(MenuAnim, "", "Smooth transitions, the moving equalizer, GIFs and the animated sky."),
             new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
             new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
+            new(MenuDraggable, "\uE7C2", "Drag the notch by its top edge to move it left or right. Its position is remembered, even with dragging off.", "Reset Position", ResetNotchPosition),
             new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
             new(MenuAiUsage, "", "A small bubble beside the notch fills with how much of Claude Code's and Codex's limits you have used; hover it to see what their agents are working on. Read from their logs on this PC, never shared."),
             new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
@@ -84,6 +85,7 @@ public partial class MainWindow
         MenuBounce.IsChecked = _settings.Bounce;
         MenuReactiveEq.IsChecked = _settings.ReactiveEqualizer;
         MenuMini.IsChecked = _settings.MiniIdle;
+        MenuDraggable.IsChecked = _settings.Draggable;
         MenuHotKey.IsChecked = _settings.HotKey;
         MenuHideOverBrowsers.IsChecked = _settings.HideOverBrowsers;
         MenuMediaControls.IsChecked = _settings.MediaControls;
