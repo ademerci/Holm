@@ -92,4 +92,10 @@ public sealed class LinuxScreenPlatform : IScreenPlatform
         // One line per line, blank ones left out, as the WPF app's OcrText.Join does.
         return string.Join(Environment.NewLine, (await output).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
     }
+
+    public IScreenGrabber? OpenGrabber(int x, int y, int areaWidth, int areaHeight, int width, int height)
+        => LinuxScreenGrabber.Open(x, y, areaWidth, areaHeight, width, height);
+
+    /// <summary>X11 has no way to keep a window out of another app's pictures: the notch shows in a stream here.</summary>
+    public bool HideFromCapture(IntPtr window, bool hide) => false;
 }

@@ -126,7 +126,8 @@ public sealed partial class NotchWindow
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; UpdateStreamMask(); };
+        _settingsWindow.Opened += (_, _) => KeepOutOfStream();
         _settingsWindow.Show();
         _settingsWindow.Activate();
     }

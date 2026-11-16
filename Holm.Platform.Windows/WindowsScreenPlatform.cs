@@ -60,4 +60,9 @@ public sealed class WindowsScreenPlatform : IScreenPlatform
     public bool CanReadText => WinNotch.ScreenText.Available;
 
     public Task<string?> ReadTextAsync(string path) => WinNotch.ScreenText.ReadAsync(path);
+
+    public IScreenGrabber? OpenGrabber(int x, int y, int areaWidth, int areaHeight, int width, int height)
+        => new WindowsScreenGrabber(x, y, areaWidth, areaHeight, width, height);
+
+    public bool HideFromCapture(IntPtr window, bool hide) => WindowsScreenGrabber.HideFromCapture(window, hide);
 }

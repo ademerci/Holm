@@ -108,6 +108,7 @@ public sealed partial class NotchWindow : Window
         InitHub();
         InitAchievements();
         InitActivity();
+        InitStreaming();
         InitSendLater();
         InitUpdates();
         BuildFocumon();

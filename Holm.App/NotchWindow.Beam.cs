@@ -965,6 +965,7 @@ public sealed partial class NotchWindow
         }
         if (_friends.Friends.Count == 0) return;
         menu.Items.Add(new Separator());
+        FillStreamMenu(menu);
         // Friends › Wave at › (each friend), and the switch for waves coming in.
         if (_settings.Waves)
         {

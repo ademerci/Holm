@@ -93,6 +93,7 @@ public sealed partial class NotchWindow
         SendFiles = SendChatFiles,
         React = ReactTo,
         Wave = WaveAt,
+        Stream = StreamTo,
         QuickReactions = () => ChatReaction.Quick(_settings.QuickReactions),
         Copy = TrySetClipboardAsync,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },

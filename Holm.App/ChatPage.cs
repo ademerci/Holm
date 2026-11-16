@@ -346,6 +346,13 @@ internal sealed class ChatPage : HubView
         wave.Margin = new Thickness(4, 0, 0, 0);
         wave.PointerReleased += (_, e) => { e.Handled = true; _social.Wave(friend); };
         actions.Children.Add(wave);
+        if (_social.Stream is { } stream)
+        {
+            var share = RoundButton(HubTheme.Glyph("\uE7F4", 14), $"Share your screen with {friend.Name}", 34, Brushes.Transparent, HubTheme.CardStrong);
+            share.Margin = new Thickness(4, 0, 0, 0);
+            share.PointerReleased += (_, e) => { e.Handled = true; stream(friend); };
+            actions.Children.Add(share);
+        }
         Grid.SetColumn(actions, 2);
         row.Children.Add(actions);
         _header.Child = row;

@@ -33,6 +33,8 @@ internal sealed class SocialContext
     /// <summary>Asks friends whether their Holm runs; the answers bring what they're doing.</summary>
     public Action Ping { get; init; } = () => { };
     public Action<Friend> Wave { get; init; } = _ => { };
+    /// <summary>Invites a friend to watch our screen (null: streaming isn't offered).</summary>
+    public Action<Friend>? Stream { get; init; }
     /// <summary>Sends selected files to a friend using Beam.</summary>
     public Action<Friend, string[]> SendFiles { get; init; } = (_, _) => { };
     /// <summary>Reacts to a message with an emoji, or takes our reaction away (null).</summary>

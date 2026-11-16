@@ -165,6 +165,14 @@ internal sealed class ActivityPage : HubView
         wave.Click += (_, _) => _social.Wave(friend);
         actions.Children.Add(message);
         actions.Children.Add(wave);
+        if (_social.Stream != null && activity.Kind != FriendActivity.Stream)
+        {
+            var stream = HubTheme.Action("Stream to");
+            stream.Margin = new Thickness(8, 0, 0, 0);
+            ToolTip.SetTip(stream, $"Invite {friend.Name} to watch your screen");
+            stream.Click += (_, _) => _social.Stream(friend);
+            actions.Children.Add(stream);
+        }
         stack.Children.Add(actions);
         return new Border { Background = HubTheme.Card, CornerRadius = new CornerRadius(12), Padding = new Thickness(16), Width = 300, Margin = new Thickness(0, 0, 12, 12), Child = stack };
     }

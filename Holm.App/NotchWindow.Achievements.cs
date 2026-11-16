@@ -125,10 +125,11 @@ public sealed partial class NotchWindow
         return _activity = now;
     }
 
-    /// <summary>The one thing that says most: a call, a game, music, a timer.</summary>
+    /// <summary>The one thing that says most: a stream, then a call, a game, music, a timer.</summary>
     FriendActivity? CurrentActivity()
     {
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (StreamingTo() is { } audience) return new FriendActivity(FriendActivity.Stream, "Streaming their screen", audience, now);
         if (_call is { } call) return new FriendActivity(FriendActivity.Call, "In a call", call.Name, now);
         if (GameInFront() is { } game) return new FriendActivity(FriendActivity.Game, game, null, now);
         if (_info is { IsPlaying: true } media && media.Title.Length > 0)
