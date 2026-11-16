@@ -29,6 +29,7 @@ public sealed partial class NotchWindow : Window
     readonly INotchWindowPlatform _platform;
     readonly MediaService _media;
     readonly IAudioPlatform _audio;
+    readonly IAutostartPlatform _autostart;
     // Read only on Windows for now: there the port shares the installed app's settings file and must not write to
     // it yet. With HOLM_DATA=folder (Debug builds) it runs on test data of its own and saves there. On Linux and
     // macOS there is no other Holm: the file is this app's own, and it saves.
@@ -58,6 +59,7 @@ public sealed partial class NotchWindow : Window
         _platform = platform.NotchWindow;
         _media = new MediaService(platform.Media);
         _audio = platform.Audio;
+        _autostart = platform.Autostart;
         InitDevices(platform);
         AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;

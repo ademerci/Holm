@@ -69,11 +69,22 @@ public sealed partial class NotchWindow
     {
         var quit = new MenuItem { Header = "Quit" };
         quit.Click += (_, _) => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+        // The same words on every system: the switch does the same thing everywhere.
+        var autostart = new MenuItem { Header = "Start at sign-in", ToggleType = MenuItemToggleType.CheckBox };
+        autostart.Click += (_, _) => { _autostart.Set(!_autostart.IsEnabled); autostart.IsChecked = _autostart.IsEnabled; };
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
         menu.Items.Add(new Separator());
+        menu.Items.Add(autostart);
+        menu.Items.Add(new Separator());
         menu.Items.Add(quit);
-        menu.Opening += (_, _) => { _menuOpen = true; FillTimerMenu(); };
+        menu.Opening += (_, _) =>
+        {
+            _menuOpen = true;
+            FillTimerMenu();
+            autostart.IsChecked = _autostart.IsEnabled;
+            autostart.IsEnabled = _autostart.CanChange;
+        };
         // The notch stays as it is while its menu is open; once it has closed, it closes too if the mouse has gone.
         menu.Closed += (_, _) =>
         {

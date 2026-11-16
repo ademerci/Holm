@@ -9,4 +9,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IAudioPlatform Audio { get; } = new WindowsAudioPlatform();
     public IPowerPlatform Power { get; } = new WindowsPowerPlatform();
     public IBluetoothPlatform Bluetooth { get; } = new WindowsBluetoothPlatform();
+    public IAutostartPlatform Autostart { get; } = new WindowsAutostartPlatform();
 }

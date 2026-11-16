@@ -8,6 +8,7 @@ public interface IPlatformServices
     IAudioPlatform Audio { get; }
     IPowerPlatform Power { get; }
     IBluetoothPlatform Bluetooth { get; }
+    IAutostartPlatform Autostart { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -18,4 +19,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IAudioPlatform Audio { get; } = new NoAudioPlatform();
     public IPowerPlatform Power { get; } = new NoPowerPlatform();
     public IBluetoothPlatform Bluetooth { get; } = new NoBluetoothPlatform();
+    public IAutostartPlatform Autostart { get; } = new NoAutostartPlatform();
 }

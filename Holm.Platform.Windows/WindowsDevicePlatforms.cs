@@ -49,3 +49,23 @@ public sealed class WindowsBluetoothPlatform : IBluetoothPlatform
     public List<BluetoothDeviceState> ScanBatteries()
         => BluetoothBattery.Scan().Select(d => new BluetoothDeviceState(d.Address, d.Name, d.Glyph, d.Battery, d.IsConnected)).ToList();
 }
+
+/// <summary>
+/// The Run key, through the WPF app's Autostart (linked). Next to an installed Holm the port shares its entry and
+/// settings, so it only shows the switch; with a data folder of its own (HOLM_DATA) it may change it.
+/// </summary>
+public sealed class WindowsAutostartPlatform : IAutostartPlatform
+{
+    public bool CanChange => !AppSettings.ReadOnly;
+
+    public bool IsEnabled
+    {
+        get { try { return Autostart.IsEnabled; } catch { return false; } }
+    }
+
+    public void Set(bool enabled)
+    {
+        if (!CanChange) return;
+        try { Autostart.Set(enabled); } catch { }
+    }
+}
