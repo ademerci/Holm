@@ -345,6 +345,44 @@ public class NotchSizingTests
         });
     }
 
+    [Fact]
+    public void PositionResetActionSitsNextToTheSwitchWithoutTogglingIt()
+    {
+        WithWindow(_ =>
+        {
+            int resets = 0;
+            var item = new MenuItem { Name = "MenuDraggable", Header = "Drag notch position", IsCheckable = true };
+            var setting = new SettingsSwitch(item, "", "Move along the top edge", "Reset Position", () => resets++);
+            var group = new SettingsGroup("general", "General", "", Colors.Gray, "", new[] { setting });
+            var hub = new SettingsWindow(new[] { group }, "test", false, () => { });
+            try
+            {
+                var row = (FrameworkElement)typeof(SettingsWindow).GetMethod("Row", PrivateInstance)!
+                    .Invoke(hub, new object[] { setting, Colors.Gray, true, true })!;
+                static IEnumerable<DependencyObject> Children(DependencyObject node)
+                {
+                    yield return node;
+                    foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
+                        foreach (var descendant in Children(child)) yield return descendant;
+                }
+                var reset = Assert.Single(Children(row).OfType<Button>());
+                Assert.Equal("Reset Position", reset.Content);
+                var toggle = Assert.Single(Children(row).OfType<ToggleSwitch>());
+                Assert.False(toggle.IsOn);
+                reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, reset));
+                Assert.Equal(1, resets);
+                Assert.False(toggle.IsOn);
+                row.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0,
+                    System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                Assert.True(toggle.IsOn);
+                reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, reset));
+                Assert.Equal(2, resets);
+                Assert.True(toggle.IsOn);
+            }
+            finally { hub.Close(); }
+        });
+    }
+
     // Never show the window: Loaded starts the real media, notification and sharing services.
     // Settings are changed only in memory, and no menu click or Save method is invoked.
     static void WithWindow(Action<MainWindow> test)
