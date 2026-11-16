@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Holm.App.Controls;
 using WinNotch;
+using WinNotch.Notify;
 
 namespace Holm.App;
 
@@ -80,8 +81,8 @@ public sealed partial class NotchWindow
             if (call != null)
             {
                 Diag.Log($"Call started: {call.Name}");
-                _callLogoHost.Child = CallLogo(20);
-                _callRowLogoHost.Child = CallLogo(28);
+                _callLogoHost.Child = CallLogo(call, 20);
+                _callRowLogoHost.Child = CallLogo(call, 28);
                 _callRowTitle.Text = Calls.Title(call);
             }
             else if (ended != null && _settings.Calls) // not when you just switched calls off
@@ -126,8 +127,14 @@ public sealed partial class NotchWindow
         if (!_callTick.IsEnabled) _callTick.Start();
     }
 
-    /// <summary>A green phone (the WPF app shows a messenger's own logo where it has one).</summary>
-    static Control CallLogo(double size) => new Border
+    /// <summary>The messenger's own icon when Holm knows the app (Discord, WhatsApp, …), a green phone otherwise.</summary>
+    Control CallLogo(SensorUse call, double size)
+    {
+        if ((Messengers.ForProcess(call.Key) ?? Messengers.ForApp(call.Key)) is { } messenger) return AppLogo(messenger.Key, size);
+        return PhoneLogo(size);
+    }
+
+    static Control PhoneLogo(double size) => new Border
     {
         Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = Brush("#FF30D158"),
         Child = new TextBlock
