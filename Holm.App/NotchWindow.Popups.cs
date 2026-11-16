@@ -150,6 +150,7 @@ public sealed partial class NotchWindow
     {
         _taskExtra.Label = label;
         _taskExtra.IsVisible = true;
+        _taskExtra.IsEnabled = true;
         _extraAction = act;
         ApplyState(animate: true);
     }

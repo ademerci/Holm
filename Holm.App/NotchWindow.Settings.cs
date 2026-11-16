@@ -59,7 +59,9 @@ public sealed partial class NotchWindow
             new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", new[]
             {
                 Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
-                Switch("Screenshots", "\uE722", "A new screenshot pops out with Shelf and Show.", s => s.Screenshots, SetScreenshots),
+                Switch("Screenshots", "\uE722", "A new screenshot pops out with Send and Shelf.", s => s.Screenshots, SetScreenshots),
+                Switch("Copy text from screenshots", "\uE8D2", OperatingSystem.IsWindows() ? "Read the text in a screenshot with Windows' own OCR." : "Read the text in a screenshot with tesseract, on this computer.",
+                    s => s.ScreenshotText, on => { _settings.ScreenshotText = on; Save(); }),
                 Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
                 Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
                         ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."

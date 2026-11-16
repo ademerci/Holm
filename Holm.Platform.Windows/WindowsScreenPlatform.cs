@@ -55,4 +55,9 @@ public sealed class WindowsScreenPlatform : IScreenPlatform
     [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] static extern bool BitBlt(IntPtr dest, int x, int y, int w, int h, IntPtr src, int sx, int sy, uint rop);
     [DllImport("gdi32.dll")] static extern IntPtr CreateDIBSection(IntPtr dc, ref BitmapInfoHeader info, uint usage, out IntPtr bits, IntPtr section, uint offset);
+
+    /// <summary>Windows' own OCR, through the WPF app's ScreenText (linked).</summary>
+    public bool CanReadText => WinNotch.ScreenText.Available;
+
+    public Task<string?> ReadTextAsync(string path) => WinNotch.ScreenText.ReadAsync(path);
 }

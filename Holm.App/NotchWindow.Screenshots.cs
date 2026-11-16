@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.IO;
 using Avalonia;
 using Avalonia.Controls;
@@ -116,7 +117,39 @@ public sealed partial class NotchWindow
         _taskThumb.Background = new ImageBrush(thumbnail) { Stretch = Stretch.UniformToFill };
         _taskThumb.IsVisible = true;
         _taskIconCircle.IsVisible = false;
+        if (_settings.ScreenshotText && _screen.CanReadText) ShowTaskExtra("Copy text", () => _ = CopyScreenshotTextAsync());
         _taskHide.Interval = TimeSpan.FromSeconds(6);
+        _taskHide.Start();
+    }
+
+    /// <summary>Reads the text in the screenshot on this computer and puts it on the clipboard. The text is never logged.</summary>
+    async Task CopyScreenshotTextAsync()
+    {
+        if (_shotPath is not { } path) return;
+        _taskHide.Stop();
+        _taskExtra.Label = "Reading…";
+        _taskExtra.IsEnabled = false;
+        string subtitle;
+        try
+        {
+            string? text = await _screen.ReadTextAsync(path);
+            int lines = text is { Length: > 0 } ? text.Split('\n').Length : 0;
+            subtitle = text == null ? (OperatingSystem.IsWindows() ? "Windows can't read text: add a language with OCR" : "Install tesseract to read text from pictures")
+                     : text.Length == 0 ? "No text found"
+                     : await TrySetClipboardAsync(text) ? "Text copied · " + (lines == 1 ? "1 line" : $"{lines} lines")
+                     : "Clipboard busy, try again";
+        }
+        catch (Exception ex)
+        {
+            Diag.Log("Screenshot text: " + ex.GetType().Name);
+            subtitle = "Couldn't read the text";
+        }
+        if (!_taskVisible || _shotPath != path) return; // gone or another screenshot meanwhile
+        _taskSubtitle.Text = subtitle;
+        _taskSubtitle.IsVisible = true;
+        _taskExtra.Label = subtitle.StartsWith("Text copied", StringComparison.Ordinal) ? "Copied" : "Copy text";
+        _taskExtra.IsEnabled = !subtitle.StartsWith("Text copied", StringComparison.Ordinal);
+        _taskHide.Interval = TimeSpan.FromSeconds(4);
         _taskHide.Start();
     }
 

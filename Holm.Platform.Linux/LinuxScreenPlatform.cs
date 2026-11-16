@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -65,4 +66,30 @@ public sealed class LinuxScreenPlatform : IScreenPlatform
     [DllImport(X11)] static extern IntPtr XDefaultRootWindow(IntPtr display);
     [DllImport(X11)] static extern IntPtr XGetImage(IntPtr display, IntPtr drawable, int x, int y, uint width, uint height, ulong planeMask, int format);
     [DllImport(X11)] static extern int XFree(IntPtr data);
+
+    /// <summary>Tesseract, when it is installed: the common OCR on Linux, run on this computer.</summary>
+    public bool CanReadText => _tesseract.Value != null;
+
+    static readonly Lazy<string?> _tesseract = new(() =>
+    {
+        foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "/usr/bin").Split(':'))
+            if (folder.Length > 0 && System.IO.File.Exists(System.IO.Path.Combine(folder, "tesseract"))) return System.IO.Path.Combine(folder, "tesseract");
+        return null;
+    });
+
+    public async Task<string?> ReadTextAsync(string path)
+    {
+        if (_tesseract.Value is not { } tesseract) return null;
+        var start = new System.Diagnostics.ProcessStartInfo(tesseract) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        start.ArgumentList.Add(path);
+        start.ArgumentList.Add("stdout");
+        using var process = System.Diagnostics.Process.Start(start);
+        if (process == null) return null;
+        var output = process.StandardOutput.ReadToEndAsync();
+        _ = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0) return null;
+        // One line per line, blank ones left out, as the WPF app's OcrText.Join does.
+        return string.Join(Environment.NewLine, (await output).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
+    }
 }
