@@ -549,32 +549,32 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" IsHitTestVisible="False">
+                            <StackPanel x:Name="MediaClockHeader" Width="110" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" Visibility="Collapsed" Panel.ZIndex="1" Background="Transparent" Cursor="Hand" ToolTip="Large clock" MouseLeftButtonUp="ClockHeader_Click">
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                             <StackPanel x:Name="ToolBar" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="36,0,36,0">
-                                <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" Click="NotesTool_Click">
+                                <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" AutomationProperties.Name="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="&#xE70B;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
-                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" Click="RemindersTool_Click">
+                                <Button x:Name="RemindersToolBtn" Style="{StaticResource ToolButton}" ToolTip="Reminders" AutomationProperties.Name="Reminders" Click="RemindersTool_Click">
                                     <TextBlock Text="&#xEA8F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
-                                <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" Click="CalculatorTool_Click">
+                                <Button x:Name="CalculatorToolBtn" Style="{StaticResource ToolButton}" ToolTip="Calculator" AutomationProperties.Name="Calculator" Click="CalculatorTool_Click">
                                     <TextBlock Text="&#xE8EF;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                                 <!-- Not a page: opens the chats in the Holm window. In the middle of the row, between Calculator and Clipboard -->
-                                <Button x:Name="ChatsToolBtn" Style="{StaticResource ToolButton}" ToolTip="Chats" Click="ChatsTool_Click">
+                                <Button x:Name="ChatsToolBtn" Style="{StaticResource ToolButton}" ToolTip="Chats" AutomationProperties.Name="Chats" Click="ChatsTool_Click">
                                     <TextBlock Text="&#xE8BD;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
-                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" Click="ClipboardTool_Click">
+                                <Button x:Name="ClipboardToolBtn" Style="{StaticResource ToolButton}" ToolTip="Clipboard history" AutomationProperties.Name="Clipboard history" Click="ClipboardTool_Click">
                                     <TextBlock Text="&#xE77F;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
-                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" Click="MixerTool_Click">
+                                <Button x:Name="MixerToolBtn" Style="{StaticResource ToolButton}" ToolTip="Volume per app" AutomationProperties.Name="Volume per app" Click="MixerTool_Click">
                                     <TextBlock Text="&#xE995;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                                 <!-- Not a page: it closes the notch and picks a color from the screen -->
-                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" Click="ColorPicker_Click">
+                                <Button x:Name="ColorPickerBtn" Style="{StaticResource ToolButton}" ToolTip="Pick a color from the screen (Esc cancels)" AutomationProperties.Name="Pick a color from the screen" Click="ColorPicker_Click">
                                     <TextBlock Text="&#xEF3C;" FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource Dim}"/>
                                 </Button>
                             </StackPanel>
@@ -598,7 +598,7 @@
                                                 </StackPanel>
                                             </Button>
                                             <StackPanel VerticalAlignment="Top">
-                                                <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click"
+                                                <Button x:Name="SleepBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Sleep_Click" AutomationProperties.Name="Sleep timer"
                                                         ToolTip="Sleep timer">
                                                     <TextBlock x:Name="SleepIcon" Text="&#xE708;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                                                Foreground="{StaticResource Faint}"/>
@@ -650,20 +650,20 @@
     
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                                         <Button x:Name="ShuffleBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="0,0,14,0"
-                                                Click="Shuffle_Click" ToolTip="Shuffle">
+                                                Click="Shuffle_Click" ToolTip="Shuffle" AutomationProperties.Name="Shuffle">
                                             <TextBlock x:Name="ShuffleIcon" Text="&#xE8B1;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
                                         </Button>
-                                        <Button x:Name="PrevBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Prev_Click">
+                                        <Button x:Name="PrevBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" ToolTip="Previous" AutomationProperties.Name="Previous" Click="Prev_Click">
                                             <Path Data="{StaticResource PrevGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
                                         </Button>
-                                        <Button x:Name="PlayBtn" Style="{StaticResource NotchButton}" Width="46" Height="46" Margin="16,0" Click="Play_Click">
+                                        <Button x:Name="PlayBtn" Style="{StaticResource NotchButton}" Width="46" Height="46" Margin="16,0" ToolTip="Play or pause" AutomationProperties.Name="Play or pause" Click="Play_Click">
                                             <Path x:Name="PlayIcon" Data="{StaticResource PlayGeo}" Style="{StaticResource IconPath}" Width="18" Height="20"/>
                                         </Button>
-                                        <Button x:Name="NextBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" Click="Next_Click">
+                                        <Button x:Name="NextBtn" Style="{StaticResource NotchButton}" Width="42" Height="42" ToolTip="Next" AutomationProperties.Name="Next" Click="Next_Click">
                                             <Path Data="{StaticResource NextGeo}" Style="{StaticResource IconPath}" Width="21" Height="15"/>
                                         </Button>
                                         <Button x:Name="RepeatBtn" Style="{StaticResource NotchButton}" Width="34" Height="34" Margin="14,0,0,0"
-                                                Click="Repeat_Click" ToolTip="Repeat">
+                                                Click="Repeat_Click" ToolTip="Repeat" AutomationProperties.Name="Repeat">
                                             <TextBlock x:Name="RepeatIcon" Text="&#xE8EE;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
                                         </Button>
                                     </StackPanel>
@@ -676,7 +676,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
+                                        <StackPanel HorizontalAlignment="Left" Background="Transparent" Cursor="Hand" ToolTip="Large clock" MouseLeftButtonUp="ClockHeader_Click">
                                             <TextBlock x:Name="GreetingText" FontSize="12" FontWeight="SemiBold" Margin="1,-2,0,0"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock x:Name="ClockBig" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="40"
@@ -753,7 +753,7 @@
                                 <TextBlock x:Name="QuietNote" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,12,0,-6" Visibility="Collapsed"/>
                                 <Button x:Name="ClearNotificationsBtn" Style="{StaticResource ClearNotificationsButton}"
                                         HorizontalAlignment="Right" Height="24" Margin="0,8,0,0" Padding="6,0"
-                                        Visibility="Collapsed" ToolTip="Clear message notifications" Click="ClearNotifications_Click">
+                                        Visibility="Collapsed" ToolTip="Clear message notifications" AutomationProperties.Name="Clear message notifications" Click="ClearNotifications_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE894;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="Clear all" FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center"/>
@@ -811,10 +811,10 @@
                                         <TextBlock x:Name="TimerRowLength" FontSize="12" Foreground="{StaticResource Dim}" Margin="10,1,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                        <Button x:Name="TimerPauseBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="TimerPause_Click">
+                                        <Button x:Name="TimerPauseBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" AutomationProperties.Name="Pause or resume the timer" Click="TimerPause_Click">
                                             <TextBlock x:Name="TimerPauseIcon" Text="&#xE769;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
                                         </Button>
-                                        <Button Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="2,0,0,0" ToolTip="Stop the timer" Click="TimerStop_Click">
+                                        <Button Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="2,0,0,0" ToolTip="Stop the timer" AutomationProperties.Name="Stop the timer" Click="TimerStop_Click">
                                             <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
                                         </Button>
                                     </StackPanel>
@@ -828,7 +828,7 @@
                                                    ToolTip="Drag to take everything off the shelf at once"
                                                    MouseLeftButtonDown="Shelf_MouseDown" MouseMove="Shelf_MouseMove"/>
                                         <Button HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
-                                                ToolTip="Clear the shelf (the files stay where they are)" Click="ShelfClear_Click">
+                                                ToolTip="Clear the shelf (the files stay where they are)" AutomationProperties.Name="Clear the shelf" Click="ShelfClear_Click">
                                             <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource Dim}"/>
                                         </Button>
                                     </Grid>
@@ -895,7 +895,7 @@
                                     <Grid Margin="2,0,0,6">
                                         <TextBlock Text="Clipboard" FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center"/>
                                         <Button x:Name="ClipClearBtn" HorizontalAlignment="Right" Style="{StaticResource NotchButton}" Width="24" Height="24"
-                                                ToolTip="Clear the list" Click="ClipClear_Click">
+                                                ToolTip="Clear the list" AutomationProperties.Name="Clear the list" Click="ClipClear_Click">
                                             <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{StaticResource Dim}"/>
                                         </Button>
                                     </Grid>
@@ -921,30 +921,112 @@
                                 <WrapPanel x:Name="DevicesPanel" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <!-- Bluetooth on and off, and the paired headphones and speakers to connect -->
-                                    <Button x:Name="BluetoothBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
+                                    <Button x:Name="BluetoothBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0" AutomationProperties.Name="Bluetooth"
                                             Visibility="Collapsed" Click="Bluetooth_Click">
                                         <TextBlock x:Name="BluetoothIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
                                                    Foreground="{StaticResource Dim}" Text="&#xE702;"/>
                                     </Button>
                                     <!-- Where the sound goes: a list of the speakers and headphones to switch to -->
-                                    <Button x:Name="OutputBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0"
+                                    <Button x:Name="OutputBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="0,0,2,0" AutomationProperties.Name="Sound output"
                                             Visibility="Collapsed" Click="Output_Click">
                                         <TextBlock x:Name="OutputIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
                                                    Foreground="{StaticResource Dim}" Text="&#xE7F5;"/>
                                     </Button>
-                                    <Button x:Name="MuteBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Click="Mute_Click">
+                                    <Button x:Name="MuteBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" AutomationProperties.Name="Mute" Click="Mute_Click">
                                         <TextBlock x:Name="VolIcon" FontFamily="{StaticResource IconFont}" FontSize="14"
                                                    Foreground="{StaticResource Dim}" Text="&#xE995;"/>
                                     </Button>
                                     <Border x:Name="VolumeHost" Width="84" Margin="2,0,0,0" VerticalAlignment="Center"/>
                                     <!-- Opens Claude, Gemini, ChatGPT or your own pick (right-click › AI button) -->
-                                    <Button x:Name="AiBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="6,0,0,0"
+                                    <Button x:Name="AiBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="6,0,0,0" AutomationProperties.Name="AI assistant"
                                             Visibility="Collapsed" Click="Ai_Click">
                                         <Border x:Name="AiIconHost" Width="18" Height="18"/>
                                     </Button>
                                 </StackPanel>
                             </Grid>
 
+                        </StackPanel>
+
+                        <!-- Full-notch clock view: opened by clicking the clock in the expanded notch -->
+                        <StackPanel x:Name="ClockFullView" Visibility="Collapsed">
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ClockBackBtn" Style="{StaticResource NotchButton}" Width="30" Height="30"
+                                        ToolTip="Back" Click="ClockBack_Click">
+                                    <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                </Button>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button x:Name="ClockCustomizeBtn" Style="{StaticResource NotchButton}" Width="30" Height="30"
+                                            ToolTip="Customize clock" Click="ClockCustomize_Click">
+                                        <TextBlock x:Name="ClockCustomizeIcon" Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                    </Button>
+                                    <Button x:Name="ClockPinBtn" Style="{StaticResource NotchButton}" Width="30" Height="30" Margin="4,0,0,0"
+                                            ToolTip="Pin clock open" Click="ClockPin_Click">
+                                        <TextBlock x:Name="ClockPinIcon" Text="&#xE718;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel HorizontalAlignment="Center" Margin="0,-6,0,6" Background="Transparent" Cursor="Hand"
+                                        ToolTip="Back to notch" MouseLeftButtonUp="ClockFullDigits_Click">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="ClockFullTime" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="86"
+                                               FontWeight="Light" VerticalAlignment="Bottom"/>
+                                    <TextBlock x:Name="ClockFullSeconds" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="28"
+                                               FontWeight="Light" Opacity="0.72" Margin="6,0,0,15" VerticalAlignment="Bottom"/>
+                                </StackPanel>
+                                <TextBlock x:Name="ClockFullDate" FontSize="14" Foreground="{StaticResource Dim}"
+                                           HorizontalAlignment="Center" Margin="0,-8,0,2"/>
+                            </StackPanel>
+
+                            <!-- Inline customization bar -->
+                            <StackPanel x:Name="ClockCustomizePanel" Visibility="Collapsed" Margin="0,4,0,6">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button x:Name="ClockSecToggle" Style="{StaticResource PillButton}" Content="Seconds" Margin="3,0" Click="ClockSecToggle_Click"/>
+                                    <Button x:Name="ClockDateToggle" Style="{StaticResource PillButton}" Content="Date" Margin="3,0" Click="ClockDateToggle_Click"/>
+                                    <Button x:Name="ClockMediaToggle" Style="{StaticResource PillButton}" Content="Music" Margin="3,0" Click="ClockMediaToggle_Click"/>
+                                    <Button x:Name="ClockStyleToggle" Style="{StaticResource PillButton}" Content="Style: Light" Margin="3,0" Click="ClockStyleToggle_Click"/>
+                                </StackPanel>
+                                <StackPanel x:Name="ClockColorRow" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                            </StackPanel>
+
+                            <!-- Compact music bar at the bottom (on by default, toggleable) -->
+                            <StackPanel x:Name="ClockMediaBar" Margin="0,4,0,2">
+                                <Border Height="1" Background="#1AFFFFFF" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="ClockMediaArt" Width="38" Height="38" CornerRadius="9" Background="{StaticResource ArtFallback}"
+                                            Cursor="Hand" ToolTip="Open the player" MouseLeftButtonUp="Player_Click">
+                                        <TextBlock x:Name="ClockMediaArtPlaceholder" Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" FontSize="15"
+                                                   Foreground="{StaticResource Faint}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="11,0,10,0" VerticalAlignment="Center" Background="Transparent"
+                                                Cursor="Hand" MouseLeftButtonUp="Player_Click">
+                                        <TextBlock x:Name="ClockMediaTitle" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="ClockMediaArtist" FontSize="11" Foreground="{StaticResource Dim}"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="ClockPrevBtn" Style="{StaticResource NotchButton}" Width="32" Height="32" Click="ClockPrev_Click">
+                                            <Path Data="{StaticResource PrevGeo}" Style="{StaticResource IconPath}" Width="15" Height="11"/>
+                                        </Button>
+                                        <Button x:Name="ClockPlayBtn" Style="{StaticResource NotchButton}" Width="36" Height="36" Margin="6,0" Click="ClockPlay_Click">
+                                            <Path x:Name="ClockPlayIcon" Data="{StaticResource PlayGeo}" Style="{StaticResource IconPath}" Width="14" Height="16"/>
+                                        </Button>
+                                        <Button x:Name="ClockNextBtn" Style="{StaticResource NotchButton}" Width="32" Height="32" Click="ClockNext_Click">
+                                            <Path Data="{StaticResource NextGeo}" Style="{StaticResource IconPath}" Width="15" Height="11"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                     <!-- Privacy indicators stay inside the notch, with their own space beside the content. -->

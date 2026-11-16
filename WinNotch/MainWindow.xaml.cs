@@ -116,8 +116,9 @@ public partial class MainWindow : Window
         _expandDelay = MakeTimer(140, () => { if (Island.IsMouseOver && !TaskShowing && !_sharing && !PhoneShowing) SetExpanded(true); }, oneShot: true);
         _collapseDelay = MakeTimer(300, () =>
         {
+            if (PinnedClockOpen) return;
             // Dragging a slider, a menu open or typing: try again shortly.
-            if (Mouse.Captured != null || MenuOpen || _typing) { _collapseDelay!.Start(); return; }
+            if (Mouse.Captured != null || MenuOpen || KeepOpenForTyping) { _collapseDelay!.Start(); return; }
             if (!Island.IsMouseOver) SetExpanded(false);
         }, oneShot: true);
         _peekTimer = MakeTimer(3000, () => { _peekActive = false; ApplyState(); }, oneShot: true);
@@ -149,6 +150,7 @@ public partial class MainWindow : Window
         InitMixer();
         InitSendLater();
         InitToday();
+        InitClockView();
 
         Progress.ValueCommitted += v =>
         {
@@ -202,7 +204,6 @@ public partial class MainWindow : Window
         Native.AddClipboardFormatListener(_hwnd); // a copied Beam or friend code pops up the notch
         _powerNotifyA = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_BATTERY_PERCENTAGE_REMAINING, 0);
         _powerNotifyB = Native.RegisterPowerSettingNotification(_hwnd, ref Native.GUID_ACDC_POWER_SOURCE, 0);
-        Native.EnableEcoQoS();
         PositionWindow();
     }
 
@@ -216,6 +217,8 @@ public partial class MainWindow : Window
         _btPoll.Start();
         _trimTimer.Start();
         UpdateAiButton();
+        // Efficiency mode only once the notch is up: on slow, low-power cores the start-up itself took much longer.
+        Dispatcher.InvokeAsync(Native.EnableEcoQoS, DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(() => ResolveAi(force: true), DispatcherPriority.ApplicationIdle);
         Dispatcher.InvokeAsync(RefreshBluetooth, DispatcherPriority.ApplicationIdle);
         _ = _media.StartAsync();
@@ -442,6 +445,7 @@ public partial class MainWindow : Window
         {
             _liveTimer.Stop();
             _trimTimer.Start();
+            SetClockView(false, animate: false);
             ShowTool(Tool.None); // the next time it opens on home
             if (_choosingPlace) { _choosingPlace = false; RefreshMediaUi(); ShowWeather(); }
             RefreshFocumon(); // closed Focumon view + its tick (live timer only runs while open)
@@ -982,8 +986,8 @@ public partial class MainWindow : Window
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), 14);
-        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), 12);
+        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
+        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
         AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 
@@ -1075,6 +1079,10 @@ public partial class MainWindow : Window
         close.Click += (_, e) => { e.Handled = true; dismiss(); };
         return host;
     }
+
+    // App icons in the closed notch while notifications wait: as big as the album art (20) in the 30-high badge, a
+    // little smaller next to the art in the 32-high media notch, so they read at a glance.
+    const double BadgeLogoSize = 20, MediaBadgeLogoSize = 18;
 
     void PopulateAppLogos(Panel host, IEnumerable<string> apps, double size)
     {
@@ -1176,6 +1184,8 @@ public partial class MainWindow : Window
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();
+        RefreshBigClockMedia();
+        if (_clockViewOpen) RefreshBigClockStyle();
         var media = info != null && !_choosingPlace ? Visibility.Visible : Visibility.Collapsed;
         if (MediaPanel.Visibility != media)
         {
@@ -1245,6 +1255,7 @@ public partial class MainWindow : Window
             RemainText.Text = "-" + FormatTime(info.Duration - pos);
         }
         if (ClockPanel.Visibility == Visibility.Visible || MediaClockHeader.Visibility == Visibility.Visible) UpdateClock();
+        if (_clockViewOpen) UpdateBigClock();
         ReadVolume();
         RefreshFocumon();
     }
@@ -1331,7 +1342,7 @@ public partial class MainWindow : Window
 
     static FrameworkElement DeviceChip(string glyph, string? name, int level, bool charging)
     {
-        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Center };
+        var chip = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 16, 6), VerticalAlignment = VerticalAlignment.Center };
         chip.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = DimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
         if (name != null)
             chip.Children.Add(new TextBlock { Text = name, FontSize = 12, Foreground = DimBrush, MaxWidth = 100, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
@@ -1358,7 +1369,7 @@ public partial class MainWindow : Window
         _expandDelay.Stop();
         SetHoverBoost(false);
         if (_pickFiles != null) _pickClose.Start(); // picking with clicks: leaving means "never mind"
-        if (_expanded) _collapseDelay.Start();
+        if (_expanded && !PinnedClockOpen) _collapseDelay.Start();
     }
 
     async void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)

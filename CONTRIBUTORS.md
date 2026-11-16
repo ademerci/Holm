@@ -4,7 +4,7 @@ The human maintainers guide the project, review changes and test the app on Wind
 
 ## Contributors
 
-- **Djordje Mojsilovic** ([@DjordjeMojsilovic](https://github.com/DjordjeMojsilovic)) — Holm 1.12.0: the faster chat, lighter GIFs, file sending and screen sharing fixes, the Chats button, the AI button's icon, dictation with Handy, all notifications in the notch, and volume and media only in the notch, built with Claude Code.
+- **Djordje Mojsilovic** ([@DjordjeMojsilovic](https://github.com/DjordjeMojsilovic)) — Holm 1.12.0: the faster chat, lighter GIFs, file sending and screen sharing fixes, the Chats button, the AI button's icon, dictation with Handy, all notifications in the notch, and volume and media only in the notch, built with Claude Code. Holm 1.12.5: the leaner-and-faster pass, part 1 – measured start-up, size and flows, chose what to keep and had ten personas review the experience twice (`docs/opt/REPORT.md`).
 
 ## AI development contributors
 

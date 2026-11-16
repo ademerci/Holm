@@ -103,6 +103,16 @@ internal sealed class AppSettings
     public bool SkyColors { get; set; } = true;
     /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
     public bool AiUsage { get; set; } = true;
+    /// <summary>Large clock view: show seconds next to the time.</summary>
+    public bool ClockShowSeconds { get; set; } = true;
+    /// <summary>Large clock view: show the date under the time.</summary>
+    public bool ClockShowDate { get; set; } = true;
+    /// <summary>Large clock view: show compact music controls at the bottom (on by default).</summary>
+    public bool ClockShowMedia { get; set; } = true;
+    /// <summary>Large clock view typography: "light", "bold" or "mono".</summary>
+    public string ClockStyle { get; set; } = BigClock.StyleLight;
+    /// <summary>Large clock view digit colour: "white", "sky", "amber", "cyan", "green" or "rose".</summary>
+    public string ClockColor { get; set; } = BigClock.ColorWhite;
     /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
     public bool WeatherAutoLocation { get; set; } = true;
     public string? WeatherPlace { get; set; }
@@ -267,7 +277,14 @@ internal static class Autostart
 internal static class Diag
 {
     public static bool Enabled;
-    public static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+    public static readonly string Folder = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+
+    /// <summary>Dev and bench builds only: HOLM_DATA=folder runs Holm on test data beside your own Holm (measurements, snapshots).</summary>
+    public static string? DevFolder =>
+#if DEBUG || BENCH
+        Environment.GetEnvironmentVariable("HOLM_DATA") is { Length: > 0 } folder ? folder :
+#endif
+        null;
 
     public static void Log(string message)
     {
