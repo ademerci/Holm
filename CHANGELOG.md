@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.10 – 2026-11-17
+
+### Changed
+- **Only the count in the closed notch.** New notifications show as a red number in the middle of the closed notch, without app icons. Open the notch to see which apps wrote, each with its logo.
+
+## 1.12.9 – 2026-11-17
+
+### Changed
+- **A calmer look.** The open notch stays black: Holm no longer washes the cover's colours over it, and the progress bar, volume and equalizer share one white ink. Tools are words in place of icons, top right, or in a row under the clock while music plays. Today's reminder and note sit as rows under a hairline, and Holm drops the greeting.
+- **A plain settings window.** Black panels with white as the only signal colour, a list between hairlines in place of cards and coloured icons, and square switches.
+- **Settings in plain words.** Holm rewrote every setting's description by the [stop-slop](https://github.com/hardikpandya/stop-slop) rules: you or Holm do something in each sentence, without filler. A reminder due today shows its time alone, "14:30" in place of "today at 14:30".
+
+## 1.12.8 – 2026-11-17
+
+### Changed
+- **AI usage, the Codenotch way.** The closed notch now carries a ring at each end – Claude on the left, Codex on the right – that fills and turns from green to yellow to red as a limit runs out, with a thin arc circling while an agent works. Hover or click a ring to open the notch on the new *AI usage* page: every limit with its reset time ("Resets in 51 min") and the sessions at work. Ported from [Codenotch](https://github.com/vinzdg/codenotch) by Vinz (MIT).
+- **Claude's real limits.** Claude's percentages now come from Anthropic, the same numbers `/usage` shows, using the sign-in Claude Code already keeps on your PC. Holm only reads it and sends it nowhere but Anthropic, asks at most every five minutes, and never sends an expired sign-in. Without one, it falls back to the estimate from the logs and says so.
+
 ## 1.12.7 – 2026-11-16
 
 ### Added
