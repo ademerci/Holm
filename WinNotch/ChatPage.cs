@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -239,7 +239,7 @@ internal sealed class ChatPage : HubView
         _send = new Border
         {
             Width = 32, Height = 32, CornerRadius = new CornerRadius(16), Margin = new Thickness(4, 4, 5, 4), VerticalAlignment = VerticalAlignment.Bottom,
-            Background = HubTheme.Accent, Cursor = Cursors.Hand, ToolTip = "Send (Enter)", Child = HubTheme.Glyph("", 13),
+            Background = HubTheme.Accent, Cursor = Cursors.Hand, ToolTip = "Send (Enter)", Child = HubTheme.Glyph("", 13, HubTheme.OnAccent),
         };
         _send.MouseLeftButtonUp += (_, e) => { e.Handled = true; SendInput(); };
         Grid.SetColumn(_send, 3);
@@ -430,7 +430,7 @@ internal sealed class ChatPage : HubView
             {
                 Background = HubTheme.Accent, CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
                 Margin = new Thickness(8, 3, 0, 0), VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = unread > 99 ? "99+" : unread.ToString(CultureInfo.CurrentCulture), FontSize = 10.5, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Child = new TextBlock { Text = unread > 99 ? "99+" : unread.ToString(CultureInfo.CurrentCulture), FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = HubTheme.OnAccent, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             };
             Grid.SetRow(badge, 1);
             Grid.SetColumn(badge, 1);

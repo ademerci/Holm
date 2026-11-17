@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -75,6 +75,20 @@ public partial class MainWindow
         (AiPage, AiToolBtn, Tool.Ai),
     };
 
+    /// <summary>
+    /// The tool words sit top right, opposite the clock. With music, the header holds the small clock on the left and
+    /// the weather and sleep timer on the right, and eight words don't fit between them: the words take a row of their
+    /// own under the clock, left-aligned.
+    /// </summary>
+    void PlaceToolBar(bool ownRow)
+    {
+        Grid.SetRow(ToolBar, ownRow ? 1 : 0);
+        Grid.SetColumn(ToolBar, ownRow ? 0 : 1);
+        Grid.SetColumnSpan(ToolBar, ownRow ? 3 : 1);
+        ToolBar.HorizontalAlignment = ownRow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        ToolBar.Margin = ownRow ? new Thickness(-4, 10, 0, 0) : new Thickness(8, 0, 4, 0);
+    }
+
     /// <summary>Called when a page opens, so a tool can fill it in.</summary>
     void OnToolShown(Tool tool)
     {
@@ -96,7 +110,7 @@ public partial class MainWindow
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
         MixerToolBtn.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
         AiToolBtn.Visibility = _settings.AiUsage && _aiUsage.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AiToolBtn.Content ??= AiMarks.For(AiTool.ClaudeCode, 14, HubTheme.Dim);
+        AiToolBtn.Content ??= new TextBlock { Text = "AI", FontSize = 11, Foreground = HubTheme.Dim, Margin = new Thickness(4, 0, 4, 0) };
         ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
         bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())

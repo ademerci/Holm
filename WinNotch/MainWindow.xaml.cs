@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -665,7 +665,8 @@ public partial class MainWindow : Window
     /// </summary>
     void UpdateBackdrop()
     {
-        var wanted = _info is { Backdrop: { } art } info && (info.IsPlaying || _expanded) ? art : null;
+        // The instrument look keeps the notch black: the cover shows in its own square, never washed over the notch.
+        ImageSource? wanted = null;
         if (ReferenceEquals(wanted, _shownBackdrop)
             && (_settings.Animations || !ArtLayerA.HasAnimatedProperties && !ArtLayerB.HasAnimatedProperties)) return;
         if (!_settings.Animations)
@@ -902,14 +903,14 @@ public partial class MainWindow : Window
         _latestMediaInfo = info;
         if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
         if (!_settings.MediaControls) info = null;
-        var oldAccent = _info?.Accent;
         // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
         if (_info?.IsPlaying == true && info?.IsPlaying != true && !_expanded) _trimTimer.Start();
         _info = info;
         Diag.Log(info == null ? "Media: none" : $"Media: {info.App} | {info.Title} | {info.Artist} | playing={info.IsPlaying} | art={info.Art != null}");
 
-        var accent = info?.Accent ?? Colors.White;
-        if (oldAccent != accent || Progress.Fill == Brushes.White)
+        // The instrument look: one ink for the progress, the volume and the equalizer, not the cover's colour.
+        var accent = Color.FromRgb(0xF2, 0xF2, 0xF2);
+        if (Progress.Fill is not SolidColorBrush { Color: var shown } || shown != accent)
         {
             var brush = Frozen(accent);
             foreach (var bar in new[] { Bar1, Bar2, Bar3, Bar4 }) bar.Fill = brush;
@@ -1183,6 +1184,7 @@ public partial class MainWindow : Window
     {
         var info = _settings.MediaControls ? _info : null;
         MediaClockHeader.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
+        PlaceToolBar(info != null);
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();

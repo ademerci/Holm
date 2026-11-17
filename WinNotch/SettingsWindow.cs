@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -161,7 +161,8 @@ internal sealed class SettingsWindow : Window
         header.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
         var titles = new StackPanel();
         _pageTitle = new TextBlock { FontSize = 24, FontWeight = FontWeights.SemiBold };
-        _pageSubtitle = new TextBlock { Foreground = HubTheme.Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0) };
+        // No subtitle under the page title: the rows say what the page holds (stop-slop: no announcements).
+        _pageSubtitle = new TextBlock { Foreground = HubTheme.Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), Visibility = Visibility.Collapsed };
         titles.Children.Add(_pageTitle);
         titles.Children.Add(_pageSubtitle);
         header.Children.Add(titles);
@@ -340,6 +341,7 @@ internal sealed class SettingsWindow : Window
     {
         _apply.IsEnabled = HasChanges;
         _apply.Background = HasChanges ? HubTheme.Accent : HubTheme.Card;
+        _apply.Foreground = HasChanges ? HubTheme.OnAccent : HubTheme.Dim;
     }
 
     /// <summary>Makes a mouse-only element reachable by keyboard: Tab, Space/Enter to act, and a name for screen readers.</summary>
@@ -401,10 +403,11 @@ internal sealed class SettingsWindow : Window
         var rows = new StackPanel();
         for (int i = 0; i < group.Switches.Count; i++)
         {
-            if (i > 0) rows.Children.Add(new Border { Height = 1, Background = HubTheme.Line, Margin = new Thickness(58, 0, 0, 0) });
+            rows.Children.Add(new Border { Height = 1, Background = HubTheme.Line });
             rows.Children.Add(Row(group.Switches[i], group.Color, first: i == 0, last: i == group.Switches.Count - 1));
         }
-        var card = new Border { Background = HubTheme.Card, CornerRadius = new CornerRadius(12), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+        // A plain list between hairlines: no card behind it, no icon in front of each row.
+        var card = new Border { Child = rows, VerticalAlignment = VerticalAlignment.Top };
         return HubTheme.Scroller(card);
     }
 
@@ -421,14 +424,10 @@ internal sealed class SettingsWindow : Window
             CornerRadius = new CornerRadius(first ? 12 : 0, first ? 12 : 0, last ? 12 : 0, last ? 12 : 0),
         };
         row.Children.Add(hover);
-        var content = new Grid { Margin = new Thickness(14, 10, 16, 10) };
+        var content = new Grid { Margin = new Thickness(2, 11, 4, 11) };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition());
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var tile = HubTheme.IconTile(setting.Glyph, color);
-        tile.Margin = new Thickness(0, 0, 14, 0);
-        tile.VerticalAlignment = VerticalAlignment.Center;
-        content.Children.Add(tile);
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = item.Header as string ?? "", FontSize = 14, TextWrapping = TextWrapping.Wrap });
         string? help = setting.Help ?? item.ToolTip as string;
@@ -548,8 +547,8 @@ internal sealed class ToggleSwitch : FrameworkElement
     static readonly DependencyProperty PositionProperty = DependencyProperty.Register(
         nameof(Position), typeof(double), typeof(ToggleSwitch), new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    static readonly Color Off = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
-    static readonly Color On = Color.FromRgb(0x30, 0xD1, 0x58);
+    static readonly Color Off = Color.FromRgb(0x5C, 0x5E, 0x63);
+    static readonly Color On = Color.FromRgb(0xF2, 0xF2, 0xF2);
 
     /// <summary>0 off, 1 on; in between while it slides.</summary>
     double Position { get => (double)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
@@ -571,15 +570,15 @@ internal sealed class ToggleSwitch : FrameworkElement
         });
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(40, 24);
+    protected override Size MeasureOverride(Size availableSize) => new(32, 18);
 
+    /// <summary>The instrument switch: a square outline with a square knob, both white when on.</summary>
     protected override void OnRender(DrawingContext dc)
     {
         double t = Math.Clamp(Position, 0, 1);
-        var track = new SolidColorBrush(Color.FromArgb(
-            (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
-            (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
-        dc.DrawRoundedRectangle(track, null, new Rect(0, 0, 40, 24), 12, 12);
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
+        var ink = new SolidColorBrush(Color.FromRgb(
+            (byte)(Off.R + (On.R - Off.R) * t), (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
+        dc.DrawRoundedRectangle(null, new Pen(ink, 1.5), new Rect(0.75, 0.75, 30.5, 16.5), 2, 2);
+        dc.DrawRectangle(ink, null, new Rect(3.5 + 14 * Position, 3.5, 11, 11));
     }
 }
