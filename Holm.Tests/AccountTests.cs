@@ -21,6 +21,14 @@ public class AccountVaultTests
     }
 
     [Fact]
+    public void An_umlaut_makes_the_same_keys_however_the_system_encodes_it()
+    {
+        string composed = "Bär-Passwort-123", decomposed = "Bär-Passwort-123"; // ä as one character, or a + ¨
+        Assert.NotEqual(composed, decomposed);
+        Assert.Equal(AccountKeys.Derive("lena@example.com", composed).SignInSecret, AccountKeys.Derive("lena@example.com", decomposed).SignInSecret);
+    }
+
+    [Fact]
     public void Data_key_opens_only_with_the_right_password_and_account()
     {
         byte[] dataKey = AccountVault.NewDataKey();

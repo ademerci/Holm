@@ -91,6 +91,57 @@ public class AccountOnlineTests
         await AssertGone(root, email, password);
     }
 
+    sealed class NoInternet : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => throw new HttpRequestException("No route to host");
+    }
+
+    [Fact]
+    public async Task After_a_restart_it_stays_signed_in_and_without_internet_it_says_so()
+    {
+        if (Diag.DevFolder == null || !AccountService.Available) return;
+        FriendsService.ProtectKey = (data, _) => data.ToArray();
+        FriendsService.UnprotectKey = (data, _) => data.ToArray();
+        string root = Path.Combine(Diag.Folder, "account-online-" + Guid.NewGuid().ToString("N")[..8]);
+        string folder = Path.Combine(root, "pc1");
+        string email = $"holm-selftest-{Guid.NewGuid():N}@example.com", password = "Bär-test " + Guid.NewGuid().ToString("N")[..10];
+        var settings = new AppSettings { Beam = false, ClockStyle = "mono" };
+        var book = new AchievementBook((string?)null);
+        try
+        {
+            using (var before = new AccountService(settings, book, new FriendsService(settings, Ui), Ui, folder))
+                await before.SignUpAsync(email, password, CancellationToken.None);
+
+            // Holm starts again: signed in from account.json, a fresh token from the refresh token, and it syncs.
+            using var after = new AccountService(settings, book, new FriendsService(settings, Ui), Ui, folder);
+            Assert.True(after.SignedIn);
+            Assert.Equal(email, after.Email);
+            await after.SyncAsync(CancellationToken.None);
+            Assert.Null(after.Problem);
+            Assert.Equal(1, after.Rounds);
+
+            // Without internet: a word for the person, still signed in, nothing lost.
+            using var offline = new AccountService(settings, book, new FriendsService(settings, Ui), Ui, folder,
+                                                   new FirebaseClient(FirebaseProject.ApiKey, FirebaseProject.ProjectId, new HttpClient(new NoInternet())));
+            await offline.SyncAsync(CancellationToken.None);
+            Assert.True(offline.SignedIn);
+            Assert.Contains("internet", offline.Problem);
+
+            // Signing in again with the umlaut password, as typed on another system (ä as a + ¨), works.
+            using var other = new AccountService(new AppSettings { Beam = false }, new AchievementBook((string?)null),
+                                                 new FriendsService(new AppSettings(), Ui), Ui, Path.Combine(root, "pc2"));
+            await other.SignInAsync(email.ToUpperInvariant(), password.Normalize(System.Text.NormalizationForm.FormD), CancellationToken.None);
+            Assert.True(other.SignedIn);
+
+            await after.DeleteAsync(CancellationToken.None);
+            Assert.False(after.SignedIn);
+            Assert.False(File.Exists(Path.Combine(folder, "account.json")));
+        }
+        finally { try { Directory.Delete(root, recursive: true); } catch (IOException) { } }
+        await AssertGone(root, email, password);
+    }
+
     static async Task AssertGone(string root, string email, string password)
     {
         var gone = await Assert.ThrowsAsync<AccountException>(() =>

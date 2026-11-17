@@ -35,12 +35,14 @@ public sealed class AccountKeys
         VaultKey = vaultKey;
     }
 
-    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+    public static string NormalizeEmail(string email) => email.Trim().Normalize(NormalizationForm.FormC).ToLowerInvariant();
 
     /// <summary>Slow on purpose (about half a second): run it off the UI thread.</summary>
     public static AccountKeys Derive(string email, string password)
     {
-        byte[] master = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), Encoding.UTF8.GetBytes(Salt + NormalizeEmail(email)),
+        // NFC: "ä" typed on one system may arrive as a + combining dots on another; both must make the same keys.
+        byte[] master = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password.Normalize(NormalizationForm.FormC)),
+                                                  Encoding.UTF8.GetBytes(Salt + NormalizeEmail(email)),
                                                   Rounds, HashAlgorithmName.SHA256, 32);
         try
         {
