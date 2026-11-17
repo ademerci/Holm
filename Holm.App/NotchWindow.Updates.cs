@@ -198,6 +198,15 @@ public sealed partial class NotchWindow
     void AddUpdateNotification()
     {
         if (!HasUpdateNotification || _availableUpdate is not { } release) return;
+        if (!Look.Instrument)
+        {
+            var logo = UpdateNotificationIcon(BadgeLogoSize);
+            logo.Margin = new Thickness(0, 0, 3, 0);
+            _badgeLogoList.Children.Add(logo);
+            var small = UpdateNotificationIcon(MediaBadgeLogoSize);
+            small.Margin = new Thickness(0, 0, 3, 0);
+            _mediaBadgeLogos.Children.Add(small);
+        }
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         row.Children.Add(UpdateNotificationIcon(28));
         var text = new StackPanel { Margin = new Thickness(10, 0, 10, 0) };

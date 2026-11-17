@@ -34,7 +34,7 @@ public sealed partial class NotchWindow
     /// <summary>Not a page: it sits in the tool row after the mixer, as in the WPF app.</summary>
     void BuildColorPickerButton()
     {
-        _colorPickerBtn = ToolWord("Color");
+        _colorPickerBtn = ToolWord("Color", EyedropperGlyph);
         Avalonia.Controls.ToolTip.SetTip(_colorPickerBtn, "Pick a color from the screen (Esc cancels)");
         _colorPickerBtn.Click += () => _ = PickColorAsync();
         _toolBar.Children.Add(_colorPickerBtn);

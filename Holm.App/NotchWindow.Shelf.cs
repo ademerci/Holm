@@ -81,13 +81,13 @@ public sealed partial class NotchWindow
     static List<string> DroppedPaths(DragEventArgs e)
         => e.DataTransfer.TryGetFiles()?.Select(item => item.TryGetLocalPath()).OfType<string>().ToList() ?? new List<string>();
 
-    /// <summary>The WPF app's ChipButton: a round avatar and a name on a soft tile.</summary>
+    /// <summary>The WPF app's ChipButton: a round avatar and a name on a soft pill (a small tile in the instrument look).</summary>
     static Border Chip(Control avatar, string name)
     {
         var content = new StackPanel { Orientation = Orientation.Horizontal };
         content.Children.Add(avatar);
         content.Children.Add(new TextBlock { Text = name, FontSize = 12, FontWeight = FontWeight.SemiBold, MaxWidth = 110, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
-        return new Border { Background = ChipBrush, CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 4, 14, 4), Margin = new Thickness(0, 0, 8, 8), Child = content };
+        return new Border { Background = ChipBrush, CornerRadius = new CornerRadius(Look.Pick(4, 19)), Padding = new Thickness(4, 4, 14, 4), Margin = new Thickness(0, 0, 8, 8), Child = content };
     }
 
     void AddToShelf(IReadOnlyCollection<string> paths)

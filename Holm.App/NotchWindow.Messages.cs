@@ -66,7 +66,7 @@ public sealed partial class NotchWindow
 
     static Border CountPill(TextBlock text) => new()
     {
-        Background = Brush("#FF3A3B3E"), CornerRadius = new CornerRadius(3), Height = 16, MinWidth = 16, Padding = new Thickness(5, 0),
+        Background = Brush(Look.Pick("#FF3A3B3E", "#FF5B5FC7")), CornerRadius = new CornerRadius(Look.Pick(3, 8)), Height = 16, MinWidth = 16, Padding = new Thickness(5, 0),
         VerticalAlignment = VerticalAlignment.Center, Child = text,
     };
 
@@ -80,11 +80,13 @@ public sealed partial class NotchWindow
 
         // The closed notch's badge: the apps' logos, then the dots and the count.
         _badgeView.Children.Add(_badgeLogoList);
-        var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        // The instrument look shows only the count, centred; the classic one the apps' logos, then the count.
+        var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = Look.Pick(HorizontalAlignment.Center, HorizontalAlignment.Stretch), VerticalAlignment = VerticalAlignment.Center };
         right.Children.Add(_badgePrivacyHost);
         _badgePill = CountPill(_badgeText);
         right.Children.Add(_badgePill);
-        Grid.SetColumnSpan(right, 2);
+        if (Look.Instrument) Grid.SetColumnSpan(right, 2);
+        else Grid.SetColumn(right, 1);
         _badgeView.Children.Add(right);
 
         _messageView.Children.Add(_messageLogoHost);
@@ -120,7 +122,7 @@ public sealed partial class NotchWindow
         clearLabel.Children.Add(new TextBlock { Text = "Clear all", FontSize = 11, Foreground = Dim, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         _clearNotificationsBtn = new NotchButton(clearLabel)
         {
-            Rest = Brush("#14FFFFFF"), CornerRadius = new CornerRadius(3), Height = 24, Padding = new Thickness(6, 0),
+            Rest = Brush("#14FFFFFF"), CornerRadius = new CornerRadius(Look.Pick(3, 5)), Height = 24, Padding = new Thickness(6, 0),
             HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0), IsVisible = false,
         };
         ToolTip.SetTip(_clearNotificationsBtn, "Clear message notifications");
@@ -251,7 +253,11 @@ public sealed partial class NotchWindow
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        // The closed notch shows only the red count: which apps wrote shows once you open the notch.
+        if (!Look.Instrument) // the instrument look shows only the count; the open notch says which apps wrote
+        {
+            PopulateAppLogos(_badgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
+            PopulateAppLogos(_mediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
+        }
         AddUpdateNotification();
         _mediaBadge.Background = _badgePill.Background = RedBrush;
 

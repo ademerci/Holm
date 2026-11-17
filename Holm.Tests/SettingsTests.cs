@@ -83,3 +83,9 @@ public class SettingsTests
 
     static AppSettings Read(string json) => JsonSerializer.Deserialize<AppSettings>(json)!;
 }
+
+public class LookDefaultTests
+{
+    [Fact]
+    public void The_classic_look_is_the_default() => Assert.False(new WinNotch.AppSettings().InstrumentLook);
+}

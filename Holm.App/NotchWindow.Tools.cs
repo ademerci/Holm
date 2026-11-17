@@ -25,7 +25,11 @@ public sealed partial class NotchWindow
 
     static readonly IBrush ToolLit = Brush("#29FFFFFF");
 
-    readonly StackPanel _toolBar = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0, 4, 0) };
+    readonly StackPanel _toolBar = new()
+    {
+        Orientation = Orientation.Horizontal, HorizontalAlignment = Look.Pick(HorizontalAlignment.Right, HorizontalAlignment.Center),
+        Margin = Look.Pick(new Thickness(8, 0, 4, 0), new Thickness(36, 0, 36, 0)),
+    };
     readonly StackPanel _homePanel = new();
     readonly Grid _toolPage = new() { IsVisible = false };
     NotchButton _notesToolBtn = null!, _remindersToolBtn = null!, _calculatorToolBtn = null!, _chatsToolBtn = null!;
@@ -51,11 +55,12 @@ public sealed partial class NotchWindow
     /// <summary>The WPF app's NotchTextBox style: a soft rounded field whose border turns blue while you type in it.</summary>
     static TextBox NotchTextBox()
     {
-        IBrush fill = Brushes.Transparent, border = Brush("#33FFFFFF"), focused = Brush("#CCF2F2F2");
+        IBrush fill = Look.Pick<IBrush>(Brushes.Transparent, Brush("#14FFFFFF")), border = Brush(Look.Pick("#33FFFFFF", "#1FFFFFFF")),
+            focused = Brush(Look.Pick("#CCF2F2F2", "#990A84FF"));
         var box = new TextBox
         {
-            Foreground = Brushes.White, CaretBrush = Brushes.White, SelectionBrush = Brush("#FF5A5C61"), FontSize = 13,
-            Background = fill, BorderBrush = border, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+            Foreground = Brushes.White, CaretBrush = Brushes.White, SelectionBrush = Brush(Look.Pick("#FF5A5C61", "#FF0A84FF")), FontSize = 13,
+            Background = fill, BorderBrush = border, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(Look.Pick(3, 12)),
             Padding = new Thickness(10, 7), MinHeight = 0,
         };
         // The theme repaints a text box under the mouse and with the keyboard in it; keep ours as it is.
@@ -77,15 +82,19 @@ public sealed partial class NotchWindow
 
     static TextBlock PageTitle(string text) => new() { Text = text, FontSize = 11, Foreground = Dim, Margin = new Thickness(2, 0, 0, 6) };
 
-    /// <summary>The instrument look: a tool is a small word, not an icon.</summary>
-    static NotchButton ToolWord(string word) => new(new TextBlock { Text = word, FontSize = 11, Foreground = Dim, Margin = new Thickness(4, 0) })
-    {
-        Height = 28, Margin = new Thickness(1, 0),
-    };
+    /// <summary>A tool's button: its icon, or in the instrument look a small word.</summary>
+    static NotchButton ToolWord(string word, string glyph) => Look.Instrument
+        ? new(new TextBlock { Text = word, FontSize = 11, Foreground = Dim, Margin = new Thickness(4, 0) }) { Height = 28, Margin = new Thickness(1, 0) }
+        : new(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Dim }) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
 
-    NotchButton ToolButton(string word, Tool tool, string tip)
+    /// <summary>A tool's button with something other than an icon in the classic look (the AI mark).</summary>
+    static NotchButton ToolWord(string word, Control classic) => Look.Instrument
+        ? ToolWord(word, "")
+        : new(classic) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
+
+    NotchButton ToolButton(string word, string glyph, Tool tool, string tip)
     {
-        var button = ToolWord(word);
+        var button = ToolWord(word, glyph);
         ToolTip.SetTip(button, tip);
         button.Click += () => ToggleTool(tool);
         _toolBar.Children.Add(button);
@@ -95,10 +104,10 @@ public sealed partial class NotchWindow
     /// <summary>The tool row at the top of the open notch.</summary>
     Control BuildToolRow()
     {
-        _notesToolBtn = ToolButton("Notes", Tool.Notes, "Notes");
-        _remindersToolBtn = ToolButton("Reminders", Tool.Reminders, "Reminders");
-        _calculatorToolBtn = ToolButton("Calc", Tool.Calculator, "Calculator");
-        _chatsToolBtn = ToolWord("Chats");
+        _notesToolBtn = ToolButton("Notes", "", Tool.Notes, "Notes");
+        _remindersToolBtn = ToolButton("Reminders", BellGlyph, Tool.Reminders, "Reminders");
+        _calculatorToolBtn = ToolButton("Calc", "", Tool.Calculator, "Calculator");
+        _chatsToolBtn = ToolWord("Chats", "\uE8BD");
         ToolTip.SetTip(_chatsToolBtn, "Chats");
         _chatsToolBtn.Click += () =>
         {
@@ -106,9 +115,12 @@ public sealed partial class NotchWindow
             Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         };
         _toolBar.Children.Add(_chatsToolBtn);
-        _clipboardToolBtn = ToolButton("Clipboard", Tool.Clipboard, "Clipboard history");
-        _mixerToolBtn = ToolButton("Mixer", Tool.Mixer, "Volume per app");
-        _aiToolBtn = ToolButton("AI", Tool.Ai, "AI usage");
+        _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
+        _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
+        _aiToolBtn = ToolWord("AI", AiMarks.For(AiTool.ClaudeCode, 14, Dim));
+        ToolTip.SetTip(_aiToolBtn, "AI usage");
+        _aiToolBtn.Click += () => ToggleTool(Tool.Ai);
+        _toolBar.Children.Add(_aiToolBtn);
         _aiToolBtn.IsVisible = false;
         BuildColorPickerButton();
         var row = new Grid
@@ -118,6 +130,7 @@ public sealed partial class NotchWindow
         };
         row.Children.Add(_mediaClockHeader);
         Grid.SetColumn(_toolBar, 1);
+        if (!Look.Instrument) { Grid.SetColumn(_toolBar, 0); Grid.SetColumnSpan(_toolBar, 3); } // the icons in the middle of the row
         row.Children.Add(_toolBar);
         var right = BuildToolRowRight();
         Grid.SetColumn(right, 2);

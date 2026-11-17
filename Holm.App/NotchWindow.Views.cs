@@ -47,7 +47,7 @@ public sealed partial class NotchWindow
     readonly Grid _compactView = new() { Margin = new Thickness(9, 0, 12, 0) };
     readonly Border _compactArt = new()
     {
-        Width = 20, Height = 20, CornerRadius = new CornerRadius(3), Background = ArtFallback,
+        Width = 20, Height = 20, CornerRadius = new CornerRadius(Look.Pick(3, 5)), Background = ArtFallback,
         HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
     };
     readonly Rectangle[] _bars = new Rectangle[4];
@@ -68,7 +68,7 @@ public sealed partial class NotchWindow
     };
     readonly StackPanel _mediaPanel = new() { IsVisible = false };
     readonly StackPanel _clockPanel = new() { Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Top };
-    readonly Border _bigArt = new() { Width = 58, Height = 58, CornerRadius = new CornerRadius(4), Background = ArtFallback };
+    readonly Border _bigArt = new() { Width = 58, Height = 58, CornerRadius = new CornerRadius(Look.Pick(4, 12)), Background = ArtFallback };
     readonly TextBlock _artPlaceholder = new()
     {
         Text = "", FontFamily = IconFont, FontSize = 22, Foreground = Faint,
@@ -298,7 +298,7 @@ public sealed partial class NotchWindow
         var info = _info;
         bool media = _settings.MediaControls && info != null && !_choosingPlace;
         _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
-        PlaceToolBar(_mediaClockHeader.IsVisible);
+        if (Look.Instrument) PlaceToolBar(_mediaClockHeader.IsVisible);
         if (_mediaPanel.IsVisible != media)
         {
             _mediaPanel.IsVisible = media;
@@ -311,11 +311,11 @@ public sealed partial class NotchWindow
         RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }
 
-        // The instrument look: one ink for the progress, the volume and the equalizer, not the cover's colour.
-        var accent = Ink;
+        // The instrument look: one ink for the progress, the volume and the equalizer; the classic one the cover's colour.
+        var accent = Look.Instrument ? Ink : new SolidColorBrush(info.Accent).ToImmutable();
         foreach (var bar in _bars) bar.Fill = accent;
         _progress.Fill = accent;
-        _volSlider.Fill = accent;
+        if (Look.Instrument) _volSlider.Fill = accent;
 
         _titleText.Text = info.Title;
         _artistText.Text = info.Artist;
@@ -460,7 +460,7 @@ public sealed partial class NotchWindow
     void UpdateBackdrop()
     {
         // The instrument look keeps the notch black: the cover shows in its own square, never washed over the notch.
-        Bitmap? wanted = null;
+        var wanted = !Look.Instrument && _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
         if (ReferenceEquals(wanted, _shownBackdrop)) return;
         _shownBackdrop = wanted;
         if (!_settings.Animations)
