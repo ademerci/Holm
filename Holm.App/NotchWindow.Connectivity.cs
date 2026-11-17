@@ -45,6 +45,28 @@ public sealed partial class NotchWindow
         if (_outage.Back(DateTime.UtcNow) is { } length) ShowPeek(OnlineGlyph, "Back online", "after " + Outage.Describe(length), null, seconds: 4, glyphBrush: Green);
     }
 
+    /// <summary>Around sleep the network drops anyway: no outage until a little after waking.</summary>
+    void HushConnectivity(TimeSpan forHowLong)
+    {
+        _outageGrace.Stop();
+        _outage.Hush(DateTime.UtcNow + forHowLong);
+    }
+
+    /// <summary>As the WPF app's WM_POWERBROADCAST: quiet about the network while asleep, and catch up on waking.</summary>
+    void OnSleep(bool going)
+    {
+        if (going)
+        {
+            HushConnectivity(TimeSpan.FromHours(24)); // until it wakes
+            return;
+        }
+        Diag.Log("Woke up");
+        HushConnectivity(TimeSpan.FromSeconds(45)); // Wi-Fi takes a moment to come back
+        Dispatcher.UIThread.Post(CheckReminders, DispatcherPriority.Background); // anything due meanwhile
+        Dispatcher.UIThread.Post(CheckDiskSoon, DispatcherPriority.Background);
+        Dispatcher.UIThread.Post(() => _ = RefreshWeatherAsync(), DispatcherPriority.Background); // if half an hour has passed
+    }
+
     void ConfirmOutage()
     {
         if (_connectivity.Online == false && _outage.StillLost(DateTime.UtcNow))

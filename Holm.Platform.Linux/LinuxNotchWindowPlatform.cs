@@ -124,4 +124,13 @@ public sealed class LinuxNotchWindowPlatform : INotchWindowPlatform
     [DllImport(X11)] static extern int XQueryTree(IntPtr display, IntPtr window, out IntPtr root, out IntPtr parent, out IntPtr children, out uint count);
     [DllImport(X11)] static extern int XFree(IntPtr data);
     [DllImport(Xext)] static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int kind, int xOff, int yOff, XRectangle[] rects, int count, int op, int ordering);
+
+    /// <summary>glibc keeps freed memory for later; malloc_trim gives it back. Other C libraries have no such call.</summary>
+    public void TrimMemory()
+    {
+        try { malloc_trim(0); }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+    }
+
+    [DllImport("libc")] static extern int malloc_trim(nuint pad);
 }

@@ -35,6 +35,7 @@ public sealed partial class NotchWindow
         _powerPlatform = platform.Power;
         _bluetoothPlatform = platform.Bluetooth;
         _powerPlatform.Changed += () => Dispatcher.UIThread.Post(ReadPower);
+        _powerPlatform.Sleeping += going => Dispatcher.UIThread.Post(() => OnSleep(going), DispatcherPriority.Send);
     }
 
     void StartDevices()

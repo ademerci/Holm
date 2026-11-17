@@ -16,6 +16,7 @@ public sealed class WindowsPowerPlatform : IPowerPlatform
     bool _started;
 
     public event Action? Changed;
+    public event Action<bool>? Sleeping;
 
     public void Start()
     {
@@ -33,7 +34,10 @@ public sealed class WindowsPowerPlatform : IPowerPlatform
 
     void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
+        // The WPF app's WM_POWERBROADCAST: status changes, and PBT_APMSUSPEND / PBT_APMRESUMEAUTOMATIC.
         if (e.Mode == PowerModes.StatusChange) Changed?.Invoke();
+        else if (e.Mode == PowerModes.Suspend) Sleeping?.Invoke(true);
+        else if (e.Mode == PowerModes.Resume) Sleeping?.Invoke(false);
     }
 
     public PowerState Read()

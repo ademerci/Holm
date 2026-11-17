@@ -31,6 +31,12 @@ public interface INotchWindowPlatform
     /// keyboard up again. Called right after a click on the window, when the system allows taking the foreground.
     /// </summary>
     void SetKeyboard(IntPtr window, bool take);
+
+    /// <summary>
+    /// Hands memory Holm no longer uses back to the system, as the WPF app does while it rests (Windows: the working set;
+    /// Linux: the allocator's free pages). Nothing where the system has no such thing.
+    /// </summary>
+    void TrimMemory() { }
 }
 
 /// <summary>For systems without a backend yet: the window stays an ordinary topmost window.</summary>

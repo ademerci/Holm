@@ -153,7 +153,7 @@ sealed class Bus
         {
             if (await ConnectAsync().ConfigureAwait(false) is not { } connection) return null;
             return await connection.AddMatchAsync(rule,
-                static (Message m, object? _) => new SignalInfo(m.SenderAsString ?? "", m.PathAsString ?? "", m.InterfaceAsString ?? "", m.MemberAsString ?? "", FirstString(m)),
+                static (Message m, object? _) => new SignalInfo(m.SenderAsString ?? "", m.PathAsString ?? "", m.InterfaceAsString ?? "", m.MemberAsString ?? "", FirstString(m), FirstBool(m)),
                 (Notification<SignalInfo> notification) => { if (notification.HasValue) handler(notification.Value); },
                 false, ObserverFlags.None).ConfigureAwait(false);
         }
@@ -167,10 +167,18 @@ sealed class Bus
         if (signature == null || signature.Length == 0 || signature[0] != 's') return "";
         try { return message.GetBodyReader().ReadString(); } catch { return ""; }
     }
+
+    /// <summary>The first argument when it is a boolean (logind's PrepareForSleep).</summary>
+    static bool? FirstBool(Message message)
+    {
+        var signature = message.SignatureAsString;
+        if (signature == null || signature.Length == 0 || signature[0] != 'b') return null;
+        try { return message.GetBodyReader().ReadBool(); } catch { return null; }
+    }
 }
 
 /// <summary>Which signal arrived, from whom, and its first string argument.</summary>
-readonly record struct SignalInfo(string Sender, string Path, string Interface, string Member, string Arg0);
+readonly record struct SignalInfo(string Sender, string Path, string Interface, string Member, string Arg0, bool? Flag = null);
 
 /// <summary>
 /// Gathers a call's arguments. A MessageWriter is a ref struct and can't be captured by a lambda, so the steps

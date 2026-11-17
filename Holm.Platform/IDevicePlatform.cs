@@ -15,6 +15,9 @@ public interface IPowerPlatform
     /// <summary>Plugged in, unplugged or the battery state changed; raised on any thread.</summary>
     event Action? Changed;
 
+    /// <summary>The computer goes to sleep (true) or has woken up (false); raised on any thread.</summary>
+    event Action<bool>? Sleeping;
+
     void Start();
     void Stop();
 
@@ -59,6 +62,7 @@ public sealed record PairedDevice(string Id, string Name, string Glyph, bool Con
 public sealed class NoPowerPlatform : IPowerPlatform
 {
     public event Action? Changed { add { } remove { } }
+    public event Action<bool>? Sleeping { add { } remove { } }
     public void Start() { }
     public void Stop() { }
     public PowerState Read() => default;

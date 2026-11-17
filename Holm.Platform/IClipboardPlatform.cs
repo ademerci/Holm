@@ -14,6 +14,12 @@ public interface IClipboardPlatform
 
     void Start();
     void Stop();
+
+    /// <summary>
+    /// The process that put the last change on the clipboard ("SnippingTool"), read when the notice came, or null where
+    /// the system doesn't say. Lets Holm keep a screenshot that went to the clipboard only.
+    /// </summary>
+    string? OwnerProcess() => null;
 }
 
 /// <summary>For systems without a backend yet: nobody says when the clipboard changes.</summary>

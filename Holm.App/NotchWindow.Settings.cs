@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Threading;
 using WinNotch;
 
 namespace Holm.App;
@@ -124,7 +125,7 @@ public sealed partial class NotchWindow
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
-        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); };
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); HandMemoryBackSoon(); };
         _settingsWindow.Opened += (_, _) => KeepOutOfStream();
         _settingsWindow.Show();
         _settingsWindow.Activate();
@@ -166,6 +167,40 @@ public sealed partial class NotchWindow
         list.Add(Switch("Sky colours", "\uE790", "With nothing playing, the open notch takes the colours of the time of day and the weather. Off, it stays black.",
             s => s.SkyColors, SetSkyColors));
         return list;
+    }
+
+    // ───────────── memory ─────────────
+
+    /// <summary>A while after the notch rests (started, closed, music stopped), Holm hands unused memory back, as the WPF app.</summary>
+    DispatcherTimer? _trimTimerField;
+    DispatcherTimer _trimTimer => _trimTimerField ??= OneShot(6000, () => { if (!_hovered && _settingsWindow == null) _platform.TrimMemory(); });
+    DispatcherTimer? _handBack;
+
+    static DispatcherTimer OneShot(double ms, Action act)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+        timer.Tick += (_, _) => { timer.Stop(); act(); };
+        return timer;
+    }
+
+    /// <summary>
+    /// The Holm window closed. Its pictures and the decoded GIFs of its chats would otherwise stay in memory; they go,
+    /// and a moment later Holm hands the memory back to the system.
+    /// </summary>
+    void HandMemoryBackSoon()
+    {
+        _handBack ??= OneShot(5000, HandMemoryBack);
+        _handBack.Stop();
+        _handBack.Start();
+    }
+
+    void HandMemoryBack()
+    {
+        if (_settingsWindow != null) return; // opened again meanwhile
+        GC.Collect();
+        GC.WaitForPendingFinalizers(); // the pictures' memory goes with their finalizers
+        GC.Collect();
+        if (!_hovered) _platform.TrimMemory();
     }
 
     void ApplyBounce() => Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;

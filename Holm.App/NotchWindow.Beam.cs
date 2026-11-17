@@ -64,8 +64,20 @@ public sealed partial class NotchWindow
     long _acceptTick;
     readonly Dictionary<string, IBrush?> _pictures = new();
 
+    /// <summary>ZIPs left over from a Holm that was closed mid-send (the WPF app's ForgetLeftoverZips).</summary>
+    static void ForgetLeftoverZips()
+    {
+        try
+        {
+            if (Directory.Exists(FolderPack.TempFolder))
+                FolderPack.Forget(Directory.GetFiles(FolderPack.TempFolder, "*.zip"), FolderPack.TempFolder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
     void InitBeam(IPlatformServices platform)
     {
+        ForgetLeftoverZips();
         FriendsService.ProtectKey = platform.Identity.Protect;
         FriendsService.UnprotectKey = platform.Identity.Unprotect;
         FriendsService.AccountName = platform.Identity.AccountName;
@@ -966,6 +978,8 @@ public sealed partial class NotchWindow
         }
         if (_friends.Friends.Count == 0) return;
         menu.Items.Add(new Separator());
+        AddFriendProfiles(menu);
+        menu.Items.Add(new Separator());
         FillStreamMenu(menu);
         // Friends › Wave at › (each friend), and the switch for waves coming in.
         if (_settings.Waves)
@@ -996,6 +1010,25 @@ public sealed partial class NotchWindow
             remove.Items.Add(item);
         }
         menu.Items.Add(remove);
+    }
+
+    /// <summary>Friends › each friend with their picture and status (the WPF app's AddFriendProfiles).</summary>
+    void AddFriendProfiles(MenuItem menu)
+    {
+        foreach (var friend in _friends.Friends.Take(12).ToList())
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(Avatar(FaceText(friend.Name), FaceBrush(friend.Name)));
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
+            words.Children.Add(new TextBlock { Text = friend.Name });
+            if (friend.Status != null)
+                words.Children.Add(new TextBlock { Text = friend.Status, FontSize = 11, Opacity = 0.6, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (_friends.IsOnline(friend))
+                words.Children.Add(new TextBlock { Text = "Online", FontSize = 11, Foreground = GreenBrush });
+            row.Children.Add(words);
+            // Shown, not chosen: clicking one keeps the menu open.
+            menu.Items.Add(new MenuItem { Header = row, StaysOpenOnClick = true });
+        }
     }
 
     // ───────────── helpers ─────────────

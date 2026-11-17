@@ -84,6 +84,7 @@ public sealed partial class NotchWindow
     void OnClipboardChanged()
     {
         uint sequence = ++_clipSequence;
+        OnClipboardForScreenshot();
         if (_settings.ClearPasswords)
             DispatcherTimer.RunOnce(() => _ = CheckPasswordAsync(sequence), TimeSpan.FromMilliseconds(120));
         if (_settings.Beam) DispatcherTimer.RunOnce(() => _ = OnClipboardForBeamAsync(), TimeSpan.FromMilliseconds(150));

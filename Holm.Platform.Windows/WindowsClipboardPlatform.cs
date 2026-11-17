@@ -13,6 +13,9 @@ public sealed unsafe class WindowsClipboardPlatform : IClipboardPlatform
     const uint WmClipboardUpdate = 0x031D;
     static readonly IntPtr HwndMessage = new(-3);
     static WindowsClipboardPlatform? _current;
+    volatile string? _owner;
+
+    public string? OwnerProcess() => _owner;
     static ushort _class;
     IntPtr _window;
 
@@ -55,6 +58,11 @@ public sealed unsafe class WindowsClipboardPlatform : IClipboardPlatform
     {
         if (message == WmClipboardUpdate)
         {
+            // Right away: who owns the clipboard can change a moment later.
+            if (_current != null)
+            {
+                try { _current._owner = global::WinNotch.Native.ProcessNameOf(global::WinNotch.Native.GetClipboardOwner()); } catch { _current._owner = null; }
+            }
             try { _current?.Changed?.Invoke(); } catch { }
             return IntPtr.Zero;
         }

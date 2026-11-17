@@ -70,4 +70,9 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
 
     [DllImport("gdi32.dll")]
     static extern bool DeleteObject(IntPtr handle);
+
+    public void TrimMemory() => K32EmptyWorkingSet(GetCurrentProcess());
+
+    [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll")] static extern bool K32EmptyWorkingSet(IntPtr process);
 }

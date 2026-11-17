@@ -163,7 +163,12 @@ public sealed partial class NotchWindow
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");
-        if (expand) OpenFromAiRing(); // opened from a ring: straight to the AI page
+        if (expand)
+        {
+            _trimTimer.Stop();
+            OpenFromAiRing(); // opened from a ring: straight to the AI page
+        }
+        else _trimTimer.Start();
         if (!expand)
         {
             SetClockView(false, animate: false);

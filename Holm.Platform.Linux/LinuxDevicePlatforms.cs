@@ -17,10 +17,11 @@ public sealed class LinuxPowerPlatform : IPowerPlatform
 {
     readonly string _folder;
     readonly Bus _bus;
-    IDisposable? _watch;
+    IDisposable? _watch, _sleepWatch;
     bool _started;
 
     public event Action? Changed;
+    public event Action<bool>? Sleeping;
 
     public LinuxPowerPlatform() : this("/sys/class/power_supply", Bus.System) { }
 
@@ -45,6 +46,13 @@ public sealed class LinuxPowerPlatform : IPowerPlatform
             Interface = "org.freedesktop.DBus.Properties", Member = "PropertiesChanged",
         }, _ => Changed?.Invoke()).ConfigureAwait(false);
         if (_started) _watch = watch; else watch?.Dispose();
+        // logind says when the computer is about to sleep (true) and when it is back (false).
+        var sleep = await _bus.WatchAsync(new MatchRule
+        {
+            Type = MessageType.Signal, Path = "/org/freedesktop/login1",
+            Interface = "org.freedesktop.login1.Manager", Member = "PrepareForSleep",
+        }, signal => { if (signal.Flag is { } going) Sleeping?.Invoke(going); }).ConfigureAwait(false);
+        if (_started) _sleepWatch = sleep; else sleep?.Dispose();
     }
 
     public void Stop()
@@ -52,6 +60,8 @@ public sealed class LinuxPowerPlatform : IPowerPlatform
         _started = false;
         _watch?.Dispose();
         _watch = null;
+        _sleepWatch?.Dispose();
+        _sleepWatch = null;
     }
 
     public PowerState Read()

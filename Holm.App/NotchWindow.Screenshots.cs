@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -13,8 +15,8 @@ namespace Holm.App;
 
 /// <summary>
 /// After a screenshot, the notch shows it small with "Send" and "Shelf"; click the picture to open it (the WPF app's
-/// MainWindow.Screenshot.cs). The system's screenshots folder is watched; nothing is polled. Beam's "Send" and the
-/// text reading (Windows OCR) are not ported.
+/// MainWindow.Screenshot.cs). The system's screenshots folder is watched, and on Windows a snip that only went to the
+/// clipboard is kept as a copy for two days; nothing is polled.
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -69,8 +71,67 @@ public sealed partial class NotchWindow
         }
     }
 
+    // ───────────── screenshots that only went to the clipboard ─────────────
+
+    /// <summary>What owns the clipboard right after a snip: Windows 11's Snipping Tool, Windows 10's snipping overlay.</summary>
+    static readonly string[] SnippingTools = { "SnippingTool", "ScreenClippingHost", "ScreenSketch" };
+    DispatcherTimer? _clipShot;
+
+    /// <summary>Only pictures the snipping tools put there: an image copied in a browser is none of our business.</summary>
+    void OnClipboardForScreenshot()
+    {
+        if (!_settings.Screenshots || _clipboardPlatform.OwnerProcess() is not { } owner) return;
+        if (!SnippingTools.Contains(Path.GetFileNameWithoutExtension(owner), StringComparer.OrdinalIgnoreCase)) return;
+        // The Snipping Tool usually saves the picture too: give that a moment before keeping a copy of the clipboard.
+        if (_clipShot == null)
+        {
+            _clipShot = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
+            _clipShot.Tick += (_, _) => { _clipShot.Stop(); _ = SaveClipboardShotAsync(); };
+        }
+        _clipShot.Stop();
+        _clipShot.Start();
+    }
+
+    async Task SaveClipboardShotAsync()
+    {
+        if (DateTime.UtcNow - _lastShotAt < SameShot || Clipboard is not { } clipboard) return; // it was saved and has shown already
+        Bitmap? image = null;
+        for (int attempt = 0; attempt < 3 && image == null; attempt++)
+        {
+            try { image = await clipboard.TryGetBitmapAsync(); if (image == null) return; }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { await Task.Delay(30); } // another app has the clipboard open
+        }
+        if (image == null) return;
+        try
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "Holm", "Screenshots");
+            Directory.CreateDirectory(folder);
+            ForgetOldShots(folder);
+            string path = Path.Combine(folder, $"Screenshot {DateTime.Now:yyyy-MM-dd HHmmss}.png");
+            using (var file = File.Create(path)) image.Save(file, new PngBitmapEncoderOptions());
+            ShowScreenshot(path, saved: false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            Diag.Log("Screenshot copy: " + ex.Message);
+        }
+        finally { image.Dispose(); }
+    }
+
+    /// <summary>Copies of clipboard screenshots go after two days, unless they're on the shelf.</summary>
+    void ForgetOldShots(string folder)
+    {
+        foreach (var file in new DirectoryInfo(folder).EnumerateFiles("Screenshot *.png"))
+        {
+            if (DateTime.UtcNow - file.LastWriteTimeUtc < TimeSpan.FromDays(2)) continue;
+            if (_settings.Shelf.Contains(file.FullName, StringComparer.OrdinalIgnoreCase)) continue;
+            try { file.Delete(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
     void StopScreenshots()
     {
+        _clipShot?.Stop();
         _shots?.Dispose();
         _shots = null;
         _shotSettle.Stop();
@@ -109,15 +170,20 @@ public sealed partial class NotchWindow
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
-    void ShowScreenshot(string path)
+    void ShowScreenshot(string path, bool saved = true)
     {
-        if (DateTime.UtcNow - _lastShotAt < SameShot || !_settings.Screenshots || _sharing || _taskVisible) return;
+        if (DateTime.UtcNow - _lastShotAt < SameShot)
+        {
+            if (saved && _shotPath != null) _shotPath = path; // the same picture, saved after all: use the real file
+            return;
+        }
+        if (!_settings.Screenshots || _busy || _sharing || _taskVisible || _hiddenForFullscreen || _installingUpdate || PhoneShowing) return;
         if (Thumbnail(path) is not { } thumbnail) return;
         _lastShotAt = DateTime.UtcNow;
         _shotPath = path;
         Achieve(AchievementBook.Screenshots);
         Diag.Log("Screenshot taken");
-        ShowTask(ScreenshotGlyph, ShareBlue, "Screenshot", "Saved in " + Path.GetFileName(Path.GetDirectoryName(path)), null,
+        ShowTask(ScreenshotGlyph, ShareBlue, "Screenshot", saved ? "Saved in " + Path.GetFileName(Path.GetDirectoryName(path)) : "Copied – a copy is kept for two days", null,
                  ("Send", () => { if (_shotPath is { } shot) PickTarget(new[] { shot }); }),
                  ("Shelf", () => { HideTask(); if (_shotPath is { } shot) AddToShelf(new[] { shot }); }));
         _taskThumb.Background = new ImageBrush(thumbnail) { Stretch = Stretch.UniformToFill };
@@ -179,5 +245,6 @@ public sealed partial class NotchWindow
         _settings.Screenshots = on;
         _settings.Save();
         StartScreenshots();
+        FollowClipboard(); // a snip that only goes to the clipboard is seen through it
     }
 }

@@ -179,6 +179,7 @@ public sealed partial class NotchWindow : Window
         StartFocumon();
         StartDictation();
         StartAiUsage();
+        _trimTimer.Start();
         _audio.Start();
         _ = _media.StartAsync();
         StartSelfTest();
@@ -229,6 +230,8 @@ public sealed partial class NotchWindow : Window
     void OnMediaChanged(MediaInfo? info, bool trackChanged)
     {
         if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
+        // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
+        if (_info?.IsPlaying == true && info?.IsPlaying != true && !_hovered) _trimTimer.Start();
         _info = info;
         RefreshMediaUi();
         ApplyState(animate: true);

@@ -28,7 +28,7 @@ public sealed partial class NotchWindow
     readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromSeconds(20) };
     UpdateService? _updates;
     UpdateRelease? _availableUpdate;
-    bool _checkingUpdates, _installingUpdate, _updatesClosing, _updateNotification;
+    bool _checkingUpdates, _installingUpdate, _updatesClosing, _updateNotification, _trimmedAfterFirstCheck;
     string? _updateStatus;
     Version? _notifiedUpdateVersion, _dismissedUpdateVersion;
     TextBlock? _updatesStatusText;
@@ -156,6 +156,11 @@ public sealed partial class NotchWindow
             {
                 RefreshUpdateMenu();
                 NotifyAvailableUpdate();
+            }
+            if (!manual && !_updatesClosing && !_trimmedAfterFirstCheck)
+            {
+                _trimmedAfterFirstCheck = true; // the first look pulled in the network stack and JSON
+                _trimTimer.Start();
             }
         }
     }
