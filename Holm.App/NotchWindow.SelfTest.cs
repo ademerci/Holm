@@ -1,7 +1,10 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 
@@ -110,7 +113,14 @@ public sealed partial class NotchWindow
         using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
         // The window, not the notch's canvas: a Canvas is 0 px high (it doesn't size to what it holds), and rendering
         // it alone gave empty pictures. The bitmap's size cuts the window to the notch.
+        // Without a compositor (a bare X server, as in CI) Avalonia fills the window with its fallback colour, black;
+        // the notch is what's compared, so the picture keeps the see-through around it on every system.
+        // Avalonia paints it on a part of the window's template, so that part is hidden while the picture is taken.
+        var fallback = this.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "PART_TransparencyFallback");
+        var shown = fallback?.IsVisible ?? false;
+        if (fallback != null) fallback.IsVisible = false;
         bitmap.Render(this);
+        if (fallback != null) fallback.IsVisible = shown;
         bitmap.Save(file, new PngBitmapEncoderOptions());
     }
 }
