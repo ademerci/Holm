@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -96,7 +96,7 @@ public partial class MainWindow
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
         MixerToolBtn.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
         AiToolBtn.Visibility = _settings.AiUsage && _aiUsage.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AiToolBtn.Content ??= AiMarks.For(AiTool.ClaudeCode, 14, HubTheme.Dim);
+        AiToolBtn.Content ??= new TextBlock { Text = "AI", FontSize = 11, Foreground = HubTheme.Dim, Margin = new Thickness(4, 0, 4, 0) };
         ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
         bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())
