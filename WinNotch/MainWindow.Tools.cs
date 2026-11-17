@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -75,10 +75,13 @@ public partial class MainWindow
         (AiPage, AiToolBtn, Tool.Ai),
     };
 
+    /// <summary>The instrument look names each tool with a word in place of its icon.</summary>
+    TextBlock ToolWord(string word) => new() { Text = word, FontSize = 11, Foreground = (Brush)FindResource("Dim"), Margin = new Thickness(4, 0, 4, 0) };
+
     /// <summary>
-    /// The tool words sit top right, opposite the clock. With music, the header holds the small clock on the left and
-    /// the weather and sleep timer on the right, and eight words don't fit between them: the words take a row of their
-    /// own under the clock, left-aligned.
+    /// The instrument look's tool words sit top right, opposite the clock. With music, the header holds the small clock on
+    /// the left and the weather and sleep timer on the right, and eight words don't fit between them: the words take a row
+    /// of their own under the clock, left-aligned.
     /// </summary>
     void PlaceToolBar(bool ownRow)
     {
@@ -110,7 +113,7 @@ public partial class MainWindow
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
         MixerToolBtn.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
         AiToolBtn.Visibility = _settings.AiUsage && _aiUsage.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        AiToolBtn.Content ??= new TextBlock { Text = "AI", FontSize = 11, Foreground = HubTheme.Dim, Margin = new Thickness(4, 0, 4, 0) };
+        AiToolBtn.Content ??= Look.Instrument ? ToolWord("AI") : AiMarks.For(AiTool.ClaudeCode, 14, HubTheme.Dim);
         ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
         bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())

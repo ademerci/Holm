@@ -1,4 +1,6 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
+using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -17,64 +19,65 @@ public partial class MainWindow
     {
         new SettingsGroup("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new SettingsSwitch[]
         {
-            new(MenuAnim, "", "Off: the notch jumps between sizes and nothing in it moves."),
-            new(MenuBounce, "\uE945", "Holm opens the notch with a small overshoot. Off, it stops without one. Set the amount under right-click \u203A Customize \u203A Bounce."),
-            new(MenuReactiveEq, "\uE8D6", "The equalizer bars follow the loudness of your music. Holm reads the level and records nothing."),
-            new(MenuDraggable, "\uE7C2", "Drag the notch by its top edge to move it left or right. Holm keeps the position after you switch this off.", "Reset Position", ResetNotchPosition),
-            new(MenuMini, "", "With nothing playing, Holm shrinks the notch to a thin line."),
+            new(MenuAnim, "", "Smooth transitions, the moving equalizer, GIFs and the animated sky."),
+            new(MenuBounce, "\uE945", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch \u203A Customize \u203A Bounce."),
+            new(MenuReactiveEq, "\uE8D6", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded."),
+            new(MenuDraggable, "\uE7C2", "Drag the notch by its top edge to move it left or right. Its position is remembered, even with dragging off.", "Reset Position", ResetNotchPosition),
+            new(MenuMini, "", "The notch shrinks to a small pill while nothing is going on."),
             new(MenuAiUsage, "", "A ring at each end of the notch shows how much of your Claude and Codex limits you have used. Hover a ring for each limit and the sessions at work."),
-            new(MenuAutostart, "", "Holm opens when you sign in."),
-            new(MenuHotKey, "", "Ctrl+H opens the notch from any app and closes it again. Other apps lose Ctrl+H while this is on."),
+            new(MenuInstrumentLook, "", "The newer design: a black notch with white ink, small corners and tools as words. Holm switches at its next start."),
+            new(MenuAutostart, "", "Holm starts when you sign in to Windows."),
+            new(MenuHotKey, "", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on."),
             new(MenuHideOverBrowsers, ""),
         }),
         new SettingsGroup("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new SettingsSwitch[]
         {
             new(MenuMediaControls, ""),
-            new(MenuNotes, "", "A note in the open notch, saved on this PC."),
-            new(MenuReminders, "", "Type “20 min laundry” and Holm rings in 20 minutes."),
-            new(MenuCalculator, "", "Type a sum and copy the result."),
-            new(MenuClipboardHistory, "", "Your last 20 copied texts and pictures, kept in memory."),
-            new(MenuAppVolume, "", "A volume slider for each app that plays sound."),
-            new(MenuColorPicker, "", "Pick a pixel on screen and copy its hex code."),
+            new(MenuNotes, "", "A small note in the open notch, kept on this PC."),
+            new(MenuReminders, "", "Type “20 min laundry” and the notch rings on time."),
+            new(MenuCalculator, "", "Type a sum; the result is ready to copy."),
+            new(MenuClipboardHistory, "", "Your last 20 copied texts and pictures, in memory only."),
+            new(MenuAppVolume, "", "A volume slider for every app that plays sound."),
+            new(MenuColorPicker, "", "Pick any pixel's color and copy its hex code."),
             new(MenuFocumon, ""),
         }),
         new SettingsGroup("popouts", "Pop-outs", "", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", new SettingsSwitch[]
         {
             new(MenuDownloads, "", "A finished download pops out with Open and Show."),
             new(MenuScreenshots, "", "A new screenshot pops out with Send and Shelf."),
-            new(MenuScreenshotText, "", "Holm reads the text in a screenshot with the OCR built into Windows."),
-            new(MenuCapsLock, "", "The notch shows when you turn Caps Lock on or off."),
-            new(MenuAllNotifications, "", "Holm shows the notifications of all your apps in the notch, besides messages. Turn on Do not disturb in Windows to hide its banners. Holm still gets them."),
-            new(MenuNotchOnlyPopups, "", "Holm takes the volume and media keys, and the notch shows the change in place of the Windows pop-up. Brightness keys stay with Windows."),
-            new(MenuDiskWarning, "", "One warning when your system drive runs low on space."),
-            new(MenuUsbDrives, "", "A USB stick pops out with Open and Eject."),
-            new(MenuConnectivity, "", "Holm tells you when the internet drops and when it comes back."),
+            new(MenuScreenshotText, "", "Read the text in a screenshot with Windows' own OCR."),
+            new(MenuCapsLock, "", "The notch says when Caps Lock goes on or off."),
+            new(MenuAllNotifications, "", "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."),
+            new(MenuNotchOnlyPopups, "", "Holm takes the volume and media keys and changes the volume or track itself, so Windows' own pop-up doesn't show and the notch does. Brightness keys stay with Windows."),
+            new(MenuDiskWarning, "", "One warning when the system drive runs low."),
+            new(MenuUsbDrives, "", "USB sticks pop out with Open and Eject."),
+            new(MenuConnectivity, "", "Says when the internet drops and when it's back."),
         }),
         new SettingsGroup("privacy", "Calls and privacy", "", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new SettingsSwitch[]
         {
-            new(MenuCalls, "", "Holm shows a running call with its time and a mute button."),
-            new(MenuPauseForCalls, "", "Holm pauses your music when a call starts and plays it after."),
+            new(MenuCalls, "", "Shows a call with its time and a mute button."),
+            new(MenuPauseForCalls, "", "Music pauses when a call starts and plays on after."),
             new(MenuPrivacy, "", "A dot beside the notch while an app uses the microphone or camera."),
-            new(MenuDictation, "", "Dictate with Handy, free and offline. The notch shows when Handy listens and hides its overlay. Holm finds Handy or offers to install it."),
-            new(MenuVpn, "", "A lock in the notch while a VPN is connected."),
-            new(MenuClearPasswords, "", "Holm removes a copied password from the clipboard after 30 seconds. It keeps copied texts in memory and copied pictures in your temp folder until you clear the list or restart Holm. Holm skips passwords that your password manager marks as private."),
+            new(MenuDictation, "", "Dictate with Handy, free and offline: the notch shows when it listens, and Handy's own overlay stays out of sight. Holm finds Handy or offers to install it."),
+            new(MenuVpn, "", "A small lock while a VPN is connected."),
+            new(MenuClearPasswords, "", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read."),
         }),
         new SettingsGroup("beam", "Beam", "", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new SettingsSwitch[]
         {
-            new(MenuBeam, "", "Drop files on the notch to send them. Friends and chat need this too. Holm checks copied text for friend and file codes and keeps none of it."),
-            new(MenuSendFolders, "", "Holm packs a folder as a ZIP before it sends it."),
-            new(MenuSendLater, "", "Files for an offline friend wait until your friend comes back online."),
+            new(MenuBeam, "", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent."),
+            new(MenuSendFolders, "", "Folders are packed as a ZIP before they're sent."),
+            new(MenuSendLater, "", "Files for an offline friend wait and go once they're back."),
         }),
         new SettingsGroup("friends", "Friends", "", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new SettingsSwitch[]
         {
-            new(MenuShareActivity, "", "Your friends see the song or the game you play. Holm seals each note so only your friends can read it."),
-            new(MenuChatPopups, "", "A friend's message pops out with Reply. You find it in Chat either way."),
-            new(MenuAchievementPopups, "", "A trophy pops out when you unlock an achievement."),
+            new(MenuShareActivity, "", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note."),
+            new(MenuChatPopups, "", "A friend's message pops out of the notch with Reply. It's in Chat either way."),
+            new(MenuAchievementPopups, "", "A trophy pops out of the notch when you unlock an achievement."),
         }),
         new SettingsGroup("weather", "Weather", "", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", new SettingsSwitch[]
         {
-            new(MenuWeatherAutoLocation, "", "If you set no city, Holm asks Windows once for your location. Holm rounds the coordinates and sends them to Open-Meteo for the forecast."),
-            new(MenuSkyColors, "", "With nothing playing, the open notch takes the colours of the time of day and the weather. Off, it stays black."),
+            new(MenuWeatherAutoLocation, "", "Uses Windows location once if no city is set. Coordinates are rounded and sent only to Open-Meteo for the forecast; no IP lookup."),
+            new(MenuSkyColors, "", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black."),
         }),
     };
 
@@ -92,6 +95,7 @@ public partial class MainWindow
         MenuWeatherAutoLocation.IsChecked = _settings.WeatherAutoLocation;
         MenuSkyColors.IsChecked = _settings.SkyColors;
         MenuAiUsage.IsChecked = _settings.AiUsage;
+        MenuInstrumentLook.IsChecked = _settings.InstrumentLook;
         try { MenuAutostart.IsChecked = Autostart.IsEnabled; } catch { MenuAutostart.IsChecked = false; }
         MenuDownloads.IsChecked = _settings.Downloads;
         MenuVpn.IsChecked = _settings.Vpn;
@@ -186,5 +190,51 @@ public partial class MainWindow
         return new SettingsWindow(SettingsGroups(), $"{version.Major}.{version.Minor}.{version.Build}", _settings.Animations, SyncSwitches, profile,
                                   HubPages(demo != null), () => MeCard(current()), UpdatesPage(),
                                   new[] { NetworkHubPage(demo != null) }, start);
+    }
+
+    void MenuInstrumentLook_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.InstrumentLook = MenuInstrumentLook.IsChecked;
+        _settings.Save(); // the look is read once at start (Look.Instrument): Holm switches at its next start
+    }
+
+    /// <summary>
+    /// The instrument look: swaps in InstrumentLook.xaml's styles under the same keys (for FindResource later) and on every
+    /// element that took the classic one at load, then the details a style doesn't carry.
+    /// </summary>
+    void ApplyInstrumentLook()
+    {
+        var look = (ResourceDictionary)Application.LoadComponent(new Uri("/Holm;component/InstrumentLook.xaml", UriKind.Relative));
+        var swap = new Dictionary<Style, Style>();
+        foreach (var key in look.Keys)
+        {
+            if (Resources[key] is Style classic && look[key] is Style style) swap[classic] = style;
+            Resources[key] = look[key];
+        }
+        Restyle(this, swap);
+
+        CompactArt.CornerRadius = new CornerRadius(3);
+        BigArt.CornerRadius = new CornerRadius(4);
+        GreetingText.Visibility = Visibility.Collapsed;
+        var dim = (Brush)Resources["Dim"];
+        RainText.Foreground = TodayReminderIcon.Foreground = TodayNoteIcon.Foreground = dim;
+        foreach (var (button, word) in new[]
+        {
+            (NotesToolBtn, "Notes"), (RemindersToolBtn, "Reminders"), (CalculatorToolBtn, "Calc"), (ChatsToolBtn, "Chats"),
+            (ClipboardToolBtn, "Clipboard"), (MixerToolBtn, "Mixer"), (ColorPickerBtn, "Color"),
+        })
+            button.Content = ToolWord(word);
+        PlaceToolBar(ownRow: false);
+        // Only the count in the closed notch, centred: the open notch says which apps wrote.
+        Grid.SetColumn(BadgeCountRow, 0);
+        Grid.SetColumnSpan(BadgeCountRow, 2);
+        BadgeCountRow.HorizontalAlignment = HorizontalAlignment.Center;
+    }
+
+    static void Restyle(DependencyObject node, Dictionary<Style, Style> swap)
+    {
+        if (node is FrameworkElement { Style: { } style } element && swap.TryGetValue(style, out var replacement)) element.Style = replacement;
+        foreach (var child in LogicalTreeHelper.GetChildren(node))
+            if (child is DependencyObject d) Restyle(d, swap);
     }
 }

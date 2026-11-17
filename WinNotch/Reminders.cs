@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -118,7 +118,7 @@ internal static class ReminderParser
         return text.Length > 0 ? char.ToUpper(text[0], CultureInfo.CurrentCulture) + text[1..] : "Reminder";
     }
 
-    /// <summary>"in 20 min", "14:30", "tomorrow at 09:00", "Fri at 08:15" (local times).</summary>
+    /// <summary>"in 20 min", "today at 14:30", "tomorrow at 09:00", "Fri at 08:15" (local times).</summary>
     public static string Describe(DateTime due, DateTime now)
     {
         var left = due - now;
@@ -128,7 +128,7 @@ internal static class ReminderParser
         int days = (due.Date - now.Date).Days;
         return days switch
         {
-            0 => time,
+            0 => "today at " + time,
             1 => "tomorrow at " + time,
             _ => due.ToString("ddd", CultureInfo.GetCultureInfo("en-US")) + " at " + time,
         };

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -94,6 +94,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (Look.Instrument) ApplyInstrumentLook();
         IslandHost.LayoutTransform = _notchScale;
         PeekBatteryHost.Child = PeekBattery;
         ProgressHost.Child = Progress;
@@ -515,7 +516,7 @@ public partial class MainWindow : Window
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
-            case NotchState.Badge: (w, h, r) = (110, 30, 15); break;
+            case NotchState.Badge: (w, h, r) = (Look.Instrument ? 110 : 170, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default:
@@ -666,7 +667,7 @@ public partial class MainWindow : Window
     void UpdateBackdrop()
     {
         // The instrument look keeps the notch black: the cover shows in its own square, never washed over the notch.
-        ImageSource? wanted = null;
+        var wanted = !Look.Instrument && _info is { Backdrop: { } art } info && (info.IsPlaying || _expanded) ? art : null;
         if (ReferenceEquals(wanted, _shownBackdrop)
             && (_settings.Animations || !ArtLayerA.HasAnimatedProperties && !ArtLayerB.HasAnimatedProperties)) return;
         if (!_settings.Animations)
@@ -903,14 +904,17 @@ public partial class MainWindow : Window
         _latestMediaInfo = info;
         if (trackChanged && info is { IsPlaying: true, Title.Length: > 0 }) Achieve(AchievementBook.Songs);
         if (!_settings.MediaControls) info = null;
+        var oldAccent = _info?.Accent;
         // Music stopped: the covers and the equalizer pulled a lot into memory that idle doesn't need.
         if (_info?.IsPlaying == true && info?.IsPlaying != true && !_expanded) _trimTimer.Start();
         _info = info;
         Diag.Log(info == null ? "Media: none" : $"Media: {info.App} | {info.Title} | {info.Artist} | playing={info.IsPlaying} | art={info.Art != null}");
 
         // The instrument look: one ink for the progress, the volume and the equalizer, not the cover's colour.
-        var accent = Color.FromRgb(0xF2, 0xF2, 0xF2);
-        if (Progress.Fill is not SolidColorBrush { Color: var shown } || shown != accent)
+        var accent = Look.Instrument ? Color.FromRgb(0xF2, 0xF2, 0xF2) : info?.Accent ?? Colors.White;
+        if (Look.Instrument
+                ? Progress.Fill is not SolidColorBrush { Color: var shown } || shown != accent
+                : oldAccent != accent || Progress.Fill == Brushes.White)
         {
             var brush = Frozen(accent);
             foreach (var bar in new[] { Bar1, Bar2, Bar3, Bar4 }) bar.Fill = brush;
@@ -989,7 +993,11 @@ public partial class MainWindow : Window
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        // The closed notch shows only the red count: which apps wrote shows once you open the notch.
+        if (!Look.Instrument) // the instrument look shows only the count; the open notch says which apps wrote
+        {
+            PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
+            PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
+        }
         AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 
@@ -1183,7 +1191,7 @@ public partial class MainWindow : Window
     {
         var info = _settings.MediaControls ? _info : null;
         MediaClockHeader.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
-        PlaceToolBar(info != null);
+        if (Look.Instrument) PlaceToolBar(info != null);
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();

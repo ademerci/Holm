@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -181,6 +181,11 @@ public partial class MainWindow
     void AddUpdateNotification()
     {
         if (!HasUpdateNotification || _availableUpdate is not { } release) return;
+        if (!Look.Instrument)
+        {
+            BadgeLogoList.Children.Add(UpdateNotificationIcon(BadgeLogoSize));
+            MediaBadgeLogos.Children.Add(UpdateNotificationIcon(MediaBadgeLogoSize));
+        }
         var row = new System.Windows.Controls.Grid();
         row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());

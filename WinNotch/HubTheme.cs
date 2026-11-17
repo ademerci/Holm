@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -6,22 +6,29 @@ using System.Windows.Media;
 
 namespace WinNotch;
 
+/// <summary>Which design Holm runs in, read once at start: the classic look, or the instrument look (Settings › General).</summary>
+internal static class Look
+{
+    public static bool Instrument { get; set; } = AppSettings.Load().InstrumentLook;
+}
+
 /// <summary>The look of the Holm window (settings, friends, chat, achievements): dark, rounded, like the notch.</summary>
 internal static class HubTheme
 {
-    public static readonly Brush Panel = Frozen(Color.FromRgb(0x0B, 0x0B, 0x0C));
-    public static readonly Brush Sidebar = Frozen(Color.FromRgb(0x00, 0x00, 0x00));
-    public static readonly Brush Edge = Frozen(Color.FromRgb(0x26, 0x27, 0x2A));
-    public static readonly Brush Card = Frozen(Color.FromRgb(0x14, 0x14, 0x16));
-    public static readonly Brush CardStrong = Frozen(Color.FromRgb(0x1C, 0x1D, 0x20));
-    public static readonly Brush Hover = Frozen(Color.FromRgb(0x12, 0x12, 0x14));
-    public static readonly Brush Selected = Frozen(Color.FromRgb(0x1C, 0x1D, 0x20));
-    public static readonly Brush Line = Frozen(Color.FromRgb(0x26, 0x27, 0x2A));
-    public static readonly Brush Dim = Frozen(Color.FromRgb(0x8A, 0x8C, 0x91));
-    public static readonly Brush Faint = Frozen(Color.FromRgb(0x5C, 0x5E, 0x63));
-    public static readonly Brush Accent = Frozen(Color.FromRgb(0xF2, 0xF2, 0xF2)); // "Eis": white is the only signal colour
+    public static readonly Brush Panel = Frozen(Look.Instrument ? Color.FromRgb(0x0B, 0x0B, 0x0C) : Color.FromArgb(0xFA, 0x1E, 0x1E, 0x20));
+    public static readonly Brush Sidebar = Frozen(Look.Instrument ? Color.FromRgb(0x00, 0x00, 0x00) : Color.FromArgb(0xFF, 0x17, 0x17, 0x19));
+    public static readonly Brush Edge = Frozen(Look.Instrument ? Color.FromRgb(0x26, 0x27, 0x2A) : Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Card = Frozen(Look.Instrument ? Color.FromRgb(0x14, 0x14, 0x16) : Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush CardStrong = Frozen(Look.Instrument ? Color.FromRgb(0x1C, 0x1D, 0x20) : Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Hover = Frozen(Look.Instrument ? Color.FromRgb(0x12, 0x12, 0x14) : Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Selected = Frozen(Look.Instrument ? Color.FromRgb(0x1C, 0x1D, 0x20) : Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Line = Frozen(Look.Instrument ? Color.FromRgb(0x26, 0x27, 0x2A) : Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Dim = Frozen(Look.Instrument ? Color.FromRgb(0x8A, 0x8C, 0x91) : Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
+    public static readonly Brush Faint = Frozen(Look.Instrument ? Color.FromRgb(0x5C, 0x5E, 0x63) : Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF));
+    // Instrument ("Eis"): white is the only signal colour.
+    public static readonly Brush Accent = Frozen(Look.Instrument ? Color.FromRgb(0xF2, 0xF2, 0xF2) : Color.FromRgb(0x0A, 0x84, 0xFF));
     /// <summary>Text and glyphs on <see cref="Accent"/>.</summary>
-    public static readonly Brush OnAccent = Frozen(Color.FromRgb(0x0B, 0x0B, 0x0C));
+    public static readonly Brush OnAccent = Look.Instrument ? Frozen(Color.FromRgb(0x0B, 0x0B, 0x0C)) : Brushes.White;
     public static readonly Brush Green = Frozen(Color.FromRgb(0x30, 0xD1, 0x58));
     public static readonly Brush Red = Frozen(Color.FromRgb(0xFF, 0x45, 0x3A));
     public static readonly Brush Gold = Frozen(Color.FromRgb(0xFF, 0xC4, 0x3D));
@@ -44,8 +51,11 @@ internal static class HubTheme
     /// <summary>A rounded square with an icon, as in front of each setting.</summary>
     public static Border IconTile(string glyph, Color color, double size = 30) => new()
     {
-        Width = size, Height = size, CornerRadius = new CornerRadius(3), BorderBrush = Line, BorderThickness = new Thickness(1),
-        Child = Glyph(glyph, size * 0.47, Dim),
+        Width = size, Height = size,
+        CornerRadius = new CornerRadius(Look.Instrument ? 3 : size * 0.27),
+        Background = Look.Instrument ? null : Frozen(color),
+        BorderBrush = Look.Instrument ? Line : null, BorderThickness = new Thickness(Look.Instrument ? 1 : 0),
+        Child = Look.Instrument ? Glyph(glyph, size * 0.47, Dim) : Glyph(glyph, size * 0.47),
     };
 
     /// <summary>A round face: a picture, or initials on a color.</summary>
@@ -86,7 +96,7 @@ internal static class HubTheme
                 <Setter.Value>
                     <ControlTemplate TargetType='Button'>
                         <Border x:Name='Surface' Background='{TemplateBinding Background}'
-                                BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='3'
+                                BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='7'
                                 Padding='{TemplateBinding Padding}'>
                             <ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/>
                         </Border>
@@ -107,7 +117,7 @@ internal static class HubTheme
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>");
+        </Style>".Replace("CornerRadius='7'", Look.Instrument ? "CornerRadius='3'" : "CornerRadius='7'"));
 
     /// <summary>A thin, dark scroll bar: the standard one is a light gray block in this dark window.</summary>
     public static Style ThinScrollBar() => (Style)System.Windows.Markup.XamlReader.Parse(@"
@@ -166,15 +176,16 @@ internal static class HubTheme
         <ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'>
             <Border x:Name='Box' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}'
-                    BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='3'>
+                    BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='8'>
                 <ScrollViewer x:Name='PART_ContentHost' Margin='0,6' VerticalAlignment='Center'/>
             </Border>
             <ControlTemplate.Triggers>
                 <Trigger Property='IsKeyboardFocused' Value='True'>
-                    <Setter TargetName='Box' Property='BorderBrush' Value='#FFF2F2F2'/>
+                    <Setter TargetName='Box' Property='BorderBrush' Value='#FF0A84FF'/>
                 </Trigger>
             </ControlTemplate.Triggers>
-        </ControlTemplate>");
+        </ControlTemplate>".Replace("CornerRadius='8'", Look.Instrument ? "CornerRadius='3'" : "CornerRadius='8'")
+                           .Replace("#FF0A84FF", Look.Instrument ? "#FFF2F2F2" : "#FF0A84FF"));
 }
 
 /// <summary>A page of the Holm window other than the switches (friends, chat, achievements). Told when it goes away.</summary>
