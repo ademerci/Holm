@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -372,7 +372,37 @@ public class UpdateMenuTests
             Assert.Equal(Visibility.Visible, clock.Visibility);
             Assert.Equal(((TextBlock)window.FindName("ClockBig")).Text, ((TextBlock)window.FindName("MediaClock")).Text);
             Assert.NotEmpty(((TextBlock)window.FindName("MediaDate")).Text);
-            Assert.True(clock.TranslatePoint(new Point(clock.ActualWidth, 0), view).X <= toolbar.TranslatePoint(new Point(), view).X);
+            var clockBox = new Rect(clock.TranslatePoint(new Point(), view), new Size(clock.ActualWidth, clock.ActualHeight));
+            var toolBox = new Rect(toolbar.TranslatePoint(new Point(), view), new Size(toolbar.ActualWidth, toolbar.ActualHeight));
+            Assert.False(clockBox.IntersectsWith(toolBox) && !clockBox.IsEmpty && clockBox.Width * clockBox.Height > 0
+                         && Rect.Intersect(clockBox, toolBox) is { Width: > 0.5, Height: > 0.5 }); // with music the words sit under the clock
+            return Task.CompletedTask;
+        });
+
+    [Fact]
+    public void Tool_words_stay_clear_of_the_weather_in_the_media_header()
+        => WithWindow(window =>
+        {
+            var settings = Field<AppSettings>(window, "_settings");
+            settings.MediaControls = true;
+            settings.Animations = false;
+            Set(window, "_expanded", true);
+            typeof(MainWindow).GetMethod("OnMediaChanged", Private)!.Invoke(window,
+                new object[] { new MediaInfo { Title = "Flashing Lights", App = "Spotify", IsPlaying = true }, true });
+            var weather = (FrameworkElement)window.FindName("MediaWeatherHeader");
+            weather.Visibility = Visibility.Visible;
+            ((TextBlock)window.FindName("MediaWeatherTemp")).Text = "12°";
+            ((FrameworkElement)window.FindName("AiToolBtn")).Visibility = Visibility.Visible;
+            ((Button)window.FindName("AiToolBtn")).Content ??= new TextBlock { Text = "AI", FontSize = 11 };
+            var view = (FrameworkElement)window.FindName("ExpandedView");
+            view.Measure(new Size(520, double.PositiveInfinity)); // the open notch is 520 wide
+            view.Arrange(new Rect(0, 0, 520, view.DesiredSize.Height));
+            var toolbar = (FrameworkElement)window.FindName("ToolBar");
+            double wordsTop = toolbar.TranslatePoint(new Point(), view).Y;
+            Assert.True(wordsTop >= weather.TranslatePoint(new Point(0, weather.ActualHeight), view).Y);
+            var clock = (FrameworkElement)window.FindName("MediaClockHeader");
+            Assert.True(wordsTop >= clock.TranslatePoint(new Point(0, clock.ActualHeight), view).Y);
+            Assert.True(toolbar.ActualWidth <= 520);
             return Task.CompletedTask;
         });
 

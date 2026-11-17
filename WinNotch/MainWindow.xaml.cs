@@ -1184,6 +1184,7 @@ public partial class MainWindow : Window
     {
         var info = _settings.MediaControls ? _info : null;
         MediaClockHeader.Visibility = info != null ? Visibility.Visible : Visibility.Collapsed;
+        PlaceToolBar(info != null);
         RefreshMediaWeather();
         HomeClockHeader.Visibility = info == null ? Visibility.Visible : Visibility.Collapsed;
         UpdateClock();

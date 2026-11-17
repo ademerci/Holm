@@ -544,6 +544,10 @@
 
                             <!-- Tools: each opens its page in place of home; click again to go back -->
                             <Grid Margin="0,0,0,12" MinHeight="32" VerticalAlignment="Top">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -553,7 +557,7 @@
                                 <TextBlock x:Name="MediaClock" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="MediaDate" FontSize="10" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
-                            <StackPanel x:Name="ToolBar" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="36,0,36,0">
+                            <StackPanel x:Name="ToolBar" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,4,0">
                                 <Button x:Name="NotesToolBtn" Style="{StaticResource ToolButton}" ToolTip="Notes" AutomationProperties.Name="Notes" Click="NotesTool_Click">
                                     <TextBlock Text="Notes" FontSize="11" Foreground="{StaticResource Dim}" Margin="4,0"/>
                                 </Button>
