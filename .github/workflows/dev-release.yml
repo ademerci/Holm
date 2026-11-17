@@ -1,0 +1,81 @@
+# A dev prerelease of the cross-platform rewrite (Windows and Linux), for testing only. Started by writing a new
+# <version>.<n> (e.g. 1.13.0.1) into docs/cross-platform/dev-release-version.txt on the dev branch; the release and
+# its tag dev-v<version>.<n> are made here. The WPF app's updater asks for the latest release, which never is a
+# prerelease, so nobody gets this build without picking it.
+name: Dev release
+
+on:
+  push:
+    branches: ["dev"]
+    paths: ["docs/cross-platform/dev-release-version.txt"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        shell: bash
+        run: |
+          filter="Category!=Local&Category!=Online&Category!=Manual"
+          if [ "${{ runner.os }}" != "Windows" ]; then filter="$filter&FullyQualifiedName!~UpdateInstallerTests"; fi
+          dotnet test Holm.Tests -c Release --filter "$filter"
+
+      # Self-contained, one file (AGENTS.md); test builds are named Holm-<version>-test-build.<n>, never Holm.exe.
+      - name: Publish
+        shell: bash
+        run: |
+          tag=$(tr -d '[:space:]' < docs/cross-platform/dev-release-version.txt)   # 1.13.0.1
+          version="${tag%.*}"; build="${tag##*.}"
+          dotnet publish Holm.App -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out
+          mkdir release
+          if [ "${{ matrix.rid }}" = "win-x64" ]; then
+            mv out/Holm.App.exe "release/Holm-$version-test-build.$build.exe"
+          else
+            mv out/Holm.App "release/Holm-$version-test-build.$build-linux-x64"
+            chmod +x "release/Holm-$version-test-build.$build-linux-x64"
+          fi
+          ls -l release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.rid }}
+          path: release/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      - name: Publish the prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(tr -d '[:space:]' < docs/cross-platform/dev-release-version.txt)
+          if gh release view "dev-v$tag" >/dev/null 2>&1; then echo "dev-v$tag exists already"; exit 1; fi
+          gh release create "dev-v$tag" release/* --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Holm $tag (alpha, for testing)" --notes-file docs/cross-platform/DEV-RELEASE.md

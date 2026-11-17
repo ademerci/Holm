@@ -3,7 +3,7 @@ name: Store package
 on:
   push:
     branches: [codex/microsoft-store-msix]
-    paths: ["WinNotch/**", "WinNotch.Tests/**", "packaging/**", ".github/workflows/store.yml"]
+    paths: ["Holm.*/**", "Holm.slnx", "packaging/**", ".github/workflows/store.yml"]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          dotnet test WinNotch.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
+          dotnet test Holm.Tests -c Release --filter "Category!=Local&Category!=Online&Category!=Manual" -- xUnit.ParallelizeTestCollections=false
           if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
       - name: Build Store package
         shell: pwsh
@@ -36,5 +36,5 @@ jobs:
           path: |
             artifacts/msix/Holm-Store.msix
             artifacts/msix/Holm-Store-tile-300.png
-            packaging/RELEASE-1.12.7.md
+            packaging/RELEASE-1.13.0.md
           if-no-files-found: error

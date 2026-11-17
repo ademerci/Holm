@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The cross-platform rewrite's own version, ahead of the WPF app's (WinNotch.csproj) it is meant to follow. -->
+    <Version>1.13.0</Version>
+    <!-- One shared app; only the backend it loads differs. The Windows backend needs the Windows target for
+         WinRT, so the app takes that target when it is built for Windows and plain net10.0 everywhere else. -->
+    <HolmWindows Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier.StartsWith('win'))</HolmWindows>
+    <HolmWindows Condition="'$(RuntimeIdentifier)' == ''">$([MSBuild]::IsOSPlatform('Windows'))</HolmWindows>
+    <TargetFramework Condition="'$(HolmWindows)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(HolmWindows)' != 'true'">net10.0</TargetFramework>
+    <SupportedOSPlatformVersion Condition="'$(HolmWindows)' == 'true'">10.0.19041.0</SupportedOSPlatformVersion>
+    <DefineConstants Condition="'$(HolmWindows)' == 'true'">$(DefineConstants);HOLM_WINDOWS</DefineConstants>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Same footprint settings as WinNotch.csproj; the reasons and measurements are documented there. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <!-- Skia and HarfBuzz are native libraries: without this a "single file" publish leaves them beside the
+         executable, and the release is one file by rule (AGENTS.md). -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+
+  <!-- A GIPHY API key for GIF search, built into the app but never into the public source: from -p:GiphyKey=…, the
+       GIPHY_API_KEY environment variable (the release workflow's secret) or a giphy.key file next to the solution
+       (git ignores it). Without one, people add their own key in the GIF picker. -->
+  <PropertyGroup>
+    <GiphyKey Condition="'$(GiphyKey)' == ''">$(GIPHY_API_KEY)</GiphyKey>
+    <GiphyKey Condition="'$(GiphyKey)' == '' and Exists('$(MSBuildProjectDirectory)/../giphy.key')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../giphy.key').Trim())</GiphyKey>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(GiphyKey)' != ''">
+    <AssemblyMetadata Include="GiphyKey" Value="$(GiphyKey)" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="Exists('Assets\notch.ico')">
+    <ApplicationIcon>Assets\notch.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <!-- QR codes for Beam to a phone, as the WPF app makes them. -->
+    <PackageReference Include="QRCoder" Version="1.7.0" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\HolmIcons.ttf" />
+    <AvaloniaResource Include="Assets\incoming-file.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Holm.Core\Holm.Core.csproj" />
+    <ProjectReference Include="..\Holm.Platform\Holm.Platform.csproj" />
+    <ProjectReference Include="..\Holm.Platform.Windows\Holm.Platform.Windows.csproj" Condition="'$(HolmWindows)' == 'true'" />
+    <ProjectReference Include="..\Holm.Platform.Linux\Holm.Platform.Linux.csproj" Condition="'$(HolmWindows)' != 'true'" />
+  </ItemGroup>
+</Project>

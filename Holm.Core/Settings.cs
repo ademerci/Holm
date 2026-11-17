@@ -1,0 +1,312 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Win32;
+using WinNotch.Sharing;
+
+namespace WinNotch;
+
+internal sealed class AppSettings
+{
+    public bool Animations { get; set; } = true;
+    /// <summary>The notch and its parts spring into place with a bounce; off, they glide in without overshooting.</summary>
+    public bool Bounce { get; set; } = true;
+    /// <summary>How far the bounce swings: 1 is normal, 0.5 subtle, up to 1.5 lively.</summary>
+    public double BounceLevel { get; set; } = 1;
+    /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
+    public bool ReactiveEqualizer { get; set; } = true;
+    public bool MiniIdle { get; set; }
+    /// <summary>Allow moving the notch along the selected display's top edge.</summary>
+    public bool Draggable { get; set; }
+    /// <summary>Saved horizontal centre as a fraction of the display width; null means centred.</summary>
+    public double? NotchPosition { get; set; }
+    /// <summary>Shrink to the mini pill while a maximized browser is in front, so the tabs under the notch can be clicked.</summary>
+    public bool HideOverBrowsers { get; set; }
+    /// <summary>Show media artwork and controls, and allow call pause and sleep playback actions. On by default.</summary>
+    public bool MediaControls { get; set; } = true;
+    /// <summary>Check GitHub for a newer stable release periodically.</summary>
+    public bool CheckForUpdatesAutomatically { get; set; } = true;
+    /// <summary>Device name of the display the notch sits on; null means the main display.</summary>
+    public string? Monitor { get; set; }
+    /// <summary>What the AI button opens: "claude", "gemini", "chatgpt", "custom" (<see cref="AiPath"/>) or null for no button.</summary>
+    public string? Ai { get; set; } = "claude";
+    /// <summary>Program or shortcut picked with "Choose app…".</summary>
+    public string? AiPath { get; set; }
+    /// <summary>Messages from chat and mail apps pop out of the notch.</summary>
+    [JsonPropertyName("TeamsMessages")] // its name before 1.4, when only Teams was shown
+    public bool Messages { get; set; } = true;
+    /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
+    public List<string> MutedApps { get; set; } = new();
+    /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
+    public bool QuietHours { get; set; }
+    public string QuietFrom { get; set; } = "22:00";
+    public string QuietUntil { get; set; } = "07:00";
+    /// <summary>"app:whatsapp" lets a whole app through, "who:Lena" a person.</summary>
+    public List<string> QuietVips { get; set; } = new();
+    /// <summary>Downloads in the Downloads folder show in the notch.</summary>
+    public bool Downloads { get; set; } = true;
+    /// <summary>A lock in the notch while a VPN is connected, and a note when it connects or drops.</summary>
+    public bool Vpn { get; set; } = true;
+    /// <summary>A dot beside the notch while an app uses the microphone (orange) or the camera (green).</summary>
+    public bool Privacy { get; set; } = true;
+    /// <summary>A call (an app like Discord, Teams or Zoom using the microphone) shows in the notch with its length.</summary>
+    public bool Calls { get; set; } = true;
+    /// <summary>Music pauses while a call runs and plays on afterwards, if Holm paused it.</summary>
+    public bool PauseForCalls { get; set; } = true;
+    /// <summary>Files and folders parked on the shelf, oldest first (only their paths).</summary>
+    public List<string> Shelf { get; set; } = new();
+    /// <summary>A screenshot pops out of the notch with "Send" and "Shelf".</summary>
+    public bool Screenshots { get; set; } = true;
+    /// <summary>"Copy text" on the screenshot: Windows reads the text in it (on this PC) and puts it on the clipboard.</summary>
+    public bool ScreenshotText { get; set; } = true;
+    /// <summary>The moon in the open player that sets the sleep timer (it pauses the music after 15, 30 or 60 minutes).</summary>
+    public bool SleepTimer { get; set; } = true;
+    /// <summary>The notes tool in the open notch.</summary>
+    public bool Notes { get; set; } = true;
+    /// <summary>The note itself. It stays on this PC.</summary>
+    public string NoteText { get; set; } = "";
+    /// <summary>Reminders typed into the open notch ("20 min laundry").</summary>
+    public bool Reminders { get; set; } = true;
+    /// <summary>The reminders waiting; they stay on this PC.</summary>
+    public List<Reminder> ReminderList { get; set; } = new();
+    /// <summary>The calculator in the open notch.</summary>
+    public bool Calculator { get; set; } = true;
+    /// <summary>The last 20 things copied, in the open notch. The list itself is never saved.</summary>
+    public bool ClipboardHistory { get; set; } = true;
+    /// <summary>The mixer in the open notch: a slider per app.</summary>
+    public bool AppVolume { get; set; } = true;
+    /// <summary>A password copied from a password manager leaves the clipboard after 30 seconds, if it is still there.</summary>
+    public bool ClearPasswords { get; set; } = true;
+    /// <summary>The color picker button in the open notch.</summary>
+    public bool ColorPicker { get; set; } = true;
+    /// <summary>Your Focumon and its timer in the open notch's top bar, fed by the Focumon browser extension.</summary>
+    public bool Focumon { get; set; } = true;
+    /// <summary>The notch says so when Caps Lock goes on or off.</summary>
+    public bool CapsLock { get; set; } = true;
+    /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>
+    public bool AllNotifications { get; set; }
+    /// <summary>Holm takes the volume and media keys, so Windows' own pop-up stays away and only the notch shows them. Off by default.</summary>
+    public bool NotchOnlyPopups { get; set; }
+    /// <summary>Holm shows Handy's dictation in the notch and keeps Handy's own overlay out of sight. Off by default.</summary>
+    public bool Dictation { get; set; }
+    /// <summary>Ctrl+H opens and closes the notch from anywhere.</summary>
+    public bool HotKey { get; set; } = true;
+    /// <summary>A word when the system drive gets under 10 % or 10 GB free.</summary>
+    public bool DiskWarning { get; set; } = true;
+    /// <summary>This low spell was told already; cleared once the drive has room again.</summary>
+    public bool DiskWarned { get; set; }
+    /// <summary>A USB stick or SD card pops out with "Open" and "Eject", and shows in the open notch while plugged in.</summary>
+    public bool UsbDrives { get; set; } = true;
+    /// <summary>"No internet" when the connection drops, "Back online" with how long when it returns.</summary>
+    public bool Connectivity { get; set; } = true;
+    /// <summary>The weather (Open-Meteo) for <see cref="WeatherPlace"/>, typed in the open notch.</summary>
+    public bool Weather { get; set; } = true;
+    /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
+    public bool SkyColors { get; set; } = true;
+    /// <summary>The instrument look (black, white ink, small corners, tool words) in place of the classic one. Applies at the next start.</summary>
+    public bool InstrumentLook { get; set; }
+    /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
+    public bool AiUsage { get; set; } = true;
+    /// <summary>Large clock view: show seconds next to the time.</summary>
+    public bool ClockShowSeconds { get; set; } = true;
+    /// <summary>Large clock view: show the date under the time.</summary>
+    public bool ClockShowDate { get; set; } = true;
+    /// <summary>Large clock view: show compact music controls at the bottom (on by default).</summary>
+    public bool ClockShowMedia { get; set; } = true;
+    /// <summary>Large clock view typography: "light", "bold" or "mono".</summary>
+    public string ClockStyle { get; set; } = BigClock.StyleLight;
+    /// <summary>Large clock view digit colour: "white", "sky", "amber", "cyan", "green" or "rose".</summary>
+    public string ClockColor { get; set; } = BigClock.ColorWhite;
+    /// <summary>Use Windows approximate location once if no weather place is saved. No IP lookup provider.</summary>
+    public bool WeatherAutoLocation { get; set; } = true;
+    public string? WeatherPlace { get; set; }
+    public double? WeatherLatitude { get; set; }
+    public double? WeatherLongitude { get; set; }
+    /// <summary>Beam: drop files on the notch to send them; be visible to Holm users on this network; pick up copied codes.</summary>
+    [JsonPropertyName("AirDrop")] // its name before 1.3, kept so the setting survives the update
+    public bool Beam { get; set; } = true;
+    /// <summary>Relay for sending over the internet, "host:port".</summary>
+    public string? Relay { get; set; }
+    /// <summary>A trophy pops out of the notch when an achievement unlocks.</summary>
+    public bool AchievementPopups { get; set; } = true;
+    /// <summary>Friends who ask whether your Holm runs also learn what you're doing (music, a call, a game, a timer).</summary>
+    public bool ShareActivity { get; set; } = true;
+    /// <summary>A friend's chat message pops out of the notch with Reply (it's in the Holm window's Chat either way).</summary>
+    public bool ChatPopups { get; set; } = true;
+    /// <summary>The quick reactions in the chat's reaction bar, Instagram's by default (see <see cref="ChatReaction"/>).</summary>
+    public List<string> QuickReactions { get; set; } = new(ChatReaction.Defaults);
+    /// <summary>GIFs sent or received lately, newest first, for the GIF picker (links only).</summary>
+    public List<string> RecentGifs { get; set; } = new();
+    /// <summary>A GIPHY API key for searching GIFs, if Holm has none built in.</summary>
+    public string? GifSearchKey { get; set; }
+    /// <summary>Friends' waves pop up (and you can wave at them from the Friends menu).</summary>
+    public bool Waves { get; set; } = true;
+    /// <summary>A folder dropped on a person is packed as a ZIP and sent; the ZIP is deleted afterwards.</summary>
+    public bool SendFolders { get; set; } = true;
+    /// <summary>Text can be beamed (from the clipboard), and beamed text arriving goes to the clipboard.</summary>
+    public bool BeamText { get; set; } = true;
+    /// <summary>A friend whose Holm isn't running gets the files once it is; see <see cref="SendQueue"/>.</summary>
+    public bool SendLater { get; set; } = true;
+    /// <summary>What waits for friends (paths only; files Holm made are kept in its temp folder).</summary>
+    public List<QueuedSend> SendQueue { get; set; } = new();
+    double? _collapsedScale, _expandedScale;
+    double _legacyScale = 1;
+
+    /// <summary>Size of the notch while collapsed; 1 is normal.</summary>
+    public double CollapsedScale
+    {
+        get => _collapsedScale ?? _legacyScale;
+        set => _collapsedScale = value;
+    }
+
+    /// <summary>Size of the expanded notch; 1 is normal.</summary>
+    public double ExpandedScale
+    {
+        get => _expandedScale ?? _legacyScale;
+        set => _expandedScale = value;
+    }
+
+    // Read the old shared size as a fallback for either missing setting, regardless of JSON order.
+    // Returning null keeps it out of new saves, which always contain the two independent sizes.
+    [JsonPropertyName("Scale")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? LegacyScale
+    {
+        get => null;
+        set => _legacyScale = value ?? 1;
+    }
+
+    // Your profile, as friends see it (see FriendProfile): null name for the Windows account's, null color for the
+    // one the name gives, and the picture as the small JPEG that goes to friends (base64).
+    public string? ProfileName { get; set; }
+    public string? ProfileStatus { get; set; }
+    public string? ProfileColor { get; set; }
+    public string? ProfilePicture { get; set; }
+
+    // Friends (see Sharing/Friends.cs)
+    public List<Friend> Friends { get; set; } = new();
+    public string? FriendsTopic { get; set; }
+    /// <summary>Our private key, encrypted for this Windows account (DPAPI).</summary>
+    public string? FriendsKey { get; set; }
+    /// <summary>ntfy server for our inbox; null means ntfy.sh. Set it before copying your friend code.</summary>
+    public string? FriendsServer { get; set; }
+    /// <summary>Server time of the last note in our inbox, to catch up from after a restart.</summary>
+    public long? FriendsSince { get; set; }
+    /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
+    public List<string> FriendsSeen { get; set; } = new();
+    /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
+    public List<OwnInvite> FriendInvites { get; set; } = new();
+    /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
+    public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
+
+    static string FilePath => Path.Combine(Diag.Folder, "settings.json");
+
+    /// <summary>Set while posing for screenshots, which change settings that must never reach your settings file.</summary>
+    internal static bool ReadOnly;
+
+    public static AppSettings Load()
+    {
+        try { return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new(); }
+        catch { return new(); }
+    }
+
+    public void Save()
+    {
+        if (ReadOnly) return;
+        try
+        {
+            Directory.CreateDirectory(Diag.Folder);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+        }
+        catch { }
+    }
+}
+
+/// <summary>WinNotch was renamed Holm in 1.5.1: its settings and autostart entry carry over on the first start.</summary>
+internal static class FormerName
+{
+    public const string Name = "WinNotch";
+
+    public static void Migrate()
+    {
+        try
+        {
+            // Copied, not moved, so the old version still finds its settings should someone go back.
+            string before = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Name, "settings.json");
+            string now = Path.Combine(Diag.Folder, "settings.json");
+            if (!File.Exists(now) && File.Exists(before))
+            {
+                Directory.CreateDirectory(Diag.Folder);
+                File.Copy(before, now);
+            }
+        }
+        catch (Exception ex) { Diag.Error(ex); }
+        try { if (OperatingSystem.IsWindows() && !PackageIdentity.IsPackaged) Autostart.TakeOver(Name); }
+        catch (Exception ex) { Diag.Error(ex); }
+    }
+}
+
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+internal static class Autostart
+{
+    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    const string ValueName = "Holm";
+
+    public static bool IsEnabled
+    {
+        get
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey);
+            return key?.GetValue(ValueName) is string cmd
+                && cmd.Contains(Environment.ProcessPath ?? "\0", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public static void Set(bool enabled)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(RunKey);
+        if (enabled) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
+        else key.DeleteValue(ValueName, false);
+    }
+
+    /// <summary>Replaces the entry of the app's former name with ours: on if it was on, so it doesn't start twice.</summary>
+    public static void TakeOver(string formerName)
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        if (key?.GetValue(formerName) == null) return;
+        key.DeleteValue(formerName, false);
+        if (key.GetValue(ValueName) == null) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
+    }
+}
+
+internal static class Diag
+{
+    public static bool Enabled;
+    public static readonly string Folder = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+
+    /// <summary>Dev and bench builds only: HOLM_DATA=folder runs Holm on test data beside your own Holm (measurements, snapshots).</summary>
+    public static string? DevFolder =>
+#if DEBUG || BENCH
+        Environment.GetEnvironmentVariable("HOLM_DATA") is { Length: > 0 } folder ? folder :
+#endif
+        null;
+
+    public static void Log(string message)
+    {
+        if (Enabled) Write("diag.log", message);
+    }
+
+    public static void Error(Exception ex) => Write("error.log", ex.ToString());
+
+    static void Write(string file, string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(Folder);
+            File.AppendAllText(Path.Combine(Folder, file), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+        }
+        catch { }
+    }
+}

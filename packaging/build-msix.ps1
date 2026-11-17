@@ -6,10 +6,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-if ($Store -and -not $Version) { $Version = '1.12.7.0' }
+if ($Store -and -not $Version) { $Version = '1.13.0.0' }
 if (-not $Version) {
-    [xml]$project = Get-Content (Join-Path $root 'WinNotch\WinNotch.csproj') -Raw
-    $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+    [xml]$project = Get-Content (Join-Path $root 'Holm.App\Holm.App.csproj') -Raw
+    $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version[1]').InnerText
     if ($releaseVersion -notmatch '^[1-9][0-9]*\.[0-9]+\.[0-9]+$') { throw 'Project version must have three numeric components.' }
     $Version = $releaseVersion + '.0'
 }
@@ -29,8 +29,11 @@ $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\ma
 # Without the Windows SDK: Microsoft's SDK build tools from NuGet (Microsoft.Windows.SDK.BuildTools) have it too.
 if (!$makeappx) { $makeappx = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools\*\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1 }
 if (!$makeappx) { throw 'Install the Windows SDK including MakeAppx, or the Microsoft.Windows.SDK.BuildTools NuGet package.' }
-dotnet publish (Join-Path $root 'WinNotch\WinNotch.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $app
+# As the GitHub release builds it (release.yml): self-contained, one file, ready to run.
+dotnet publish (Join-Path $root 'Holm.App\Holm.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o $app
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
+# The manifest starts Holm.exe, the name every Holm release has had (the project builds Holm.App.exe).
+Move-Item -LiteralPath (Join-Path $app 'Holm.App.exe') -Destination (Join-Path $app 'Holm.exe') -Force
 Get-ChildItem -LiteralPath $app -Filter *.pdb | Remove-Item -Force
 Add-Type -AssemblyName System.Drawing
 # Generate each size from the original 2048px artwork, never from a smaller icon frame.
