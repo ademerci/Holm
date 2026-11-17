@@ -27,7 +27,8 @@ def visible(image):
 
 def mean(image):
     """The average of each channel, to tell in the log what a different spot holds."""
-    pixels = list(image.getdata())
+    # get_flattened_data since Pillow 12; getdata goes in Pillow 14.
+    pixels = list(image.get_flattened_data() if hasattr(image, "get_flattened_data") else image.getdata())
     return tuple(round(sum(p[c] for p in pixels) / len(pixels)) for c in range(4))
 
 
