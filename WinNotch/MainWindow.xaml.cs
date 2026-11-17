@@ -515,7 +515,7 @@ public partial class MainWindow : Window
             case NotchState.Media: (w, h, r) = (220, 32, 16); break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
-            case NotchState.Badge: (w, h, r) = (170, 30, 15); break;
+            case NotchState.Badge: (w, h, r) = (110, 30, 15); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default:
@@ -989,8 +989,7 @@ public partial class MainWindow : Window
             .OrderByDescending(g => g.Latest.Time)
             .ToList();
 
-        PopulateAppLogos(BadgeLogoList, groups.Select(g => g.App), BadgeLogoSize);
-        PopulateAppLogos(MediaBadgeLogos, groups.Select(g => g.App), MediaBadgeLogoSize);
+        // The closed notch shows only the red count: which apps wrote shows once you open the notch.
         AddUpdateNotification();
         MediaBadge.Background = BadgePill.Background = RedBrush;
 

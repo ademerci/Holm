@@ -45,7 +45,7 @@ public class UpdateMenuTests
         });
 
     [Fact]
-    public void Available_update_stays_in_notification_rows_and_closed_notch_badges()
+    public void Available_update_shows_in_the_rows_and_only_as_a_count_in_the_closed_notch()
         => WithWindow(async window =>
         {
             using var http = new HttpClient(new ResponseHandler(ReleaseJson("99.0.0")));
@@ -55,11 +55,10 @@ public class UpdateMenuTests
             typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
             var rows = (StackPanel)window.FindName("MessageRows");
             Assert.Single(rows.Children.Cast<FrameworkElement>());
+            // Closed: the red count alone, no app or update icons; the open notch's row says what it is.
             foreach (string name in new[] { "BadgeLogoList", "MediaBadgeLogos" })
-            {
-                var icon = Assert.IsType<Border>(((StackPanel)window.FindName(name)).Children[0]);
-                Assert.Equal("\uE896", Assert.IsType<TextBlock>(icon.Child).Text);
-            }
+                Assert.Empty(((StackPanel)window.FindName(name)).Children.Cast<UIElement>());
+            Assert.Equal("1", ((TextBlock)window.FindName("BadgeText")).Text);
             Set(window, "_availableUpdate", null!);
             typeof(MainWindow).GetMethod("RefreshMessages", Private)!.Invoke(window, null);
             Assert.Empty(rows.Children.Cast<FrameworkElement>());
