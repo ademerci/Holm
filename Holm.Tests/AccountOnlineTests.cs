@@ -87,10 +87,81 @@ public class AccountOnlineTests
             try { Directory.Delete(root, recursive: true); } catch (IOException) { }
         }
 
-        // Deleted: the account no longer opens.
+        // Deleted: the account no longer opens. (Below.)
+        await AssertGone(root, email, password);
+    }
+
+    static async Task AssertGone(string root, string email, string password)
+    {
         var gone = await Assert.ThrowsAsync<AccountException>(() =>
             new AccountService(new AppSettings(), new AchievementBook((string?)null), new FriendsService(new AppSettings(), Ui), Ui, Path.Combine(root, "pc4"))
                 .SignInAsync(email, password, CancellationToken.None));
         Assert.True(gone.IsWrongLogin);
+    }
+
+    [Fact]
+    public async Task Only_changes_to_what_the_account_keeps_start_a_sync_and_a_friend_code_clash_is_asked_once()
+    {
+        if (Diag.DevFolder == null || !AccountService.Available) return;
+        FriendsService.ProtectKey = (data, _) => data.ToArray();
+        FriendsService.UnprotectKey = (data, _) => data.ToArray();
+        string root = Path.Combine(Diag.Folder, "account-online-" + Guid.NewGuid().ToString("N")[..8]);
+        string email = $"holm-selftest-{Guid.NewGuid():N}@example.com", password = "test password " + Guid.NewGuid().ToString("N")[..10];
+
+        var settings1 = new AppSettings { Beam = false };
+        var friends1 = new FriendsService(settings1, Ui);
+        friends1.EnsureMe();
+        using var pc1 = new AccountService(settings1, new AchievementBook((string?)null), friends1, Ui, Path.Combine(root, "pc1"));
+
+        // PC 2 has its own friends identity and a friend of its own.
+        var settings2 = new AppSettings { Beam = false };
+        var friends2 = new FriendsService(settings2, Ui);
+        friends2.EnsureMe();
+        var own = FriendIdentity.Create("Max", null).AsFriend();
+        settings2.Friends.Add(own);
+        using var pc2 = new AccountService(settings2, new AchievementBook((string?)null), friends2, Ui, Path.Combine(root, "pc2"));
+        int asked = 0;
+        pc2.IdentityQuestion += () => asked++;
+
+        try
+        {
+            await pc1.SignUpAsync(email, password, CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(8)); // the pull Start() makes 5 seconds after signing in
+            int rounds = pc1.Rounds;
+
+            // Saving for something the account doesn't keep (the inbox's catch-up point) starts no sync...
+            settings1.FriendsSince = 12345;
+            settings1.Save();
+            await Task.Delay(TimeSpan.FromSeconds(11));
+            Assert.Equal(rounds, pc1.Rounds);
+            // ...a setting the account keeps does, a few seconds later.
+            settings1.ClockStyle = "mono";
+            settings1.Save();
+            await Task.Delay(TimeSpan.FromSeconds(12));
+            Assert.Equal(rounds + 1, pc1.Rounds);
+
+            // PC 2 joins: two friend codes, and PC 2 has friends under its own. It's asked once, not at every sync.
+            await pc2.SignInAsync(email, password, CancellationToken.None);
+            await pc2.SyncAsync(CancellationToken.None);
+            await pc2.SyncAsync(CancellationToken.None);
+            Assert.Equal(1, asked);
+            Assert.NotEqual(settings1.FriendsTopic, settings2.FriendsTopic);
+            Assert.Equal("mono", settings2.ClockStyle); // the rest syncs meanwhile
+
+            // The account's code wins: PC 2 takes it and keeps its own friend (who's told the new code).
+            await pc2.ChooseIdentityAsync(true);
+            Assert.Equal(settings1.FriendsTopic, settings2.FriendsTopic);
+            Assert.Equal(friends1.Me!.PublicKey, friends2.Me!.PublicKey);
+            Assert.Contains(settings2.Friends, f => f.Key == own.Key);
+            await pc1.SyncAsync(CancellationToken.None);
+            Assert.Contains(settings1.Friends, f => f.Key == own.Key);
+        }
+        finally
+        {
+            if (pc1.SignedIn) await pc1.DeleteAsync(CancellationToken.None);
+            else if (pc2.SignedIn) await pc2.DeleteAsync(CancellationToken.None);
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+        await AssertGone(root, email, password);
     }
 }

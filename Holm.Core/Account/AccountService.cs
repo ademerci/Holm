@@ -92,7 +92,31 @@ internal sealed class AccountService : IDisposable
     void OnLocalChange()
     {
         if (_applying || !SignedIn || AppSettings.ReadOnly || _disposed) return;
+        // Holm saves its settings for many things the account doesn't keep (the friends inbox's catch-up point, every
+        // 45 seconds while it's followed): only a change to what the account keeps is worth a sync.
+        try { if (_synced != null && LocalFingerprint() == _synced) return; }
+        catch (InvalidOperationException) { } // a list changed while it was read (saved off the UI thread): sync to be safe
         _soon.Change(Debounce, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary><see cref="LocalFingerprint"/> after the last sync; null before the first.</summary>
+    string? _synced;
+    /// <summary>Whether <see cref="IdentityQuestion"/> was raised and not answered yet: it's asked once, not at every sync.</summary>
+    bool _identityAsked;
+    /// <summary>Rounds that reached the account (for tests).</summary>
+    internal int Rounds { get; private set; }
+
+    /// <summary>Everything the account keeps from this PC, as one hash (UI thread).</summary>
+    string LocalFingerprint()
+    {
+        var text = new System.Text.StringBuilder();
+        foreach (var (name, value) in SettingsSync.Capture(_settings)) text.Append(name).Append('=').Append(value.GetRawText()).Append('\n');
+        var profile = ProfileSync.Capture(_settings);
+        text.Append(profile.Name).Append('\n').Append(profile.Status).Append('\n').Append(profile.Color).Append('\n').Append(profile.Picture).Append('\n');
+        foreach (var f in _settings.Friends) text.Append(f.Key).Append('|').Append(f.Name).Append('|').Append(f.Status).Append('|').Append(f.Color).Append('|').Append(f.Picture).Append('\n');
+        text.Append(_settings.FriendsTopic).Append('|').Append(_settings.FriendsKey).Append('\n');
+        text.Append(System.Text.Encoding.UTF8.GetString(AccountJson.ToBytes(_achievements.Export())));
+        return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text.ToString())));
     }
 
     // ───────────── Signing up, in, out ─────────────
@@ -141,6 +165,8 @@ internal sealed class AccountService : IDisposable
             _session = session;
             _dataKey = dataKey;
             _identityChoice = null;
+            _identityAsked = false;
+            _synced = null;
             _file = new AccountFile
             {
                 Email = session.Email, Uid = session.Uid,
@@ -193,6 +219,7 @@ internal sealed class AccountService : IDisposable
     public Task ChooseIdentityAsync(bool useAccounts)
     {
         _identityChoice = useAccounts;
+        _identityAsked = false;
         return SyncAsync(CancellationToken.None);
     }
 
@@ -260,7 +287,11 @@ internal sealed class AccountService : IDisposable
         Dictionary<string, byte[]> writes = new();
         bool ask = false;
         await _ui(() => writes = Merge(remote, Now, out ask)).ConfigureAwait(false);
-        if (ask) await _ui(() => IdentityQuestion?.Invoke()).ConfigureAwait(false);
+        if (ask && !_identityAsked)
+        {
+            _identityAsked = true;
+            await _ui(() => IdentityQuestion?.Invoke()).ConfigureAwait(false);
+        }
 
         foreach (var (section, plain) in writes)
         {
@@ -268,7 +299,7 @@ internal sealed class AccountService : IDisposable
             if (!await _firebase.PutAsync(SectionPath(uid, section), fields, docs[section]?.UpdateTime, session.IdToken, ct).ConfigureAwait(false))
                 return false;
         }
-        await _ui(Save).ConfigureAwait(false);
+        await _ui(() => { Save(); _synced = LocalFingerprint(); Rounds++; }).ConfigureAwait(false);
         Diag.Log($"Account: synced ({writes.Count} sections sent)");
         return true;
     }
