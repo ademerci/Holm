@@ -851,6 +851,7 @@ public sealed partial class NotchWindow
         ShowTask(FaceText(offer.Sender), FaceBrush(offer.Sender), text ? $"Text from {offer.Sender}" : $"{offer.Sender} wants to send you",
                  text ? "Copy it to your clipboard?" : Summary(offer), null,
                  (text ? "Copy" : "Accept", () => { _acceptTick = Environment.TickCount64; answer.TrySetResult(true); }), ("Decline", () => answer.TrySetResult(false)), textIcon: true);
+        PlayIncomingFileSound();
         using (ct.Register(() => answer.TrySetResult(false)))
         {
             var finished = await Task.WhenAny(answer.Task, Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None));

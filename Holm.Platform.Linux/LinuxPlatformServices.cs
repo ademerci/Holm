@@ -26,4 +26,5 @@ public sealed class LinuxPlatformServices : IPlatformServices
     public IDictationPlatform Dictation { get; } = new LinuxDictationPlatform();
     public IMediaKeysPlatform MediaKeys { get; } = new NoMediaKeysPlatform();
     public ILocationPlatform Location { get; } = new NoLocationPlatform();
+    public ISoundPlatform Sound { get; } = new LinuxSoundPlatform();
 }

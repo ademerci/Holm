@@ -26,4 +26,5 @@ public sealed class WindowsPlatformServices : IPlatformServices
     public IDictationPlatform Dictation { get; } = new WindowsDictationPlatform();
     public IMediaKeysPlatform MediaKeys { get; } = new WindowsMediaKeysPlatform();
     public ILocationPlatform Location { get; } = new WindowsLocationPlatform();
+    public ISoundPlatform Sound { get; } = new WindowsSoundPlatform();
 }

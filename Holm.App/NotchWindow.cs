@@ -74,10 +74,13 @@ public sealed partial class NotchWindow : Window
         InitCapsLock(platform);
         InitMediaKeys(platform);
         InitWeather(platform);
+        _sound = platform.Sound;
         InitHotKey(platform);
         InitClickAway(platform);
         InitFullscreen(platform);
-        AppSettings.ReadOnly = OperatingSystem.IsWindows() && Diag.DevFolder == null;
+        // As the WPF app with --snap: a self-test poses the notch and must not end up in your settings. Otherwise Holm
+        // saves, on every system (it was read-only on Windows while the port ran next to the WPF app).
+        AppSettings.ReadOnly = SelfTestFolder != null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
 
         Title = "Holm";

@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Holm.App.Controls;
+using Holm.Platform;
 using WinNotch;
 
 namespace Holm.App;
@@ -14,7 +15,7 @@ namespace Holm.App;
 /// A timer in the notch, like a phone's live activity: what's left takes the equalizer's place while music plays
 /// and shows on its own otherwise; open, it has pause and stop. Right-click › Timer starts one.
 ///
-/// Also here, until it has more in it: the right-click menu. Not ported yet: the alarm sound.
+/// Also here, until it has more in it: the right-click menu, and the sounds (the alarm and the incoming-file chime).
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -222,13 +223,40 @@ public sealed partial class NotchWindow
         if (!_timerTick.IsEnabled) _timerTick.Start();
     }
 
+    ISoundPlatform _sound = null!;
+
+    /// <summary>The chime when someone sends you files, as in the WPF app; read once from the app's assets.</summary>
+    static readonly Lazy<byte[]?> IncomingFileSound = new(() =>
+    {
+        try
+        {
+            using var stream = Avalonia.Platform.AssetLoader.Open(new Uri("avares://Holm.App/Assets/incoming-file.wav"));
+            using var memory = new System.IO.MemoryStream();
+            stream.CopyTo(memory);
+            return memory.ToArray();
+        }
+        catch (Exception ex) { Diag.Log("Incoming file sound: " + ex.Message); return null; }
+    });
+
+    void PlayIncomingFileSound()
+    {
+        if (IncomingFileSound.Value is { } wav) _sound.PlayWav(wav);
+    }
+
     void TimerDone(Countdown timer)
     {
         _timer = null;
         ShowTimer();
         Diag.Log("Timer done");
+        _sound.PlayAlarm();
         Achieve(AchievementBook.Timers);
         string length = Countdown.Describe(timer.Length);
+        if (_busy)
+        {
+            // A transfer is showing: don't take its place.
+            ShowPeek(TimerGlyph, "Timer done", length, null, seconds: 8, glyphBrush: TimerOrange);
+            return;
+        }
         ShowTask(TimerGlyph, TimerOrange, "Timer done", length + (length.StartsWith("1 ") ? " is up" : " are up"), null,
                  ("+5 min", () => { HideTask(); StartTimer(TimeSpan.FromMinutes(5)); }), ("OK", HideTask));
         _taskHide.Interval = TimeSpan.FromSeconds(30);

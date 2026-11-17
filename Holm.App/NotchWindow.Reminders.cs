@@ -17,9 +17,6 @@ namespace Holm.App;
 /// Reminders typed in plain words ("20 min laundry", "14:30 dentist") in the open notch; the notch speaks up on
 /// time with "+10 min" and "OK". They are kept in the settings, so they survive a restart; one missed while the PC
 /// was off shows as soon as Holm starts.
-///
-/// Not ported yet: the alarm sound. And as long as the port's settings are read-only, a reminder added here is
-/// gone when the port closes.
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -96,9 +93,16 @@ public sealed partial class NotchWindow
     {
         var first = due[0];
         Diag.Log($"Reminder due ({due.Count})");
+        _sound.PlayAlarm();
         Achieve(AchievementBook.Reminders, due.Count);
         string when = first.Due.ToLocalTime().ToString("HH:mm");
         string subtitle = due.Count == 1 ? $"Reminder · {when}" : $"Reminder · {when} · and {due.Count - 1} more";
+        if (_busy || _installingUpdate)
+        {
+            // A transfer or an update is showing: don't take its place.
+            ShowPeek(BellGlyph, first.Text, when, null, seconds: 10, glyphBrush: TimerOrange);
+            return;
+        }
         ShowTask(BellGlyph, TimerOrange, first.Text, subtitle, null,
                  ("+10 min", () => { HideTask(); AddReminder(first.Text, DateTime.UtcNow.AddMinutes(10)); }), ("OK", HideTask));
         _taskHide.Interval = TimeSpan.FromSeconds(60);

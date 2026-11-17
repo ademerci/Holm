@@ -25,6 +25,7 @@ public interface IPlatformServices
     IDictationPlatform Dictation { get; }
     IMediaKeysPlatform MediaKeys { get; }
     ILocationPlatform Location { get; }
+    ISoundPlatform Sound { get; }
 }
 
 /// <summary>For systems without a backend yet: the app runs, with nothing from the system in it.</summary>
@@ -51,5 +52,6 @@ public sealed class NoPlatformServices : IPlatformServices
     public IDictationPlatform Dictation { get; } = new NoDictationPlatform();
     public IMediaKeysPlatform MediaKeys { get; } = new NoMediaKeysPlatform();
     public ILocationPlatform Location { get; } = new NoLocationPlatform();
+    public ISoundPlatform Sound { get; } = new NoSoundPlatform();
     public IIdentityPlatform Identity { get; } = new UnixIdentityPlatform(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Holm"));
 }

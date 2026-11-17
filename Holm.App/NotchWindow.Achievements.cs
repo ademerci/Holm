@@ -36,7 +36,7 @@ public sealed partial class NotchWindow
     /// <summary>Something that counts toward an achievement happened.</summary>
     void Achieve(string counter, long by = 1)
     {
-        if (_achievements == null || AppSettings.ReadOnly) return; // the port next to an installed Holm counts nothing
+        if (_achievements == null || AppSettings.ReadOnly) return; // a self-test counts nothing
         _achievements.Add(counter, by);
     }
 
