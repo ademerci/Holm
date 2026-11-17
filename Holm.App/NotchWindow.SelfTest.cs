@@ -83,7 +83,9 @@ public sealed partial class NotchWindow
         const double scale = 2;
         var size = new PixelSize((int)Math.Ceiling(BaseWidth * scale), (int)Math.Ceiling(NeededWindowHeight(_shapeH) * scale));
         using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
-        bitmap.Render(_root);
+        // The window, not the notch's canvas: a Canvas is 0 px high (it doesn't size to what it holds), and rendering
+        // it alone gave empty pictures. The bitmap's size cuts the window to the notch.
+        bitmap.Render(this);
         bitmap.Save(file, new PngBitmapEncoderOptions());
     }
 }
