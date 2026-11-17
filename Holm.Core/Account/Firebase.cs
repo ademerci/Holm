@@ -17,8 +17,9 @@ namespace WinNotch.Account;
 /// </summary>
 public static class FirebaseProject
 {
-    public const string ApiKey = "FIREBASE_API_KEY";
-    public const string ProjectId = "FIREBASE_PROJECT_ID";
+    // Firebase project "Holm Accounts" (owner holm.notch@gmail.com), Firestore in europe-west6 (Zürich).
+    public const string ApiKey = "AIzaSyBlVxpL7NiLGM-vDQ_VJqnHj8tWrP8qtmM";
+    public const string ProjectId = "holm-accounts";
 
     public static bool IsConfigured => !ApiKey.StartsWith("FIREBASE_", StringComparison.Ordinal) && !ProjectId.StartsWith("FIREBASE_", StringComparison.Ordinal);
 }
