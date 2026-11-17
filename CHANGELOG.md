@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.10 – 2026-11-17
+
+### Changed
+- **Only the count in the closed notch.** New notifications show as a red number in the middle of the closed notch, without app icons. Open the notch to see which apps wrote, each with its logo.
+
 ## 1.12.9 – 2026-11-17
 
 ### Changed
