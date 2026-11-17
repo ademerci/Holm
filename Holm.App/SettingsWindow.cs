@@ -38,8 +38,10 @@ sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, F
 sealed class SettingsWindow : Window
 {
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
-    static readonly IBrush Panel = B(0xFA1E1E20), Sidebar = B(0xFF171719), Edge = B(0x2EFFFFFF), Card = B(0x14FFFFFF),
-        Hover = B(0x10FFFFFF), Selected = B(0x26FFFFFF), Line = B(0x14FFFFFF), Dim = B(0x99FFFFFF), Accent = B(0xFF0A84FF);
+    // The Holm window's palette is HubTheme's (the instrument look), so the settings and the friends pages match.
+    static readonly IBrush Panel = HubTheme.Panel, Sidebar = HubTheme.Sidebar, Edge = HubTheme.Edge, Card = HubTheme.Card,
+        Hover = HubTheme.Hover, Selected = HubTheme.Selected, Line = HubTheme.Line, Dim = HubTheme.Dim, Accent = HubTheme.Accent,
+        OnAccent = HubTheme.OnAccent;
 
     readonly List<(SettingsSwitch Setting, ToggleSwitch Toggle)> _rows = new();
     readonly Dictionary<string, (Border Item, TextBlock Glyph, Border Badge, TextBlock BadgeText)> _navItems = new();
@@ -49,7 +51,8 @@ sealed class SettingsWindow : Window
     readonly Dictionary<string, Control> _pages = new();
     readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
     readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
-    readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0) };
+    // No subtitle under the page title: the rows say what the page holds.
+    readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), IsVisible = false };
     readonly Border _pageHost = new();
     readonly Button _apply;
     readonly Border _surface, _dialog;
@@ -299,6 +302,8 @@ sealed class SettingsWindow : Window
     {
         _apply.IsEnabled = HasChanges;
         _apply.Background = HasChanges ? Accent : Card;
+        _apply.Foreground = HasChanges ? OnAccent : Dim;
+        foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) _apply.Resources["ButtonForeground" + state] = _apply.Foreground;
     }
 
     Border NavItem(string key, string glyph, string title)
@@ -335,10 +340,11 @@ sealed class SettingsWindow : Window
         var rows = new StackPanel();
         for (int i = 0; i < group.Switches.Count; i++)
         {
-            if (i > 0) rows.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
+            rows.Children.Add(new Border { Height = 1, Background = Line });
             rows.Children.Add(Row(group.Switches[i], group.Color, first: i == 0, last: i == group.Switches.Count - 1));
         }
-        var card = new Border { Background = Card, CornerRadius = new CornerRadius(12), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+        // A plain list between hairlines: no card behind it, no icon in front of each row.
+        var card = new Border { Child = rows, VerticalAlignment = VerticalAlignment.Top };
         return Scroller(card);
     }
 
@@ -349,15 +355,9 @@ sealed class SettingsWindow : Window
         _rows.Add((setting, toggle));
 
         var row = new Grid { Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), MinHeight = 56 };
-        var hover = new Border { CornerRadius = new CornerRadius(first ? 12 : 0, first ? 12 : 0, last ? 12 : 0, last ? 12 : 0) };
+        var hover = new Border();
         row.Children.Add(hover);
-        var content = new Grid { Margin = new Thickness(14, 10, 16, 10), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
-        var tile = new Border
-        {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(30 * 0.27), Background = new SolidColorBrush(color).ToImmutable(),
-            Child = Glyph(setting.Glyph, 30 * 0.47), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
-        };
-        content.Children.Add(tile);
+        var content = new Grid { Margin = new Thickness(2, 11, 4, 11), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = setting.Header, FontSize = 14, TextWrapping = TextWrapping.Wrap });
         if (setting.Help != null)
@@ -461,41 +461,16 @@ sealed class SettingsWindow : Window
         Padding = new Thickness(0, 0, 6, 0),
     };
 
-    /// <summary>The WPF app's action button: a soft rounded pill, blue when it is the one that matters.</summary>
-    static Button Action(string label, bool primary = false)
-    {
-        var button = new Button
-        {
-            Content = label, Padding = new Thickness(14, 6, 14, 6), Foreground = Brushes.White, FontSize = 12, FontWeight = FontWeight.SemiBold,
-            MinHeight = 32, CornerRadius = new CornerRadius(7), BorderThickness = new Thickness(1),
-            Background = primary ? Accent : Card, BorderBrush = primary ? Brushes.Transparent : B(0x24FFFFFF),
-            Cursor = new Cursor(StandardCursorType.Hand), VerticalContentAlignment = VerticalAlignment.Center,
-        };
-        // The theme repaints a button under the mouse; ours only dims, as in the WPF app.
-        foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" })
-        {
-            button.Resources["ButtonBackground" + state] = button.Background;
-            button.Resources["ButtonForeground" + state] = Brushes.White;
-            button.Resources["ButtonBorderBrush" + state] = button.BorderBrush;
-        }
-        button.PointerEntered += (_, _) => button.Opacity = 0.82;
-        button.PointerExited += (_, _) => button.Opacity = 1;
-        button.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == IsEnabledProperty) button.Opacity = button.IsEnabled ? 1 : 0.4;
-            if (e.Property == BackgroundProperty)
-                foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) button.Resources["ButtonBackground" + state] = button.Background;
-        };
-        return button;
-    }
+    /// <summary>The WPF app's action button (HubTheme's).</summary>
+    static Button Action(string label, bool primary = false) => HubTheme.Action(label, primary);
 }
 
-/// <summary>An on/off switch: a pill that turns green with the knob sliding to the right (the WPF app's ToggleSwitch).</summary>
+/// <summary>An on/off switch: a square outline with a square knob, both white when on (the WPF app's ToggleSwitch).</summary>
 sealed class ToggleSwitch : Control
 {
     public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ToggleSwitch, double>(nameof(Position));
 
-    static readonly Color Off = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF), On = Color.FromRgb(0x30, 0xD1, 0x58);
+    static readonly Color Off = Color.FromRgb(0x5C, 0x5E, 0x63), On = Color.FromRgb(0xF2, 0xF2, 0xF2);
 
     static ToggleSwitch() => AffectsRender<ToggleSwitch>(PositionProperty);
 
@@ -512,15 +487,14 @@ sealed class ToggleSwitch : Control
         Position = on ? 1 : 0;
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(40, 24);
+    protected override Size MeasureOverride(Size availableSize) => new(32, 18);
 
     public override void Render(DrawingContext dc)
     {
         double t = Math.Clamp(Position, 0, 1);
-        var track = new SolidColorBrush(Color.FromArgb(
-            (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
-            (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
-        dc.DrawRectangle(track, null, new RoundedRect(new Rect(0, 0, 40, 24), 12));
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
+        var ink = new SolidColorBrush(Color.FromRgb(
+            (byte)(Off.R + (On.R - Off.R) * t), (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
+        dc.DrawRectangle(null, new Pen(ink, 1.5), new RoundedRect(new Rect(0.75, 0.75, 30.5, 16.5), 2));
+        dc.DrawRectangle(ink, null, new Rect(3.5 + 14 * Position, 3.5, 11, 11));
     }
 }

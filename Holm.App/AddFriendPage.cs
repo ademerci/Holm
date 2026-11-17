@@ -135,7 +135,7 @@ internal sealed class AddFriendPage : HubView
     static Control Heading(string glyph, IBrush color, string text)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(10), Background = color, Child = HubTheme.Glyph(glyph, 16) });
+        row.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(10), Background = color, Child = HubTheme.Glyph(glyph, 16, ReferenceEquals(color, HubTheme.Accent) ? HubTheme.OnAccent : null) });
         row.Children.Add(new TextBlock { Text = text, FontSize = 17, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) });
         return row;
     }
