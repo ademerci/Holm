@@ -441,6 +441,7 @@ public partial class MainWindow : Window
             RefreshFocumon();
             _openSettling = true;
             _liveTimer.Start();
+            OpenFromAiRing(); // opened from a ring: straight to the AI page
         }
         else
         {
@@ -523,6 +524,7 @@ public partial class MainWindow : Window
                 break;
         }
 
+        w += PlaceAiWings(target, mini); // Codenotch's rings at the ends of the closed notch
         // Media apps report every few seconds; only animate when the shape really changes.
         if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || scale != _shapeScale)
         {
@@ -570,7 +572,7 @@ public partial class MainWindow : Window
             _mini = mini;
         }
         UpdateEqualizer();
-        ShowAiDock();
+
     }
 
     void FitWindowHeight() => Height = Math.Ceiling(Math.Max(_shapeH, 1) * _shapeScale) + 2;
@@ -654,7 +656,7 @@ public partial class MainWindow : Window
         }
         outline.Freeze();
         Backdrop.Clip = outline;
-        PlaceAiDock(w, h, e);
+
     }
 
     /// <summary>
