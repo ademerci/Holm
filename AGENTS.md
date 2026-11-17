@@ -136,6 +136,38 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 - Store-only code (`PackageIdentity`, the startup task, `packaging/`, `store/`, `store.yml`) stays on the Store branch.
 - Two looks: the classic one is the default; *Settings › General › Instrument look* switches to the instrument look at the next start (`Look.Instrument`). A visual change must keep both.
 
+### Naming (for AI agents and people)
+
+Several people each work with their own AI agent (Claude, Codex, …) on this repo. Use these names so everyone can tell from the branch list and `git log` what a change is and who made it.
+
+**Branches:** `<type>/<topic>`, lowercase ASCII, words joined with `-`, at most about 5 words.
+
+| Type | For | Example |
+| --- | --- | --- |
+| `feature/` | Something new in the app | `feature/clipboard-history` |
+| `fix/` | A bug fix | `fix/notch-flicker-on-wake` |
+| `website/` | Only `website/` | `website/legal-pages` |
+| `docs/` | README, AGENTS.md, CHANGELOG, docs | `docs/agent-naming` |
+| `ci/` | `.github/workflows`, build and release scripts | `ci/linux-selftest` |
+| `release/` | Preparing one release | `release/1.13.1` |
+
+- One branch per change, cut from a fresh `origin/main` (or `dev` for dev work). Merge only when the person who asked for it says so.
+- Agents: rename a generated branch (`claude/<random>`, `codex/<random>`) to this pattern before pushing. `codex/microsoft-store-msix` and `backup/*` keep their names.
+- No names, umlauts or spaces in branch names (`Maëls-sippi` breaks some tools).
+
+**Commits**
+
+- Subject: one plain English line, at most 72 characters, saying what changes for the user, no full stop. Optional area prefix: `Website:`, `CI:`, `Self-test:`, `Release:`, `Docs:`. A version goes in parentheses at the end: `… (1.13.1)`.
+  - Good: `Closed notch shows only the red count for notifications`, `Website: contact form, Impressum and privacy policy`.
+  - Not: `feat(ui): update stuff`, `fix bug`, `WIP`.
+- Body (when it isn't obvious): why, and what a reviewer should check. Wrap at 72.
+- Keep your own Git author. An agent adds itself as the last line: `Co-Authored-By: <Agent and model> <its noreply address>`, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Merges: `Merge branch '<branch>': <what it brings>`, or `Merge origin/main (Holm <version>) into <branch>`.
+
+**Pull requests:** title like a commit subject; the description says what changed, how it was tested (tests, self-test, test build) and which agent helped.
+
+**Tags and files:** releases `v<x.y.z>`, dev prereleases `dev-v<x.y.z.n>`, release notes `publish/release-<version>-release-notes.md`, test builds as in *Versions*.
+
 ### Versions
 
 - The one version number is `<Version>` in `Holm.App/Holm.App.csproj` (`x.y.z`). The build turns it into the exe's file version `x.y.z.0`.
