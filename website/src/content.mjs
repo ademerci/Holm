@@ -32,11 +32,11 @@ export const docs = [
     sections: [
       [
         'System requirements',
-        'Windows 10 version 2004 or newer, or Windows 11, on an x64 PC. The published GitHub executable is self-contained. macOS, Linux and native ARM64 builds are not offered here.',
+        'Windows 10 version 2004 or newer, or Windows 11, on an x64 PC; or Linux on x64 with X11 (Wayland desktops through XWayland) and PulseAudio or PipeWire. The published GitHub builds are self-contained. macOS and native ARM64 builds are not offered here.',
       ],
       [
         'Install from GitHub',
-        'On the Download page, choose Holm.exe to run the app directly, or download the Windows x64 ZIP, extract it and run Holm.exe. Keep the app in a folder your Windows account can write to so the portable updater can replace it.',
+        'On the Download page, choose Holm.exe to run the app directly, or download the Windows x64 ZIP, extract it and run Holm.exe. Keep the app in a folder your Windows account can write to so the portable updater can replace it. On Linux, download the Linux x64 tar.gz, unpack it and run ./Holm; to update, download the new release (Update opens its page).',
       ],
       [
         'Windows security prompts',
@@ -247,8 +247,8 @@ export const docs = [
         'Both devices need to be on the same network and the share must still be open. Guest or school networks may isolate devices. Phone sharing is local; Holm-to-Holm Code transfers are the option for separate networks.',
       ],
       [
-        'Does Holm support Mac or ARM64?',
-        'The published build targets Windows x64. No native macOS, Linux or ARM64 build is advertised.',
+        'Does Holm support Mac, Linux or ARM64?',
+        'Holm runs on Windows x64 and, since 1.13.0, on Linux x64. No native macOS or ARM64 build is advertised.',
       ],
       [
         'Report a problem',

@@ -124,11 +124,47 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 - Preserve the runtime footprint MSBuild properties in `Holm.App/Holm.App.csproj`.
 - Every icon codepoint used in `Holm.App` must exist in `Holm.App/Assets/HolmIcons.ttf` (`tools/icon-font/icons.txt`).
 
-### Releases and branches (carried over from the WPF app's rules)
+### Branches
 
-- Develop general Holm features and fixes on `main`; keep Microsoft Store-specific packaging and release work on `codex/microsoft-store-msix`.
-- Periodically merge `main` into `codex/microsoft-store-msix`, including before each Store release. Resolve conflicts and verify that both the portable GitHub version and packaged Store version retain their intended behavior.
-- For Store releases, increment the MSIX package version, build and test the package, and complete the Store submission process. The Store manages updates for the packaged app; preserve the existing updater for the portable GitHub release.
-- Publish Windows x64 releases as self-contained, single-file builds so users do not need to install .NET, and always name the executable release asset `Holm.exe`, without version or platform suffixes.
-- Name test executables `Holm-<version>-test-build.<number>.exe`, with an incrementing build number and an explicit test label.
+| Branch | What it holds | Who pushes |
+| --- | --- | --- |
+| `main` | The released app (Windows and Linux). Every GitHub release is built from it. | Features and fixes, merged when CI is green. |
+| `dev` | Work in progress and dev prereleases (`dev-v<x.y.z.n>`). Merged into `main` as a fast-forward when ready. | Anyone. |
+| `codex/microsoft-store-msix` | `main` plus the Microsoft Store changes (see *Store release*). Never merged back into `main`. | Only for Store releases. |
+| `backup/*` | Snapshots before a risky merge (`backup/main-1.12.11`: the last WPF `main`; `backup/store-1.12.7`). | Never change them. |
+
+- Store-only code (`PackageIdentity`, the startup task, `packaging/`, `store/`, `store.yml`) stays on the Store branch.
 - Two looks: the classic one is the default; *Settings › General › Instrument look* switches to the instrument look at the next start (`Look.Instrument`). A visual change must keep both.
+
+### Versions
+
+- The one version number is `<Version>` in `Holm.App/Holm.App.csproj` (`x.y.z`). The build turns it into the exe's file version `x.y.z.0`.
+- Raise it in the first commit after a release that changes the app (`1.13.0` → `1.13.1` for fixes, `1.14.0` for features), never reuse a released number: the release workflow refuses an existing tag.
+- Test builds: `Holm-<version>-test-build.<n>.exe` and `Holm-<version>-test-build.<n>-linux-x64`, `<n>` incrementing (CI uses its run number). `Holm.exe` / `Holm` only in official releases.
+
+### GitHub release (portable Windows and Linux)
+
+Every running Holm finds it within two hours: the updater asks `releases/latest` (never a draft or prerelease) and installs `Holm-<version>-win-x64.zip` on Windows; on Linux *Update* opens the release page. A release is therefore final: test before, do not "try" one.
+
+1. On `main`, with the version already raised in `Holm.App.csproj`:
+   - `CHANGELOG.md`: the top entry is `## <version> – <YYYY-MM-DD>` (the release day, not "unreleased"), with `### Added` / `### Changed` / `### Fixed` as needed.
+   - `publish/release-<version>-release-notes.md`: the release page text (copy the last one: download table, requirements, then the CHANGELOG entry). `publish/` is in `.gitignore`, add the file with `git add -f`.
+2. Push and wait for the *Cross-platform* workflow on `main` to pass (tests on both systems, self-test pictures compared, the exe's file version checked).
+3. Start *Actions › Release › Run workflow* on `main` with the version (`1.13.0`, no `v`). With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>"}`). It checks the version, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files:
+   - `Holm.exe` (the Windows app),
+   - `Holm-<version>-win-x64.zip` (only `Holm.exe`, `LICENSE`, `README.txt`: the updater refuses anything else, and an exe whose file version isn't `<version>.0`),
+   - `Holm-<version>-linux-x64.tar.gz` (`Holm`, `LICENSE`, `README.txt`).
+4. Check the release page: the three files, the notes, marked *Latest*. The Release workflow then starts the *Website* workflow (`gh workflow run website.yml -f deploy=true`; a release made with the workflow token doesn't trigger it by itself). Check that this run passed and its *deploy* job published the site; if not, start *Actions › Website › Run workflow* on `main` with *deploy* on.
+5. Never change, delete or re-upload a published release's files; a broken release is fixed by the next version.
+
+### Dev prerelease
+
+For testers only (the updater never offers it): on `dev`, write `<version>.<n>` (e.g. `1.13.1.1`) into `docs/cross-platform/dev-release-version.txt` and push. *Dev release* builds and publishes the prerelease `dev-v<version>.<n>` with test-build names.
+
+### Store release (Microsoft Store)
+
+1. Merge `main` into `codex/microsoft-store-msix` (`git merge origin/main`). Keep the Store changes when resolving conflicts: in Store mode (`PackageIdentity.IsPackaged`) Holm doesn't check or install updates (*Updates are managed by Microsoft Store.*), uses the package's startup task `HolmStartup` instead of the Run key and doesn't take over the old one, and opens Handy's release page instead of downloading its installer.
+2. Raise the Store version in `packaging/build-msix.ps1` (`$Version` for `-Store`, four parts ending in `.0`, e.g. `1.13.0.0`) and in `packaging/README.md`, write `packaging/RELEASE-<version>.md` (copy the last one) and point `store.yml`'s artifact at it.
+3. Check `store/PRIVACY.md` against what changed since the last Store version (new services, data or permissions).
+4. Push; the *Store package* workflow tests and builds `Holm-Store.msix`. Install it on Windows (signed with a local test certificate, see `packaging/README.md`) and check launch, Updates page, Start with Windows after signing in again, and an upgrade over the live Store version.
+5. Upload the unsigned `Holm-Store.msix` in Partner Center and submit; the Store signs it. Record the submission in `packaging/RELEASE-<version>.md`.

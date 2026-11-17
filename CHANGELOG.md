@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.13.0 – unreleased
+## 1.13.0 – 2026-11-17
 
 ### Added
 - **Holm for Linux.** The notch, music, volume and Bluetooth, messages and notifications, Beam, friends and chat, the tools, weather and the AI usage rings work on Linux too (PulseAudio or PipeWire, BlueZ, NetworkManager, UPower). Copying text from screenshots uses `tesseract` when it is installed. On Linux, *Update* opens the release page.

@@ -6,6 +6,7 @@ import {
   sizeLabel,
   latestRelease,
   releaseAsset,
+  assetLabel,
   releaseHtml,
 } from './releases.mjs';
 
@@ -38,7 +39,7 @@ export function createPages({ base, snapshot, store }) {
     <h2>Make yourself at home.</h2>
     <p>A small addition to your Windows desktop.<br />A lot of little things, brought together.</p>
     ${button(`${win} Get Holm for Windows`, link('download/'))}<span class="fine"
-      >Free & open source · Windows 10 / 11 · x64</span
+      >Free & open source · Windows 10 / 11 and Linux · x64</span
     >
   </section>`;
 
@@ -123,7 +124,7 @@ export function createPages({ base, snapshot, store }) {
               </div>
               <div class="footer-bottom">
                 <span>© ${new Date().getUTCFullYear()} Holm contributors</span
-                ><span>Built for Windows. Made with care.</span
+                ><span>Built for Windows and Linux. Made with care.</span
                 ><button class="theme-toggle" aria-label="Switch colour theme">
                   Appearance: <span data-theme-label>System</span>
                 </button>
@@ -139,15 +140,15 @@ export function createPages({ base, snapshot, store }) {
       full
         ? `<div data-release-assets class="asset-links">${
             latest?.assets
-              .filter((a) => /\.zip$/.test(a.name))
+              .filter((a) => assetLabel(a.name))
               .map(
                 (a) =>
-                  `<a href="${a.browser_download_url}">Windows x64 ZIP · ${sizeLabel(a.size)} ↓</a>`,
+                  `<a href="${a.browser_download_url}">${assetLabel(a.name)} · ${sizeLabel(a.size)} ↓</a>`,
               )
               .join('') || ''
           }</div><a class="text-link" data-release-notes href="${latest?.html_url || `${REPO}/releases`}">Read release notes ${arrow}</a>`
         : ''
-    }<span class="channel-foot">Windows x64 · Self-contained · In-app updates</span></article><article class="channel store"><div class="channel-top"><span class="store-symbol" aria-hidden="true">${win}</span><span class="tag neutral">${store.url ? 'Available now' : 'Coming soon'}</span></div><h${full ? '2' : '3'}>At the Store’s pace.</h${full ? '2' : '3'}><p>The more conservative channel: less frequent releases, with additional validation before publication. It may be behind GitHub.</p>${store.url ? `${store.version ? `<div class="release-current"><strong>v${esc(store.version)}</strong><span>Microsoft Store release</span><span>Verified ${dateLabel(store.verified_at)}</span></div>` : ''}${button('Get it from Microsoft Store ↗', store.url, true)}` : '<p class="store-state">Microsoft Store<br><span>A verified public listing is not available yet.</span></p><span class="button unavailable">Microsoft Store · Coming soon</span>'}<span class="channel-foot">Store-managed updates · ${store.url ? esc(store.publisher || 'Microsoft Store') : 'No Store version announced'}</span></article></div>`;
+    }<span class="channel-foot">Windows x64 and Linux x64 · Self-contained · In-app updates on Windows</span></article><article class="channel store"><div class="channel-top"><span class="store-symbol" aria-hidden="true">${win}</span><span class="tag neutral">${store.url ? 'Available now' : 'Coming soon'}</span></div><h${full ? '2' : '3'}>At the Store’s pace.</h${full ? '2' : '3'}><p>The more conservative channel: less frequent releases, with additional validation before publication. It may be behind GitHub.</p>${store.url ? `${store.version ? `<div class="release-current"><strong>v${esc(store.version)}</strong><span>Microsoft Store release</span><span>Verified ${dateLabel(store.verified_at)}</span></div>` : ''}${button('Get it from Microsoft Store ↗', store.url, true)}` : '<p class="store-state">Microsoft Store<br><span>A verified public listing is not available yet.</span></p><span class="button unavailable">Microsoft Store · Coming soon</span>'}<span class="channel-foot">Store-managed updates · ${store.url ? esc(store.publisher || 'Microsoft Store') : 'No Store version announced'}</span></article></div>`;
 
   const home = /* HTML */ `<section class="hero wrap">
       <a class="announcement" href="${link('changelog/')}"
@@ -167,7 +168,7 @@ export function createPages({ base, snapshot, store }) {
           >Find your little things <span aria-hidden="true">→</span></a
         >
       </div>
-      <p class="fine">Free & open source. Windows 10 / 11. Made to feel at home.</p>
+      <p class="fine">Free & open source. Windows 10 / 11 and Linux. Made to feel at home.</p>
     </section>
     <section class="showcase wrap" aria-label="Explore actual Holm screenshots">
       <div class="product-stage">
@@ -414,7 +415,7 @@ export function createPages({ base, snapshot, store }) {
     </section>
     ${closing}`;
 
-  const downloads = /* HTML */ `${intro('MAKE YOURSELF AT HOME.', 'A little more Holm.<br>A lot within reach.', 'Holm for Windows 10 (2004 or newer) and Windows 11. x64. Free and open source.')}
+  const downloads = /* HTML */ `${intro('MAKE YOURSELF AT HOME.', 'A little more Holm.<br>A lot within reach.', 'Holm for Windows 10 (2004 or newer), Windows 11 and Linux (X11 or XWayland). x64. Free and open source.')}
     <section
       class="wrap download-options"
       data-releases
@@ -446,8 +447,8 @@ export function createPages({ base, snapshot, store }) {
           <div>
             <h3>Download.</h3>
             <p>
-              Choose the self-contained Holm.exe, or get the ZIP and extract it. No separate .NET
-              runtime needed.
+              Choose the self-contained Holm.exe, or get the ZIP and extract it. On Linux, get the
+              tar.gz and unpack it. No separate .NET runtime needed.
             </p>
           </div>
         </li>
@@ -466,7 +467,8 @@ export function createPages({ base, snapshot, store }) {
           <div>
             <h3>Look up.</h3>
             <p>
-              Run Holm.exe. Open the notch to explore. Right-click for Settings and make it yours.
+              Run Holm.exe (on Linux, ./Holm). Open the notch to explore. Right-click for Settings
+              and make it yours.
             </p>
           </div>
         </li>
