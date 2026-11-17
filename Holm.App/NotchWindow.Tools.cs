@@ -21,7 +21,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer }
+    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai }
 
     static readonly IBrush ToolLit = Brush("#29FFFFFF");
 
@@ -108,6 +108,8 @@ public sealed partial class NotchWindow
         _toolBar.Children.Add(_chatsToolBtn);
         _clipboardToolBtn = ToolButton("Clipboard", Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", Tool.Mixer, "Volume per app");
+        _aiToolBtn = ToolButton("AI", Tool.Ai, "AI usage");
+        _aiToolBtn.IsVisible = false;
         BuildColorPickerButton();
         var row = new Grid
         {
@@ -179,6 +181,7 @@ public sealed partial class NotchWindow
         _toolPage.Children.Add(_calculatorPage);
         _toolPage.Children.Add(BuildClipboardPage());
         _toolPage.Children.Add(BuildMixerPage());
+        _toolPage.Children.Add(_aiPage);
         Deactivated += (_, _) => OnDeactivated();
         RefreshToolBar();
         return _toolPage;
@@ -192,6 +195,7 @@ public sealed partial class NotchWindow
         (_calculatorPage, _calculatorToolBtn, Tool.Calculator),
         (_clipboardPage, _clipboardToolBtn, Tool.Clipboard),
         (_mixerPage, _mixerToolBtn, Tool.Mixer),
+        (_aiPage, _aiToolBtn, Tool.Ai),
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
@@ -234,6 +238,7 @@ public sealed partial class NotchWindow
         else if (tool == Tool.Calculator) OnCalcChanged();
         else if (tool == Tool.Clipboard) ShowClipboardPage();
         else if (tool == Tool.Mixer) ShowMixerPage();
+        else if (tool == Tool.Ai) FillAiPage();
         if (changed && _hovered && _state == NotchState.Expanded) AnimateToolSwitch(activePage ?? _homePanel);
         if (_state == NotchState.Expanded) ApplyState(animate: true); // a page has its own height
     }
@@ -246,6 +251,7 @@ public sealed partial class NotchWindow
         _calculatorToolBtn.IsVisible = _settings.Calculator;
         _clipboardToolBtn.IsVisible = _settings.ClipboardHistory;
         _mixerToolBtn.IsVisible = _settings.AppVolume;
+        _aiToolBtn.IsVisible = _settings.AiUsage && _aiUsage.Count > 0;
         _colorPickerBtn.IsVisible = _settings.ColorPicker;
         bool any = false;
         foreach (var (_, button, which) in ToolPages())

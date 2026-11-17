@@ -291,6 +291,7 @@ public sealed partial class NotchWindow : Window
             case NotchState.Focumon: (w, h, r) = (190, 30, 15); break;
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
+        w += PlaceAiWings(target, mini); // Codenotch's rings at the ends of the closed notch
 
         // Media apps report every few seconds; only animate when the shape really changes.
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
@@ -331,7 +332,6 @@ public sealed partial class NotchWindow : Window
         UpdateBackdrop();
         UpdateEqualizer();
         ShowSky();
-        ShowAiDock();
     }
 
     /// <summary>Room for a shape this high at this scale, including the spring's overshoot.</summary>
@@ -519,7 +519,6 @@ public sealed partial class NotchWindow : Window
             c.EndFigure(true);
         }
         _backdrop.Clip = outline;
-        PlaceAiDock(w, h, e);
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
@@ -530,13 +529,6 @@ public sealed partial class NotchWindow : Window
         double width = (w + 2 * MaxEar) * 1.12 * notchScale, height = h * notchScale * 1.15 + 2;
         double x = (Width - width) / 2;
         var notchRect = new HitRect((int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
-        if (AiDockBounds(w, h, notchScale) is { } bubble)
-        {
-            var bubbleRect = new HitRect((int)Math.Floor(bubble.X * scale), (int)Math.Floor(bubble.Y * scale),
-                (int)Math.Ceiling(bubble.W * scale), (int)Math.Ceiling(bubble.H * scale));
-            _platform.SetHitRegions(handle.Handle, new[] { notchRect, bubbleRect });
-            return;
-        }
         _platform.SetHitRegion(handle.Handle, notchRect.X, notchRect.Y, notchRect.Width, notchRect.Height);
     }
 }

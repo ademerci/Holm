@@ -2,149 +2,145 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
+using Holm.App.Controls;
 using WinNotch;
 
 namespace Holm.App;
 
 /// <summary>
-/// The bubble beside the notch, like a second activity on the iPhone's island: a black circle with the agent's mark and
-/// a thin ring that fills with its usage. Beside the minimized notch it flattens into a capsule with a bar, so it never
-/// stands taller than the notch.
+/// Codenotch's ring (github.com/vinzdg/codenotch, MIT), as the WPF app draws it: the tool's mark in a track whose arc
+/// fills with the usage and turns green → yellow → red as it runs out, and a thin inner arc that circles while an agent
+/// is at work.
 /// </summary>
-internal sealed class UsageBubble
+internal sealed class UsageRing
 {
-    public const double Size = 26, MiniWidth = 22, MiniHeight = 6;
-    const double RingRadius = 11.2, RingWidth = 1.8, BarWidth = MiniWidth - 4, MarkSize = 12.5;
+    static IBrush B(byte r, byte g, byte b) => new SolidColorBrush(Color.FromRgb(r, g, b)).ToImmutable();
 
-    static readonly IBrush Track = new SolidColorBrush(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)).ToImmutable();
-    static readonly IBrush Coral = new SolidColorBrush(AiMarks.ClaudeColor).ToImmutable();
+    public static readonly IBrush Ample = B(0x00, 0xFF, 0x88), Watch = B(0xF2, 0xFF, 0x00), Critical = B(0xFF, 0x3F, 0x00);
+    static readonly IBrush Track = B(0x30, 0x30, 0x30);
 
-    public readonly Border Root;
-    public AiUsageSnapshot Shown { get; private set; }
-    public double Grow { get; private set; } = -1;
+    /// <summary>Codenotch's default thresholds: watch from 50 %, critical from 70 %.</summary>
+    public static IBrush ColorOf(double? percent) => percent >= 70 ? Critical : percent >= 50 ? Watch : Ample;
+    public static string NameOf(AiTool tool) => tool == AiTool.ClaudeCode ? "Claude" : "Codex";
 
-    readonly Canvas _ring;
-    readonly ScaleTransform _ringScale = new(1, 1);
-    readonly Path _arc;
+    public readonly Grid Root;
+    public AiUsageSnapshot? Shown { get; private set; }
+    public bool Working { get; private set; }
+
+    readonly double _size, _radius, _stroke;
+    readonly Path _arc, _activity;
     readonly Border _mark = new();
-    readonly Grid _bar;
-    readonly Border _barFill;
     AiTool? _markFor;
+    bool _animate;
+    CancellationTokenSource? _spin;
 
-    /// <summary>The tool's own colour, red once nearly used up.</summary>
-    public static IBrush ColorOf(AiUsageSnapshot usage) => usage.Percent >= 90 ? HubTheme.Red : usage.Tool == AiTool.ClaudeCode ? Coral : Brushes.White;
-    public static string NameOf(AiTool tool) => tool == AiTool.ClaudeCode ? "Claude Code" : "Codex";
-
-    public UsageBubble(AiUsageSnapshot usage)
+    public UsageRing(double size)
     {
-        Shown = usage;
-        const double c = Size / 2;
-        var track = new Ellipse { Width = RingRadius * 2, Height = RingRadius * 2, Stroke = Track, StrokeThickness = RingWidth };
-        Canvas.SetLeft(track, c - RingRadius);
-        Canvas.SetTop(track, c - RingRadius);
-        _arc = new Path { StrokeThickness = RingWidth, StrokeLineCap = PenLineCap.Round };
-        Canvas.SetLeft(_mark, c - MarkSize / 2);
-        Canvas.SetTop(_mark, c - MarkSize / 2);
-        _ring = new Canvas
+        _size = size;
+        _stroke = Math.Max(1.8, size / 11);
+        _radius = (size - _stroke) / 2;
+        var track = new Ellipse
         {
-            Width = Size, Height = Size, RenderTransform = _ringScale, RenderTransformOrigin = RelativePoint.Center,
-            Children = { track, _arc, _mark },
+            Width = size - _stroke, Height = size - _stroke, Stroke = Track, StrokeThickness = _stroke,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
         };
-        Canvas.SetLeft(_ring, -Size / 2);
-        Canvas.SetTop(_ring, -Size / 2);
-        // A canvas without a size keeps the ring centred and unclipped while the bubble around it shrinks.
-        var centre = new Canvas { Width = 0, Height = 0, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Children = { _ring } };
-
-        _barFill = new Border { Height = 2.5, CornerRadius = new CornerRadius(1.25), HorizontalAlignment = HorizontalAlignment.Left };
-        _bar = new Grid
+        _arc = new Path { StrokeThickness = _stroke, StrokeLineCap = PenLineCap.Round, Width = size, Height = size };
+        double inner = _radius - _stroke - 0.8;
+        _activity = new Path
         {
-            Width = BarWidth, Height = 2.5, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
-            Children = { new Border { CornerRadius = new CornerRadius(1.25), Background = Track }, _barFill },
+            Data = Arc(size / 2, inner, 22), Stroke = Brushes.White, StrokeThickness = Math.Max(1, _stroke * 0.55), StrokeLineCap = PenLineCap.Round,
+            RenderTransform = new RotateTransform(), RenderTransformOrigin = RelativePoint.Center, Width = size, Height = size, IsVisible = false,
         };
-        Root = new Border
-        {
-            Background = Brushes.Black, ClipToBounds = true, VerticalAlignment = VerticalAlignment.Top,
-            Child = new Grid { Children = { _bar, centre } },
-        };
-        Update(usage);
-        SetGrow(1);
+        _mark.HorizontalAlignment = HorizontalAlignment.Center;
+        _mark.VerticalAlignment = VerticalAlignment.Center;
+        Root = new Grid { Width = size, Height = size, Children = { track, _arc, _activity, _mark } };
     }
 
-    public void Update(AiUsageSnapshot usage)
+    public void Update(AiUsageSnapshot usage, bool animate)
     {
         Shown = usage;
         if (_markFor != usage.Tool)
         {
             _markFor = usage.Tool;
-            _mark.Child = AiMarks.For(usage.Tool, MarkSize);
+            _mark.Child = AiMarks.For(usage.Tool, Math.Round(_size * 0.46), Brushes.White);
         }
-        double percent = Math.Clamp(usage.Percent ?? 0, 0, 100);
-        var color = ColorOf(usage);
-        _arc.Stroke = color;
-        _arc.Data = Arc(percent);
-        _barFill.Background = color;
-        _barFill.Width = percent <= 0 ? 0 : Math.Max(2.5, BarWidth * percent / 100);
+        _arc.Stroke = ColorOf(usage.Percent);
+        _arc.Data = Arc(_size / 2, _radius, Math.Clamp(usage.Percent ?? 0, 0, 100));
+        _arc.Opacity = usage.IsStale ? 0.45 : 1; // an old reading is dimmed, as Codenotch does
+        SetWorking(usage.Active.Count > 0, animate);
     }
 
-    /// <summary>Follows the notch between minimized and normal; cheap enough for every frame of that move.</summary>
-    public void SetGrow(double grow)
+    /// <summary>The inner arc circles while a session works; it rests (and costs nothing) otherwise.</summary>
+    void SetWorking(bool working, bool animate)
     {
-        grow = Math.Round(Math.Clamp(grow, 0, 1), 2);
-        if (grow == Grow) return;
-        Grow = grow;
-        double height = MiniHeight + (Size - MiniHeight) * grow;
-        Root.Width = MiniWidth + (Size - MiniWidth) * grow;
-        Root.Height = height;
-        Root.CornerRadius = new CornerRadius(height / 2);
-        _ringScale.ScaleX = _ringScale.ScaleY = height / Size;
-        _ring.Opacity = Math.Clamp((grow - 0.3) / 0.5, 0, 1);
-        _bar.Opacity = Math.Clamp(1 - grow / 0.35, 0, 1);
+        if (working == Working && animate == _animate) return;
+        (Working, _animate) = (working, animate);
+        _activity.IsVisible = working;
+        _spin?.Cancel();
+        _spin = null;
+        if (!working || !animate) { ((RotateTransform)_activity.RenderTransform!).Angle = 0; return; }
+        var turn = new Animation
+        {
+            Duration = TimeSpan.FromSeconds(1.4), IterationCount = IterationCount.Infinite,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(RotateTransform.AngleProperty, 0d) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(RotateTransform.AngleProperty, 360d) } },
+            },
+        };
+        _spin = new CancellationTokenSource();
+        _ = turn.RunAsync(_activity, _spin.Token);
     }
 
     /// <summary>The arc from twelve o'clock, clockwise.</summary>
-    static Geometry? Arc(double percent)
+    static Geometry? Arc(double c, double r, double percent)
     {
-        const double c = Size / 2;
         if (percent < 0.5) return null;
-        if (percent >= 99.5) return new EllipseGeometry { Center = new Point(c, c), RadiusX = RingRadius, RadiusY = RingRadius };
+        if (percent >= 99.5) return new EllipseGeometry { Center = new Point(c, c), RadiusX = r, RadiusY = r };
         double angle = percent / 100 * 2 * Math.PI;
-        var end = new Point(c + RingRadius * Math.Sin(angle), c - RingRadius * Math.Cos(angle));
         var arc = new StreamGeometry();
         using var ctx = arc.Open();
-        ctx.BeginFigure(new Point(c, c - RingRadius), false);
-        ctx.ArcTo(end, new Size(RingRadius, RingRadius), 0, angle > Math.PI, SweepDirection.Clockwise);
+        ctx.BeginFigure(new Point(c, c - r), false);
+        ctx.ArcTo(new Point(c + r * Math.Sin(angle), c - r * Math.Cos(angle)), new Size(r, r), 0, angle > Math.PI, SweepDirection.Clockwise);
         ctx.EndFigure(false);
         return arc;
     }
 }
 
-// AI usage beside the notch: one bubble for the coding agent that matters most right now (the one at work, else the one
-// further along), visible in every closed state. Hovering it opens a card with every agent you use: how much is gone,
-// when it starts over, and which sessions are working on what. Everything comes from the tools' own logs on this PC
-// (AiUsage.cs), read off the UI thread at most once a minute; it is shown only here, never sent anywhere or shared.
+// AI usage, Codenotch's way inside Holm (the WPF app's MainWindow.AiUsage.cs). Closed, the notch widens and carries a
+// ring at each end: Claude on the left, Codex on the right (a single tool sits on the right). Open, the AI tool shows
+// every limit with its reset and the sessions at work. Claude's numbers are the real ones from Anthropic
+// (ClaudeLimits.cs), with an estimate from the logs only when there is no sign-in; Codex's come from its own logs
+// (AiUsage.cs). Nothing is shared or sent elsewhere.
 public sealed partial class NotchWindow
 {
-    const double AiDockGap = 6;
+    internal const double AiWing = 48;
+    const double AiRingSize = 18;
 
-    Border? _aiDock;
-    UsageBubble? _aiBubble;
     IReadOnlyList<AiUsageSnapshot> _aiUsage = Array.Empty<AiUsageSnapshot>();
     AiUsageReader? _aiClaude, _aiCodex;
-    DispatcherTimer? _aiTimer, _aiCardOpen, _aiCardClose;
-    Popup? _aiCard;
-    bool _aiReading, _aiDockOn;
+    ClaudeLimits? _claudeLimits;
+    DispatcherTimer? _aiTimer;
+    bool _aiReading, _aiRingHot;
+    Grid? _aiWings;
+    (StackPanel Panel, UsageRing Ring, TextBlock Number)? _aiLeft, _aiRight;
+    readonly Dictionary<Control, Thickness> _wingBase = new();
+    internal (bool Left, bool Right) AiWingsShown { get; private set; }
 
-    internal UsageBubble? AiBubble => _aiBubble;
-    internal bool AiDockShown => _aiDockOn;
+    readonly StackPanel _aiPage = new() { IsVisible = false };
+    NotchButton _aiToolBtn = null!;
 
     void StartAiUsage()
     {
@@ -156,18 +152,14 @@ public sealed partial class NotchWindow
         }
         if (_aiTimer == null)
         {
-            _aiTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+            _aiTimer = new DispatcherTimer();
             _aiTimer.Tick += (_, _) => _ = RefreshAiUsageAsync();
         }
-        else _aiTimer.Interval = TimeSpan.FromSeconds(8); // the first look waits until start-up is over
+        _aiTimer.Interval = TimeSpan.FromSeconds(8); // the first look waits until start-up is over
         _aiTimer.Start();
     }
 
-    void StopAiUsage()
-    {
-        _aiTimer?.Stop();
-        CloseAiCard();
-    }
+    void StopAiUsage() => _aiTimer?.Stop();
 
     async Task RefreshAiUsageAsync()
     {
@@ -178,294 +170,253 @@ public sealed partial class NotchWindow
         try
         {
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var claude = _aiClaude ??= new AiUsageReader(AiTool.ClaudeCode, Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } c ? c : System.IO.Path.Combine(home, ".claude"));
+            string claudeDir = Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } c ? c : System.IO.Path.Combine(home, ".claude");
+            var claude = _aiClaude ??= new AiUsageReader(AiTool.ClaudeCode, claudeDir);
             var codex = _aiCodex ??= new AiUsageReader(AiTool.Codex, Environment.GetEnvironmentVariable("CODEX_HOME") is { Length: > 0 } x ? x : System.IO.Path.Combine(home, ".codex"));
+            var limits = _claudeLimits ??= new ClaudeLimits(claudeDir);
             var now = DateTime.UtcNow;
-            var found = await Task.Run(() => new[] { claude.Read(now), codex.Read(now) });
+            var found = await Task.Run(async () =>
+            {
+                await limits.RefreshAsync(now); // at most every five minutes; in between the last reading stays
+                return new[] { WithLiveLimits(claude.Read(now), limits, now), codex.Read(now) };
+            });
             if (!_settings.AiUsage) return;
             var usage = found.Where(u => u != null).Select(u => u!).ToList();
             ShowAiUsage(usage);
-            // Numbers only: what the agents work on stays out of the log.
-            foreach (var u in usage) Diag.Log(string.Create(CultureInfo.InvariantCulture, $"AI usage: {u.Tool} {u.Percent:0} %, {u.TokensInWindow} tokens, {u.Active.Count} working"));
-            // Neither tool on this PC: look again now and then, in case one gets installed.
-            if (usage.Count == 0) _aiTimer.Interval = TimeSpan.FromMinutes(15);
+            // Numbers only: what the agents work on, and the sign-in, stay out of the log.
+            foreach (var u in usage) Diag.Log(string.Create(CultureInfo.InvariantCulture, $"AI usage: {u.Tool} {u.Percent:0} % ({(u.IsLimit ? "reported" : "estimate")}{(u.IsStale ? ", old" : "")}), {u.Active.Count} working"));
+            if (limits.Problem != null) Diag.Log("AI usage: Claude limits: " + limits.Problem);
+            if (usage.Count == 0) _aiTimer.Interval = TimeSpan.FromMinutes(15); // neither tool here: look now and then
         }
         catch (Exception ex) { Diag.Log("AI usage: " + ex.GetType().Name + ": " + ex.Message); }
         finally { _aiReading = false; }
     }
 
-    /// <summary>The agent the bubble shows: one at work, else the one further along, Claude Code on a tie.</summary>
-    internal static AiUsageSnapshot? Leading(IReadOnlyList<AiUsageSnapshot> usage)
-        => usage.OrderByDescending(u => u.Active.Count > 0).ThenByDescending(u => u.Percent ?? 0).ThenBy(u => u.Tool).FirstOrDefault();
+    /// <summary>Claude's snapshot with the real limits in place of the log estimate, when there are any.</summary>
+    internal static AiUsageSnapshot? WithLiveLimits(AiUsageSnapshot? logs, ClaudeLimits limits, DateTime nowUtc)
+        => WithLiveLimits(logs, limits.Limits, limits.FetchedAt, limits.IsStale(nowUtc), limits.Problem);
+
+    internal static AiUsageSnapshot? WithLiveLimits(AiUsageSnapshot? logs, IReadOnlyList<AiUsageLimit> limits, DateTime? fetchedAt, bool stale, string? problem)
+    {
+        if (limits.Count == 0) return logs is null || problem is null ? logs : logs with { Label = problem };
+        var first = limits[0];
+        var basis = logs ?? new AiUsageSnapshot(AiTool.ClaudeCode, null, "", null, 0, Array.Empty<AiSession>());
+        return basis with
+        {
+            Percent = first.UsedPercent, ResetsAt = first.ResetsAt, Label = "", IsLimit = true, Limits = limits, ReportedAt = fetchedAt, IsStale = stale,
+            WeekPercent = limits.FirstOrDefault(l => l.WindowMinutes == 10080)?.UsedPercent,
+        };
+    }
 
     internal void ShowAiUsage(IReadOnlyList<AiUsageSnapshot> usage)
     {
-        _aiUsage = usage.OrderBy(u => u.Tool).ToList();
-        var lead = Leading(_aiUsage);
-        if (lead == null && _aiDock == null) return;
-        EnsureAiDock();
-        if (lead != null)
-        {
-            if (_aiBubble == null)
-            {
-                _aiBubble = new UsageBubble(lead);
-                _aiDock!.Child = _aiBubble.Root;
-            }
-            else _aiBubble.Update(lead);
-        }
-        if (_aiCard is { IsOpen: true })
-        {
-            if (lead == null) CloseAiCard();
-            else _aiCard.Child = AiCard(); // the open card follows
-        }
-        ShowAiDock();
+        _aiUsage = usage.Where(u => u.Percent != null || u.Active.Count > 0).OrderBy(u => u.Tool).ToList();
+        if (_aiPage.IsVisible) FillAiPage();
+        RefreshToolBar();
+        ApplyState(animate: true);
     }
 
-    void EnsureAiDock()
-    {
-        if (_aiDock != null) return;
-        _aiDock = new Border
-        {
-            Background = Brushes.Transparent,
-            Opacity = 0,
-            IsHitTestVisible = false,
-            IsVisible = false,
-        };
-        _aiDock.PointerEntered += (_, _) => HoverAiBubble(true);
-        _aiDock.PointerExited += (_, _) => HoverAiBubble(false);
-        // Behind the notch: opening, the notch grows over the bubble, and closing uncovers it again.
-        _root.Children.Insert(0, _aiDock);
-        _aiCardOpen = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(140) };
-        _aiCardOpen.Tick += (_, _) => { _aiCardOpen.Stop(); OpenAiCard(); };
-        _aiCardClose = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(240) };
-        _aiCardClose.Tick += (_, _) => { _aiCardClose.Stop(); CloseAiCard(); };
-        _aiCard = new Popup
-        {
-            Placement = PlacementMode.Bottom,
-            PlacementTarget = _aiDock,
-            VerticalOffset = -4,
-            IsLightDismissEnabled = false,
-            WindowManagerAddShadowHint = false,
-        };
-        _root.Children.Add(_aiCard);
-    }
+    // ───────────── the rings in the closed notch ─────────────
 
     /// <summary>
-    /// Whether the bubble shows: beside every closed notch that leaves it room, not beside the open one or a pop-out
-    /// that asks something (those take the width).
+    /// Called by ApplyState for the shape it is about to take: which ends get a ring, the closed views moved in to
+    /// make room, and the extra width the notch needs for them.
     /// </summary>
-    void ShowAiDock()
+    double PlaceAiWings(NotchState target, bool mini)
     {
-        if (_aiDock == null) return;
-        double ear = _mini ? 0 : MaxEar;
-        bool room = (Math.Max(_shapeW, 0) / 2 + MaxEar + AiDockGap + UsageBubble.Size) <= BaseWidth / 2;
-        bool on = _aiUsage.Count > 0 && _aiBubble != null && _settings.AiUsage && !_hiddenForFullscreen && room
-                  && _state is not (NotchState.Expanded or NotchState.Share or NotchState.Task or NotchState.Phone);
-        if (on) PlaceAiDock(_wSpring.Value, _hSpring.Value, ear);
-        if (on == _aiDockOn) return;
-        _aiDockOn = on;
-        _aiDock.IsHitTestVisible = on;
-        if (on)
+        var claude = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.ClaudeCode);
+        var codex = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.Codex);
+        bool on = _settings.AiUsage && !mini && !_hiddenForFullscreen && (claude != null || codex != null)
+                  && target is NotchState.Idle or NotchState.Media or NotchState.Badge or NotchState.Timer or NotchState.Focumon or NotchState.Call or NotchState.Dictation;
+        var left = on && claude != null && codex != null ? claude : null;
+        var right = on ? codex ?? claude : null;
+        if (left != null || right != null) EnsureAiWings();
+        if (_aiLeft is { } l) ShowWing(l, left);
+        if (_aiRight is { } r) ShowWing(r, right);
+        AiWingsShown = (left != null, right != null);
+
+        foreach (var view in new Control[] { _idleView, _compactView, _badgeView, _timerView, _focumonView, _callView, _dictationView })
         {
-            _aiDock.IsVisible = true;
-            PlaceAiDock(_wSpring.Value, _hSpring.Value, ear);
+            if (!_wingBase.TryGetValue(view, out var margin)) _wingBase[view] = margin = view.Margin;
+            view.Margin = new Thickness(margin.Left + (left != null ? AiWing : 0), margin.Top, margin.Right + (right != null ? AiWing : 0), margin.Bottom);
         }
-        else CloseAiCard();
+        return (left != null ? AiWing : 0) + (right != null ? AiWing : 0);
+    }
 
-        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
-
+    void ShowWing((StackPanel Panel, UsageRing Ring, TextBlock Number) wing, AiUsageSnapshot? usage)
+    {
+        bool on = usage != null;
+        if (usage != null)
+        {
+            wing.Ring.Update(usage, _settings.Animations);
+            wing.Number.Text = usage.Percent is { } p ? p.ToString("0", CultureInfo.InvariantCulture) + "%" : "–";
+            wing.Number.Foreground = usage.IsStale ? HubTheme.Dim : Brushes.White;
+            Avalonia.Automation.AutomationProperties.SetName(wing.Panel, $"{UsageRing.NameOf(usage.Tool)} usage {wing.Number.Text}");
+        }
+        else wing.Ring.Update(new AiUsageSnapshot(AiTool.ClaudeCode, 0, "", null, 0, Array.Empty<AiSession>()), false); // stops the spin
+        wing.Panel.IsHitTestVisible = on;
+        double to = on ? 1 : 0;
+        if (wing.Panel.Opacity == to && wing.Panel.IsVisible == on) return;
+        if (on) wing.Panel.IsVisible = true;
         if (!_settings.Animations)
         {
-            StopTween(_aiDock, "opacity");
-            _aiDock.Opacity = on ? 1 : 0;
-            if (!on) _aiDock.IsVisible = false;
+            StopTween(wing.Panel, "opacity");
+            wing.Panel.Opacity = to;
+            if (!on) wing.Panel.IsVisible = false;
             return;
         }
-        if (on)
-            Animate(_aiDock, "opacity", v => _aiDock.Opacity = v, _aiDock.Opacity, 1, 240, 140, QuadOut);
-        else
-            Animate(_aiDock, "opacity", v => _aiDock.Opacity = v, _aiDock.Opacity, 0, 90, 0, QuadIn,
-                () => { if (!_aiDockOn && _aiDock != null) _aiDock.IsVisible = false; });
+        var panel = wing.Panel;
+        Animate(panel, "opacity", v => panel.Opacity = v, panel.Opacity, to, on ? 260 : 110, on ? 120 : 0, on ? QuadOut : QuadIn,
+                () => { if (!panel.IsHitTestVisible) panel.IsVisible = false; });
     }
 
-    /// <summary>
-    /// Keeps the bubble at the notch's right shoulder. Runs on every frame the shape moves, so it only updates the
-    /// bubble's position in <see cref="_root"/> and resizes it between the minimized and the normal notch.
-    /// </summary>
-    void PlaceAiDock(double w, double h, double ear)
+    void EnsureAiWings()
     {
-        if (_aiDock == null || (!_aiDockOn && !_aiDock.IsVisible)) return;
-        double grow = Math.Clamp((h - 10) / 14, 0, 1);
-        _aiBubble?.SetGrow(grow);
-        Canvas.SetLeft(_aiDock, BaseWidth / 2 + w / 2 + ear + AiDockGap);
-        Canvas.SetTop(_aiDock, 2 * grow);
-    }
-
-    (double X, double Y, double W, double H)? AiDockBounds(double w, double h, double notchScale)
-    {
-        if (!_aiDockOn || _aiBubble == null) return null;
-        double ear = _mini ? 0 : MaxEar;
-        double grow = Math.Clamp((h - 10) / 14, 0, 1);
-        double leftInRoot = BaseWidth / 2 + w / 2 + ear + AiDockGap;
-        double topInRoot = 2 * grow;
-        double bw = _aiBubble.Root.Width > 0 ? _aiBubble.Root.Width : UsageBubble.Size;
-        double bh = _aiBubble.Root.Height > 0 ? _aiBubble.Root.Height : UsageBubble.Size;
-        // _root is horizontally centred in the window and scales around (0.5, 0).
-        double x = Width / 2 + (leftInRoot - BaseWidth / 2) * notchScale - 2;
-        double y = Math.Max(0, topInRoot * notchScale - 2);
-        return (x, y, bw * notchScale + 4, bh * notchScale + 4);
-    }
-
-    // ───────────── the card ─────────────
-
-    void HoverAiBubble(bool over)
-    {
-        if (_aiCardOpen == null || _aiCardClose == null) return;
-        if (!over)
+        if (_aiWings != null) return;
+        (StackPanel, UsageRing, TextBlock) Wing(bool left)
         {
-            _aiCardOpen.Stop();
-            _aiCardClose.Start();
-            return;
+            var ring = new UsageRing(AiRingSize);
+            ring.Root.VerticalAlignment = VerticalAlignment.Center;
+            var number = new TextBlock { FontSize = 11, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = left ? new Thickness(5, 0, 0, 0) : new Thickness(0, 0, 5, 0) };
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand),
+                HorizontalAlignment = left ? HorizontalAlignment.Left : HorizontalAlignment.Right, Margin = left ? new Thickness(10, 0, 0, 0) : new Thickness(0, 0, 10, 0),
+                Opacity = 0, IsVisible = false, IsHitTestVisible = false,
+            };
+            if (left) { panel.Children.Add(ring.Root); panel.Children.Add(number); }
+            else { panel.Children.Add(number); panel.Children.Add(ring.Root); }
+            // Hovering a ring opens the notch on the AI page; so does a click.
+            panel.PointerEntered += (_, _) => _aiRingHot = true;
+            panel.PointerExited += (_, _) => _aiRingHot = false;
+            panel.PointerReleased += (_, e) =>
+            {
+                if (_hovered) return;
+                e.Handled = true;
+                _expandDelay.Stop();
+                _aiRingHot = true;
+                SetExpanded(true);
+            };
+            return (panel, ring, number);
         }
-        _aiCardClose.Stop();
-        if (_aiCard is not { IsOpen: true }) _aiCardOpen.Start();
+        _aiLeft = Wing(true);
+        _aiRight = Wing(false);
+        _aiWings = new Grid { Children = { _aiLeft.Value.Panel, _aiRight.Value.Panel } };
+        _islandContent.Children.Add(_aiWings);
     }
 
-    void OpenAiCard()
+    /// <summary>Called as the notch opens: from a ring, it opens straight on the AI page.</summary>
+    void OpenFromAiRing()
     {
-        if (_aiDock == null || _aiCard == null || !_aiDockOn || _hiddenForFullscreen || _aiUsage.Count == 0) return;
-        _aiCard.Child = AiCard();
-        _aiCard.IsOpen = true;
-        if (!_settings.Animations || _aiCard.Child is not Control card) return;
-        var rise = new TranslateTransform();
-        card.RenderTransform = rise;
-        Animate(card, "ai-card-rise", v => rise.Y = v, -6, 0, 240, 0, Bouncy);
-        Animate(card, "ai-card-fade", v => card.Opacity = v, 0, 1, 140, 0, QuadOut);
+        if (!_aiRingHot || !_settings.AiUsage || _aiUsage.Count == 0) return;
+        _aiRingHot = false;
+        if (_tool != Tool.Ai) ShowTool(Tool.Ai);
     }
 
-    Control AiCard()
+    // ───────────── the AI page in the open notch ─────────────
+
+    void FillAiPage()
     {
-        var card = BuildAiCard(_aiUsage);
-        card.PointerEntered += (_, _) => _aiCardClose?.Stop();
-        card.PointerExited += (_, _) => _aiCardClose?.Start();
-        return card;
+        _aiPage.Children.Clear();
+        _aiPage.Children.Add(BuildAiPage(_aiUsage, DateTime.UtcNow));
     }
 
-    void CloseAiCard()
+    internal static Control BuildAiPage(IReadOnlyList<AiUsageSnapshot> usage, DateTime nowUtc)
     {
-        _aiCardOpen?.Stop();
-        _aiCardClose?.Stop();
-        if (_aiCard != null) _aiCard.IsOpen = false;
-    }
-
-    static readonly IBrush AiCardEdge = new SolidColorBrush(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)).ToImmutable();
-    static readonly IBrush AiTrack = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF)).ToImmutable();
-    const double AiCardWidth = 288, AiCardPad = 18;
-
-    /// <summary>The card under the bubble: one calm section per agent, the black of the notch around them.</summary>
-    internal static Control BuildAiCard(IReadOnlyList<AiUsageSnapshot> usage)
-    {
-        var sections = new StackPanel();
+        var page = new StackPanel();
+        page.Children.Add(new TextBlock { Text = "AI usage", FontSize = 11, Foreground = HubTheme.Dim, Margin = new Thickness(2, 0, 0, 8) });
+        if (usage.Count == 0)
+        {
+            page.Children.Add(new TextBlock { Text = "Claude Code and Codex show up here once you use them on this " + (OperatingSystem.IsWindows() ? "PC" : "computer"), FontSize = 12, Foreground = HubTheme.Dim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 0, 2, 4) });
+            return page;
+        }
+        var columns = new UniformGrid { Columns = usage.Count, Rows = 1 };
         for (int i = 0; i < usage.Count; i++)
         {
-            if (i > 0) sections.Children.Add(new Border { Height = 1, Background = HubTheme.Line, Margin = new Thickness(0, 16, 0, 16) });
-            sections.Children.Add(AiSection(usage[i]));
+            var section = AiSection(usage[i], nowUtc);
+            section.Margin = new Thickness(i == 0 ? 2 : 10, 0, i == usage.Count - 1 ? 2 : 10, 0);
+            columns.Children.Add(section);
         }
-        var card = new Border
-        {
-            Width = AiCardWidth,
-            Background = Brushes.Black,
-            BorderBrush = AiCardEdge,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(24),
-            Padding = new Thickness(AiCardPad, AiCardPad - 2, AiCardPad, AiCardPad),
-            Child = sections,
-            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 8, Blur = 28, Color = Color.FromArgb(0x73, 0, 0, 0) }),
-        };
-        TextElement.SetFontFamily(card, Fonts.Text);
-        TextElement.SetForeground(card, Brushes.White);
-        // Room for the shadow.
-        return new Grid { Width = AiCardWidth + 40, Children = { new Border { Margin = new Thickness(20, 8, 20, 32), Child = card } } };
+        page.Children.Add(columns);
+        return page;
     }
 
-    static Control AiSection(AiUsageSnapshot usage)
+    static Control AiSection(AiUsageSnapshot usage, DateTime nowUtc)
     {
-        const double inner = AiCardWidth - 2 * AiCardPad - 2;
-        double percent = Math.Clamp(usage.Percent ?? 0, 0, 100);
         var section = new StackPanel();
-
-        // The mark and the name; when it starts over on the right.
-        var head = new DockPanel { LastChildFill = true };
-        var mark = AiMarks.For(usage.Tool, 15);
-        mark.VerticalAlignment = VerticalAlignment.Center;
-        mark.Margin = new Thickness(0, 0, 8, 0);
-        DockPanel.SetDock(mark, Dock.Left);
-        head.Children.Add(mark);
-        if (usage.ResetsAt is { } resets && (usage.IsLimit || usage.TokensInWindow > 0))
-        {
-            var when = Small("Resets " + LimitReset(resets), HubTheme.Faint);
-            when.VerticalAlignment = VerticalAlignment.Center;
-            DockPanel.SetDock(when, Dock.Right);
-            head.Children.Add(when);
-        }
-        head.Children.Add(new TextBlock { Text = UsageBubble.NameOf(usage.Tool), FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        var ring = new UsageRing(34);
+        ring.Update(usage, false);
+        var number = new TextBlock { FontSize = 22, FontWeight = FontWeight.Light, Foreground = usage.IsStale ? HubTheme.Dim : Brushes.White };
+        number.Text = usage.Percent is { } p ? p.ToString("0", CultureInfo.InvariantCulture) + "%" : "–";
+        var words = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        words.Children.Add(new TextBlock { Text = UsageRing.NameOf(usage.Tool), FontSize = 12, FontWeight = FontWeight.SemiBold });
+        words.Children.Add(number);
+        var head = new StackPanel { Orientation = Orientation.Horizontal };
+        head.Children.Add(ring.Root);
+        head.Children.Add(words);
         section.Children.Add(head);
 
-        // The number, big and light, and what it means in one line.
-        var number = new TextBlock { FontFamily = DisplayFont, Margin = new Thickness(-1, 10, 0, 0), Foreground = Brushes.White };
-        number.Inlines!.Add(new Run(usage.Percent == null ? "–" : percent.ToString("0", CultureInfo.InvariantCulture)) { FontSize = 34, FontWeight = FontWeight.Light });
-        if (usage.Percent != null) number.Inlines.Add(new Run(" %") { FontSize = 17, FontWeight = FontWeight.Light, Foreground = HubTheme.Dim });
-        section.Children.Add(number);
-        string meaning = usage.IsLimit
-            ? (usage.Limits.FirstOrDefault() is { } first ? $"of the {first.Name}" : "No limits reported yet")
-            : usage.TokensInWindow > 0 ? "of your busiest 5 hours this week" : "Nothing in the last 5 hours";
-        section.Children.Add(Small(meaning, HubTheme.Dim));
-
-        var fill = new Border
+        if (usage.IsLimit && usage.Limits.Count > 0)
+            foreach (var limit in usage.Limits.Take(3)) section.Children.Add(LimitBar(Capital(limit.Name), limit.UsedPercent, limit.ResetsAt, nowUtc));
+        else if (usage.Percent is { } estimate)
         {
-            CornerRadius = new CornerRadius(2), Background = UsageBubble.ColorOf(usage), HorizontalAlignment = HorizontalAlignment.Left,
-            Width = percent <= 0 ? 0 : Math.Max(4, inner * percent / 100),
-        };
-        section.Children.Add(new Grid { Height = 4, Margin = new Thickness(0, 12, 0, 0), Children = { new Border { CornerRadius = new CornerRadius(2), Background = AiTrack }, fill } });
-
-        foreach (var limit in usage.Limits.Skip(1))
-        {
-            var text = Small(string.Create(CultureInfo.InvariantCulture, $"{limit.UsedPercent:0} % of the {limit.Name}"), HubTheme.Dim);
-            text.Margin = new Thickness(0, 10, 0, 0);
-            section.Children.Add(text);
-            if (limit.ResetsAt is { } reset)
-                section.Children.Add(Small("Resets " + LimitReset(reset), HubTheme.Faint));
+            section.Children.Add(LimitBar("Estimate · 5 hours", estimate, usage.ResetsAt, nowUtc));
+            section.Children.Add(Note(usage.Label is { Length: > 0 } why ? why : "From the logs, compared with your busiest 5 hours"));
         }
         if (usage.IsStale)
-        {
-            var updated = Small("Last reported " + (usage.ReportedAt is { } at ? LimitReset(at) : "earlier") + " · may be outdated", HubTheme.Faint);
-            updated.TextWrapping = TextWrapping.Wrap;
-            updated.Margin = new Thickness(0, 10, 0, 0);
-            section.Children.Add(updated);
-        }
+            section.Children.Add(Note("Last reported " + (usage.ReportedAt is { } at ? LimitReset(at) : "earlier") + " · may be outdated"));
 
-        // The sessions at work, one quiet line each.
-        foreach (var session in usage.Active.Take(3))
+        foreach (var session in usage.Active.Take(2))
         {
-            var row = new DockPanel { Margin = new Thickness(0, section.Children.Count == 4 ? 14 : 7, 0, 0) };
-            var dot = new Ellipse { Width = 6, Height = 6, Fill = HubTheme.Green, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 9, 0) };
+            var row = new DockPanel { Margin = new Thickness(0, 8, 0, 0) };
+            var dot = new Ellipse { Width = 6, Height = 6, Fill = UsageRing.Ample, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 7, 0) };
             DockPanel.SetDock(dot, Dock.Left);
             row.Children.Add(dot);
-            var project = new TextBlock { Text = session.Project, FontSize = 12.5, FontWeight = FontWeight.SemiBold, MaxWidth = 110, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-            DockPanel.SetDock(project, Dock.Left);
-            row.Children.Add(project);
-            var step = Small(session.Step ?? "Working", HubTheme.Dim);
-            step.Margin = new Thickness(10, 0, 0, 0);
-            step.TextAlignment = TextAlignment.Right;
-            step.VerticalAlignment = VerticalAlignment.Center;
-            row.Children.Add(step);
+            row.Children.Add(new TextBlock { Text = session.Project + " · " + (session.Step ?? "Working"), FontSize = 11, Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
             section.Children.Add(row);
         }
-        if (usage.Active.Count > 3) section.Children.Add(Small($"and {usage.Active.Count - 3} more at work", HubTheme.Faint));
+        if (usage.Active.Count > 2) section.Children.Add(Note($"and {usage.Active.Count - 2} more at work"));
         return section;
     }
 
-    static TextBlock Small(string text, IBrush brush) => new() { Text = text, FontSize = 12, Foreground = brush, TextTrimming = TextTrimming.CharacterEllipsis };
+    static Control LimitBar(string label, double percent, DateTime? resets, DateTime nowUtc)
+    {
+        percent = Math.Clamp(percent, 0, 100);
+        var top = new DockPanel { LastChildFill = true };
+        if (resets is { } at)
+        {
+            var when = new TextBlock { Text = ResetText(at, nowUtc), FontSize = 10.5, Foreground = HubTheme.Faint, Margin = new Thickness(8, 0, 0, 0) };
+            DockPanel.SetDock(when, Dock.Right);
+            top.Children.Add(when);
+        }
+        top.Children.Add(new TextBlock { Text = label, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
+        var fill = new Border { CornerRadius = new CornerRadius(2), Background = UsageRing.ColorOf(percent), HorizontalAlignment = HorizontalAlignment.Left };
+        var bar = new Grid { Height = 4, Margin = new Thickness(0, 4, 0, 0) };
+        bar.Children.Add(new Border { CornerRadius = new CornerRadius(2), Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D)) });
+        bar.Children.Add(fill);
+        bar.SizeChanged += (_, e) => fill.Width = percent <= 0 ? 0 : Math.Max(4, e.NewSize.Width * percent / 100);
+        var used = new TextBlock { Text = percent.ToString("0", CultureInfo.InvariantCulture) + "% used", FontSize = 10.5, Foreground = HubTheme.Dim, Margin = new Thickness(0, 2, 0, 0) };
+        var stack = new StackPanel { Margin = new Thickness(0, 9, 0, 0) };
+        stack.Children.Add(top);
+        stack.Children.Add(bar);
+        stack.Children.Add(used);
+        return stack;
+    }
+
+    static TextBlock Note(string text) => new() { Text = text, FontSize = 10.5, Foreground = HubTheme.Faint, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
+    static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    /// <summary>Codenotch's reset wording: "Resets in 51 min", "Resets 18:00", "Resets Thu 09:00".</summary>
+    internal static string ResetText(DateTime utc, DateTime nowUtc)
+    {
+        var left = utc - nowUtc;
+        if (left <= TimeSpan.Zero) return "Resetting";
+        if (left < TimeSpan.FromHours(1)) return $"Resets in {Math.Max(1, (int)Math.Ceiling(left.TotalMinutes))} min";
+        var local = utc.ToLocalTime();
+        return local.Date == DateTime.Now.Date
+            ? "Resets " + local.ToString("HH:mm", CultureInfo.InvariantCulture)
+            : "Resets " + local.ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+    }
 
     internal static string LimitReset(DateTime utc)
         => utc.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.InvariantCulture);
