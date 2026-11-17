@@ -49,7 +49,10 @@ public sealed partial class NotchWindow
                 $"meter: {(_audio.MeterWorking ? "follows the sound" : "bounces")}",
                 $"battery: {(power.HasBattery ? $"{power.Percent} %{(power.OnAc ? ", plugged in" : "")}" : "none")}",
                 $"media: {(_info == null ? "nothing playing" : $"{_info.Title} ({_info.App})")}",
-                $"state: {_state}, shape {_shapeW} x {_shapeH}");
+                $"state: {_state}, shape {_shapeW} x {_shapeH}",
+                // Where the notch sits in the window: pictures from two systems only match when this does.
+                $"window: {Bounds.Width:0.#} x {Bounds.Height:0.#}, root at {_root.TranslatePoint(new Point(0, 0), this)}, island {_island.Bounds}",
+                $"corners: {Corners(folder)}");
             File.WriteAllText(Path.Combine(folder, "report.txt"), report + Environment.NewLine);
             Console.WriteLine(report);
         }
@@ -62,6 +65,28 @@ public sealed partial class NotchWindow
     }
 
     /// <summary>What differs between machines rather than systems (the time, the volume) is set alike before a picture.</summary>
+    /// <summary>The open picture's pixels just outside the notch, left and right, as A,R,G,B: should be see-through.</summary>
+    static string Corners(string folder)
+    {
+        try
+        {
+            using var picture = new Bitmap(Path.Combine(folder, "open.png"));
+            int stride = picture.PixelSize.Width * 4;
+            var pixels = new byte[stride * picture.PixelSize.Height];
+            var pin = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try { picture.CopyPixels(new PixelRect(picture.PixelSize), pin.AddrOfPinnedObject(), pixels.Length, stride); }
+            finally { pin.Free(); }
+            string At(int x, int y)
+            {
+                int o = y * stride + x * 4;
+                return $"({x},{y})={pixels[o + 3]},{pixels[o + 2]},{pixels[o + 1]},{pixels[o]}";
+            }
+            int h = picture.PixelSize.Height, w = picture.PixelSize.Width;
+            return string.Join(" ", At(5, h / 2), At(w - 6, h / 2), At(w / 2, h / 2), At(5, 2));
+        }
+        catch (Exception ex) { return ex.GetType().Name; }
+    }
+
     void FreezeForPicture()
     {
         _minute.Stop();
