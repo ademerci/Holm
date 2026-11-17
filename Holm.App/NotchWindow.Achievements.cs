@@ -56,15 +56,32 @@ public sealed partial class NotchWindow
 
     static IBrush ColorOf(Achievement achievement) => new SolidColorBrush(Color.FromUInt32(achievement.Argb)).ToImmutable();
 
+    IReadOnlyList<Achievement>? _unlockedWhileOpen;
+
+    /// <summary>The notch closed: an achievement unlocked while it was open pops out now.</summary>
+    void ShowAchievementsHeldBack()
+    {
+        if (_unlockedWhileOpen is not { } held || _hovered) return;
+        _unlockedWhileOpen = null;
+        OnUnlocked(held);
+    }
+
     void OnUnlocked(IReadOnlyList<Achievement> unlocked)
     {
         Diag.Log($"Achievement unlocked: {string.Join(", ", unlocked.Select(a => a.Id))}");
         _settingsWindow?.RefreshBadges();
         if (!_settings.AchievementPopups) return;
+        // Unlocked in the open notch (the first note, typed there): the card would close it under your hands. It
+        // waits until the notch closes. (The WPF app shows it at once and closes the notch.)
+        if (_hovered)
+        {
+            _unlockedWhileOpen = unlocked;
+            return;
+        }
         var first = unlocked[0];
         string title = unlocked.Count == 1 ? "Achievement unlocked" : $"{unlocked.Count} achievements unlocked";
         string subtitle = $"{first.Title} · {first.Description}";
-        if (_busy || _taskVisible || _sharing || _hiddenForFullscreen)
+        if (_busy || _taskVisible || _sharing || _installingUpdate || _hiddenForFullscreen)
         {
             ShowPeek(first.Glyph, title, first.Title, null, seconds: 5, glyphBrush: ColorOf(first));
             return;

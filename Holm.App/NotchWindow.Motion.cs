@@ -168,7 +168,11 @@ public sealed partial class NotchWindow
             _trimTimer.Stop();
             OpenFromAiRing(); // opened from a ring: straight to the AI page
         }
-        else _trimTimer.Start();
+        else
+        {
+            _trimTimer.Start();
+            if (_unlockedWhileOpen != null) Dispatcher.UIThread.Post(ShowAchievementsHeldBack, DispatcherPriority.Background);
+        }
         if (!expand)
         {
             SetClockView(false, animate: false);
