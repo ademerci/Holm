@@ -201,10 +201,16 @@ internal sealed class AppSettings
     /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
     public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
 
+    /// <summary>The Holm account was offered once, at the first start after it came (Settings › Account any time after).</summary>
+    public bool AccountOffered { get; set; }
+
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 
     /// <summary>Set while posing for screenshots, which change settings that must never reach your settings file.</summary>
     internal static bool ReadOnly;
+
+    /// <summary>The settings file was written: the Holm account syncs the change a little later.</summary>
+    public static event Action? Saved;
 
     public static AppSettings Load()
     {
@@ -220,7 +226,8 @@ internal sealed class AppSettings
             Directory.CreateDirectory(Diag.Folder);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
         }
-        catch { }
+        catch { return; }
+        Saved?.Invoke();
     }
 }
 

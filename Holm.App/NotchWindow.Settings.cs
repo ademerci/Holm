@@ -123,7 +123,11 @@ public sealed partial class NotchWindow
         _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
-            new[] { new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
+            new[]
+            {
+                new HubPage(AccountPage.Key, "\uE895", "Account", "Sync with your Holm account", BuildAccountPage),
+                new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage),
+            },
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);

@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// The Holm account (Holm.Core/Account). Each account reads and writes only its own documents:
+//   users/{uid}                 { vault: the data key, sealed with a key made from the password }
+//   users/{uid}/sync/{section}  { data: one section, sealed with the data key }
+// Everything is encrypted in Holm before it comes here; these rules keep accounts apart and the documents small.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function sealed(field, max) {
+      return request.resource.data.keys().hasOnly([field])
+        && request.resource.data[field] is string
+        && request.resource.data[field].matches('^v1\\.[A-Za-z0-9_-]+$')
+        && request.resource.data[field].size() <= max;
+    }
+
+    match /users/{uid} {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid) && sealed('vault', 200);
+
+      match /sync/{section} {
+        allow read, delete: if owner(uid)
+          && section in ['identity', 'friends', 'profile', 'settings', 'achievements'];
+        allow create, update: if owner(uid)
+          && section in ['identity', 'friends', 'profile', 'settings', 'achievements']
+          && sealed('data', 900000);
+      }
+    }
+
+    // Nothing else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -422,7 +422,7 @@ sealed class SettingsWindow : Window
     }
 
     /// <summary>A question over the window; each choice closes it and runs.</summary>
-    void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
+    internal void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
     {
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeight.SemiBold });
