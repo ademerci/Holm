@@ -134,7 +134,7 @@ public sealed partial class NotchWindow
         menu.Closed += (_, _) =>
         {
             _menuOpen = false;
-            if (_hovered && !_island.IsPointerOver && !_typing) SetExpanded(false);
+            if (_hovered && !_typing) { _collapseDelay.Stop(); _collapseDelay.Start(); } // it checks the pointer once it is known again
         };
         _island.ContextMenu = menu;
     }

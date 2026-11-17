@@ -29,6 +29,8 @@ public sealed partial class NotchWindow
     NotchButton _sleepBtn = null!;
 
     /// <summary>The right end of the tool row: the weather while music plays, and the moon.</summary>
+    long _sleepMenuClosedAt; // the WPF app's MenuToggle: a second click on the button closes its menu
+
     Control BuildToolRowRight()
     {
         _sleepTick.Tick += (_, _) => { _sleepTick.Stop(); OnSleepTick(); };
@@ -42,12 +44,15 @@ public sealed partial class NotchWindow
         // As with the notch's own menu: the notch stays open while it shows, and closes after if the mouse has gone.
         menu.Closed += (_, _) =>
         {
+            _sleepMenuClosedAt = Environment.TickCount64;
             _menuOpen = false;
-            if (_hovered && !_island.IsPointerOver && !_typing) SetExpanded(false);
+            if (_hovered && !_typing) { _collapseDelay.Stop(); _collapseDelay.Start(); } // it checks the pointer once it is known again
         };
         _sleepBtn.ContextMenu = menu;
         _sleepBtn.Click += () =>
         {
+            // A click on the button while its menu is open closes the menu (the press already did): don't open it again.
+            if (Environment.TickCount64 - _sleepMenuClosedAt < 400) return;
             // Opened from code, the menu raises no Opening: fill it first.
             _menuOpen = true;
             FillSleepItems(menu);
