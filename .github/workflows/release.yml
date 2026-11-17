@@ -60,6 +60,11 @@ jobs:
           New-Item -ItemType Directory -Force pkg | Out-Null
           Copy-Item LICENSE pkg/LICENSE
           if ("${{ matrix.rid }}" -eq "win-x64") {
+            # Holm 1.12's updater replaces Holm.exe only when the new file's version is exactly the release's (x.y.z.0).
+            $info = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path out/sc/Holm.App.exe).Path)
+            $file = '{0}.{1}.{2}.{3}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart
+            if ($file -ne "$env:VERSION.0") { throw "The exe's file version is $file, not $env:VERSION.0: the 1.12 updater would refuse it." }
+            Write-Host "File version $file, as the 1.12 updater expects"
             Copy-Item out/sc/Holm.App.exe assets/Holm.exe
             Copy-Item out/sc/Holm.App.exe pkg/Holm.exe
             Set-Content pkg/README.txt "Holm $env:VERSION for Windows x64`r`n`r`nRun Holm.exe. No .NET installation required.`r`nSee https://github.com/ademerci/Holm for details." -NoNewline
