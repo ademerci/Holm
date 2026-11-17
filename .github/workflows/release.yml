@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # starts the website build once the release is out
 
 jobs:
   release:
@@ -96,3 +97,10 @@ jobs:
         run: |
           gh release create "v${{ inputs.version }}" assets/* --target "${{ github.sha }}" --title "Holm ${{ inputs.version }}" \
             --notes-file "publish/release-${{ inputs.version }}-release-notes.md" --latest
+
+      # A release made with this workflow's token doesn't start the Website workflow's "release" trigger (GitHub
+      # starts no workflows for events of github.token), so the site is built and deployed here by hand.
+      - name: Update the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run website.yml --ref main -f deploy=true

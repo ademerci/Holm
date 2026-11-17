@@ -154,7 +154,7 @@ Every running Holm finds it within two hours: the updater asks `releases/latest`
    - `Holm.exe` (the Windows app),
    - `Holm-<version>-win-x64.zip` (only `Holm.exe`, `LICENSE`, `README.txt`: the updater refuses anything else, and an exe whose file version isn't `<version>.0`),
    - `Holm-<version>-linux-x64.tar.gz` (`Holm`, `LICENSE`, `README.txt`).
-4. Check the release page: the three files, the notes, marked *Latest*. The *Website* workflow rebuilds the site from the new release by itself.
+4. Check the release page: the three files, the notes, marked *Latest*. The Release workflow then starts the *Website* workflow (`gh workflow run website.yml -f deploy=true`; a release made with the workflow token doesn't trigger it by itself). Check that this run passed and its *deploy* job published the site; if not, start *Actions › Website › Run workflow* on `main` with *deploy* on.
 5. Never change, delete or re-upload a published release's files; a broken release is fixed by the next version.
 
 ### Dev prerelease
