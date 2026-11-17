@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.9 – 2026-11-17
+
+### Changed
+- **A calmer look.** The open notch stays black: Holm no longer washes the cover's colours over it, and the progress bar, volume and equalizer share one white ink. Tools are words in place of icons, top right, or in a row under the clock while music plays. Today's reminder and note sit as rows under a hairline, and Holm drops the greeting.
+- **A plain settings window.** Black panels with white as the only signal colour, a list between hairlines in place of cards and coloured icons, and square switches.
+- **Settings in plain words.** Holm rewrote every setting's description by the [stop-slop](https://github.com/hardikpandya/stop-slop) rules: you or Holm do something in each sentence, without filler. A reminder due today shows its time alone, "14:30" in place of "today at 14:30".
+
 ## 1.12.8 – 2026-11-17
 
 ### Changed
