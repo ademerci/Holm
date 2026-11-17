@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace WinNotch.Tests;
 
@@ -58,7 +58,7 @@ public class ReminderParserTests
     [Theory]
     [InlineData(20, "in 20 min")]
     [InlineData(59, "in 59 min")]
-    [InlineData(85, "14:30")]
+    [InlineData(85, "today at 14:30")]
     [InlineData(20 * 60, "tomorrow at 09:05")]
     [InlineData(3 * 24 * 60, "Fri at 13:05")]
     public void Says_when_in_short_words(int minutes, string expected)

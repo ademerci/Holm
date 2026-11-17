@@ -105,6 +105,8 @@ internal sealed class AppSettings
     public bool Weather { get; set; } = true;
     /// <summary>The open notch glows in the colours of the time of day and the weather; off, it stays plain black.</summary>
     public bool SkyColors { get; set; } = true;
+    /// <summary>The instrument look (black, white ink, small corners, tool words) in place of the classic one. Applies at the next start.</summary>
+    public bool InstrumentLook { get; set; }
     /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
     public bool AiUsage { get; set; } = true;
     /// <summary>Large clock view: show seconds next to the time.</summary>
