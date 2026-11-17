@@ -14,6 +14,17 @@ from PIL import Image, ImageChops
 NOTICEABLE = 24      # per channel, out of 255: below this the eye can't tell on a dark notch
 MAX_SHARE = 0.01     # more than 1 % of the pixels noticeably different counts as a different look
 
+def visible(image):
+    """
+    The picture as it shows: each colour times its opacity (laid on black), the opacity kept. A fully see-through
+    pixel can carry any colour in the file (Windows writes another one than Linux there); it isn't seen, so it
+    mustn't count.
+    """
+    on_black = Image.alpha_composite(Image.new("RGBA", image.size, (0, 0, 0, 255)), image)
+    r, g, b, _ = on_black.split()
+    return Image.merge("RGBA", (r, g, b, image.getchannel("A")))
+
+
 source, out = sys.argv[1], sys.argv[2]
 os.makedirs(out, exist_ok=True)
 systems = sorted(d[len("selftest-"):] for d in os.listdir(source) if d.startswith("selftest-"))
@@ -23,7 +34,7 @@ for picture in ("closed.png", "open.png"):
     for system in systems:
         path = os.path.join(source, "selftest-" + system, picture)
         if os.path.exists(path):
-            images[system] = Image.open(path).convert("RGBA")
+            images[system] = visible(Image.open(path).convert("RGBA"))
         else:
             print(f"{picture}: missing on {system}")
             failed = True
