@@ -38,7 +38,7 @@ public sealed partial class NotchWindow
                     s => s.Draggable, on => { FinishPositionDrag(); _settings.Draggable = on; Save(); }, "Reset Position", ResetNotchPosition),
                 Switch("Minimize when idle", "\uE921", "With nothing playing, Holm shrinks the notch to a thin line.", s => s.MiniIdle,
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
-                Switch("AI usage ring", "\uE9D9", "A small bubble beside the notch fills with how much of Claude Code's and Codex's limits you have used; hover it to see what their agents are working on. Read from their logs on this PC, never shared.",
+                Switch("AI usage rings", "\uE9D9", "A ring at each end of the notch shows how much of your Claude and Codex limits you have used. Hover a ring for each limit and the sessions at work.",
                     s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }),
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
                 new SettingsSwitch(OperatingSystem.IsWindows() ? "Start with Windows" : "Start at sign-in", "",
