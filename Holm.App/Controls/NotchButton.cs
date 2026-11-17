@@ -8,7 +8,7 @@ using Avalonia.Media;
 namespace Holm.App.Controls;
 
 /// <summary>
-/// The buttons in the notch, drawn without a template. The default is the WPF app's NotchButton style: round,
+/// The buttons in the notch, drawn without a template. The default is the WPF app's NotchButton style: small corners,
 /// transparent, a faint white disc under the mouse, a stronger one and a slightly smaller icon while pressed,
 /// dimmed when disabled. <see cref="Row"/> makes its RowButton (a whole row you can click) and <see cref="Pill"/>
 /// its PillButton (Accept / Decline / OK). Never takes focus.
@@ -18,11 +18,13 @@ public sealed class NotchButton : Border
     static IBrush White(byte alpha) => new SolidColorBrush(Color.FromArgb(alpha, 0xFF, 0xFF, 0xFF)).ToImmutable();
 
     static readonly IBrush Hover = White(0x1F), Pressed = White(0x33);
-    static readonly IBrush RowRest = White(0x14), RowHover = White(0x24);
-    public static readonly IBrush PillRest = White(0x2E);
+    // The instrument look: a row is a plain line under a hairline, a pill an outline; both stay black at rest.
+    static readonly IBrush RowHover = White(0x0D), RowPressed = White(0x1A), Hairline = White(0x26);
+    public static readonly IBrush PillRest = Brushes.Transparent;
+    static readonly IBrush PillEdge = White(0x4D);
 
     readonly ScaleTransform _pressedScale;
-    IBrush _rest = Brushes.Transparent, _hover = Hover;
+    IBrush _rest = Brushes.Transparent, _hover = Hover, _pressedFill = Pressed;
     /// <summary>A pill keeps its colour and only dims a little under the mouse.</summary>
     bool _pill;
     bool _over, _pressed;
@@ -33,7 +35,7 @@ public sealed class NotchButton : Border
     {
         _pressedScale = new ScaleTransform(pressedScale, pressedScale);
         Background = Brushes.Transparent;
-        CornerRadius = new CornerRadius(22);
+        CornerRadius = new CornerRadius(4);
         Focusable = false;
         content.HorizontalAlignment = HorizontalAlignment.Center;
         content.VerticalAlignment = VerticalAlignment.Center;
@@ -46,8 +48,9 @@ public sealed class NotchButton : Border
     {
         var row = new NotchButton(content, 0.98)
         {
-            _rest = RowRest, _hover = RowHover,
-            Background = RowRest, CornerRadius = new CornerRadius(14), Padding = new Thickness(10, 8, 12, 8),
+            _rest = Brushes.Transparent, _hover = RowHover, _pressedFill = RowPressed,
+            Background = Brushes.Transparent, BorderBrush = Hairline, BorderThickness = new Thickness(0, 1, 0, 0),
+            CornerRadius = new CornerRadius(0), Padding = new Thickness(2, 9, 4, 9),
         };
         content.HorizontalAlignment = HorizontalAlignment.Left;
         return row;
@@ -60,7 +63,8 @@ public sealed class NotchButton : Border
         return new NotchButton(label, 0.94)
         {
             _pill = true, _rest = background ?? PillRest,
-            Background = background ?? PillRest, CornerRadius = new CornerRadius(13), Height = 26, Padding = new Thickness(12, 0), MinWidth = 54,
+            Background = background ?? PillRest, BorderBrush = PillEdge, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3), Height = 26, Padding = new Thickness(12, 0), MinWidth = 54,
         };
     }
 
@@ -118,7 +122,7 @@ public sealed class NotchButton : Border
             Background = _rest;
             Opacity = _over ? 0.82 : 1;
         }
-        else Background = _pressed ? Pressed : _over ? _hover : _rest;
+        else Background = _pressed ? _pressedFill : _over ? _hover : _rest;
         if (Child != null) Child.RenderTransform = _pressed ? _pressedScale : null;
     }
 }

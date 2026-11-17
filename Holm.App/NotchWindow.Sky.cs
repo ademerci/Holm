@@ -16,7 +16,8 @@ namespace Holm.App;
 public sealed partial class NotchWindow
 {
     readonly SkyLayer _sky = new() { Opacity = 0, IsHitTestVisible = false, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
-    readonly TextBlock _greeting = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(1, -2, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Dim };
+    // The instrument look has no greeting; it stays for the sky's tint code but never shows.
+    readonly TextBlock _greeting = new() { IsVisible = false, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(1, -2, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Dim };
     SkyLook? _skyShown;
     bool _skyOn;
 

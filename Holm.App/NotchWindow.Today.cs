@@ -17,7 +17,6 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly IBrush NoteYellow = Brush("#FFFFD60A");
 
     readonly Grid _todayCards = new() { Margin = new Thickness(0, 14, 0, 0), ColumnDefinitions = new ColumnDefinitions("*,8,*") };
     readonly TextBlock _todayReminderTitle = CardTitle(), _todayReminderWhen = CardMore(), _todayNoteTitle = CardTitle(), _todayNoteMore = CardMore();
@@ -31,9 +30,9 @@ public sealed partial class NotchWindow
 
     void BuildToday()
     {
-        _todayReminder = Card(BellGlyph, TimerOrange, _todayReminderTitle, _todayReminderWhen);
+        _todayReminder = Card(BellGlyph, Dim, _todayReminderTitle, _todayReminderWhen);
         _todayReminder.Click += () => ToggleTool(Tool.Reminders);
-        _todayNote = Card("", NoteYellow, _todayNoteTitle, _todayNoteMore);
+        _todayNote = Card("", Dim, _todayNoteTitle, _todayNoteMore);
         _todayNote.Click += () => ToggleTool(Tool.Notes);
         _todayCards.Children.Add(_todayReminder);
         _todayCards.Children.Add(_todayNote);
