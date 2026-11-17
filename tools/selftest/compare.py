@@ -25,6 +25,12 @@ def visible(image):
     return Image.merge("RGBA", (r, g, b, image.getchannel("A")))
 
 
+def mean(image):
+    """The average of each channel, to tell in the log what a different spot holds."""
+    pixels = list(image.getdata())
+    return tuple(round(sum(p[c] for p in pixels) / len(pixels)) for c in range(4))
+
+
 source, out = sys.argv[1], sys.argv[2]
 os.makedirs(out, exist_ok=True)
 systems = sorted(d[len("selftest-"):] for d in os.listdir(source) if d.startswith("selftest-"))
@@ -57,7 +63,9 @@ for picture in ("closed.png", "open.png"):
                 key = (i % width // 40, i // width // 40)
                 cells[key] = cells.get(key, 0) + 1
         for (cx, cy), n in sorted(cells.items(), key=lambda kv: -kv[1])[:8]:
-            print(f"    {n:4} px in x {cx * 40}-{cx * 40 + 39}, y {cy * 40}-{cy * 40 + 39}")
+            box = (cx * 40, cy * 40, min(cx * 40 + 40, width), min(cy * 40 + 40, ia.size[1]))
+            print(f"    {n:4} px in x {cx * 40}-{cx * 40 + 39}, y {cy * 40}-{cy * 40 + 39}:"
+                  f" {a} {mean(ia.crop(box))} vs {b} {mean(ib.crop(box))} (mean R,G,B,A)")
         if share > MAX_SHARE:
             failed = True
         scaled = diff.convert("RGB").point(lambda v: min(255, v * 4))
