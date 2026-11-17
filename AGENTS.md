@@ -17,3 +17,7 @@
 - Periodically merge `main` into `codex/microsoft-store-msix`, including before each Store release. Resolve conflicts and verify that both the portable GitHub version and packaged Store version retain their intended behavior.
 - For Store releases, increment the MSIX package version, build and test the package, and complete the Store submission process. The Store manages updates for the packaged app; preserve the existing updater for the portable GitHub release.
 - Keep GitHub Windows x64 executable releases self-contained and single-file, named `Holm.exe`.
+
+## Shipping features
+
+- Follow `.claude/skills/holm-ship-feature/SKILL.md` for every feature or fix, and `.claude/skills/ponytail/SKILL.md` for keeping changes small.
