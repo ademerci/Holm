@@ -2,6 +2,7 @@ import {
   loadReleaseFeed,
   latestRelease,
   releaseAsset,
+  assetLabel,
   dateLabel,
   sizeLabel,
   releaseHtml,
@@ -178,10 +179,10 @@ function render(releases) {
   const assets = document.querySelector('[data-release-assets]');
   if (assets) {
     assets.replaceChildren();
-    for (const a of latest.assets.filter((a) => /^Holm-.*-win-x64\.zip$/.test(a.name))) {
+    for (const a of latest.assets.filter((a) => assetLabel(a.name))) {
       const anchor = document.createElement('a');
       anchor.href = a.browser_download_url;
-      anchor.textContent = `Windows x64 ZIP · ${sizeLabel(a.size)} ↓`;
+      anchor.textContent = `${assetLabel(a.name)} · ${sizeLabel(a.size)} ↓`;
       assets.append(anchor);
     }
   }
