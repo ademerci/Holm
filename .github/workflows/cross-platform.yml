@@ -3,10 +3,10 @@ name: Cross-platform
 
 on:
   push:
-    paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
+    paths: ["Holm.*/**", "Holm.slnx", "tools/selftest/**", ".github/workflows/cross-platform.yml"]
     branches: ["main", "dev"]
   pull_request:
-    paths: ["Holm.*/**", "Holm.slnx", ".github/workflows/cross-platform.yml"]
+    paths: ["Holm.*/**", "Holm.slnx", "tools/selftest/**", ".github/workflows/cross-platform.yml"]
   workflow_dispatch:
 
 concurrency:
