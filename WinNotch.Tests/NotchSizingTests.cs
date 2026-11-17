@@ -261,88 +261,118 @@ public class NotchSizingTests
     }
 
     [Fact]
-    public void TheAiBubbleSitsBesideTheClosedNotchAndFlattensBesideTheMiniPill()
+    public void AiRingsSitInsideTheClosedNotchAndWidenIt()
     {
         WithWindow(window =>
         {
-            var claude = new AiUsageSnapshot(AiTool.ClaudeCode, 62, "", DateTime.UtcNow.AddHours(2), 1_240_000,
-                new[] { new AiSession(AiTool.ClaudeCode, "holm", "Bash: Run the tests", DateTime.UtcNow) }) { BusiestTokens = 2_000_000 };
-            var codex = new AiUsageSnapshot(AiTool.Codex, 95, "", null, 0, Array.Empty<AiSession>()) { IsLimit = true, WeekPercent = 40 };
+            var now = DateTime.UtcNow;
+            var claude = new AiUsageSnapshot(AiTool.ClaudeCode, 73, "", now.AddMinutes(51), 0,
+                new[] { new AiSession(AiTool.ClaudeCode, "holm", "Bash: Run the tests", now) }) { IsLimit = true };
+            var codex = new AiUsageSnapshot(AiTool.Codex, 21, "", null, 0, Array.Empty<AiSession>()) { IsLimit = true };
             Invoke(window, "ApplyState", false);
+            double plain = window.Width > 0 ? GetField<double>(window, "_shapeW") : 0;
+
+            // Both tools: Claude left, Codex right, and the notch grows by both wings.
             window.ShowAiUsage(new[] { codex, claude });
+            Invoke(window, "ApplyState", false);
+            Assert.Equal((true, true), window.AiWingsShown);
+            Assert.Equal(plain + 2 * MainWindow.AiWing, GetField<double>(window, "_shapeW"));
 
-            // One bubble: the agent at work wins over the one further along.
-            Assert.True(window.AiDockShown);
-            Assert.Equal(AiTool.ClaudeCode, window.AiBubble!.Shown.Tool);
-            Assert.Equal((UsageBubble.Size, UsageBubble.Size), (window.AiBubble.Root.Width, window.AiBubble.Root.Height));
-            Assert.Equal(AiTool.Codex, MainWindow.Leading(new[] { claude with { Active = Array.Empty<AiSession>() }, codex })!.Tool);
-            Assert.Same(HubTheme.Red, UsageBubble.ColorOf(codex)); // nearly used up
+            // One tool sits on the right only.
+            window.ShowAiUsage(new[] { codex });
+            Invoke(window, "ApplyState", false);
+            Assert.Equal((false, true), window.AiWingsShown);
+            Assert.Equal(plain + MainWindow.AiWing, GetField<double>(window, "_shapeW"));
 
-            // Beside the minimized notch it is a capsule no taller than it, so the window needn't grow.
+            // Not beside the minimized pill, not in the open notch, and gone with nothing to show.
+            window.ShowAiUsage(new[] { codex, claude });
             Settings(window).MiniIdle = true;
             Invoke(window, "ApplyState", false);
-            Assert.True(window.AiDockShown);
-            Assert.Equal(UsageBubble.MiniHeight, window.AiBubble.Root.Height);
-            Assert.True(window.Height <= 10);
-
-            // The open notch takes the room; with nothing to show it's gone.
+            Assert.Equal((false, false), window.AiWingsShown);
+            Settings(window).MiniIdle = false;
             SetField(window, "_expanded", true);
             Invoke(window, "ApplyState", false);
-            Assert.False(window.AiDockShown);
+            Assert.Equal((false, false), window.AiWingsShown);
             SetField(window, "_expanded", false);
-            Invoke(window, "ApplyState", false);
-            Assert.True(window.AiDockShown);
             window.ShowAiUsage(Array.Empty<AiUsageSnapshot>());
-            Assert.False(window.AiDockShown);
+            Assert.Equal((false, false), window.AiWingsShown);
+            Assert.Equal(plain, GetField<double>(window, "_shapeW"));
 
-            // The card lays out with one agent and with both.
-            foreach (var usage in new[] { new[] { codex }, new[] { claude, codex } })
-            {
-                var card = MainWindow.BuildAiCard(usage);
-                card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Assert.InRange(card.DesiredSize.Height, 120, 460);
-            }
+            // Codenotch's colours: green, yellow from 50 %, red from 70 %.
+            Assert.Same(UsageRing.Ample, UsageRing.ColorOf(21));
+            Assert.Same(UsageRing.Watch, UsageRing.ColorOf(52));
+            Assert.Same(UsageRing.Critical, UsageRing.ColorOf(73));
         });
     }
 
     [Fact]
-    public void AiCardUsesReportedWindowsAndShowsStaleReadings()
+    public void AiPageShowsEveryWindowWithItsReset()
     {
         WithWindow(_ =>
         {
             var now = DateTime.UtcNow;
-            var weekly = new AiUsageSnapshot(AiTool.Codex, 31, "", now.AddDays(2), 0, Array.Empty<AiSession>())
+            var claude = new AiUsageSnapshot(AiTool.ClaudeCode, 73, "", now.AddMinutes(51), 0, Array.Empty<AiSession>())
             {
-                IsLimit = true, IsStale = true, ReportedAt = now.AddHours(-1),
-                Limits = new[] { new AiUsageLimit(31, 10080, now.AddDays(2)) },
+                IsLimit = true, Limits = new[]
+                {
+                    new AiUsageLimit(73, 300, now.AddMinutes(51)) { Label = "Current session" },
+                    new AiUsageLimit(7, 10080, now.AddDays(3)) { Label = "Weekly · all models" },
+                },
             };
+            var stale = new AiUsageSnapshot(AiTool.Codex, 31, "", now.AddDays(2), 0, Array.Empty<AiSession>())
+            {
+                IsLimit = true, IsStale = true, ReportedAt = now.AddHours(-1), Limits = new[] { new AiUsageLimit(31, 10080, now.AddDays(2)) },
+            };
+            var estimate = new AiUsageSnapshot(AiTool.ClaudeCode, 40, "Not signed in to Claude Code", now.AddHours(2), 800_000, Array.Empty<AiSession>());
             static IEnumerable<string> Texts(DependencyObject node)
             {
                 if (node is TextBlock text) yield return text.Text;
                 foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
                     foreach (var value in Texts(child)) yield return value;
             }
-            var texts = Texts(MainWindow.BuildAiCard(new[] { weekly })).ToArray();
-            Assert.Contains("of the weekly limit", texts);
-            Assert.DoesNotContain(texts, text => text.Contains("5-hour"));
-            Assert.Contains("Resets " + MainWindow.LimitReset(now.AddDays(2)), texts);
+            var texts = Texts(MainWindow.BuildAiPage(new[] { claude, stale }, now)).ToArray();
+            Assert.Contains("Current session", texts);
+            Assert.Contains("Weekly · all models", texts);
+            Assert.Contains("Resets in 51 min", texts);
+            Assert.Contains("73% used", texts);
+            Assert.Contains("Weekly limit", texts);
             Assert.Contains(texts, text => text.Contains("may be outdated"));
 
-            var both = weekly with { IsStale = false, Percent = 10, Limits = new[]
-            {
-                new AiUsageLimit(10, 300, now.AddHours(1)),
-                new AiUsageLimit(31, 10080, now.AddDays(2)),
-            } };
-            texts = Texts(MainWindow.BuildAiCard(new[] { both })).ToArray();
-            Assert.Contains("of the 5-hour limit", texts);
-            Assert.Contains("31 % of the weekly limit", texts);
-            Assert.DoesNotContain(texts, text => text.Contains("may be outdated"));
-            texts = Texts(MainWindow.BuildAiCard(new[] { weekly with
-            {
-                Percent = null, ResetsAt = null, Limits = Array.Empty<AiUsageLimit>(), IsStale = false,
-            } })).ToArray();
-            Assert.Contains("No limits reported yet", texts);
+            texts = Texts(MainWindow.BuildAiPage(new[] { estimate }, now)).ToArray();
+            Assert.Contains("Estimate · 5 hours", texts);
+            Assert.Contains("Not signed in to Claude Code", texts);
+
+            var page = MainWindow.BuildAiPage(new[] { claude, stale }, now);
+            page.Measure(new Size(420, double.PositiveInfinity));
+            Assert.InRange(page.DesiredSize.Height, 80, 260);
         });
+    }
+
+    [Fact]
+    public void ClaudeLimitsReadTheReplyWithoutTwins()
+    {
+        using var json = System.Text.Json.JsonDocument.Parse("""
+            {"limits":[{"kind":"session","percent":73,"resets_at":"2026-10-10T00:00:00Z"},
+                       {"kind":"weekly_all","percent":7,"resets_at":"2026-10-15T00:00:00Z"},
+                       {"kind":"weekly_opus","percent":12}],
+             "five_hour":{"utilization":73,"resets_at":"2026-10-10T00:00:00Z"},
+             "seven_day":{"utilization":7,"resets_at":"2026-10-15T00:00:00Z"}}
+            """);
+        var limits = ClaudeLimits.Parse(json.RootElement);
+        Assert.Equal(new[] { "Current session", "Weekly · all models" }, limits.Select(l => l.Name)); // no reset, not shown
+        Assert.Equal((73.0, 300), (limits[0].UsedPercent, limits[0].WindowMinutes.GetValueOrDefault()));
+
+        // A window that just rolled over is missing from limits: the named field fills it in.
+        using var rolled = System.Text.Json.JsonDocument.Parse("""{"limits":[],"five_hour":{"utilization":4,"resets_at":"2026-10-10T05:00:00Z"}}""");
+        Assert.Equal("Current session", Assert.Single(ClaudeLimits.Parse(rolled.RootElement)).Name);
+
+        // Live limits replace the log estimate; a problem without limits stays on the estimate.
+        var logs = new AiUsageSnapshot(AiTool.ClaudeCode, 40, "", null, 800_000, Array.Empty<AiSession>());
+        var live = MainWindow.WithLiveLimits(logs, limits, DateTime.UtcNow, false, null)!;
+        Assert.True(live.IsLimit);
+        Assert.Equal(73, live.Percent);
+        Assert.Equal(7, live.WeekPercent);
+        Assert.Equal("Offline", MainWindow.WithLiveLimits(logs, Array.Empty<AiUsageLimit>(), null, true, "Offline")!.Label);
     }
 
     [Fact]

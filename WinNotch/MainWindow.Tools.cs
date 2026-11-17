@@ -14,7 +14,7 @@ namespace WinNotch;
 /// </summary>
 public partial class MainWindow
 {
-    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer }
+    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai }
 
     static readonly Brush ToolLit = Frozen(Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF));
 
@@ -72,6 +72,7 @@ public partial class MainWindow
         (CalculatorPage, CalculatorToolBtn, Tool.Calculator),
         (ClipboardPage, ClipboardToolBtn, Tool.Clipboard),
         (MixerPage, MixerToolBtn, Tool.Mixer),
+        (AiPage, AiToolBtn, Tool.Ai),
     };
 
     /// <summary>Called when a page opens, so a tool can fill it in.</summary>
@@ -83,6 +84,7 @@ public partial class MainWindow
         else if (tool == Tool.Calculator) ShowCalculator();
         else if (tool == Tool.Clipboard) ShowClipboardPage();
         else if (tool == Tool.Mixer) ShowMixerPage();
+        else if (tool == Tool.Ai) FillAiPage();
     }
 
     /// <summary>Which tools are switched on; the bar hides when none is.</summary>
@@ -93,6 +95,8 @@ public partial class MainWindow
         CalculatorToolBtn.Visibility = _settings.Calculator ? Visibility.Visible : Visibility.Collapsed;
         ClipboardToolBtn.Visibility = _settings.ClipboardHistory ? Visibility.Visible : Visibility.Collapsed;
         MixerToolBtn.Visibility = _settings.AppVolume ? Visibility.Visible : Visibility.Collapsed;
+        AiToolBtn.Visibility = _settings.AiUsage && _aiUsage.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        AiToolBtn.Content ??= AiMarks.For(AiTool.ClaudeCode, 14, HubTheme.Dim);
         ColorPickerBtn.Visibility = _settings.ColorPicker ? Visibility.Visible : Visibility.Collapsed;
         bool any = ColorPickerBtn.Visibility == Visibility.Visible;
         foreach (var (_, button, which) in ToolPages())

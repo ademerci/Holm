@@ -219,6 +219,8 @@ Alongside the human contributors recorded in the commit history, we credit Claud
 
 Open source under the [MIT License](LICENSE).
 
+The AI usage rings and the Claude limit reading are ported from [Codenotch](https://github.com/vinzdg/codenotch) by Vinz (MIT License, © 2026 Vinz).
+
 
 ## Ideas for new features
 

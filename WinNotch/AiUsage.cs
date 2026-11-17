@@ -18,7 +18,10 @@ public enum AiTool { ClaudeCode, Codex }
 
 public sealed record AiUsageLimit(double UsedPercent, int? WindowMinutes, DateTime? ResetsAt)
 {
-    public string Name => WindowMinutes switch
+    /// <summary>The window's own name when the tool reports one (Claude: "Current session", "Weekly · Opus").</summary>
+    public string? Label { get; init; }
+
+    public string Name => Label ?? WindowMinutes switch
     {
         10080 => "weekly limit",
         1440 => "daily limit",
