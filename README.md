@@ -152,14 +152,14 @@ How it stays safe:
 
 ## Lightweight
 
-Native WPF on .NET 10, with event driven updates where Windows provides them. While the notch is open, it redraws the clock only when the minute changes and the volume controls only when their displayed values change. Bluetooth battery scans run in the background so device enumeration does not pause the notch; a second scan is skipped while one is still running.
+Avalonia on .NET 10 (since 1.13; up to 1.12 Holm was a WPF app), with event driven updates where the system provides them. While the notch is open, it redraws the clock only when the minute changes and the volume controls only when their displayed values change. Bluetooth battery scans run in the background so device enumeration does not pause the notch; a second scan is skipped while one is still running.
 
 | State | CPU | RAM (Task Manager) | Working set |
 | --- | --- | --- | --- |
 | Idle | ~0.02–0.03 % | ~20–35 MB | ~55–80 MB |
 | Music playing, equalizer animated | ~0.3–0.5 % | ~45–55 MB | ~95–120 MB |
 
-CPU and memory figures above were measured on an 8-thread laptop before the 1.5.8 redraw changes; they have not been remeasured for this release. Task Manager's *Memory* column is the private working set; the working set also counts the Windows libraries Holm shares with other apps. Holm hands its memory back to Windows 6 seconds after it starts, once more after its first update check, a few seconds after music stops and whenever the notch closes (then it's 1–5 MB for a moment), and grows back to these values as it touches things again – after music to about 18 MB (48 MB working set); what it has reserved stays flat, so nothing leaks. Turning off the equalizer animation brings playback down to idle levels.
+CPU and memory figures above were measured with the WPF app on an 8-thread laptop before the 1.5.8 redraw changes; they have not been remeasured for the Avalonia app. Task Manager's *Memory* column is the private working set; the working set also counts the Windows libraries Holm shares with other apps. Holm hands its memory back to Windows 6 seconds after it starts, once more after its first update check, a few seconds after music stops and whenever the notch closes (then it's 1–5 MB for a moment), and grows back to these values as it touches things again – after music to about 18 MB (48 MB working set); what it has reserved stays flat, so nothing leaks. Turning off the equalizer animation brings playback down to idle levels.
 
 **Messages** are event driven too. Windows only tells packaged (Store) apps when a notification arrives, so Holm watches the folder of Windows' notification database instead and looks only when it changes. Windows keeps the database open and often only reports a change once someone else opens the file, so Holm also compares a marker every 2 seconds that Windows rewrites with every change to the database – a fifth of a millisecond – and only reads when it moved; a new message shows up within 2–4 seconds. Asking the notification center for its notifications is the expensive part, so that only happens when a notification arrived, changed or went. **Downloads** work the same way: Holm is told when a file appears in Downloads and only measures sizes while a download is running.
 
@@ -179,29 +179,34 @@ Microsoft doesn't document reading notifications from an app that isn't installe
 
 ## Requirements
 
-Windows 10 (2004 or newer) or Windows 11, x64.
+Windows 10 (2004 or newer) or Windows 11, x64; or Linux x64 with X11 (under Wayland Holm runs through XWayland). On Linux, PulseAudio or PipeWire, BlueZ, NetworkManager and UPower are used where present, and `tesseract` for copying text from screenshots.
 
 ## Updating
 
 Open **Settings › Updates › Check for updates** to look for a new stable GitHub release. **Check automatically** is on by default. When a new version is available, **Update to … and restart** downloads and verifies it, then replaces the running app in the same location. Your settings, friends and shortcuts stay in place. Downloads and installation start only when you choose to update.
 
-Updates work with the published Windows x64 app in a folder your account can write to. Holm waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
+On Linux, **Update** opens the release page to download the new version. On Windows, updates work with the published x64 app in a folder your account can write to. Holm waits until file-sharing activities are finished before offering to restart, keeps a backup during replacement, and restores it if the new app cannot start. Development builds can check for releases but cannot replace themselves.
 
 ## Build
 
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
-dotnet publish (Get-ChildItem -Recurse -Filter '*.csproj' | Where-Object { $_.Name -notlike '*Tests.csproj' } | Select-Object -First 1).FullName -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+# Windows x64, one self-contained file (no .NET needed to run it)
+dotnet publish Holm.App/Holm.App.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -o publish
+# Linux x64
+dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -o publish
 ```
 
-Some source folder and protocol identifiers retain their original names so Holm can exchange files with earlier versions. This gives you `publish/Holm.exe`, which needs the .NET 10 Desktop Runtime. For a single exe that runs anywhere without installing .NET, use `--self-contained true -p:IncludeNativeLibrariesForSelfExtract=true` instead.
+This gives you `publish/Holm.App.exe` (Windows) or `publish/Holm.App` (Linux); releases name them `Holm.exe` and `Holm`. Some namespaces and protocol identifiers keep their original name (WinNotch) so Holm can exchange files with earlier versions. How the code is laid out: [AGENTS.md](AGENTS.md).
 
 ## Tests
 
 ```powershell
-dotnet test (Get-ChildItem -Recurse -Filter '*Tests.csproj' | Select-Object -First 1).FullName
+dotnet test Holm.Tests --filter "Category!=Local&Category!=Online&Category!=Manual"
 ```
+
+On Linux add `&FullyQualifiedName!~UpdateInstallerTests` to the filter (those replace a Windows `Holm.exe`).
 
 The suite covers recognising messengers (also in the browser), Windows notification badges, downloads, Beam codes and friend codes, sealed friend notes and request responses, encryption, transfer safety, network discovery, and end-to-end file transfers. Online tests need an internet connection; skip them with `--filter "Category!=Online"` or configure your own test servers. An optional end-to-end toast test leaves silent notifications (no pop-up) from Outlook, Teams and an unrelated app in the notification center, reads them back the way the notch does – only Outlook's may count – and removes them again – quit a running notch first. WhatsApp badge fallback and pop-outs are covered by the badge tests because some Windows installations will not accept synthetic WhatsApp notifications.
 

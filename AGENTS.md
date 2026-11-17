@@ -123,3 +123,12 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 - Preserve existing Git author configuration and add the AI assistant used as co-author when committing.
 - Preserve the runtime footprint MSBuild properties in `Holm.App/Holm.App.csproj`.
 - Every icon codepoint used in `Holm.App` must exist in `Holm.App/Assets/HolmIcons.ttf` (`tools/icon-font/icons.txt`).
+
+### Releases and branches (carried over from the WPF app's rules)
+
+- Develop general Holm features and fixes on `main`; keep Microsoft Store-specific packaging and release work on `codex/microsoft-store-msix`.
+- Periodically merge `main` into `codex/microsoft-store-msix`, including before each Store release. Resolve conflicts and verify that both the portable GitHub version and packaged Store version retain their intended behavior.
+- For Store releases, increment the MSIX package version, build and test the package, and complete the Store submission process. The Store manages updates for the packaged app; preserve the existing updater for the portable GitHub release.
+- Publish Windows x64 releases as self-contained, single-file builds so users do not need to install .NET, and always name the executable release asset `Holm.exe`, without version or platform suffixes.
+- Name test executables `Holm-<version>-test-build.<number>.exe`, with an incrementing build number and an explicit test label.
+- Two looks: the classic one is the default; *Settings › General › Instrument look* switches to the instrument look at the next start (`Look.Instrument`). A visual change must keep both.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.13.0 – unreleased
+
+### Added
+- **Holm for Linux.** The notch, music, volume and Bluetooth, messages and notifications, Beam, friends and chat, the tools, weather and the AI usage rings work on Linux too (PulseAudio or PipeWire, BlueZ, NetworkManager, UPower). Copying text from screenshots uses `tesseract` when it is installed. On Linux, *Update* opens the release page.
+
+### Changed
+- **New foundation.** Holm is built with Avalonia instead of WPF, one app for both systems. It reads the same settings file, friends key, chats and achievements as 1.12 and keeps the same autostart entry.
+
 ## 1.12.11 – 2026-11-17
 
 ### Changed
