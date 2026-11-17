@@ -14,6 +14,8 @@ class Program
     {
         // One Holm at a time, the same way on every system: the first one holds a lock file, a second start finds it
         // taken and quits. The lock goes with the process, also when it crashes.
+        // As in the WPF app: Holm --diag writes what it does to diag.log next to the settings.
+        WinNotch.Diag.Enabled = Array.IndexOf(args, "--diag") >= 0;
         using var instance = SingleInstance();
         if (instance == null) return;
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

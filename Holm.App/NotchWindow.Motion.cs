@@ -103,7 +103,7 @@ public sealed partial class NotchWindow
         _expandDelay.Tick += (_, _) =>
         {
             _expandDelay.Stop();
-            if (_island.IsPointerOver && !_taskVisible && !_sharing && !_picking) SetExpanded(true);
+            if (_island.IsPointerOver && !_stayClosed && !_taskVisible && !_sharing && !_picking) SetExpanded(true);
         };
         _collapseDelay.Tick += (_, _) =>
         {
@@ -113,11 +113,13 @@ public sealed partial class NotchWindow
             if (_menuOpen || KeepOpenForTyping || _volSlider.IsDragging || _mixerDragging) { _collapseDelay.Start(); return; }
             if (!_island.IsPointerOver) SetExpanded(false);
         };
-        _island.PointerEntered += (_, _) =>
+        _island.PointerEntered += (_, e) =>
         {
             if (_positionHeld) return;
             _collapseDelay.Stop();
-            if (_hovered) return;
+            // An enter without the pointer having moved isn't one: see CloseFromInside.
+            if (_stayClosed && Point.Distance(e.GetPosition(this), _closedAt) > 3) _stayClosed = false;
+            if (_hovered || _stayClosed) return;
             _expandDelay.Start();
             if (!_taskVisible && !_sharing && !_picking) SetHoverBoost(true);
         };
@@ -128,13 +130,31 @@ public sealed partial class NotchWindow
             SetHoverBoost(false);
             if (_hovered && !PinnedClockOpen) _collapseDelay.Start();
         };
+        AddHandler(PointerMovedEvent, (_, e) => _lastPointer = e.GetPosition(this), Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
         {
             if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left || _hovered || _taskVisible || _sharing || _picking) return;
             _expandDelay.Stop();
+            _stayClosed = false;
             SetExpanded(true);
         };
+    }
+
+    /// <summary>
+    /// Closed on purpose from inside the notch (it opened a window): it doesn't open again under the pointer that hasn't
+    /// moved, only once the pointer moves over it again, or with a click. Windows doesn't say the mouse entered when it
+    /// didn't move; X11 does when another window takes the focus, and the closing notch's squash moves its lower edge
+    /// out from under the pointer and back.
+    /// </summary>
+    bool _stayClosed;
+    Point _closedAt, _lastPointer;
+
+    void CloseFromInside()
+    {
+        _stayClosed = _island.IsPointerOver;
+        _closedAt = _lastPointer;
+        SetExpanded(false);
     }
 
     void SetExpanded(bool expand)

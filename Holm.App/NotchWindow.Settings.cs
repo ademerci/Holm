@@ -40,13 +40,14 @@ public sealed partial class NotchWindow
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
                 Switch("AI usage ring", "\uE9D9", "A small bubble beside the notch fills with how much of Claude Code's and Codex's limits you have used; hover it to see what their agents are working on. Read from their logs on this PC, never shared.",
                     s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }),
+                // Not a setting of the file: the system's own sign-in list, so its default is "off".
+                new SettingsSwitch(OperatingSystem.IsWindows() ? "Start with Windows" : "Start at sign-in", "",
+                    OperatingSystem.IsWindows() ? "Holm starts when you sign in to Windows." : "Holm starts when you sign in.", () => _autostart.IsEnabled,
+                    on => _autostart.Set(on), false),
                 Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
                     s => s.HotKey, SetHotKey),
                 Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
                     s => s.HideOverBrowsers, on => { _settings.HideOverBrowsers = on; Save(); WatchFullscreen(); }),
-                // Not a setting of the file: the system's own sign-in list, so its default is "off".
-                new SettingsSwitch("Start at sign-in", "", "Holm starts when you sign in.", () => _autostart.IsEnabled,
-                    on => _autostart.Set(on), false),
             }),
             new("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new[]
             {
@@ -72,6 +73,17 @@ public sealed partial class NotchWindow
                     s => s.Focumon, SetFocumon),
             }),
             new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", PopoutSwitches()),
+            new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
+            {
+                Switch("Calls", "\uE717", "Shows a call with its time and a mute button.", s => s.Calls, SetCalls),
+                Switch("Pause music during calls", "\uE769", "Music pauses when a call starts and plays on after.", s => s.PauseForCalls, SetPauseForCalls),
+                Switch("Microphone and camera dot", "\uE720", "A dot beside the notch while an app uses the microphone or camera.", s => s.Privacy, SetPrivacy),
+                Switch("Dictation with Handy", "\uE720", "Dictate with Handy, free and offline: the notch shows when it listens" + (OperatingSystem.IsWindows() ? ", and Handy's own overlay stays out of sight" : "") + ". Holm finds Handy or offers to install it.",
+                    s => s.Dictation, SetDictation),
+                Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
+                Switch("Clear copied passwords after 30 s", "\uE8D7", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read.",
+                    s => s.ClearPasswords, SetClearPasswords),
+            }),
             new("beam", "Beam", "\uE724", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new[]
             {
                 Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
@@ -87,17 +99,6 @@ public sealed partial class NotchWindow
                 Switch("Achievement pop-outs", "\uE734", "A trophy pops out of the notch when you unlock an achievement.", s => s.AchievementPopups, on => { _settings.AchievementPopups = on; Save(); }),
             }),
             new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", WeatherSwitches()),
-            new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
-            {
-                Switch("Calls", "\uE717", "Shows a call with its time and a mute button.", s => s.Calls, SetCalls),
-                Switch("Pause music during calls", "\uE769", "Music pauses when a call starts and plays on after.", s => s.PauseForCalls, SetPauseForCalls),
-                Switch("Microphone and camera dot", "\uE720", "A dot beside the notch while an app uses the microphone or camera.", s => s.Privacy, SetPrivacy),
-                Switch("Dictation with Handy", "\uE720", "Dictate with Handy, free and offline: the notch shows when it listens" + (OperatingSystem.IsWindows() ? ", and Handy's own overlay stays out of sight" : "") + ". Holm finds Handy or offers to install it.",
-                    s => s.Dictation, SetDictation),
-                Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
-                Switch("Clear copied passwords after 30 s", "\uE8D7", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read.",
-                    s => s.ClearPasswords, SetClearPasswords),
-            }),
         };
         return groups;
     }
@@ -108,7 +109,7 @@ public sealed partial class NotchWindow
     void ShowHub(string page)
     {
         // The notch closes first, so it can't hide the window.
-        SetExpanded(false);
+        CloseFromInside();
         if (_settingsWindow != null)
         {
             _settingsWindow.Navigate(page);

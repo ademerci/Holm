@@ -102,7 +102,7 @@ public sealed partial class NotchWindow
         ToolTip.SetTip(_chatsToolBtn, "Chats");
         _chatsToolBtn.Click += () =>
         {
-            SetExpanded(false);
+            CloseFromInside();
             Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         };
         _toolBar.Children.Add(_chatsToolBtn);
