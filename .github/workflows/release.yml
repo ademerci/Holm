@@ -89,5 +89,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ inputs.version }}" assets/* --target "${{ github.sha }}" --title "Holm ${{ inputs.version }}" `
+          gh release create "v${{ inputs.version }}" assets/* --target "${{ github.sha }}" --title "Holm ${{ inputs.version }}" \
             --notes-file "publish/release-${{ inputs.version }}-release-notes.md" --latest

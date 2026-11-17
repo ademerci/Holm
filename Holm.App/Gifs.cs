@@ -164,12 +164,17 @@ internal static class GifDecoder
 
             int stride = width * 4;
             var canvas = new byte[stride * height];
-            byte[]? saved = null;
             var frames = new List<Bitmap>();
             var delays = new List<TimeSpan>();
             var pending = TimeSpan.Zero;
             var imgInfo = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
-            (SKRectI Rect, SKCodecAnimationDisposalMethod Disposal) previous = (default, SKCodecAnimationDisposalMethod.Keep);
+            // Skia puts each frame together over the one it says it builds on (its RequiredFrame), and does what the
+            // frame before asked for once it was shown. That is usually the frame just before; after a "restore previous"
+            // frame it is an earlier one, which is kept here until then.
+            var needed = new HashSet<int>();
+            for (int i = 1; i < count && i < frameInfos.Length; i++)
+                if (frameInfos[i].RequiredFrame >= 0 && frameInfos[i].RequiredFrame != i - 1) needed.Add(frameInfos[i].RequiredFrame);
+            var kept = new Dictionary<int, byte[]>();
 
             var handle = GCHandle.Alloc(canvas, GCHandleType.Pinned);
             try
@@ -178,27 +183,25 @@ internal static class GifDecoder
                 for (int i = 0; i < count; i++)
                 {
                     var fi = i < frameInfos.Length ? frameInfos[i] : default;
-                    var disposal = fi.DisposalMethod;
-                    var delay = DelayMs(fi.Duration);
-
-                    if (previous.Disposal == SKCodecAnimationDisposalMethod.RestoreBackgroundColor)
-                        Clear(canvas, stride, width, height, previous.Rect);
-                    else if (previous.Disposal == SKCodecAnimationDisposalMethod.RestorePrevious && saved != null)
-                        Buffer.BlockCopy(saved, 0, canvas, 0, canvas.Length);
-                    if (disposal == SKCodecAnimationDisposalMethod.RestorePrevious)
+                    int required = i < frameInfos.Length ? fi.RequiredFrame : -1;
+                    SKCodecOptions options;
+                    if (i == 0 || required < 0)
                     {
-                        saved ??= new byte[canvas.Length];
-                        Buffer.BlockCopy(canvas, 0, saved, 0, canvas.Length);
+                        Array.Clear(canvas);
+                        options = new SKCodecOptions(i);
                     }
-
-                    var options = i == 0 || fi.RequiredFrame < 0
-                        ? new SKCodecOptions(i)
-                        : new SKCodecOptions(i, i - 1);
+                    else if (required == i - 1) options = new SKCodecOptions(i, i - 1);
+                    else
+                    {
+                        if (!kept.TryGetValue(required, out var before)) break;
+                        Buffer.BlockCopy(before, 0, canvas, 0, canvas.Length);
+                        options = new SKCodecOptions(i, required);
+                    }
                     var res = codec.GetPixels(imgInfo, canvasPtr, options);
                     if (res is not (SKCodecResult.Success or SKCodecResult.IncompleteInput)) break;
+                    if (needed.Contains(i)) kept[i] = (byte[])canvas.Clone();
 
-                    previous = (fi.FrameRect, disposal);
-                    pending += delay;
+                    pending += DelayMs(fi.Duration);
                     if (i % step != 0 && i != count - 1) continue;
                     frames.Add(Freeze(canvas, width, height, outW, outH));
                     delays.Add(pending);
@@ -216,14 +219,6 @@ internal static class GifDecoder
             Diag.Log("GIF unreadable: " + ex.GetType().Name + ": " + ex.Message);
             return null;
         }
-    }
-
-    static void Clear(byte[] canvas, int stride, int width, int height, SKRectI rect)
-    {
-        int x0 = Math.Max(0, rect.Left), x1 = Math.Min(width, rect.Right);
-        if (x1 <= x0) return;
-        for (int y = Math.Max(0, rect.Top); y < Math.Min(height, rect.Bottom); y++)
-            Array.Clear(canvas, y * stride + x0 * 4, (x1 - x0) * 4);
     }
 
     static WriteableBitmap Freeze(byte[] canvas, int width, int height, int outW, int outH)
@@ -437,7 +432,9 @@ internal static class GifPlayer
         int index = 0;
         var timer = new DispatcherTimer(DispatcherPriority.Render);
         Window? window = TopLevel.GetTopLevel(image) as Window;
-        bool attached = window != null || image.Parent != null;
+        // On screen only once it's in a window: a bubble rebuilt while its GIF was loading still has a parent but is
+        // never shown, and a clock started for it would tick forever.
+        bool attached = window != null;
 
         void Update()
         {

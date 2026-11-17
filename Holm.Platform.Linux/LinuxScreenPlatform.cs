@@ -68,7 +68,12 @@ public sealed class LinuxScreenPlatform : IScreenPlatform
             var copy = proc.StandardOutput.BaseStream.CopyToAsync(ms);
             _ = proc.StandardError.ReadToEndAsync();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await Task.WhenAll(copy, proc.WaitForExitAsync(cts.Token)).ConfigureAwait(false);
+            try { await Task.WhenAll(copy, proc.WaitForExitAsync(cts.Token)).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                try { proc.Kill(); } catch (InvalidOperationException) { } // a grim that hangs mustn't stay behind
+                return null;
+            }
             if (proc.ExitCode != 0 || ms.Length == 0) return null;
             return DecodeImage(ms.ToArray(), 0, 0, width, height, allowScaledWhole: true);
         }
@@ -169,7 +174,12 @@ public sealed class LinuxScreenPlatform : IScreenPlatform
             _ = proc.StandardOutput.ReadToEndAsync();
             _ = proc.StandardError.ReadToEndAsync();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-            await proc.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+            try { await proc.WaitForExitAsync(cts.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                try { proc.Kill(); } catch (InvalidOperationException) { } // one that hangs mustn't stay behind
+                return null;
+            }
             if (proc.ExitCode != 0 || !File.Exists(path)) return null;
             byte[] bytes = await File.ReadAllBytesAsync(path, cts.Token).ConfigureAwait(false);
             return DecodeImage(bytes, x, y, width, height, allowScaledWhole: true);
