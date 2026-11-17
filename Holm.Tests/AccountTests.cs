@@ -43,10 +43,15 @@ public class AccountVaultTests
         Assert.ThrowsAny<CryptographicException>(() => AccountVault.OpenSection(key, "uid-1", "settings", sealedText));
         Assert.ThrowsAny<CryptographicException>(() => AccountVault.OpenSection(key, "uid-2", "profile", sealedText));
         Assert.ThrowsAny<CryptographicException>(() => AccountVault.OpenSection(AccountVault.NewDataKey(), "uid-1", "profile", sealedText));
-        // A changed byte is noticed.
-        char last = sealedText[^1];
-        string changed = sealedText[..^1] + (last == 'A' ? 'B' : 'A');
-        Assert.ThrowsAny<CryptographicException>(() => AccountVault.OpenSection(key, "uid-1", "profile", changed));
+        // Every changed byte is noticed: in the nonce, the tag and the data. (Changing the last base64 character
+        // could touch only its padding bits and leave the bytes as they were.)
+        byte[] bytes = FriendIdentity.FromBase64Url(sealedText["v1.".Length..]);
+        foreach (int at in new[] { 0, 12, 28, bytes.Length - 1 })
+        {
+            var changed = (byte[])bytes.Clone();
+            changed[at] ^= 0x01;
+            Assert.ThrowsAny<CryptographicException>(() => AccountVault.OpenSection(key, "uid-1", "profile", "v1." + FriendIdentity.Base64Url(changed)));
+        }
     }
 }
 
