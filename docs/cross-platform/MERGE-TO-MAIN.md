@@ -1,5 +1,7 @@
 # Merging dev into main (Holm 1.13.0)
 
+**Done on 2026-11-17:** `dev` was merged into `main` (old `main` in `backup/main-1.12.11`) and `main` into the Store branch (old one in `backup/store-1.12.7`). How releases work now: `AGENTS.md`, *Branches* to *Store release*.
+
 `dev` holds every commit of `main` (up to 1.12.11) plus the cross-platform app, so merging it into `main` is a
 fast-forward without conflicts. After it, `main` builds the Avalonia app (`Holm.App`) for Windows and Linux and the
 WPF app (`WinNotch/`) is gone. Every Windows user then gets the new app through the 1.12 updater.
