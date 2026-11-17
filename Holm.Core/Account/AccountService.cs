@@ -208,11 +208,9 @@ internal sealed class AccountService : IDisposable
     public async Task SyncAsync(CancellationToken ct)
     {
         if (!SignedIn || !Available || _disposed) return;
-        if (!await _gate.WaitAsync(0, ct).ConfigureAwait(false))
-        {
-            _soon.Change(Debounce, Timeout.InfiniteTimeSpan); // one is running: go again after it, for the changes it may miss
-            return;
-        }
+        // One sync at a time; a second waits for the first and then catches what it missed.
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        if (!SignedIn || _disposed) { _gate.Release(); return; }
         try
         {
             await _ui(() => { Syncing = true; Changed?.Invoke(); }).ConfigureAwait(false);
