@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.8 – 2026-11-17
+
+### Changed
+- **AI usage, the Codenotch way.** The closed notch now carries a ring at each end – Claude on the left, Codex on the right – that fills and turns from green to yellow to red as a limit runs out, with a thin arc circling while an agent works. Hover or click a ring to open the notch on the new *AI usage* page: every limit with its reset time ("Resets in 51 min") and the sessions at work. Ported from [Codenotch](https://github.com/vinzdg/codenotch) by Vinz (MIT).
+- **Claude's real limits.** Claude's percentages now come from Anthropic, the same numbers `/usage` shows, using the sign-in Claude Code already keeps on your PC. Holm only reads it and sends it nowhere but Anthropic, asks at most every five minutes, and never sends an expired sign-in. Without one, it falls back to the estimate from the logs and says so.
+
 ## 1.12.7 – 2026-11-16
 
 ### Added
