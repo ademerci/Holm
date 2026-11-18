@@ -211,6 +211,7 @@ public sealed partial class NotchWindow
         var accent = new Border { Width = 18, Height = 4, CornerRadius = new CornerRadius(2), Background = Look.Brush(design.Accent), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 5, 0, 0) };
         words.Children.Add(accent);
         var face = new Grid();
+        if (design.Id == DotMatrix.DesignId) face.Children.Add(new Avalonia.Controls.Shapes.Rectangle { Fill = DotMatrix.Grid(design.Ink, 0x30, 5, 1.2), IsHitTestVisible = false });
         face.Children.Add(notch);
         face.Children.Add(words);
         var tile = new Border

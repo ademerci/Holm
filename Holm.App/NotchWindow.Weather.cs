@@ -39,7 +39,7 @@ public sealed partial class NotchWindow
 
     readonly StackPanel _weatherLine = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 2, 0, 0), Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), IsVisible = false };
     readonly Border _weatherIconHost = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _weatherTemp = new() { FontFamily = DisplayFont, FontSize = 26, FontWeight = FontWeight.Light, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _weatherTemp = new Holm.App.Controls.DotTextBlock { FontFamily = DisplayFont, FontSize = 26, FontWeight = FontWeight.Light, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _weatherText = new() { FontSize = 11, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 230, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
     readonly TextBlock _rainText = new() { FontSize = 11, Foreground = Look.Pick(Dim, Brush("#FF64D2FF")), HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 230, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
     readonly TextBlock _weatherAdd = new() { Text = "+ Weather", FontSize = 11, Foreground = Faint, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 6, 0, 0), Cursor = new Cursor(StandardCursorType.Hand), IsVisible = false };
