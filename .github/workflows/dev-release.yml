@@ -76,6 +76,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag=$(tr -d '[:space:]' < docs/cross-platform/dev-release-version.txt)
+          version="${tag%.*}"; build="${tag##*.}"
+          # Every build is for Windows and Linux (AGENTS.md): without both files nothing is published.
+          for f in "Holm-$version-test-build.$build.exe" "Holm-$version-test-build.$build-linux-x64"; do
+            test -s "release/$f" || { echo "::error::release/$f is missing: a dev release must hold the Windows and the Linux build"; exit 1; }
+          done
           if gh release view "dev-v$tag" >/dev/null 2>&1; then echo "dev-v$tag exists already"; exit 1; fi
           gh release create "dev-v$tag" release/* --prerelease --latest=false --target "$GITHUB_SHA" \
             --title "Holm $tag (alpha, for testing)" --notes-file docs/cross-platform/DEV-RELEASE.md

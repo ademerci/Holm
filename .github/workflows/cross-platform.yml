@@ -20,7 +20,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # Both systems must pass: the app is meant to look and work the same on each.
+    # Both systems must pass: the app is meant to look and work the same on each. Never drop one of the two from
+    # this matrix, nor from release.yml and dev-release.yml (AGENTS.md: every build is for Windows and Linux).
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
