@@ -89,6 +89,7 @@ public sealed partial class NotchWindow : Window
         // saves, on every system (it was read-only on Windows while the port ran next to the WPF app).
         AppSettings.ReadOnly = SelfTestFolder != null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
 
         Title = "Holm";
         Width = BaseWidth;
@@ -421,6 +422,20 @@ public sealed partial class NotchWindow : Window
         double needed = NeededWindowHeight(targetH, targetScale);
         if (needed > Height) Height = needed;
         UpdateHitRegion(targetW, targetH, targetScale);
+        _shapeAnimating = true;
+        StartMotion();
+    }
+
+    /// <summary>Jelly's poke: the notch squashes wide and flat and wobbles back (springs pick up jelly's damping).</summary>
+    void Jiggle()
+    {
+        if (!_settings.Animations || _shapeW <= 0) return;
+        double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
+        if (needed > Height) Height = needed;
+        _wSpring.Kick(260, 0.30, 0.58);
+        _hSpring.Kick(-180, 0.32, 0.58);
+        _scaleSpring.Kick(0.35, 0.30, 0.58);
+        UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
         _shapeAnimating = true;
         StartMotion();
     }

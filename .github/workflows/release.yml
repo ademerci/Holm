@@ -65,6 +65,7 @@ jobs:
             $info = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path out/sc/Holm.App.exe).Path)
             $file = '{0}.{1}.{2}.{3}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart
             if ($file -ne "$env:VERSION.0") { throw "The exe's file version is $file, not $env:VERSION.0: the 1.12 updater would refuse it." }
+            if ($info.ProductName -ne "Holm") { throw "The exe's product name is '$($info.ProductName)', not 'Holm': every updater would refuse it." }
             Write-Host "File version $file, as the 1.12 updater expects"
             Copy-Item out/sc/Holm.App.exe assets/Holm.exe
             Copy-Item out/sc/Holm.App.exe pkg/Holm.exe
