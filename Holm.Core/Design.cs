@@ -86,7 +86,7 @@ internal static class Designs
 
     public static readonly IReadOnlyList<Design> BuiltIn = new Design[]
     {
-        new() { Id = "classic", Name = "Classic", Description = "Holm as it always was: black, round, the cover's colours", Toggle = 0xFF30D158 },
+        new() { Id = "classic", Name = "Classic", Description = "Holm as it always was: black, round, the cover's colours" },
         new()
         {
             Id = "instrument", Name = "Instrument", Description = "Black with white ink, small corners, tools as words", Instrument = true, Wash = false,

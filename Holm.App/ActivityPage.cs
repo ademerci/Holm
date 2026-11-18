@@ -145,7 +145,7 @@ internal sealed class ActivityPage : HubView
         tile.Margin = new Thickness(0, 0, 12, 0);
         strip.Children.Add(tile);
         var what = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        what.Children.Add(new TextBlock { Text = Verb(activity.Kind).ToUpperInvariant(), FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(color) });
+        what.Children.Add(new TextBlock { Text = Holm.App.Look.Heading(Verb(activity.Kind)), FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(color) });
         what.Children.Add(new TextBlock { Text = activity.Title, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
         string detail = string.Join(" · ", new[] { activity.Detail, For(activity.Since) }.Where(s => !string.IsNullOrEmpty(s)));
         if (detail.Length > 0) what.Children.Add(new TextBlock { Text = detail, FontSize = 12, Foreground = HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });

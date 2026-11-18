@@ -36,7 +36,7 @@ public class DesignTests
         var d = Designs.Current(new AppSettings { Design = "classic", AccentColor = "#FF9F0A" });
         Assert.Equal(0xFFFF9F0Au, d.Accent);
         Assert.Equal(0xFFFF9F0Au, d.ToggleColor); // switches follow the chosen accent
-        Assert.Equal(0xFF30D158u, Designs.Find("classic").ToggleColor); // Classic's own switches stay green
+        Assert.Equal(Designs.Find("classic").Accent, Designs.Find("classic").ToggleColor); // one accent: switches take it
         Assert.Equal(0xFF0A84FFu, Designs.Current(new AppSettings { AccentColor = "nonsense" }).Accent);
     }
 

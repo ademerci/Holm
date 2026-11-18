@@ -38,7 +38,7 @@ internal sealed class AddFriendPage : HubView
         mine.Children.Add(Heading("", HubTheme.Accent, "Your invite code"));
         _code = new TextBlock
         {
-            Text = "Making your code…", FontSize = 36, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 18, 0, 6),
+            Text = "Making your code…", FontSize = 32, FontWeight = FontWeight.Normal, Margin = new Thickness(0, 20, 0, 8),
             FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"), Foreground = Look.Ink,
         };
         // The code shrinks to fit the card rather than run past its edge.
@@ -129,13 +129,13 @@ internal sealed class AddFriendPage : HubView
 
     static Border Card(Control content) => new()
     {
-        Background = HubTheme.Card, CornerRadius = new CornerRadius(16), Padding = new Thickness(26, 24, 26, 24), Child = content,
+        Background = HubTheme.Card, CornerRadius = new CornerRadius(16), Padding = new Thickness(24), Child = content,
     };
 
     static Control Heading(string glyph, IBrush color, string text)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(10), Background = color, Child = HubTheme.Glyph(glyph, 16, ReferenceEquals(color, HubTheme.Accent) ? HubTheme.OnAccent : null) });
+        row.Children.Add(new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(8), Background = HubTheme.CardStrong, Child = HubTheme.Glyph(glyph, 16, HubTheme.Dim) });
         row.Children.Add(new TextBlock { Text = text, FontSize = 17, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) });
         return row;
     }

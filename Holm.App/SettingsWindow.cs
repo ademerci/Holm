@@ -135,7 +135,7 @@ sealed class SettingsWindow : Window
                 _titles[page.Key] = (page.Title, page.Subtitle);
                 nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
             }
-            nav.Children.Add(new Border { Height = 14 });
+            nav.Children.Add(new Border { Height = 16 });
         }
         if (_tools.Count > 0)
         {
@@ -145,7 +145,7 @@ sealed class SettingsWindow : Window
                 _titles[page.Key] = (page.Title, page.Subtitle);
                 nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
             }
-            nav.Children.Add(new Border { Height = 14 });
+            nav.Children.Add(new Border { Height = 16 });
         }
         nav.Children.Add(Caption("Settings"));
         if (profile != null)
@@ -376,8 +376,8 @@ sealed class SettingsWindow : Window
         {
             var tile = new Border
             {
-                Width = 30, Height = 30, CornerRadius = new CornerRadius(HubTheme.Round(30 * 0.27)), Background = new SolidColorBrush(color).ToImmutable(),
-                Child = Glyph(setting.Glyph, 30 * 0.47, Brushes.White), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
+                Width = 32, Height = 32, CornerRadius = new CornerRadius(HubTheme.Round(8)), Background = HubTheme.CardStrong,
+                Child = Glyph(setting.Glyph, 16, Dim), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
             };
             content.Children.Add(tile);
         }
@@ -475,7 +475,7 @@ sealed class SettingsWindow : Window
 
     static TextBlock Caption(string title) => new()
     {
-        Text = title.ToUpperInvariant(), Foreground = Dim, FontSize = 11, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 0, 0, 6),
+        Text = Look.Heading(title), Foreground = Dim, FontSize = 12, FontWeight = FontWeight.Medium, Margin = new Thickness(4, 0, 0, 8),
     };
 
     static ScrollViewer Scroller(Control content) => new()

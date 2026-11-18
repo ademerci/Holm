@@ -44,9 +44,9 @@ internal static class HubTheme
     public static Border IconTile(string glyph, Color color, double size = 30) => new()
     {
         Width = size, Height = size, CornerRadius = new CornerRadius(Look.Pick(3, Round(size * 0.27))),
-        Background = Look.Pick<IBrush?>(null, new SolidColorBrush(color).ToImmutable()),
+        Background = Look.Pick<IBrush?>(null, CardStrong),
         BorderBrush = Look.Pick<IBrush?>(Line, null), BorderThickness = new Thickness(Look.Pick(1, 0)),
-        Child = Glyph(glyph, size * 0.47, Look.Pick(Dim, Brushes.White)),
+        Child = Glyph(glyph, size * 0.47, Dim),
     };
 
     /// <summary>A round face: a picture, or initials on a color.</summary>
@@ -62,7 +62,7 @@ internal static class HubTheme
 
     public static TextBlock Caption(string title) => new()
     {
-        Text = title.ToUpperInvariant(), Foreground = Dim, FontSize = 11, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 0, 0, 6),
+        Text = Look.Heading(title), Foreground = Dim, FontSize = 12, FontWeight = FontWeight.Medium, Margin = new Thickness(4, 0, 0, 8),
     };
 
     /// <summary>The WPF app's action button: a soft button, in the accent colour when it is the one that matters.</summary>
