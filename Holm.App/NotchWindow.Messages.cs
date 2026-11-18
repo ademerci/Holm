@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -122,7 +122,7 @@ public sealed partial class NotchWindow
         clearLabel.Children.Add(new TextBlock { Text = "Clear all", FontSize = 11, Foreground = Dim, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         _clearNotificationsBtn = new NotchButton(clearLabel)
         {
-            Rest = Brush("#14FFFFFF"), CornerRadius = new CornerRadius(Look.Pick(3, 5)), Height = 24, Padding = new Thickness(6, 0),
+            Rest = Look.InkA(0x14), CornerRadius = new CornerRadius(Look.Pick(3, 5)), Height = 24, Padding = new Thickness(6, 0),
             HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0), IsVisible = false,
         };
         ToolTip.SetTip(_clearNotificationsBtn, "Clear message notifications");

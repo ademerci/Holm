@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Animation;
@@ -16,7 +16,7 @@ namespace Holm.App;
 // each view is named after its counterpart there.
 public sealed partial class NotchWindow
 {
-    static readonly IBrush Dim = Brush("#A6FFFFFF"), Faint = Brush("#66FFFFFF"), ArtFallback = Brush("#FF262628");
+    static readonly IBrush Dim = Look.InkA(0xA6), Faint = Look.InkA(0x66), ArtFallback = Brush("#FF262628");
     static readonly FontFamily IconFont = Fonts.Icons;
     static readonly FontFamily DisplayFont = Fonts.Display;
     static readonly Geometry PlayGeo = Geometry.Parse("M3,1 L16,9 L3,17 Z"),
@@ -26,7 +26,7 @@ public sealed partial class NotchWindow
 
     static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color)).ToImmutable();
 
-    static readonly IBrush Ink = Brush("#FFF2F2F2");
+    static readonly IBrush Ink = Look.Ink;
 
     // Backdrop
     // Two layers for the cover's colours: a new cover fades in on top of the old one.
@@ -108,7 +108,7 @@ public sealed partial class NotchWindow
 
     static Path IconPath(Geometry data, double width, double height) => new()
     {
-        Data = data, Fill = Brushes.White, Stroke = Brushes.White, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
+        Data = data, Fill = Look.Ink, Stroke = Look.Ink, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
         Stretch = Stretch.Uniform, Width = width, Height = height,
     };
 
@@ -116,9 +116,10 @@ public sealed partial class NotchWindow
     {
         // One backdrop for the notch and its concave "shoulders", so the cover colours flow into both.
         (_artFront, _artBack) = (_artLayerA, _artLayerB);
-        _backdrop.Children.Add(new Rectangle { Fill = Brushes.Black });
+        _backdrop.Children.Add(new Rectangle { Fill = Look.NotchFill() });
         _backdrop.Children.Add(_artLayerA);
         _backdrop.Children.Add(_artLayerB);
+        _backdrop.Children.Add(_edge);
 
         _idleView.Children.Add(_idleClock);
 
@@ -127,7 +128,7 @@ public sealed partial class NotchWindow
         {
             _bars[i] = new Rectangle
             {
-                Width = 3, Height = 14, RadiusX = 1.5, RadiusY = 1.5, Fill = Brushes.White, Margin = new Thickness(1, 0),
+                Width = 3, Height = 14, RadiusX = 1.5, RadiusY = 1.5, Fill = Look.Ink, Margin = new Thickness(1, 0),
                 RenderTransformOrigin = RelativePoint.Center, RenderTransform = _barScales[i] = new ScaleTransform(1, BarRest[i]),
             };
             eq.Children.Add(_bars[i]);
@@ -231,7 +232,7 @@ public sealed partial class NotchWindow
         panel.Children.Add(_homePanel);
         panel.Children.Add(BuildToolPages());
 
-        panel.Children.Add(new Border { Height = 1, Background = Brush("#1AFFFFFF"), Margin = new Thickness(0, 12, 0, 8) });
+        panel.Children.Add(new Border { Height = 1, Background = Look.InkA(0x1A), Margin = new Thickness(0, 12, 0, 8) });
 
         // Below the line: the battery and connected devices on the left, the volume on the right.
         var muteBtn = new NotchButton(_volIcon) { Width = 30, Height = 30 };
@@ -311,11 +312,11 @@ public sealed partial class NotchWindow
         RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }
 
-        // The instrument look: one ink for the progress, the volume and the equalizer; the classic one the cover's colour.
-        var accent = Look.Instrument ? Ink : new SolidColorBrush(info.Accent).ToImmutable();
+        // Designs with the cover's colours take the cover's colour for the progress, the volume and the equalizer; the others their accent.
+        var accent = Look.Current.Wash ? new SolidColorBrush(info.Accent).ToImmutable() : Look.Accent;
         foreach (var bar in _bars) bar.Fill = accent;
         _progress.Fill = accent;
-        if (Look.Instrument) _volSlider.Fill = accent;
+        if (!Look.Current.Wash) _volSlider.Fill = accent;
 
         _titleText.Text = info.Title;
         _artistText.Text = info.Artist;
@@ -383,7 +384,7 @@ public sealed partial class NotchWindow
         if (_state == NotchState.Expanded) { ReadVolume(); return; }
 
         _volPeekBar.Value = muted ? 0 : level;
-        _volPeekBar.Fill = _info?.IsPlaying == true ? _progress.Fill : Brushes.White;
+        _volPeekBar.Fill = _info?.IsPlaying == true ? _progress.Fill : Look.Ink;
         _volPeekIcon.Text = VolumeGlyph(level, muted);
         _volPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
         bool wasVolume = _state == NotchState.Volume;
@@ -460,7 +461,7 @@ public sealed partial class NotchWindow
     void UpdateBackdrop()
     {
         // The instrument look keeps the notch black: the cover shows in its own square, never washed over the notch.
-        var wanted = !Look.Instrument && _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
+        var wanted = Look.Current.Wash && _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
         if (ReferenceEquals(wanted, _shownBackdrop)) return;
         _shownBackdrop = wanted;
         if (!_settings.Animations)
@@ -472,7 +473,7 @@ public sealed partial class NotchWindow
             if (wanted != null && _info != null)
             {
                 _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
-                ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+                ((Border)_artFront.Child!).Opacity = _info.BackdropShade * Look.Current.Shade;
             }
             return;
         }
@@ -484,7 +485,7 @@ public sealed partial class NotchWindow
         }
         (_artFront, _artBack) = (_artBack, _artFront);
         _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
-        ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+        ((Border)_artFront.Child!).Opacity = _info.BackdropShade * Look.Current.Shade;
         _artFront.ZIndex = 2;
         _artBack.ZIndex = 1;
         var back = _artBack;

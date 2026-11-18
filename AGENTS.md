@@ -134,7 +134,7 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 | `backup/*` | Snapshots before a risky merge (`backup/main-1.12.11`: the last WPF `main`; `backup/store-1.12.7`). | Never change them. |
 
 - Store-only code (`PackageIdentity`, the startup task, `packaging/`, `store/`, `store.yml`) stays on the Store branch.
-- Two looks: the classic one is the default; *Settings › General › Instrument look* switches to the instrument look at the next start (`Look.Instrument`). A visual change must keep both.
+- Designs: Classic is the default; *Settings › Design* picks one of 17 built-in designs (`Holm.Core/Design.cs`) or an imported JSON design, and an accent colour, applied at the next start (`Look.Current`). Each design uses the classic or the instrument layout (`Look.Instrument`). Colours in `Holm.App` come from `Look` and `HubTheme`, never a fixed white or black, so light designs stay readable; `DesignTests` checks the contrast of every design. A visual change must work in both layouts.
 
 ### Naming (for AI agents and people)
 

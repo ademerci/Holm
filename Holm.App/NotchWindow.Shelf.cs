@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,7 +24,7 @@ public sealed partial class NotchWindow
 {
     const string ShelfGlyph = "", FolderGlyph = "", ErrorGlyph = "";
     const int ShelfShown = 8;
-    static readonly IBrush ShelfGray = Brush("#FF8E8E93"), ChipBrush = Brush("#1AFFFFFF");
+    static readonly IBrush ShelfGray = Brush("#FF8E8E93"), ChipBrush = Look.InkA(0x1A);
 
     readonly StackPanel _idleShelf = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, IsVisible = false, HorizontalAlignment = HorizontalAlignment.Right };
     readonly TextBlock _idleShelfCount = new() { FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Dim, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };

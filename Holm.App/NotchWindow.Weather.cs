@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -195,7 +195,7 @@ public sealed partial class NotchWindow
             var kind = weather.RainNote != null ? WeatherKind.Rain : weather.Kind;
             _idleWeatherIcon.Child = WeatherIcons.Make(kind, weather.IsDay, 12, Dim);
             _idleWeatherText.Text = weather.Degrees;
-            _weatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 24, Brushes.White);
+            _weatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 24, Look.Ink);
             _weatherTemp.Text = weather.Degrees;
             _weatherText.Text = $"{weather.Summary} · {(_settings.WeatherPlace ?? "").Split(',')[0]}"; // the city is enough here
             _rainText.Text = weather.RainNote ?? "";
