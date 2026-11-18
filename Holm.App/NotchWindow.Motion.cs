@@ -134,7 +134,10 @@ public sealed partial class NotchWindow
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
         {
-            if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left || _hovered || _taskVisible || _sharing || _picking) return;
+            if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left) return;
+            // Jelly: a click on the open notch where nothing answers it makes the notch jiggle.
+            if (_hovered && Spring.Jelly) { Jiggle(); return; }
+            if (_hovered || _taskVisible || _sharing || _picking) return;
             _expandDelay.Stop();
             _stayClosed = false;
             SetExpanded(true);

@@ -426,6 +426,20 @@ public sealed partial class NotchWindow : Window
         StartMotion();
     }
 
+    /// <summary>Jelly's poke: the notch squashes wide and flat and wobbles back (springs pick up jelly's damping).</summary>
+    void Jiggle()
+    {
+        if (!_settings.Animations || _shapeW <= 0) return;
+        double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
+        if (needed > Height) Height = needed;
+        _wSpring.Kick(260, 0.30, 0.58);
+        _hSpring.Kick(-180, 0.32, 0.58);
+        _scaleSpring.Kick(0.35, 0.30, 0.58);
+        UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
+        _shapeAnimating = true;
+        StartMotion();
+    }
+
     /// <summary>Adds a small physical bounce when a live pill updates in place (volume step, back-to-back peek).</summary>
     void PulseNotch(double widthVelocity = 28, double heightVelocity = 16, double scaleVelocity = 0.08)
     {
