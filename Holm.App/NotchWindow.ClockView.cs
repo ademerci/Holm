@@ -31,8 +31,8 @@ public sealed partial class NotchWindow
     };
 
     readonly StackPanel _clockFullView = new() { IsVisible = false };
-    readonly TextBlock _clockFullTime = new() { FontFamily = DisplayFont, FontSize = 86, FontWeight = FontWeight.Light, VerticalAlignment = VerticalAlignment.Bottom };
-    readonly TextBlock _clockFullSeconds = new() { FontFamily = DisplayFont, FontSize = 28, FontWeight = FontWeight.Light, Opacity = 0.72, Margin = new Thickness(6, 0, 0, 15), VerticalAlignment = VerticalAlignment.Bottom };
+    readonly TextBlock _clockFullTime = new DotTextBlock { FontFamily = DisplayFont, FontSize = 86, FontWeight = FontWeight.Light, VerticalAlignment = VerticalAlignment.Bottom };
+    readonly TextBlock _clockFullSeconds = new DotTextBlock { FontFamily = DisplayFont, FontSize = 28, FontWeight = FontWeight.Light, Opacity = 0.72, Margin = new Thickness(6, 0, 0, 15), VerticalAlignment = VerticalAlignment.Bottom };
     readonly TextBlock _clockFullDate = new() { FontSize = 14, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, -8, 0, 2) };
     readonly StackPanel _clockCustomizePanel = new() { IsVisible = false, Margin = new Thickness(0, 4, 0, 6) };
     readonly StackPanel _clockColorRow = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };

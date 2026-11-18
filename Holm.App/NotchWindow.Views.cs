@@ -38,7 +38,7 @@ public sealed partial class NotchWindow
 
     // Idle
     readonly Grid _idleView = new() { Margin = new Thickness(14, 0, 14, 0) };
-    readonly TextBlock _idleClock = new()
+    readonly TextBlock _idleClock = new DotTextBlock()
     {
         FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Dim,
         HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
@@ -86,7 +86,7 @@ public sealed partial class NotchWindow
     readonly TextBlock _shuffleIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     readonly TextBlock _repeatIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     NotchButton _playBtn = null!, _prevBtn = null!, _nextBtn = null!, _shuffleBtn = null!, _repeatBtn = null!;
-    readonly TextBlock _clockBig = new() { FontFamily = DisplayFont, FontSize = 40, FontWeight = FontWeight.Light, Margin = new Thickness(0, -5, 0, 0) };
+    readonly TextBlock _clockBig = new DotTextBlock { FontFamily = DisplayFont, FontSize = 40, FontWeight = FontWeight.Light, Margin = new Thickness(0, -5, 0, 0) };
     readonly TextBlock _volIcon = new() { Text = "\uE995", FontFamily = IconFont, FontSize = 14, Foreground = Dim };
     readonly MiniSlider _volSlider = new() { Width = 84, Margin = new Thickness(2, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _dateText = new() { FontSize = 13, Foreground = Dim, Margin = new Thickness(1, 0, 0, 0) };
@@ -119,6 +119,7 @@ public sealed partial class NotchWindow
         (_artFront, _artBack) = (_artLayerA, _artLayerB);
         _backdrop.Children.Add(new Rectangle { Fill = Look.NotchFill() });
         if (Look.Aero) _backdrop.Children.Add(new AeroScenery());
+        if (DotTextBlock.Enabled) _backdrop.Children.Add(new Rectangle { Fill = DotMatrix.Grid(Look.Current.Ink), IsHitTestVisible = false });
         _backdrop.Children.Add(_artLayerA);
         _backdrop.Children.Add(_artLayerB);
         _backdrop.Children.Add(_edge);

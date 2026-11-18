@@ -57,7 +57,7 @@ sealed partial class SettingsWindow : Window
     Control _footer = null!;
     readonly Dictionary<string, Control> _pages = new();
     readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
-    readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
+    readonly TextBlock _pageTitle = new DotTextBlock { FontSize = 24, FontWeight = FontWeight.SemiBold };
     // The instrument look drops the subtitle under the page title: the rows say what the page holds.
     readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), IsVisible = !Look.Instrument };
     readonly Border _pageHost = new() { Focusable = true };
@@ -206,6 +206,7 @@ sealed partial class SettingsWindow : Window
         }
         var sideContent = new Grid();
         if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
+        if (DotTextBlock.Enabled) sideContent.Children.Add(new Avalonia.Controls.Shapes.Rectangle { Fill = DotMatrix.Grid(design.Ink, 0x14), IsHitTestVisible = false });
         sideContent.Children.Add(sidebar);
         if (Look.Prism) sideContent.Children.Add(new PrismGlass(design.Corners) { IsHitTestVisible = false });
         var sideBorder = new Border
