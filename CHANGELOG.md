@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.1 – 2026-11-18
+
+### Fixed
+- **Automatic updates work again.** Holm 1.13.0 and 1.14.0 couldn't install updates by themselves: the updater only accepts an app named Holm, and those builds carried another name inside. This version has the right name, so Holm 1.13.0 and 1.14.0 can update to it (and to everything after it) with *Update*.
+
 ## 1.14.0 – 2026-11-18
 
 ### Added
