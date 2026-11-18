@@ -51,7 +51,7 @@ public sealed partial class NotchWindow
     {
         Action? notNow = _offeringAccount ? () => _settingsWindow?.Close() : null;
         _offeringAccount = false;
-        return new AccountPage(_account, notNow);
+        return new AccountPage(_account, _settings, notNow);
     }
 
     /// <summary>Runs the merge (<paramref name="apply"/>), then what each switch it changed does here.</summary>

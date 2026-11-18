@@ -209,6 +209,8 @@ internal sealed class AppSettings
 
     /// <summary>The Holm account was offered once, at the first start after it came (Settings › Account any time after).</summary>
     public bool AccountOffered { get; set; }
+    /// <summary>The sign-in card on the profile page was closed with its cross: only a small "Sign in" row is left.</summary>
+    public bool AccountHidden { get; set; }
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
 

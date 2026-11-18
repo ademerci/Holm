@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using WinNotch;
@@ -37,15 +38,18 @@ internal sealed class AccountPage : HubView
         "is then lost, each computer keeps its own.";
 
     readonly AccountService? _account;
+    readonly AppSettings _settings;
     readonly Action? _notNow;
     readonly Border _host = new();
     CancellationTokenSource? _busy;
 
     /// <param name="account">Null when this build has no account service.</param>
+    /// <param name="settings">Remembers whether the sign-in card was closed with its cross.</param>
     /// <param name="notNow">Shown on the first-start offer: the person would rather not.</param>
-    public AccountPage(AccountService? account, Action? notNow = null)
+    public AccountPage(AccountService? account, AppSettings settings, Action? notNow = null)
     {
         _account = account;
+        _settings = settings;
         _notNow = notNow;
         Child = _host; // the profile page scrolls
         if (_account != null) _account.Changed += Render;
@@ -66,8 +70,49 @@ internal sealed class AccountPage : HubView
             content.Children.Add(Card(Words("The Holm account isn't part of this build.", dim: true)));
         }
         else if (_account.SignedIn) SignedIn(content, _account);
+        // The first-start offer always shows the whole form; its cross is "Not now".
+        else if (_settings.AccountHidden && _notNow == null) Hidden(content);
         else SignedOut(content, _account);
         _host.Child = content;
+    }
+
+    void SetHidden(bool hidden)
+    {
+        _settings.AccountHidden = hidden;
+        _settings.Save();
+        Render();
+    }
+
+    /// <summary>The sign-in card after its cross: one line and a way back.</summary>
+    void Hidden(StackPanel content)
+    {
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var words = Words("Holm account: keep your settings and friends on every computer.", dim: true);
+        words.VerticalAlignment = VerticalAlignment.Center;
+        row.Children.Add(words);
+        var show = HubTheme.Action("Sign in…");
+        show.Margin = new Thickness(12, 0, 0, 0);
+        show.Click += (_, _) => SetHidden(false);
+        Grid.SetColumn(show, 1);
+        row.Children.Add(show);
+        content.Children.Add(Card(row));
+    }
+
+    /// <summary>A small round cross at the card's top right.</summary>
+    static Border CloseCross(string tip, Action close)
+    {
+        var cross = new Border
+        {
+            Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = HubTheme.Raised,
+            Cursor = new Cursor(StandardCursorType.Hand), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+            Child = HubTheme.Glyph("", 10, HubTheme.Dim),
+        };
+        ToolTip.SetTip(cross, tip);
+        cross.PointerEntered += (_, _) => cross.Background = HubTheme.Edge;
+        cross.PointerExited += (_, _) => cross.Background = HubTheme.Raised;
+        cross.PointerPressed += (_, e) => e.Handled = true;
+        cross.PointerReleased += (_, _) => close();
+        return cross;
     }
 
     // ───────────── Signed out: the privacy statement and the form ─────────────
@@ -75,7 +120,12 @@ internal sealed class AccountPage : HubView
     void SignedOut(StackPanel content, AccountService account)
     {
         var form = new StackPanel { Spacing = 10 };
-        form.Children.Add(new TextBlock { Text = "Your Holm, on every computer", FontSize = 17, FontWeight = FontWeight.SemiBold });
+        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        heading.Children.Add(new TextBlock { Text = "Your Holm, on every computer", FontSize = 17, FontWeight = FontWeight.SemiBold });
+        var cross = _notNow is { } notNow ? CloseCross("Not now", notNow) : CloseCross("Close", () => SetHidden(true));
+        Grid.SetColumn(cross, 1);
+        heading.Children.Add(cross);
+        form.Children.Add(heading);
         form.Children.Add(Words("Optional. Sign in on each computer and your settings, profile, achievements and friends stay the same.", dim: true));
         var email = HubTheme.Field("Email");
         var password = HubTheme.Field("Password (at least 10 characters)");
