@@ -89,6 +89,7 @@ public sealed partial class NotchWindow : Window
         // saves, on every system (it was read-only on Windows while the port ran next to the WPF app).
         AppSettings.ReadOnly = SelfTestFolder != null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
 
         Title = "Holm";
         Width = BaseWidth;

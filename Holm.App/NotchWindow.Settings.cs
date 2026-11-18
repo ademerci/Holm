@@ -33,6 +33,8 @@ public sealed partial class NotchWindow
                     on => { _settings.Animations = on; Save(); ApplyState(animate: false); }),
                 Switch("Bouncy motion", "", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch › Customize › Bounce.",
                     s => s.Bounce, on => { _settings.Bounce = on; Save(); ApplyBounce(); }),
+                Switch("shi lwk jelly", "", "Everything wobbles like jelly. Way too much. Just for fun.",
+                    s => s.Jelly, on => { _settings.Jelly = on; Save(); ApplyBounce(); }),
                 Switch("Equalizer follows the music", "", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded.",
                     s => s.ReactiveEqualizer, on => { _settings.ReactiveEqualizer = on; Save(); UpdateEqualizer(); }),
                 Switch("Drag notch position", "\uE7C2", "Drag the notch by its top edge to move it left or right. Its position is remembered, even with dragging off.",
@@ -204,7 +206,11 @@ public sealed partial class NotchWindow
         if (!_hovered) _platform.TrimMemory();
     }
 
-    void ApplyBounce() => Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+    void ApplyBounce()
+    {
+        Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
+    }
 
     /// <summary>Customize › Bounce: Subtle, Normal or Lively, while Bouncy motion is on.</summary>
     void FillBounceMenu(MenuItem menu)

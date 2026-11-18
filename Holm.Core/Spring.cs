@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace WinNotch;
 
@@ -37,14 +37,40 @@ internal sealed partial class Spring
         }
     }
 
+    static bool _jelly;
+
+    /// <summary>
+    /// Just for fun: every bounce turns into a long, wobbly jelly swing, way past where it should stop. Only what
+    /// is meant to glide (damping 1 and above, such as the notch closing onto the edge) still glides.
+    /// </summary>
+    public static bool Jelly
+    {
+        get => _jelly;
+        set
+        {
+            _jelly = value;
+            Bouncy = new(0.64);
+            Snappy = new(0.58);
+        }
+    }
+
+    /// <summary>Jelly's damping for the moving springs (a few seconds of wobble) and for timed curves (a few swings).</summary>
+    public const double JellyDamping = 0.15, JellyCurveDamping = 0.25;
+
+    /// <summary>How much slower jelly swings than normal motion.</summary>
+    public static double ResponseScale => _jelly ? 1.6 : 1;
+
     /// <summary>A damping as tuned for the normal bounce, scaled to <see cref="Bounce"/>; 1 and above stay as they are.</summary>
-    public static double Soften(double damping) => damping >= 1 ? damping : 1 - (1 - damping) * _bounce;
+    public static double Soften(double damping) => damping >= 1 ? damping : _jelly ? JellyDamping : 1 - (1 - damping) * _bounce;
+
+    /// <summary>The least damping a spring may get: lower with jelly on.</summary>
+    public static double MinDamping => _jelly ? JellyDamping : 0.25;
 
     readonly double _damping, _omega, _damped;
 
     public Spring(double damping)
     {
-        _damping = Math.Clamp(Soften(damping), 0.3, 1);
+        _damping = damping < 1 && _jelly ? JellyCurveDamping : Math.Clamp(Soften(damping), 0.3, 1);
         // Stiff enough that what's left of the swing at the end is below 0.1 %.
         _omega = _damping >= 1 ? 9.23 : Math.Log(1000 / Math.Sqrt(1 - _damping * _damping)) / _damping;
         _damped = _damping >= 1 ? 0 : _omega * Math.Sqrt(1 - _damping * _damping);
@@ -97,8 +123,8 @@ internal struct SpringValue
     public void Retarget(double target, double response, double damping)
     {
         Target = target;
-        Response = Math.Max(response, 0.05);
-        Damping = Math.Clamp(Spring.Soften(damping), 0.25, 1.5);
+        Response = Math.Max(response, 0.05) * Spring.ResponseScale;
+        Damping = Math.Clamp(Spring.Soften(damping), Spring.MinDamping, 1.5);
         IsSettled = Math.Abs(Value - Target) <= _positionTolerance && Math.Abs(Velocity) <= _velocityTolerance;
         if (IsSettled)
         {
@@ -109,8 +135,8 @@ internal struct SpringValue
 
     public void Kick(double deltaVelocity, double? response = null, double? damping = null)
     {
-        if (response.HasValue) Response = Math.Max(response.Value, 0.05);
-        if (damping.HasValue) Damping = Math.Clamp(Spring.Soften(damping.Value), 0.25, 1.5);
+        if (response.HasValue) Response = Math.Max(response.Value, 0.05) * Spring.ResponseScale;
+        if (damping.HasValue) Damping = Math.Clamp(Spring.Soften(damping.Value), Spring.MinDamping, 1.5);
         Velocity += deltaVelocity;
         IsSettled = false;
     }
