@@ -179,7 +179,7 @@ Several people each work with their own AI agent (Claude, Codex, …) on this re
 
 - Give each new minor series (`1.X.0`) a new name from a real island. Choose a short, single-word name such as Fiji. Prefer a small island or islet when possible, since a holm is a small island.
 - Set `<ReleaseIsland>` in `Holm.App/Holm.App.csproj` when choosing the new series name. The Holm sidebar shows it beside the version number.
-- Keep that island name on every patch and hotfix in the series. The convention starts with **Holm 1.14.2 — Skokholm**. Use Skokholm for any later `1.14.x` releases, then choose a new island for `1.15.0`. [Skokholm, Pembrokeshire Coast National Park](https://www.pembrokeshirecoast.wales/things-to-do/pembrokeshires-islands/skokholm/)
+- Keep that island name on every patch and hotfix in the series. The convention starts with **Holm 1.15.0 — Skokholm**. Use Skokholm for subsequent `1.15.x` releases, then choose a new island for `1.16.0`. [Skokholm, Pembrokeshire Coast National Park](https://www.pembrokeshirecoast.wales/things-to-do/pembrokeshires-islands/skokholm/)
 - Use `Holm <version> — <island>` as the GitHub release title and mention the island in release notes, including Store notes for the same version. Keep tags and filenames in their existing version-based formats.
 
 ### GitHub release (portable Windows and Linux)

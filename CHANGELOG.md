@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.15.0 – 2026-11-18
+
+### Added
+- **Island names.** This series is called Skokholm. The Holm window shows the name beside the version number.
+
+### Changed
+- **Frutiger Aero.** Blue skies, green hills and glossy water bubbles come to the open notch and the Holm window. The notch's buttons and cards have a glass finish. Pick it under *Settings › Design*. Classic is still the default.
+- **A little more Jelly.** The Easter egg now makes the notch lean when you drag it and the Holm window wobble when you click or move it.
+
+### Fixed
+- **Long chat messages wrap.** Sent and received messages stay inside the conversation, even when a long word has no spaces.
+
 ## 1.14.1 – 2026-11-18
 
 ### Fixed
