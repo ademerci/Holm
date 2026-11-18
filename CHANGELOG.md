@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.3 – unreleased
+
+### Fixed
+- **Files in chats and Beam arrive after Accept.** After the other person pressed *Accept*, the transfer could stand still at 0 % on both sides: the receiver waited for its own check "did the sender cancel?" to stop before answering, and on some systems that check never stopped, while the sender waited for the answer. The receiver now answers straight away.
+
 ## 1.15.2 – 2026-11-18
 
 ### Fixed
