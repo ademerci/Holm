@@ -104,7 +104,7 @@ sealed partial class SettingsWindow : Window
 
         // ── sidebar ──
         var nav = new StackPanel();
-        var sidebar = new DockPanel();
+        var sidebar = new DockPanel { Margin = new Thickness(14, 16, 10, 16) };
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
         brand.Children.Add(new Border
         {
@@ -178,11 +178,11 @@ sealed partial class SettingsWindow : Window
         // Glass can only blur the whole window: it fills the window, square.
         double corners = design.Glass ? 0 : design.Corners;
         var sideContent = new Grid();
-        if (Look.Aero) sideContent.Children.Add(new AeroBubbles());
+        if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
         sideContent.Children.Add(sidebar);
         var sideBorder = new Border
         {
-            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), Padding = new Thickness(14, 16, 10, 16), Child = sideContent,
+            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), ClipToBounds = Look.Aero, Child = sideContent,
         };
 
         // ── content ──

@@ -15,20 +15,21 @@ internal static class HubTheme
 
     // The design's palette (Look.Current): Classic is dark and rounded, Instrument black with grey lines, the others their own.
     static readonly WinNotch.Design D = Look.Current;
-    public static readonly IBrush Panel = Look.Aero ? Look.VerticalGradient((0xFFF4FCFF, 0), (D.Panel, 0.48), (0xFFBCE6F7, 1)) : B(D.Panel),
-        Sidebar = Look.Aero ? Look.VerticalGradient((0xFFD9F7FF, 0), (D.Sidebar, 0.55), (0xFF9EE2A6, 1)) : B(D.Sidebar),
+    public static readonly IBrush Panel = Look.Aero ? Look.VerticalGradient((0xFFF1FCFF, 0), (D.Panel, 0.56), (0xFFA5DFFF, 1)) : B(D.Panel),
+        Sidebar = Look.Aero ? Look.VerticalGradient((0xFF61C5FD, 0), (0xFFCBF8FF, 0.29), (D.Sidebar, 0.52), (0xFF44C7EE, 1)) : B(D.Sidebar),
         Edge = B(D.WindowEdgeColor),
         Card = Look.Aero ? Look.VerticalGradient((0xFFFFFFFF, 0), (D.CardColor, 0.48), (0xFFDBF1FC, 1)) : B(D.CardColor),
         CardStrong = B(D.CardStrongColor), Hover = B(D.HoverColor),
-        Selected = Look.Aero ? Look.VerticalGradient((0xFFF6FFE9, 0), (D.SelectedColor, 0.48), (0xFFAAE38B, 1)) : B(D.SelectedColor),
+        Selected = Look.Aero ? Look.VerticalGradient((0xFFF9FFE3, 0), (0xFFDEF9AD, 0.46),
+            (D.SelectedColor, 0.49), (0xFF9CDD57, 1)) : B(D.SelectedColor),
         Line = B(D.LineColor),
         Dim = B(D.DimColor), Faint = B(D.FaintColor), Accent = Look.Accent, Green = B(0xFF30D158), Red = B(0xFFFF453A), Gold = B(0xFFFFC43D);
     public static readonly IBrush ActionFill = Look.Aero
-        ? Look.VerticalGradient((Mix(D.Accent, 0xFFFFFFFF, 0.16), 0), (Mix(D.Accent, 0xFFFFFFFF, 0.06), 0.47),
-            (D.Accent, 0.49), (Mix(D.Accent, 0xFF000000, 0.18), 1))
+        ? Look.VerticalGradient((Mix(D.Accent, 0xFFFFFFFF, 0.16), 0), (Mix(D.Accent, 0xFFFFFFFF, 0.06), 0.43),
+            (Mix(D.Accent, 0xFF000000, 0.18), 0.46), (D.Accent, 1))
         : Accent;
     public static readonly IBrush ActionSurface = Look.Aero
-        ? Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFEBFAFF, 0.47), (0xFFC6E9F8, 0.49), (0xFFE2F7FF, 1))
+        ? Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFE1FAFF, 0.43), (0xFFA9DEF7, 0.46), (0xFFDAF8FF, 1))
         : Card;
     /// <summary>Text and glyphs on <see cref="Accent"/>.</summary>
     public static readonly IBrush OnAccent = Look.OnAccent;

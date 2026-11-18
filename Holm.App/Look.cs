@@ -55,7 +55,7 @@ internal static class Look
         design ??= Current;
         var colors = design.Fill;
         if (design.Id == "aero")
-            return VerticalGradient((colors[0], 0), (colors[1], 0.42), (colors[2], 0.44), (colors[3], 1));
+            return VerticalGradient((colors[0], 0), (colors[1], 0.32), (colors[2], 0.67), (colors[3], 1));
         if (colors.Length == 1) return Brush(colors[0]);
         var stops = new GradientStops();
         for (int i = 0; i < colors.Length; i++) stops.Add(new GradientStop(Color.FromUInt32(colors[i]), i / (double)(colors.Length - 1)));

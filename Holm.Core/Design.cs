@@ -162,12 +162,12 @@ internal static class Designs
         },
         new()
         {
-            Id = "aero", Name = "Frutiger Aero", Description = "Glossy aqua, sky blue and fresh green", Wash = false,
-            Fill = new[] { 0xFFEBFBFFu, 0xFFA6EBFFu, 0xFF5EC8EAu, 0xFF7DDCB9u }, Edge = 0xFFF3FEFF, EdgeWidth = 1,
-            Ink = 0xFF102E49, Accent = 0xFF2C6810, Toggle = 0xFF438D19,
-            Panel = 0xFFE1F5FF, Sidebar = 0xFFB5E8F9, Card = 0xFFF1FBFF, CardStrong = 0xFFC9EEFD,
-            Hover = 0xFFD7F4FC, Selected = 0xFFC8F2AE, Line = 0xFFABD4E4, WindowEdge = 0xFF76B5CE,
-            Dim = 0xFF335775, Faint = 0xFF45677D, Corners = 16,
+            Id = "aero", Name = "Frutiger Aero", Description = "Blue skies, green hills and glossy water bubbles", Wash = false,
+            Fill = new[] { 0xFF74CEFFu, 0xFFCEF8FFu, 0xFF83E6FAu, 0xFF36B8EAu }, Edge = 0xFFE2FCFF, EdgeWidth = 1,
+            Ink = 0xFF0A2B43, Accent = 0xFF075C9D, Toggle = 0xFF437D14,
+            Panel = 0xFFDFF6FF, Sidebar = 0xFF9DE4FA, Card = 0xFFF4FCFF, CardStrong = 0xFFC0EBFF,
+            Hover = 0xFFD6F6FF, Selected = 0xFFC7F48A, Line = 0xFF8EC6D9, WindowEdge = 0xFF4D9AC2,
+            Dim = 0xFF214A63, Faint = 0xFF315870, Corners = 16,
         },
         new()
         {
