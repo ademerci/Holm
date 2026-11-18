@@ -33,7 +33,8 @@ abstract class HubView : Border
 /// <summary>An entry in the Holm window's sidebar.</summary>
 /// <param name="Build">Makes the page, each time it's opened.</param>
 /// <param name="Badge">A count to show beside the entry (unread messages), or 0.</param>
-sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null);
+/// <param name="First">Among the settings: right under Profile, not at the end.</param>
+sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null, bool First = false);
 
 sealed class SettingsWindow : Window
 {
@@ -152,6 +153,11 @@ sealed class SettingsWindow : Window
             profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _pages[ProfileKey] = profile;
         }
+        foreach (var page in _extra.Where(p => p.First))
+        {
+            _titles[page.Key] = (page.Title, page.Subtitle);
+            nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
+        }
         foreach (var group in groups)
         {
             _titles[group.Key] = (group.Title, group.Subtitle);
@@ -159,7 +165,7 @@ sealed class SettingsWindow : Window
             _pages[group.Key] = GroupPage(group);
         }
         // Pages among the settings that aren't switches (Updates): built when opened, without Apply.
-        foreach (var page in _extra)
+        foreach (var page in _extra.Where(p => !p.First))
         {
             _titles[page.Key] = (page.Title, page.Subtitle);
             nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));

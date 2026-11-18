@@ -125,7 +125,7 @@ public sealed partial class NotchWindow
             () => MeCard(CurrentProfile()),
             new[]
             {
-                new HubPage(AccountPage.Key, "\uE895", "Account", "Sync with your Holm account", BuildAccountPage),
+                new HubPage(AccountPage.Key, "\uE895", "Account", "Sync with your Holm account", BuildAccountPage, First: true),
                 new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage),
             },
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });

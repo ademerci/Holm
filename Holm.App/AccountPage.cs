@@ -73,18 +73,15 @@ internal sealed class AccountPage : HubView
 
     void SignedOut(StackPanel content, AccountService account)
     {
-        var about = new StackPanel { Spacing = 8 };
-        about.Children.Add(new TextBlock { Text = "Your Holm, on every computer", FontSize = 17, FontWeight = FontWeight.SemiBold });
-        about.Children.Add(Words(Privacy, dim: true));
-        content.Children.Add(Card(about));
-
         var form = new StackPanel { Spacing = 10 };
+        form.Children.Add(new TextBlock { Text = "Your Holm, on every computer", FontSize = 17, FontWeight = FontWeight.SemiBold });
+        form.Children.Add(Words("Optional. Sign in on each computer and your settings, profile, achievements and friends stay the same.", dim: true));
         var email = HubTheme.Field("Email");
         var password = HubTheme.Field("Password (at least 10 characters)");
         password.PasswordChar = '•';
         var repeat = HubTheme.Field("Password again (new account only)");
         repeat.PasswordChar = '•';
-        var agree = new CheckBox { Content = "I have read what the account keeps and agree", Foreground = Brushes.White };
+        var agree = new CheckBox { Content = "I have read what the account keeps (below) and agree", Foreground = Brushes.White };
         var message = Words("", dim: true);
         message.IsVisible = false;
         form.Children.Add(email);
@@ -106,6 +103,29 @@ internal sealed class AccountPage : HubView
         }
         form.Children.Add(actions);
         content.Children.Add(Card(form));
+
+        // The privacy statement in five lines; the whole of it one click away.
+        var about = new StackPanel { Spacing = 4 };
+        about.Children.Add(HubTheme.Caption("What the account keeps"));
+        foreach (string line in new[]
+                 {
+                     "Settings, profile, achievements and friends, the same on every computer",
+                     "Encrypted on this computer first: Firebase (Google) can't read it",
+                     "Stored in Zürich; the service sees your email address",
+                     "Notes, reminders, chats and files stay on each computer",
+                     "A forgotten password can't be reset",
+                 })
+            about.Children.Add(Words("•  " + line, dim: false));
+        var whole = Words(Privacy, dim: true);
+        whole.IsVisible = false;
+        whole.Margin = new Thickness(0, 8, 0, 0);
+        var more = HubTheme.Action("Read all");
+        more.Margin = new Thickness(0, 8, 0, 0);
+        more.HorizontalAlignment = HorizontalAlignment.Left;
+        more.Click += (_, _) => { whole.IsVisible = !whole.IsVisible; more.Content = whole.IsVisible ? "Show less" : "Read all"; };
+        about.Children.Add(more);
+        about.Children.Add(whole);
+        content.Children.Add(Card(about));
 
         void Say(string text, bool problem)
         {
