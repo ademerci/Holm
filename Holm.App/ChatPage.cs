@@ -586,22 +586,24 @@ internal sealed class ChatPage : HubView
         var pill = Reactions(message);
         if (pill != null) withReactions.Children.Add(pill);
 
-        var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left, Background = Brushes.Transparent };
-        if (message.Mine)
+        // Dock the accessories first so the bubble wraps within the remaining conversation width.
+        var line = new DockPanel
         {
-            line.Children.Add(smiley);
-            line.Children.Add(withReactions);
-        }
-        else
+            HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            Background = Brushes.Transparent,
+        };
+        if (!message.Mine)
         {
             // Their face sits beside the last bubble of their group; the others keep its room.
             Control face = joinsNext || _friend == null ? new Border { Width = 28 } : SmallFace(_friend, 28);
             face.VerticalAlignment = VerticalAlignment.Bottom;
             face.Margin = new Thickness(0, 0, 8, pill != null ? 14 : 0);
+            DockPanel.SetDock(face, Dock.Left);
             line.Children.Add(face);
-            line.Children.Add(withReactions);
-            line.Children.Add(smiley);
         }
+        DockPanel.SetDock(smiley, message.Mine ? Dock.Left : Dock.Right);
+        line.Children.Add(smiley);
+        line.Children.Add(withReactions);
         line.PointerEntered += (_, _) => smiley.Opacity = 1;
         line.PointerExited += (_, _) => smiley.Opacity = 0;
 
