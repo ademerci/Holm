@@ -75,7 +75,7 @@ sealed partial class SettingsWindow : Window
 
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
+    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
                           IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
     {
@@ -114,7 +114,7 @@ sealed partial class SettingsWindow : Window
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeight.SemiBold });
-        brandText.Children.Add(new TextBlock { Text = "Version " + version, FontSize = 11, Foreground = Dim });
+        brandText.Children.Add(new TextBlock { Text = versionLabel, FontSize = 11, Foreground = Dim });
         brand.Children.Add(brandText);
         brand.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         DockPanel.SetDock(brand, Dock.Top);

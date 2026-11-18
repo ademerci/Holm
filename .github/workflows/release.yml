@@ -45,6 +45,8 @@ jobs:
           $csproj = [xml](Get-Content Holm.App/Holm.App.csproj)
           $version = @($csproj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
           if ($version -ne $env:VERSION) { throw "Holm.App.csproj says $version, not $env:VERSION" }
+          $island = @($csproj.Project.PropertyGroup | ForEach-Object { $_.ReleaseIsland } | Where-Object { $_ })[0]
+          if ($island -cne $env:ISLAND) { throw "Use the ReleaseIsland from Holm.App.csproj: $island" }
           if (-not (Test-Path "publish/release-$env:VERSION-release-notes.md")) { throw "publish/release-$env:VERSION-release-notes.md is missing" }
           if (git ls-remote --tags origin "v$env:VERSION") { throw "v$env:VERSION exists already" }
 

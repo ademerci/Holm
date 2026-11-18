@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -119,8 +120,12 @@ public sealed partial class NotchWindow
             _settingsWindow.Activate();
             return;
         }
-        string version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "";
-        _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page,
+        var appAssembly = typeof(NotchWindow).Assembly;
+        string version = appAssembly.GetName().Version?.ToString(3) ?? "";
+        string? island = appAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "ReleaseIsland")?.Value;
+        string versionLabel = string.IsNullOrEmpty(island) ? version : $"{version} • {island}";
+        _settingsWindow = new SettingsWindow(SettingsGroups(), versionLabel, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
             new[] { new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),

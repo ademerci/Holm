@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <!-- The cross-platform rewrite's own version, ahead of the WPF app's (WinNotch.csproj) it is meant to follow. -->
     <Version>1.14.2</Version>
+    <ReleaseIsland>Skokholm</ReleaseIsland>
     <!-- The updater installs only an exe whose product name is "Holm" (UpdateService.ValidateExecutable). -->
     <Product>Holm</Product>
     <!-- One shared app; only the backend it loads differs. The Windows backend needs the Windows target for
@@ -26,6 +27,10 @@
     <TieredPGO>false</TieredPGO>
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="ReleaseIsland" Value="$(ReleaseIsland)" />
+  </ItemGroup>
 
   <!-- A GIPHY API key for GIF search, built into the app but never into the public source: from -p:GiphyKey=…, the
        GIPHY_API_KEY environment variable (the release workflow's secret) or a giphy.key file next to the solution
