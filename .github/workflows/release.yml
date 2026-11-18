@@ -8,6 +8,9 @@ on:
       version:
         description: "Version to release, as in Holm.App.csproj (e.g. 1.13.0)"
         required: true
+      island:
+        description: "One-word island name for this version series (see AGENTS.md)"
+        required: true
 
 permissions:
   contents: write
@@ -35,7 +38,10 @@ jobs:
 
       - name: Check the version and the notes
         shell: pwsh
+        env:
+          ISLAND: ${{ inputs.island }}
         run: |
+          if ($env:ISLAND -cnotmatch '^\p{L}[\p{L}\p{M}]*\z') { throw "Use a single-word island name." }
           $csproj = [xml](Get-Content Holm.App/Holm.App.csproj)
           $version = @($csproj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
           if ($version -ne $env:VERSION) { throw "Holm.App.csproj says $version, not $env:VERSION" }
@@ -103,9 +109,11 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          ISLAND: ${{ inputs.island }}
+          VERSION: ${{ inputs.version }}
         run: |
-          gh release create "v${{ inputs.version }}" assets/* --target "${{ github.sha }}" --title "Holm ${{ inputs.version }}" \
-            --notes-file "publish/release-${{ inputs.version }}-release-notes.md" --latest
+          gh release create "v$VERSION" assets/* --target "${{ github.sha }}" --title "Holm $VERSION — $ISLAND" \
+            --notes-file "publish/release-$VERSION-release-notes.md" --latest
 
       # A release made with this workflow's token doesn't start the Website workflow's "release" trigger (GitHub
       # starts no workflows for events of github.token), so the site is built and deployed here by hand.
