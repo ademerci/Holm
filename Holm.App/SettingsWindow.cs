@@ -10,6 +10,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Holm.App.Controls;
+using Holm.Platform;
 
 namespace Holm.App;
 
@@ -75,7 +78,7 @@ sealed partial class SettingsWindow : Window
 
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
+    public SettingsWindow(INotchWindowPlatform platform, IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
                           IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
     {
@@ -89,9 +92,11 @@ sealed partial class SettingsWindow : Window
         WindowDecorations = WindowDecorations.None;
         // Glass designs blur what's behind where the system can (Windows); elsewhere the panel is see-through.
         var design = Look.Current;
-        TransparencyLevelHint = design.Glass
-            ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
-            : new[] { WindowTransparencyLevel.Transparent };
+        TransparencyLevelHint = Look.Prism
+            ? new[] { WindowTransparencyLevel.Blur, WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent }
+            : design.Glass
+                ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
+                : new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent;
         CanResize = false;
         Width = 980;
@@ -175,14 +180,32 @@ sealed partial class SettingsWindow : Window
             _titles[page.Key] = (page.Title, page.Subtitle);
             nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
         }
-        // Glass can only blur the whole window: it fills the window, square.
-        double corners = design.Glass ? 0 : design.Corners;
+        const double prismSidebarInset = 12;
+        double corners = Look.Prism ? design.Corners + prismSidebarInset : design.Glass ? 0 : design.Corners;
+        if (Look.Prism)
+        {
+            // The native blur fills the window, so clip it as well as the painted surface.
+            void RoundWindow()
+            {
+                if (TryGetPlatformHandle() is { } handle)
+                    platform.SetRoundedWindowRegion(handle.Handle, (int)Math.Round(corners * RenderScaling));
+            }
+            Opened += (_, _) => RoundWindow();
+            SizeChanged += (_, _) => RoundWindow();
+            // On Windows the DPI notification arrives before the native window is resized.
+            ScalingChanged += (_, _) => Dispatcher.UIThread.Post(RoundWindow);
+        }
         var sideContent = new Grid();
         if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
         sideContent.Children.Add(sidebar);
+        if (Look.Prism) sideContent.Children.Add(new PrismGlass(design.Corners) { IsHitTestVisible = false });
         var sideBorder = new Border
         {
-            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), ClipToBounds = Look.Aero, Child = sideContent,
+            Background = Look.Prism ? PrismGlass.FloatingSurface(design.Sidebar, design.Ink) : Sidebar,
+            CornerRadius = Look.Prism ? new CornerRadius(design.Corners) : new CornerRadius(corners, 0, 0, corners),
+            Margin = Look.Prism ? new Thickness(prismSidebarInset, prismSidebarInset, 0, prismSidebarInset) : default,
+            BoxShadow = Look.Prism ? new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 15, Color = Color.FromArgb(0x55, 0, 0, 0) }) : default,
+            ClipToBounds = Look.Aero, Child = sideContent,
         };
 
         // ── content ──
@@ -228,12 +251,15 @@ sealed partial class SettingsWindow : Window
         Grid.SetColumn(content, 1);
         columns.Children.Add(content);
 
+        Control surfaceContent = Look.Prism
+            ? new Grid { Children = { columns, new PrismGlass(corners) { IsHitTestVisible = false } } }
+            : columns;
         _surface = new Border
         {
-            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(design.Edge != 0 ? design.EdgeWidth : 1), CornerRadius = new CornerRadius(corners),
-            Margin = new Thickness(design.Glass ? 0 : 16), Child = columns,
+            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(Look.Prism ? 0 : design.Edge != 0 ? design.EdgeWidth : 1),
+            CornerRadius = new CornerRadius(corners), Margin = new Thickness(design.Glass ? 0 : 16), Child = surfaceContent,
             // A hard shadow in the designs that have one (Brutalist, Pocket), else a soft one.
-            BoxShadow = new BoxShadows(design.Shadow != 0
+            BoxShadow = Look.Prism ? default : new BoxShadows(design.Shadow != 0
                 ? new BoxShadow { OffsetX = 7, OffsetY = 7, Color = Color.FromUInt32(design.Shadow) }
                 : new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
         };
@@ -366,7 +392,7 @@ sealed partial class SettingsWindow : Window
         grid.Children.Add(badge);
         var item = new Border
         {
-            CornerRadius = new CornerRadius(HubTheme.Round(8)), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
+            CornerRadius = new CornerRadius(Look.Prism ? 18 : HubTheme.Round(8)), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
             Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = grid,
         };
         item.PointerEntered += (_, _) => { if (Page != key) item.Background = Hover; };

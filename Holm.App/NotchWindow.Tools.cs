@@ -138,9 +138,22 @@ public sealed partial class NotchWindow
             RowDefinitions = new RowDefinitions("Auto,Auto"), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
         };
         row.Children.Add(_mediaClockHeader);
-        Grid.SetColumn(_toolBar, 1);
-        if (!Look.Instrument) { Grid.SetColumn(_toolBar, 0); Grid.SetColumnSpan(_toolBar, 3); } // the icons in the middle of the row
-        row.Children.Add(_toolBar);
+        Control toolBar = _toolBar;
+        if (Look.Prism)
+        {
+            _toolBar.Margin = new Thickness(2, 0);
+            var tray = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                Background = HubTheme.ActionSurface, CornerRadius = new CornerRadius(17),
+                Child = new Grid { Children = { _toolBar, new PrismGlass(17) { IsHitTestVisible = false } } },
+            };
+            tray[!IsVisibleProperty] = _toolBar[!IsVisibleProperty];
+            toolBar = tray;
+        }
+        Grid.SetColumn(toolBar, 1);
+        if (!Look.Instrument) { Grid.SetColumn(toolBar, 0); Grid.SetColumnSpan(toolBar, 3); } // the icons in the middle of the row
+        row.Children.Add(toolBar);
         var right = BuildToolRowRight();
         Grid.SetColumn(right, 2);
         row.Children.Add(right);

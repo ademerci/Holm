@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using Holm.App.Controls;
 using WinNotch;
 
 namespace Holm.App;
@@ -14,6 +15,7 @@ internal static class Look
 
     public static bool Instrument => Current.Instrument;
     public static bool Aero => Current.Id == "aero";
+    public static bool Prism => Current.Id == PrismGlass.DesignId;
 
     /// <summary>The instrument value or the classic one.</summary>
     public static T Pick<T>(T instrument, T classic) => Instrument ? instrument : classic;
@@ -54,6 +56,7 @@ internal static class Look
     {
         design ??= Current;
         var colors = design.Fill;
+        if (design.Id == PrismGlass.DesignId) return PrismGlass.NotchSurface(design);
         if (design.Id == "aero")
             return VerticalGradient((colors[0], 0), (colors[1], 0.32), (colors[2], 0.67), (colors[3], 1));
         if (colors.Length == 1) return Brush(colors[0]);
