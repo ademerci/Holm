@@ -1,4 +1,4 @@
-Holm 1.15.2 makes Beam nearby safer: a silent device on your network can no longer block it, and incoming files say more about what they are.
+Holm 1.15.2, Skokholm, makes Beam nearby safer: a silent device on your network can no longer block it, and incoming files say more about what they are.
 
 ## Download
 
