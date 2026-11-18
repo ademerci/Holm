@@ -119,6 +119,7 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 
 ## 4. Collaboration Rules
 
+- **Always Windows and Linux.** Every build is made for both systems, never for one alone: the *Cross-platform* checks (tests, self-test, test builds), every dev prerelease and every GitHub release. A change is done only when it builds, passes the tests and works on both. If one system's build fails, fix it, don't ship the other one alone. Never remove `windows-latest`/`win-x64` or `ubuntu-latest`/`linux-x64` from the matrices in `cross-platform.yml`, `dev-release.yml` and `release.yml`; both release workflows refuse to publish without both systems' files. A feature one system can't offer stays behind a `Holm.Platform` capability flag and is hidden there, it doesn't split the build. The only Windows-only build is the Microsoft Store package (`codex/microsoft-store-msix`), because the Store is Windows-only.
 - Keep changes cross-platform first: UI and app state belong in `Holm.App` and `Holm.Core`; OS-specific APIs belong behind `Holm.Platform` interfaces in `Holm.Platform.Windows` and `Holm.Platform.Linux`.
 - Preserve existing Git author configuration and add the AI assistant used as co-author when committing.
 - Preserve the runtime footprint MSBuild properties in `Holm.App/Holm.App.csproj`.
@@ -172,7 +173,7 @@ Several people each work with their own AI agent (Claude, Codex, …) on this re
 
 - The one version number is `<Version>` in `Holm.App/Holm.App.csproj` (`x.y.z`). The build turns it into the exe's file version `x.y.z.0`.
 - Raise it in the first commit after a release that changes the app (`1.13.0` → `1.13.1` for fixes, `1.14.0` for features), never reuse a released number: the release workflow refuses an existing tag.
-- Test builds: `Holm-<version>-test-build.<n>.exe` and `Holm-<version>-test-build.<n>-linux-x64`, `<n>` incrementing (CI uses its run number). `Holm.exe` / `Holm` only in official releases.
+- Test builds: always both, `Holm-<version>-test-build.<n>.exe` and `Holm-<version>-test-build.<n>-linux-x64`, `<n>` incrementing (CI uses its run number). `Holm.exe` / `Holm` only in official releases.
 
 ### GitHub release (portable Windows and Linux)
 
@@ -182,7 +183,7 @@ Every running Holm finds it within two hours: the updater asks `releases/latest`
    - `CHANGELOG.md`: the top entry is `## <version> – <YYYY-MM-DD>` (the release day, not "unreleased"), with `### Added` / `### Changed` / `### Fixed` as needed.
    - `publish/release-<version>-release-notes.md`: the release page text (copy the last one: download table, requirements, then the CHANGELOG entry). `publish/` is in `.gitignore`, add the file with `git add -f`.
 2. Push and wait for the *Cross-platform* workflow on `main` to pass (tests on both systems, self-test pictures compared, the exe's file version checked).
-3. Start *Actions › Release › Run workflow* on `main` with the version (`1.13.0`, no `v`). With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>"}`). It checks the version, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files:
+3. Start *Actions › Release › Run workflow* on `main` with the version (`1.13.0`, no `v`). With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>"}`). It checks the version, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files, for both systems (it stops if one is missing):
    - `Holm.exe` (the Windows app),
    - `Holm-<version>-win-x64.zip` (only `Holm.exe`, `LICENSE`, `README.txt`: the updater refuses anything else, and an exe whose file version isn't `<version>.0`),
    - `Holm-<version>-linux-x64.tar.gz` (`Holm`, `LICENSE`, `README.txt`).
@@ -191,7 +192,7 @@ Every running Holm finds it within two hours: the updater asks `releases/latest`
 
 ### Dev prerelease
 
-For testers only (the updater never offers it): on `dev`, write `<version>.<n>` (e.g. `1.13.1.1`) into `docs/cross-platform/dev-release-version.txt` and push. *Dev release* builds and publishes the prerelease `dev-v<version>.<n>` with test-build names.
+For testers only (the updater never offers it): on `dev`, write `<version>.<n>` (e.g. `1.13.1.1`) into `docs/cross-platform/dev-release-version.txt` and push. *Dev release* builds and publishes the prerelease `dev-v<version>.<n>` with both test builds (Windows and Linux); without both it publishes nothing.
 
 ### Store release (Microsoft Store)
 

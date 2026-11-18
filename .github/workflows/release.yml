@@ -92,6 +92,14 @@ jobs:
           pattern: release-*
           path: assets
           merge-multiple: true
+      # Every release is for Windows and Linux (AGENTS.md): without all three files it is not published.
+      - name: Check that both systems are there
+        run: |
+          for f in Holm.exe "Holm-${{ inputs.version }}-win-x64.zip" "Holm-${{ inputs.version }}-linux-x64.tar.gz"; do
+            test -s "assets/$f" || { echo "::error::assets/$f is missing: a release must hold the Windows and the Linux build"; exit 1; }
+          done
+          ls -l assets
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
