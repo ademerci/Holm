@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.17.1 – unreleased
+
+### Changed
+- **Close the account card.** The sign-in card on the profile page has a small cross. It folds the card to one line with *Sign in…* to bring it back, and Holm remembers it. On the first-start offer the cross means *Not now*.
+
 ## 1.17.0 – 2026-11-18
 
 ### Added
