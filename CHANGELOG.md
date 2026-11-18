@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.2 – 2026-11-18
+
+### Fixed
+- **Beam nearby can't be blocked any more.** A device on the same network that connected and then sent nothing kept Beam busy until Holm restarted: other nearby files were turned away and dropping files, copied codes and friend requests stopped working. Holm now lets such a connection go after 30 seconds.
+
+### Changed
+- **Clearer questions for incoming files.** A file from someone nearby says *nearby, not verified*, since the name is only what their device says. An offer with a program in it, such as an `.exe`, `.msi` or script, says so.
+
 ## 1.15.1 – 2026-11-18
 
 ### Changed
