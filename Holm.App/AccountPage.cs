@@ -17,7 +17,8 @@ namespace Holm.App;
 /// </summary>
 internal sealed class AccountPage : HubView
 {
-    public const string Key = "account";
+    /// <summary>The page it's on: the profile page (SettingsWindow's ProfileKey), under the profile.</summary>
+    public const string Key = "profile";
     public const int MinPassword = 10;
 
     /// <summary>Shown before anyone signs up: what the account keeps, where, and who can read it.</summary>
@@ -46,7 +47,7 @@ internal sealed class AccountPage : HubView
     {
         _account = account;
         _notNow = notNow;
-        Child = HubTheme.Scroller(_host);
+        Child = _host; // the profile page scrolls
         if (_account != null) _account.Changed += Render;
         Render();
     }

@@ -33,8 +33,7 @@ abstract class HubView : Border
 /// <summary>An entry in the Holm window's sidebar.</summary>
 /// <param name="Build">Makes the page, each time it's opened.</param>
 /// <param name="Badge">A count to show beside the entry (unread messages), or 0.</param>
-/// <param name="First">Among the settings: right under Profile, not at the end.</param>
-sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null, bool First = false);
+sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null);
 
 sealed class SettingsWindow : Window
 {
@@ -71,7 +70,7 @@ sealed class SettingsWindow : Window
 
     public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
-                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
+                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null, Func<HubView>? belowProfile = null)
     {
         _tools = tools ?? Array.Empty<HubPage>();
         _extra = extra ?? Array.Empty<HubPage>();
@@ -152,11 +151,15 @@ sealed class SettingsWindow : Window
             profile.Changed += RefreshApplyState;
             profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _pages[ProfileKey] = profile;
-        }
-        foreach (var page in _extra.Where(p => p.First))
-        {
-            _titles[page.Key] = (page.Title, page.Subtitle);
-            nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
+            // The Holm account lives on the profile page, under the profile.
+            if (belowProfile?.Invoke() is { } below)
+            {
+                var stack = new StackPanel { Spacing = 14 };
+                stack.Children.Add(profile);
+                stack.Children.Add(below);
+                Closed += (_, _) => below.Detach();
+                _pages[ProfileKey] = HubTheme.Scroller(stack);
+            }
         }
         foreach (var group in groups)
         {
@@ -165,7 +168,7 @@ sealed class SettingsWindow : Window
             _pages[group.Key] = GroupPage(group);
         }
         // Pages among the settings that aren't switches (Updates): built when opened, without Apply.
-        foreach (var page in _extra.Where(p => !p.First))
+        foreach (var page in _extra)
         {
             _titles[page.Key] = (page.Title, page.Subtitle);
             nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));

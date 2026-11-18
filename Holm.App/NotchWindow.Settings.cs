@@ -123,12 +123,9 @@ public sealed partial class NotchWindow
         _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
-            new[]
-            {
-                new HubPage(AccountPage.Key, "\uE895", "Account", "Sync with your Holm account", BuildAccountPage, First: true),
-                new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage),
-            },
-            new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
+            new[] { new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
+            new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) },
+            BuildAccountPage);
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
         _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); HandMemoryBackSoon(); };
