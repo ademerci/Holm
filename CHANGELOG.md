@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.17.0 – 2026-11-18
+
+### Added
+- **Dot Matrix in real dots.** The Dot Matrix design now writes the clock in the notch, the big clock, the weather temperature and the page titles of the Holm window in a dot font, and lays a fine grid of dots over the notch and the sidebar, like the dot display on the back of a phone. Pick it under *Settings › Design*. The other designs look as before.
+- **A new series, Lundy.** The Holm window shows the name beside the version number.
+
 ## 1.16.0 – 2026-11-18
 
 ### Added
