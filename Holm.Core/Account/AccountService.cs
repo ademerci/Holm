@@ -287,7 +287,8 @@ internal sealed class AccountService : IDisposable
                                 Open<AchievementsPayload>(SyncSections.Achievements));
         Dictionary<string, byte[]> writes = new();
         bool ask = false;
-        await _ui(() => writes = Merge(remote, Now, out ask)).ConfigureAwait(false);
+        // Milliseconds: two changes in one second must still tell which came last.
+        await _ui(() => writes = Merge(remote, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), out ask)).ConfigureAwait(false);
         if (ask && !_identityAsked)
         {
             _identityAsked = true;

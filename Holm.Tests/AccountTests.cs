@@ -96,6 +96,25 @@ public class AccountSyncTests
     }
 
     [Fact]
+    public void Two_pcs_with_a_tie_agree_on_one_value()
+    {
+        // Both changed the same setting in the same millisecond: whichever syncs, both end with the same value.
+        SettingsPayload Pc(string style, out AppSettings settings, out SyncState state)
+        {
+            settings = new AppSettings { ClockStyle = style };
+            state = new SyncState();
+            SettingsSync.NoteLocalChanges(state, SettingsSync.Capture(new AppSettings()), 1);
+            SettingsSync.NoteLocalChanges(state, SettingsSync.Capture(settings), 500);
+            return SettingsSync.Merge(settings, state, null).Merged;
+        }
+        var fromA = Pc("bold", out var a, out var stateA);
+        var fromB = Pc("mono", out var b, out var stateB);
+        SettingsSync.Merge(a, stateA, fromB);
+        SettingsSync.Merge(b, stateB, fromA);
+        Assert.Equal(a.ClockStyle, b.ClockStyle);
+    }
+
+    [Fact]
     public void Device_settings_and_private_things_never_go_to_the_account()
     {
         foreach (string name in new[]

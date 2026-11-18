@@ -197,7 +197,9 @@ internal static class SettingsSync
             var local = state.SettingsValues[name];
             long localStamp = state.SettingsStamps.GetValueOrDefault(name);
             if (remote != null && remote.Values.TryGetValue(name, out var theirs) && remote.Stamps.GetValueOrDefault(name) is long theirStamp
-                && (theirStamp > localStamp || theirStamp == localStamp && localStamp == 0))
+                // A tie goes the same way on every PC (first sync: the account's; else the larger value), so they agree.
+                && (theirStamp > localStamp || theirStamp == localStamp
+                    && (localStamp == 0 || string.CompareOrdinal(theirs.GetRawText(), local.GetRawText()) > 0)))
             {
                 if (theirs.GetRawText() != local.GetRawText() && Applies(name, settings, theirs))
                 {
@@ -237,7 +239,9 @@ internal static class ProfileSync
         else if (state.ProfileHash != hash) state.ProfileStamp = now;
         local.Stamp = state.ProfileStamp;
         bool changed = false;
-        if (remote != null && (remote.Stamp > local.Stamp || remote.Stamp == local.Stamp && local.Stamp == 0) && Hash(remote) != hash)
+        // A tie goes the same way on every PC (first sync: the account's; else the larger hash), so they agree.
+        if (remote != null && Hash(remote) != hash && (remote.Stamp > local.Stamp || remote.Stamp == local.Stamp
+                && (local.Stamp == 0 || string.CompareOrdinal(Hash(remote), hash) > 0)))
         {
             settings.ProfileName = FriendProfile.CleanText(remote.Name, FriendProfile.MaxName);
             settings.ProfileStatus = FriendProfile.CleanText(remote.Status, FriendProfile.MaxStatus);
@@ -321,7 +325,7 @@ public static class FriendsSync
         {
             Friends = result.Select(f => SyncedFriend.From(f, added[f.Key])).ToList(),
             // Removals older than a year have long reached every PC.
-            Removed = removed.Where(r => r.Value > now - 365L * 24 * 60 * 60 && !Counts(r.Key)).ToDictionary(r => r.Key, r => r.Value, StringComparer.Ordinal),
+            Removed = removed.Where(r => r.Value > now - 365L * 24 * 60 * 60 * 1000 && !Counts(r.Key)).ToDictionary(r => r.Key, r => r.Value, StringComparer.Ordinal),
         };
         state.FriendsAdded = result.ToDictionary(f => f.Key, f => added[f.Key], StringComparer.Ordinal);
         state.FriendsRemoved = new Dictionary<string, long>(merged.Removed, StringComparer.Ordinal);

@@ -142,6 +142,48 @@ public class AccountOnlineTests
         await AssertGone(root, email, password);
     }
 
+    [Fact]
+    public async Task Two_pcs_changing_and_syncing_at_once_end_up_the_same()
+    {
+        if (Diag.DevFolder == null || !AccountService.Available) return;
+        FriendsService.ProtectKey = (data, _) => data.ToArray();
+        FriendsService.UnprotectKey = (data, _) => data.ToArray();
+        string root = Path.Combine(Diag.Folder, "account-online-" + Guid.NewGuid().ToString("N")[..8]);
+        string email = $"holm-selftest-{Guid.NewGuid():N}@example.com", password = "test password " + Guid.NewGuid().ToString("N")[..10];
+        var s1 = new AppSettings { Beam = false };
+        var s2 = new AppSettings { Beam = false };
+        var b1 = new AchievementBook((string?)null);
+        var b2 = new AchievementBook((string?)null);
+        using var pc1 = new AccountService(s1, b1, new FriendsService(s1, Ui), Ui, Path.Combine(root, "pc1"));
+        using var pc2 = new AccountService(s2, b2, new FriendsService(s2, Ui), Ui, Path.Combine(root, "pc2"));
+        // The merge runs on "the UI thread": one lock stands in for it, as two PCs each have their own.
+        try
+        {
+            await pc1.SignUpAsync(email, password, CancellationToken.None);
+            await pc2.SignInAsync(email, password, CancellationToken.None);
+            for (int round = 0; round < 20; round++)
+            {
+                lock (s1) { s1.QuickReactions = new() { "pc1-" + round }; b1.Add(AchievementBook.Songs); }
+                lock (s2) { s2.QuietFrom = $"{round % 24:00}:00"; b2.Add(AchievementBook.Timers); }
+                await Task.WhenAll(pc1.SyncAsync(CancellationToken.None), pc2.SyncAsync(CancellationToken.None));
+                Assert.Null(pc1.Problem);
+                Assert.Null(pc2.Problem);
+            }
+            await pc1.SyncAsync(CancellationToken.None);
+            await pc2.SyncAsync(CancellationToken.None);
+            Assert.Equal(new[] { "pc1-19" }, s2.QuickReactions);
+            Assert.Equal("19:00", s1.QuietFrom);
+            Assert.Equal(20, b1.Value(AchievementBook.Timers));
+            Assert.Equal(20, b2.Value(AchievementBook.Songs));
+        }
+        finally
+        {
+            if (pc1.SignedIn) await pc1.DeleteAsync(CancellationToken.None);
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+        await AssertGone(root, email, password);
+    }
+
     static async Task AssertGone(string root, string email, string password)
     {
         var gone = await Assert.ThrowsAsync<AccountException>(() =>
