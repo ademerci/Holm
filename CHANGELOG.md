@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.0 – 2026-11-18
+
+### Added
+- **Holm account, if you want one.** Sign in on each computer and your settings, profile, achievements and friends stay the same everywhere, with one friend code. It sits on the profile page under your profile, and Holm offers it once at the first start. Everything is encrypted on your computer before it goes: the account service (Google Firebase, stored in Zürich) keeps your email address and data it can't read. Notes, reminders, chats and files stay on each computer. A forgotten password can't be reset. Without an account Holm works as before.
+
 ## 1.15.3 – unreleased
 
 ### Fixed
