@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.14.0 – 2026-11-18
+
+### Added
+- **Designs.** Settings › Design has 17 looks: Classic, Instrument, Frosted Glass, Neon, Paper, Terminal, Brutalist, Aurora, Liquid Glass, Material, Mica, Dot Matrix, Hardware, Aero, Retro 98, Pocket and Album. Each changes the notch and the Holm window: surfaces, lines and glow, corners, glass, type, and whether tools show as icons or words. Holm restarts to switch.
+- **Accent colour.** Pick one of eight colours, type a hex code or take one from the screen. It colours buttons, switches and the progress in the notch.
+- **Your own designs.** A design is a small JSON file. *Copy AI prompt* gives an AI everything it needs to write one; *Import a design…* checks every value and adds it to the list.
+
+### Changed
+- The *Instrument look* switch in General is replaced by the Design page. If it was on, Holm starts in the Instrument design.
+
 ## 1.13.0 – 2026-11-17
 
 ### Added
