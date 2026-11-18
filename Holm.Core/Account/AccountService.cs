@@ -22,7 +22,8 @@ internal sealed class AccountService : IDisposable
     /// <summary>A change is synced this long after it was saved, so a burst of changes goes up once.</summary>
     static readonly TimeSpan Debounce = TimeSpan.FromSeconds(8);
     /// <summary>The account's changes from other PCs are fetched this often while Holm runs (and at every start).</summary>
-    static readonly TimeSpan PullEvery = TimeSpan.FromMinutes(15);
+    // shortcut: a sync reads 5 documents (24 a day per PC at this pace); one document per account would cut that to 1, once the free tier gets tight.
+    static readonly TimeSpan PullEvery = TimeSpan.FromHours(1);
 
     readonly AppSettings _settings;
     readonly AchievementBook _achievements;
