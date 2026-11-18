@@ -117,6 +117,7 @@ public sealed partial class NotchWindow
         // One backdrop for the notch and its concave "shoulders", so the cover colours flow into both.
         (_artFront, _artBack) = (_artLayerA, _artLayerB);
         _backdrop.Children.Add(new Rectangle { Fill = Look.NotchFill() });
+        if (Look.Aero) _backdrop.Children.Add(new AeroScenery());
         _backdrop.Children.Add(_artLayerA);
         _backdrop.Children.Add(_artLayerB);
         _backdrop.Children.Add(_edge);

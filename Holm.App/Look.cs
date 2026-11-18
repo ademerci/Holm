@@ -13,11 +13,23 @@ internal static class Look
     public static Design Current { get; set; } = Designs.Current(AppSettings.Load());
 
     public static bool Instrument => Current.Instrument;
+    public static bool Aero => Current.Id == "aero";
 
     /// <summary>The instrument value or the classic one.</summary>
     public static T Pick<T>(T instrument, T classic) => Instrument ? instrument : classic;
 
     public static IBrush Brush(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
+
+    public static IBrush VerticalGradient(params (uint Color, double Offset)[] colors)
+    {
+        var stops = new GradientStops();
+        foreach (var (color, offset) in colors) stops.Add(new GradientStop(Color.FromUInt32(color), offset));
+        return new LinearGradientBrush
+        {
+            StartPoint = new(0, 0, Avalonia.RelativeUnit.Relative), EndPoint = new(0, 1, Avalonia.RelativeUnit.Relative),
+            GradientStops = stops,
+        }.ToImmutable();
+    }
 
     /// <summary>The design's ink (text and icons), and the same ink faded to <paramref name="alpha"/>.</summary>
     public static readonly IBrush Ink = Brush(Current.Ink);
@@ -42,6 +54,8 @@ internal static class Look
     {
         design ??= Current;
         var colors = design.Fill;
+        if (design.Id == "aero")
+            return VerticalGradient((colors[0], 0), (colors[1], 0.32), (colors[2], 0.67), (colors[3], 1));
         if (colors.Length == 1) return Brush(colors[0]);
         var stops = new GradientStops();
         for (int i = 0; i < colors.Length; i++) stops.Add(new GradientStop(Color.FromUInt32(colors[i]), i / (double)(colors.Length - 1)));

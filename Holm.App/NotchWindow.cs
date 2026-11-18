@@ -53,6 +53,8 @@ public sealed partial class NotchWindow : Window
     SpringValue _rSpring = new(15, 0.15, 2.0);
     SpringValue _earSpring = new(MaxEar, 0.1, 1.5);
     SpringValue _scaleSpring = new(1, 0.0008, 0.015);
+    SpringValue _dragLean = new(0, 0.08, 0.5);
+    readonly SkewTransform _dragSkew = new();
     /// <summary>The notch's size preference (Customize › Collapsed / Expanded size), applied to everything in it.</summary>
     readonly ScaleTransform _notchScale = new(1, 1);
 
@@ -141,7 +143,7 @@ public sealed partial class NotchWindow : Window
         _root.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
         _root.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
         _root.RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative);
-        _root.RenderTransform = _notchScale;
+        _root.RenderTransform = new TransformGroup { Children = { _dragSkew, _notchScale } };
         Content = _root;
         Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
 
@@ -365,6 +367,8 @@ public sealed partial class NotchWindow : Window
         _rSpring.Snap(r);
         _earSpring.Snap(ear);
         _scaleSpring.Snap(scale);
+        _dragLean.Snap(0);
+        _dragSkew.AngleX = 0;
         ApplyShape(w, h, r, ear, scale);
         FitWindowHeight();
         UpdateHitRegion(w, h, scale);
@@ -394,7 +398,7 @@ public sealed partial class NotchWindow : Window
         // While it moves, the mouse region covers both where the shape is and where it is going.
         UpdateHitRegion(Math.Max(w, _wSpring.Value), Math.Max(h, _hSpring.Value), Math.Max(scale, _scaleSpring.Value));
 
-        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled && _scaleSpring.IsSettled)
+        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled && _scaleSpring.IsSettled && _dragLean.IsSettled)
         {
             _motionRunning = false;
             ApplyShape(w, h, r, ear, scale);
@@ -437,6 +441,12 @@ public sealed partial class NotchWindow : Window
         _scaleSpring.Kick(0.35, 0.30, 0.58);
         UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
         _shapeAnimating = true;
+        StartMotion();
+    }
+
+    void LeanWhileDragging(double offset)
+    {
+        _dragLean.Retarget(offset, 0.18, 0.65);
         StartMotion();
     }
 
@@ -494,14 +504,23 @@ public sealed partial class NotchWindow : Window
                      & _hSpring.Step(dt)
                      & _rSpring.Step(dt)
                      & _earSpring.Step(dt)
-                     & _scaleSpring.Step(dt);
+                     & _scaleSpring.Step(dt)
+                     & _dragLean.Step(dt);
 
         double hMin = _mini && !_hoverBoost ? 1 : 12;
         double h = Math.Max(_shapeH < hMin ? 1 : hMin, _hSpring.Value);
         double scale = Math.Max(0.1, _scaleSpring.Value);
+        double w = Math.Max(1, _wSpring.Value);
+        if (_dragLean.Value != 0 || _dragSkew.AngleX != 0)
+        {
+            double leanLimit = Math.Clamp((Width / scale - w) / 2 - MaxEar, 0, 18);
+            double lean = Math.Clamp(_dragLean.Value, -leanLimit, leanLimit);
+            h = Math.Max(Math.Min(h, hMin), h * (1 - Math.Min(Math.Abs(_dragLean.Value) / 225, 0.08)));
+            _dragSkew.AngleX = Math.Atan(lean / h) * 180 / Math.PI;
+        }
         double frameNeed = NeededWindowHeight(h, scale);
         if (frameNeed > Height) Height = frameNeed;
-        ApplyShape(Math.Max(1, _wSpring.Value), h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
+        ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
         {

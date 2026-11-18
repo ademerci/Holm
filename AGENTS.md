@@ -175,6 +175,13 @@ Several people each work with their own AI agent (Claude, Codex, …) on this re
 - Raise it in the first commit after a release that changes the app (`1.13.0` → `1.13.1` for fixes, `1.14.0` for features), never reuse a released number: the release workflow refuses an existing tag.
 - Test builds: always both, `Holm-<version>-test-build.<n>.exe` and `Holm-<version>-test-build.<n>-linux-x64`, `<n>` incrementing (CI uses its run number). `Holm.exe` / `Holm` only in official releases.
 
+### Island names
+
+- Give each new minor series (`1.X.0`) a new name from a real island. Choose a short, single-word name such as Fiji. Prefer a small island or islet when possible, since a holm is a small island.
+- Set `<ReleaseIsland>` in `Holm.App/Holm.App.csproj` when choosing the new series name. The Holm sidebar shows it beside the version number.
+- Keep that island name on every patch and hotfix in the series. The convention starts with **Holm 1.15.0 — Skokholm**. Use Skokholm for subsequent `1.15.x` releases, then choose a new island for `1.16.0`. [Skokholm, Pembrokeshire Coast National Park](https://www.pembrokeshirecoast.wales/things-to-do/pembrokeshires-islands/skokholm/)
+- Use `Holm <version> — <island>` as the GitHub release title and mention the island in release notes, including Store notes for the same version. Keep tags and filenames in their existing version-based formats.
+
 ### GitHub release (portable Windows and Linux)
 
 Every running Holm finds it within two hours: the updater asks `releases/latest` (never a draft or prerelease) and installs `Holm-<version>-win-x64.zip` on Windows; on Linux *Update* opens the release page. A release is therefore final: test before, do not "try" one.
@@ -183,7 +190,7 @@ Every running Holm finds it within two hours: the updater asks `releases/latest`
    - `CHANGELOG.md`: the top entry is `## <version> – <YYYY-MM-DD>` (the release day, not "unreleased"), with `### Added` / `### Changed` / `### Fixed` as needed.
    - `publish/release-<version>-release-notes.md`: the release page text (copy the last one: download table, requirements, then the CHANGELOG entry). `publish/` is in `.gitignore`, add the file with `git add -f`.
 2. Push and wait for the *Cross-platform* workflow on `main` to pass (tests on both systems, self-test pictures compared, the exe's file version checked).
-3. Start *Actions › Release › Run workflow* on `main` with the version (`1.13.0`, no `v`). With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>"}`). It checks the version, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files, for both systems (it stops if one is missing):
+3. Start *Actions › Release › Run workflow* on `main` with the version (without `v`) and the series' island name. With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>", "island": "<island>"}`). It checks the inputs, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files, for both systems (it stops if one is missing):
    - `Holm.exe` (the Windows app),
    - `Holm-<version>-win-x64.zip` (only `Holm.exe`, `LICENSE`, `README.txt`: the updater refuses anything else, and an exe whose file version isn't `<version>.0`),
    - `Holm-<version>-linux-x64.tar.gz` (`Holm`, `LICENSE`, `README.txt`).

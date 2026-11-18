@@ -7,13 +7,17 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 
 namespace Holm.App;
 
 /// <summary>One switch in the settings: its words, an icon, and how to read and apply it.</summary>
-sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null);
+sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null)
+{
+    public bool Hidden { get; init; }
+}
 
 /// <summary>A page of switches.</summary>
 sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
@@ -35,7 +39,7 @@ abstract class HubView : Border
 /// <param name="Badge">A count to show beside the entry (unread messages), or 0.</param>
 sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null);
 
-sealed class SettingsWindow : Window
+sealed partial class SettingsWindow : Window
 {
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
     // The Holm window's palette is HubTheme's (the instrument look), so the settings and the friends pages match.
@@ -53,7 +57,10 @@ sealed class SettingsWindow : Window
     readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
     // The instrument look drops the subtitle under the page title: the rows say what the page holds.
     readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), IsVisible = !Look.Instrument };
-    readonly Border _pageHost = new();
+    readonly Border _pageHost = new() { Focusable = true };
+    const string JellyPage = "general", JellyCode = "jelly";
+    Control? _jellyRow;
+    int _typedLetters;
     readonly Button _apply;
     readonly Border _surface, _dialog;
     readonly Func<bool> _animations;
@@ -68,7 +75,7 @@ sealed class SettingsWindow : Window
 
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
+    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
                           IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
     {
@@ -97,7 +104,7 @@ sealed class SettingsWindow : Window
 
         // ── sidebar ──
         var nav = new StackPanel();
-        var sidebar = new DockPanel();
+        var sidebar = new DockPanel { Margin = new Thickness(14, 16, 10, 16) };
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
         brand.Children.Add(new Border
         {
@@ -107,7 +114,7 @@ sealed class SettingsWindow : Window
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeight.SemiBold });
-        brandText.Children.Add(new TextBlock { Text = "Version " + version, FontSize = 11, Foreground = Dim });
+        brandText.Children.Add(new TextBlock { Text = versionLabel, FontSize = 11, Foreground = Dim });
         brand.Children.Add(brandText);
         brand.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         DockPanel.SetDock(brand, Dock.Top);
@@ -170,9 +177,12 @@ sealed class SettingsWindow : Window
         }
         // Glass can only blur the whole window: it fills the window, square.
         double corners = design.Glass ? 0 : design.Corners;
+        var sideContent = new Grid();
+        if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
+        sideContent.Children.Add(sidebar);
         var sideBorder = new Border
         {
-            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), Padding = new Thickness(14, 16, 10, 16), Child = sidebar,
+            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), ClipToBounds = Look.Aero, Child = sideContent,
         };
 
         // ── content ──
@@ -237,8 +247,10 @@ sealed class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
+        InitJellyMotion();
         Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
+        AddHandler(KeyDownEvent, RevealJelly, RoutingStrategies.Tunnel);
         KeyDown += (_, e) =>
         {
             if (e.Key != Key.Escape) return;
@@ -247,9 +259,11 @@ sealed class SettingsWindow : Window
         };
         Activated += (_, _) =>
         {
+            if (Page == JellyPage && FocusManager?.GetFocusedElement() == null) _pageHost.Focus();
             if (!HasChanges && !_dialog.IsVisible) Refresh();
             (_shownView as ChatPage)?.Seen();
         };
+        Deactivated += (_, _) => _typedLetters = 0;
         Closing += (_, e) =>
         {
             if (_allowClose || !HasChanges && !_dialog.IsVisible) return;
@@ -266,12 +280,14 @@ sealed class SettingsWindow : Window
     public void Navigate(string key)
     {
         if (!_titles.ContainsKey(key)) return;
+        _typedLetters = 0;
         _shownView?.Detach();
         _shownView = null;
         bool settings = _pages.TryGetValue(key, out var page);
         if (!settings && _social.Concat(_tools).Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
+        if (key == JellyPage && IsActive) _pageHost.Focus();
         (_pageTitle.Text, _pageSubtitle.Text) = (Look.Heading(_titles[key].Title), _titles[key].Subtitle);
         _footer.IsVisible = settings;
         foreach (var (k, item) in _navItems)
@@ -281,6 +297,21 @@ sealed class SettingsWindow : Window
             item.Glyph.Foreground = on ? Accent : Dim;
         }
         RefreshBadges();
+        WobbleSettings(0, 0.60);
+    }
+
+    void RevealJelly(object? sender, KeyEventArgs e)
+    {
+        if (Page != JellyPage || _dialog.IsVisible || _jellyRow is not { IsVisible: false } row) return;
+        char letter = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) == 0 ? e.Key switch
+        {
+            Key.J => 'j', Key.E => 'e', Key.L => 'l', Key.Y => 'y', _ => '\0',
+        } : '\0';
+        _typedLetters = letter == JellyCode[_typedLetters] ? _typedLetters + 1 : letter == JellyCode[0] ? 1 : 0;
+        if (_typedLetters != JellyCode.Length) return;
+        _typedLetters = 0;
+        row.IsVisible = true;
+        e.Handled = true;
     }
 
     /// <summary>Updates the counts beside the friends pages (unread messages).</summary>
@@ -310,8 +341,8 @@ sealed class SettingsWindow : Window
     void RefreshApplyState()
     {
         _apply.IsEnabled = HasChanges;
-        _apply.Background = HasChanges ? Accent : Card;
-        if (!Look.Instrument) return;
+        _apply.Background = HasChanges ? HubTheme.ActionFill : HubTheme.ActionSurface;
+        if (!Look.Instrument && !Look.Aero) return;
         _apply.Foreground = HasChanges ? OnAccent : Dim;
         foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) _apply.Resources["ButtonForeground" + state] = _apply.Foreground;
     }
@@ -350,14 +381,23 @@ sealed class SettingsWindow : Window
         var rows = new StackPanel();
         for (int i = 0; i < group.Switches.Count; i++)
         {
-            if (Look.Instrument) rows.Children.Add(new Border { Height = 1, Background = Line });
-            else if (i > 0) rows.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
-            rows.Children.Add(Row(group.Switches[i], group.Color, first: i == 0, last: i == group.Switches.Count - 1));
+            var setting = group.Switches[i];
+            var target = rows;
+            if (setting.Hidden)
+            {
+                target = new StackPanel { IsVisible = false };
+                _jellyRow = target;
+                rows.Children.Add(target);
+            }
+            if (Look.Instrument) target.Children.Add(new Border { Height = 1, Background = Line });
+            else if (i > 0) target.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
+            target.Children.Add(Row(setting, group.Color, first: i == 0, last: i == group.Switches.Count - 1));
         }
         // The instrument look: a plain list between hairlines, no card behind it.
         var card = Look.Instrument
             ? new Border { Child = rows, VerticalAlignment = VerticalAlignment.Top }
-            : new Border { Background = Card, CornerRadius = new CornerRadius(HubTheme.Round(12)), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+            : new Border { Background = Card, BorderBrush = Look.Aero ? Line : null, BorderThickness = new Thickness(Look.Aero ? 1 : 0),
+                CornerRadius = new CornerRadius(HubTheme.Round(12)), Child = rows, VerticalAlignment = VerticalAlignment.Top };
         return Scroller(card);
     }
 
@@ -374,11 +414,9 @@ sealed class SettingsWindow : Window
         var content = new Grid { Margin = Look.Pick(new Thickness(2, 11, 4, 11), new Thickness(14, 10, 16, 10)), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         if (!Look.Instrument) // the instrument look has no icon in front of each row
         {
-            var tile = new Border
-            {
-                Width = 30, Height = 30, CornerRadius = new CornerRadius(HubTheme.Round(30 * 0.27)), Background = new SolidColorBrush(color).ToImmutable(),
-                Child = Glyph(setting.Glyph, 30 * 0.47, Brushes.White), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
-            };
+            var tile = HubTheme.IconTile(setting.Glyph, color);
+            tile.Margin = new Thickness(0, 0, 14, 0);
+            tile.VerticalAlignment = VerticalAlignment.Center;
             content.Children.Add(tile);
         }
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -423,6 +461,7 @@ sealed class SettingsWindow : Window
         }
         _profile?.Apply();
         Refresh();
+        WobbleSettings(0, 0.8);
     }
 
     void ResetDefaults()
@@ -434,6 +473,7 @@ sealed class SettingsWindow : Window
     /// <summary>A question over the window; each choice closes it and runs.</summary>
     void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
     {
+        _typedLetters = 0;
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeight.SemiBold });
         content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Dim, Margin = new Thickness(0, 10, 0, 20) });
@@ -496,8 +536,12 @@ sealed class ToggleSwitch : Control
 {
     public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ToggleSwitch, double>(nameof(Position));
 
-    static readonly Color Off = Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromUInt32(WinNotch.Designs.WithAlpha(Look.Current.Ink, 0x40))),
+    static readonly Color Off = Look.Aero ? Color.FromUInt32(0xFF5584A0)
+        : Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromUInt32(WinNotch.Designs.WithAlpha(Look.Current.Ink, 0x40))),
         On = Color.FromUInt32(Look.Current.ToggleColor);
+    static readonly IBrush AeroSheen = Look.VerticalGradient((0x9EFFFFFF, 0), (0x36FFFFFF, 1));
+    static readonly IBrush AeroKnob = Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFE5FAFF, 0.55), (0xFFA8DBF0, 1));
+    static readonly IPen AeroRim = new Pen(Look.Brush(0xB02B5E7B), 1);
 
     static ToggleSwitch() => AffectsRender<ToggleSwitch>(PositionProperty);
 
@@ -530,7 +574,15 @@ sealed class ToggleSwitch : Control
         var track = new SolidColorBrush(Color.FromArgb(
             (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
             (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
+        var center = new Point(12 + 16 * Position, 12);
+        if (Look.Aero)
+        {
+            dc.DrawRectangle(track, AeroRim, new RoundedRect(new Rect(0.5, 0.5, 39, 23), 11.5));
+            dc.DrawRectangle(AeroSheen, null, new RoundedRect(new Rect(3, 2, 34, 9), 4.5));
+            dc.DrawEllipse(AeroKnob, AeroRim, center, 9.5, 9.5);
+            return;
+        }
         dc.DrawRectangle(track, null, new RoundedRect(new Rect(0, 0, 40, 24), 12));
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
+        dc.DrawEllipse(Brushes.White, null, center, 10, 10);
     }
 }

@@ -162,9 +162,12 @@ internal static class Designs
         },
         new()
         {
-            Id = "aero", Name = "Aero", Description = "Glossy sky-blue glass", Wash = false,
-            Fill = new[] { 0xC0508FD8u, 0xB03A7CC8u, 0xC01E5AA8u, 0xC0367FD0u }, Edge = 0xCCFFFFFF, EdgeWidth = 1, Accent = 0xFF3FBF2A,
-            Panel = 0xC82A64AA, Sidebar = 0x30FFFFFF, Card = 0x26FFFFFF, Corners = 10, Glass = true,
+            Id = "aero", Name = "Frutiger Aero", Description = "Blue skies, green hills and glossy water bubbles", Wash = false,
+            Fill = new[] { 0xFF74CEFFu, 0xFFCEF8FFu, 0xFF83E6FAu, 0xFF36B8EAu }, Edge = 0xFFE2FCFF, EdgeWidth = 1,
+            Ink = 0xFF0A2B43, Accent = 0xFF075C9D, Toggle = 0xFF437D14,
+            Panel = 0xFFDFF6FF, Sidebar = 0xFF9DE4FA, Card = 0xFFF4FCFF, CardStrong = 0xFFC0EBFF,
+            Hover = 0xFFD6F6FF, Selected = 0xFFC7F48A, Line = 0xFF8EC6D9, WindowEdge = 0xFF4D9AC2,
+            Dim = 0xFF214A63, Faint = 0xFF315870, Corners = 16,
         },
         new()
         {

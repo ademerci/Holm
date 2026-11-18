@@ -85,12 +85,21 @@ public sealed partial class NotchWindow
     /// <summary>A tool's button: its icon, or in the instrument look a small word.</summary>
     static NotchButton ToolWord(string word, string glyph) => Look.Instrument
         ? new(new TextBlock { Text = Look.Heading(word), FontSize = Look.Current.Caps ? 10 : 11, Foreground = Dim, Margin = new Thickness(4, 0) }) { Height = 28, Margin = new Thickness(1, 0) }
-        : new(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Dim }) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
+        : ToolWord(word, new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Look.Aero ? Look.Ink : Dim });
 
     /// <summary>A tool's button with something other than an icon in the classic look (the AI mark).</summary>
-    static NotchButton ToolWord(string word, Control classic) => Look.Instrument
-        ? ToolWord(word, "")
-        : new(classic) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
+    static NotchButton ToolWord(string word, Control classic)
+    {
+        if (Look.Instrument) return ToolWord(word, "");
+        var button = new NotchButton(classic) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
+        if (Look.Aero)
+        {
+            button.Rest = HubTheme.ActionSurface;
+            button.BorderBrush = HubTheme.Edge;
+            button.BorderThickness = new Thickness(1);
+        }
+        return button;
+    }
 
     NotchButton ToolButton(string word, string glyph, Tool tool, string tip)
     {
@@ -242,7 +251,9 @@ public sealed partial class NotchWindow
         {
             bool match = which == tool;
             page.IsVisible = match;
-            button.Rest = match ? ToolLit : Brushes.Transparent;
+            button.Rest = Look.Aero
+                ? (match ? HubTheme.Selected : HubTheme.ActionSurface)
+                : (match ? ToolLit : Brushes.Transparent);
             if (match) activePage = page;
         }
         if (tool != Tool.Mixer) HideMixer();

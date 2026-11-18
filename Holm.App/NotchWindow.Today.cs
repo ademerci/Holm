@@ -47,13 +47,19 @@ public sealed partial class NotchWindow
     static NotchButton Card(string glyph, IBrush color, TextBlock title, TextBlock more)
     {
         var content = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-        content.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = color, VerticalAlignment = VerticalAlignment.Center });
+        content.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Look.Aero ? Look.Accent : color, VerticalAlignment = VerticalAlignment.Center });
         var words = new StackPanel { Margin = new Thickness(10, 0, 0, 0) };
         words.Children.Add(title);
         words.Children.Add(more);
         Grid.SetColumn(words, 1);
         content.Children.Add(words);
         var card = NotchButton.Row(content);
+        if (Look.Aero)
+        {
+            card.Rest = HubTheme.ActionSurface;
+            card.BorderBrush = HubTheme.Edge;
+            card.BorderThickness = new Thickness(1);
+        }
         content.HorizontalAlignment = HorizontalAlignment.Stretch;
         return card;
     }
