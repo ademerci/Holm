@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Linq;
 using Avalonia;
@@ -66,7 +66,7 @@ internal sealed class AchievementsPage : HubView
         tile.Margin = new Thickness(0, 0, 12, 0);
         top.Children.Add(tile);
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        words.Children.Add(new TextBlock { Text = achievement.Title, FontWeight = FontWeight.SemiBold, Foreground = done ? Brushes.White : HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
+        words.Children.Add(new TextBlock { Text = achievement.Title, FontWeight = FontWeight.SemiBold, Foreground = done ? Look.Ink : HubTheme.Dim, TextTrimming = TextTrimming.CharacterEllipsis });
         words.Children.Add(new TextBlock { Text = achievement.Description, FontSize = 12, Foreground = HubTheme.Dim, TextWrapping = TextWrapping.Wrap });
         Grid.SetColumn(words, 1);
         top.Children.Add(words);

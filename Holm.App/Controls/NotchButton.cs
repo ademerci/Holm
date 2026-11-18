@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -15,7 +15,7 @@ namespace Holm.App.Controls;
 /// </summary>
 public sealed class NotchButton : Border
 {
-    static IBrush White(byte alpha) => new SolidColorBrush(Color.FromArgb(alpha, 0xFF, 0xFF, 0xFF)).ToImmutable();
+    static IBrush White(byte alpha) => Look.InkA(alpha); // the design's ink, white in the dark designs
 
     static readonly IBrush Hover = White(0x1F), Pressed = White(0x33);
     // The instrument look: a row is a plain line under a hairline, a pill an outline; both stay black at rest.
@@ -61,7 +61,7 @@ public sealed class NotchButton : Border
     /// <summary>A small labelled pill; <paramref name="background"/> colours the one that matters (blue for "OK").</summary>
     public static NotchButton Pill(IBrush? background = null)
     {
-        var label = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White };
+        var label = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = Look.Ink };
         return new NotchButton(label, 0.94)
         {
             _pill = true, _rest = background ?? PillRest,

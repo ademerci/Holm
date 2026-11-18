@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -15,7 +15,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly IBrush TimerOrange = Brush("#FFFF9F0A"), ShareBlue = Brush("#FF0A84FF");
+    static readonly IBrush TimerOrange = Brush("#FFFF9F0A"), ShareBlue = Look.Accent;
 
     // Peek: one line, for a few seconds
     readonly Grid _peekView = new() { Margin = new Thickness(16, 0) };
@@ -85,12 +85,12 @@ public sealed partial class NotchWindow
 
         _updateNotification = false;
         _peekIcon.Text = glyph ?? "";
-        _peekIcon.Foreground = glyphBrush ?? Brushes.White;
+        _peekIcon.Foreground = glyphBrush ?? Look.Ink;
         _peekIcon.IsVisible = glyph != null;
         _peekText.Text = text;
         _peekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170; // a sentence on its own may use the whole width
         _peekValue.Text = value;
-        _peekValue.Foreground = valueBrush ?? Brushes.White;
+        _peekValue.Foreground = valueBrush ?? Look.Ink;
         _peekBattery.IsVisible = battery != null;
         _peekBattery.Level = battery ?? 0;
         _peekBattery.Charging = charging;

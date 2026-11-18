@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -11,7 +11,7 @@ namespace Holm.App.Controls;
 /// </summary>
 public sealed class BatteryGlyph : Control
 {
-    static readonly IBrush Outline = new SolidColorBrush(Color.FromArgb(0x73, 0xFF, 0xFF, 0xFF)).ToImmutable();
+    static readonly IBrush Outline = Look.InkA(0x73);
     static readonly IPen OutlinePen = new Pen(Outline, 1).ToImmutable();
     static readonly IBrush Green = new SolidColorBrush(Color.FromRgb(0x30, 0xD1, 0x58)).ToImmutable();
     static readonly IBrush Red = new SolidColorBrush(Color.FromRgb(0xFF, 0x45, 0x3A)).ToImmutable();
@@ -42,7 +42,7 @@ public sealed class BatteryGlyph : Control
         dc.DrawRectangle(Outline, null, new Rect(22.6, 4, 1.8, 4), 0.9, 0.9);
 
         double level = Math.Clamp(Level, 0, 100);
-        var fill = Charging ? Green : level <= 20 ? Red : Brushes.White;
+        var fill = Charging ? Green : level <= 20 ? Red : Look.Ink;
         dc.DrawRectangle(fill, null, new Rect(2, 2, Math.Max(2, 18 * level / 100), 8), 1.6, 1.6);
 
         if (Charging) dc.DrawGeometry(Brushes.White, BoltPen, Bolt);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -135,7 +135,7 @@ public sealed partial class NotchWindow
             var level = new TextBlock { Text = AppVolumeList.Describe(app.Volume, app.Muted), FontSize = 11, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Right };
             header.Children.Add(level);
             right.Children.Add(header);
-            var slider = new MiniSlider { Value = app.Volume, Margin = new Thickness(0, 4, 0, 0), Fill = app.Muted ? Dim : Brushes.White };
+            var slider = new MiniSlider { Value = app.Volume, Margin = new Thickness(0, 4, 0, 0), Fill = app.Muted ? Dim : Look.Ink };
             string key = app.Key;
             slider.ValueChanging += v =>
             {

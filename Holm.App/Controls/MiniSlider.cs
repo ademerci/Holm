@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -12,10 +12,10 @@ namespace Holm.App.Controls;
 /// </summary>
 public sealed class MiniSlider : Control
 {
-    static readonly IBrush Track = new SolidColorBrush(Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF)).ToImmutable();
+    static readonly IBrush Track = Look.InkA(0x38);
 
     double _value;
-    IBrush _fill = Brushes.White;
+    IBrush _fill = Look.Ink;
     bool _interactive = true, _hover;
 
     /// <summary>0 to 1.</summary>

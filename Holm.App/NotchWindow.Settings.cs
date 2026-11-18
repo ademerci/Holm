@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Avalonia.Controls;
@@ -41,8 +41,6 @@ public sealed partial class NotchWindow
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
                 Switch("AI usage rings", "\uE9D9", "A ring at each end of the notch shows how much of your Claude and Codex limits you have used. Hover a ring for each limit and the sessions at work.",
                     s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }),
-                Switch("Instrument look", "\uE790", "The newer design: a black notch with white ink, small corners and tools as words. Holm switches at its next start.",
-                    s => s.InstrumentLook, on => { _settings.InstrumentLook = on; Save(); }), // read once at start (Look.Instrument)
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
                 new SettingsSwitch(OperatingSystem.IsWindows() ? "Start with Windows" : "Start at sign-in", "",
                     OperatingSystem.IsWindows() ? "Holm starts when you sign in to Windows." : "Holm starts when you sign in.", () => _autostart.IsEnabled,
@@ -123,7 +121,8 @@ public sealed partial class NotchWindow
         _settingsWindow = new SettingsWindow(SettingsGroups(), version, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
-            new[] { new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
+            new[] { new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),
+                new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
