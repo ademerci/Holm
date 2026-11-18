@@ -304,6 +304,71 @@ internal sealed partial class FriendsService
         }
     }
 
+    // ───────────── Holm account (Account/AccountService.cs) ─────────────
+
+    /// <summary>Our identity for the account to keep (sealed): the inbox and the private key. Null before we have one.</summary>
+    internal Account.IdentityPayload? ExportIdentity()
+    {
+        if (Me is not { } me) return null;
+        byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
+        try { return new Account.IdentityPayload { Topic = me.Topic, Server = _settings.FriendsServer, Key = Convert.ToBase64String(pkcs8) }; }
+        finally { CryptographicOperations.ZeroMemory(pkcs8); }
+    }
+
+    /// <summary>
+    /// Becomes the account's identity, so friends reach us here with the same friend code as on our other PCs.
+    /// The inbox is caught up on the last 12 hours (what ntfy keeps), as after a restart.
+    /// </summary>
+    internal void AdoptIdentity(Account.IdentityPayload identity)
+    {
+        byte[] pkcs8 = Convert.FromBase64String(identity.Key);
+        var key = ECDiffieHellman.Create();
+        try
+        {
+            key.ImportPkcs8PrivateKey(pkcs8, out _);
+            _settings.FriendsKey = Convert.ToBase64String(ProtectKey(pkcs8, KeyEntropy));
+        }
+        finally { CryptographicOperations.ZeroMemory(pkcs8); }
+        _settings.FriendsTopic = identity.Topic;
+        _settings.FriendsServer = identity.Server;
+        _settings.FriendsSince = Now - 12 * 60 * 60;
+        _settings.FriendsSeen.Clear();
+        _me = new FriendIdentity(MyName, identity.Topic, identity.Server, key);
+        _loaded = true;
+        _settings.Save();
+        Restart();
+        Diag.Log("Friends: took the account's identity");
+    }
+
+    /// <summary>Puts the account's friends list in place of ours (already merged with ours).</summary>
+    internal void ReplaceFriends(IReadOnlyList<Friend> friends)
+    {
+        _settings.Friends.Clear();
+        _settings.Friends.AddRange(friends);
+        _settings.Save();
+        ListChanged?.Invoke();
+        SyncProfiles();
+    }
+
+    /// <summary>
+    /// After taking the account's identity: friends who only knew this PC's old one get our new friend code, and their
+    /// notch offers to add us back (as when someone adds them).
+    /// </summary>
+    internal void Reintroduce(IEnumerable<Friend> friends)
+    {
+        if (Me is not { } me) return;
+        foreach (var friend in friends.ToList())
+        {
+            var note = new FriendNote(FriendNoteKind.AddedYou, me.Name, Now, Code: me.FriendCode);
+            string text = FriendNotes.Seal(me, friend, note);
+            _ = Task.Run(async () =>
+            {
+                try { await FriendInbox.PostAsync(friend, text, CancellationToken.None); }
+                catch (IOException ex) { Diag.Log($"Friends: couldn't tell {friend.Name} our new code: {ex.Message}"); }
+            });
+        }
+    }
+
     public Friend? Find(string publicKey) => _settings.Friends.FirstOrDefault(f => f.Key == publicKey);
 
     public bool IsMe(Friend card) => Me?.PublicKey == card.Key;

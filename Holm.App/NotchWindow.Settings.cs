@@ -130,7 +130,8 @@ public sealed partial class NotchWindow
             () => MeCard(CurrentProfile()),
             new[] { new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),
                 new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
-            new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) });
+            new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) },
+            BuildAccountPage);
         if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
             _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
         _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); HandMemoryBackSoon(); };

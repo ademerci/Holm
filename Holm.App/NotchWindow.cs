@@ -125,6 +125,7 @@ public sealed partial class NotchWindow : Window
         InitBeam(platform);
         InitHub();
         InitAchievements();
+        InitAccount();
         InitActivity();
         InitStreaming();
         InitSendLater();
@@ -188,6 +189,7 @@ public sealed partial class NotchWindow : Window
         StartPrivacy();
         StartMessages();
         StartSharing();
+        StartAccount();
         StartSendLater();
         StartUpdates();
         StartFocumon();
@@ -223,6 +225,7 @@ public sealed partial class NotchWindow : Window
         StopDictation();
         StopPhone();
         StopAiUsage();
+        StopAccount();
         ForgetClipFiles();
         base.OnClosed(e);
     }

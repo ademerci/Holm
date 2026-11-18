@@ -143,12 +143,29 @@ How it stays safe:
 
 - **Nothing arrives without a yes.** The receiver sees who is sending what (names and sizes) and has to accept; no answer within a minute counts as no.
 - **Only friends see that you're online.** When you drag files onto the notch, it asks your friends' notches whether they're running (a sealed note, like the others), and theirs answer the same way – at most once a minute per friend, as every note counts against ntfy.sh's daily limit. Questions from anyone who isn't your friend get no answer.
-- **Only friends can knock.** A friend's note is sealed with a key only the two of you share (from your friend codes), so nobody else can open it or send one in your friend's name; notes from people you haven't added are ignored. Your private key never leaves your PC and is stored encrypted for your Windows account. ntfy.sh sees which inbox got a note and when, the IP addresses involved and a key that stands for the sender's notch – but no names, no files and not what the note says.
+- **Only friends can knock.** A friend's note is sealed with a key only the two of you share (from your friend codes), so nobody else can open it or send one in your friend's name; notes from people you haven't added are ignored. Your private key is stored encrypted for your Windows account and never leaves your PC – unless you sign in to a [Holm account](#holm-account), which keeps it end-to-end encrypted so friends reach you on every PC. ntfy.sh sees which inbox got a note and when, the IP addresses involved and a key that stands for the sender's notch – but no names, no files and not what the note says.
 - **Encrypted.** With a code, the key comes from the code itself, so only the person you gave the code to can read the file. On the network both notches agree on a fresh key for every transfer (ECDH); that stops anyone from listening in, but the notches don't verify each other, so someone on the same network could pretend to be a notch – use *Code* on networks you don't trust. Everything is sent with AES-256-GCM, so changed or replayed data is rejected.
 - **Through the relay, only scrambled bytes.** Code transfers go through the public *transit relay* of the open-source [magic-wormhole](https://github.com/magic-wormhole/magic-wormhole) project. It only pairs the two sides and passes encrypted data along – it never sees the code, the key, file names or content. A code works once and expires after 15 minutes.
 - **Files stay where they belong.** File names are cleaned up, so nothing can be written outside Downloads and no invisible text-direction marks can disguise `holiday‮gpj.exe` as a picture; existing files are never overwritten (you get `photo (1).jpg`); a cancelled transfer leaves no half file behind.
 - **Marked as downloaded.** Received files get Windows' "from the internet" mark, so Windows warns before running a received program, just like with a browser download.
 - To be found on the network, Holm listens on UDP port 47811 and a TCP port, so Windows Firewall may ask once. Turn Beam off in the right-click menu if you don't want any of it (that also closes the friends inbox).
+
+## Holm account
+
+Optional. Holm offers it once at the first start, with what it keeps, and after that under *Settings › Account*; without one Holm works exactly as before. Sign in with an email and a password on each PC, and these stay the same everywhere:
+
+| Synced | Stays on each PC |
+| --- | --- |
+| Settings that mean the same on every PC (switches, clock style, quiet hours, quick reactions, …) | Display, notch position and size, AI app path, shelf, weather place, relay, GIF key and history |
+| Profile: name, status, color, picture | Notes and reminders |
+| Achievements (the higher count and the first unlock win) | Chats, files, files waiting to be sent |
+| Friends list (additions and removals reach every PC) and your friends key and inbox, so friends reach you on every PC with one friend code | Invite codes and open friend requests |
+
+- **End-to-end encrypted.** The password never leaves your PC. Holm turns it (with your email, PBKDF2-SHA256, 600 000 rounds) into two unrelated keys: Firebase gets one to check your sign-in, the other opens a random data key that seals every section with AES-256-GCM. The service stores your email address, when you synced and sealed data it can't read.
+- **Where.** [Google Firebase](https://firebase.google.com): Authentication for the sign-in, Cloud Firestore in Zürich (europe-west6) for the sealed data. The access rules are in `firebase/firestore.rules`: each account reads and writes only its own documents.
+- **When.** A few seconds after a change, at every start and every hour while Holm runs; *Sync now* any time.
+- **Your call.** *Sign out* stops syncing and leaves everything in place; *Delete account* removes the account and everything in it, each PC keeps its own data. A forgotten password can't be reset – the account's data is then lost, each PC keeps its own.
+- If a PC already has friends under its own friend code and the account has another one, Holm asks which to keep. Friends who only knew the other code get the new one and can add it back.
 
 ## Lightweight
 

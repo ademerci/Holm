@@ -116,6 +116,35 @@ internal sealed class AchievementBook
         if (localNow.Hour is 2 or 3 && Value(Night) == 0) Set(Night, 1);
     }
 
+    /// <summary>Progress changed (saved), for the Holm account to sync.</summary>
+    public event Action? Changed;
+
+    /// <summary>Progress as the Holm account keeps it.</summary>
+    internal Account.AchievementsPayload Export() => new()
+    {
+        Counters = new Dictionary<string, long>(_data.Counters, StringComparer.Ordinal),
+        Unlocked = new Dictionary<string, long>(_data.Unlocked, StringComparer.Ordinal),
+        StreakDay = _data.StreakDay,
+    };
+
+    /// <summary>
+    /// Takes the account's merged progress (Account.AchievementsSync.Merge). What another PC unlocked arrives quietly:
+    /// no trophy pops out for it here. True if anything changed.
+    /// </summary>
+    internal bool Import(Account.AchievementsPayload merged)
+    {
+        bool changed = merged.StreakDay != _data.StreakDay
+                       || merged.Counters.Count != _data.Counters.Count || merged.Counters.Any(c => Value(c.Key) != c.Value)
+                       || merged.Unlocked.Count != _data.Unlocked.Count
+                       || merged.Unlocked.Any(u => !_data.Unlocked.TryGetValue(u.Key, out long at) || at != u.Value);
+        if (!changed) return false;
+        foreach (var (k, v) in merged.Counters) _data.Counters[k] = v;
+        foreach (var (k, v) in merged.Unlocked) _data.Unlocked[k] = v;
+        _data.StreakDay = merged.StreakDay;
+        Save();
+        return true;
+    }
+
     void Save()
     {
         if (_path == null || AppSettings.ReadOnly) return;
@@ -125,6 +154,7 @@ internal sealed class AchievementBook
             string temp = _path + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(_data));
             File.Move(temp, _path, overwrite: true);
+            Changed?.Invoke();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Diag.Log("Couldn't save achievements: " + ex.Message); }
     }
