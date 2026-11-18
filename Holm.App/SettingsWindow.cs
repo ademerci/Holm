@@ -80,7 +80,7 @@ sealed partial class SettingsWindow : Window
 
     public SettingsWindow(INotchWindowPlatform platform, IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
-                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
+                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null, Func<HubView>? belowProfile = null)
     {
         _tools = tools ?? Array.Empty<HubPage>();
         _extra = extra ?? Array.Empty<HubPage>();
@@ -167,6 +167,15 @@ sealed partial class SettingsWindow : Window
             profile.Changed += RefreshApplyState;
             profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _pages[ProfileKey] = profile;
+            // The Holm account lives on the profile page, under the profile.
+            if (belowProfile?.Invoke() is { } below)
+            {
+                var stack = new StackPanel { Spacing = 14 };
+                stack.Children.Add(profile);
+                stack.Children.Add(below);
+                Closed += (_, _) => below.Detach();
+                _pages[ProfileKey] = HubTheme.Scroller(stack);
+            }
         }
         foreach (var group in groups)
         {
@@ -497,7 +506,7 @@ sealed partial class SettingsWindow : Window
     }
 
     /// <summary>A question over the window; each choice closes it and runs.</summary>
-    void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
+    internal void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
     {
         _typedLetters = 0;
         var content = new StackPanel();
