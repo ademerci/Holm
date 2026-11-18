@@ -26,6 +26,9 @@ public interface INotchWindowPlatform
         if (rects.Length > 0) SetHitRegion(window, rects[0].X, rects[0].Y, rects[0].Width, rects[0].Height);
     }
 
+    /// <summary>Clips a borderless window and its native backdrop to rounded corners in device pixels.</summary>
+    void SetRoundedWindowRegion(IntPtr window, int radius) { }
+
     /// <summary>
     /// Lets the overlay take the keyboard (the user clicked into one of its text fields) or makes it give the
     /// keyboard up again. Called right after a click on the window, when the system allows taking the foreground.

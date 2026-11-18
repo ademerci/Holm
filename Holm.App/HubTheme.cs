@@ -5,6 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Holm.App.Controls;
 
 namespace Holm.App;
 
@@ -30,7 +31,7 @@ internal static class HubTheme
         : Accent;
     public static readonly IBrush ActionSurface = Look.Aero
         ? Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFE1FAFF, 0.43), (0xFFA9DEF7, 0.46), (0xFFDAF8FF, 1))
-        : Card;
+        : Look.Prism ? PrismGlass.FloatingSurface(D.CardColor, D.Ink) : Card;
     /// <summary>Text and glyphs on <see cref="Accent"/>.</summary>
     public static readonly IBrush OnAccent = Look.OnAccent;
     /// <summary>A surface raised over the panel (dialogs, popups), opaque.</summary>
@@ -85,7 +86,7 @@ internal static class HubTheme
         var button = new Button
         {
             Content = label, Padding = new Thickness(14, 6, 14, 6), FontSize = 12, FontWeight = FontWeight.SemiBold,
-            MinHeight = 32, CornerRadius = new CornerRadius(Round(7)), BorderThickness = new Thickness(1),
+            MinHeight = 32, CornerRadius = new CornerRadius(Look.Prism ? 16 : Round(7)), BorderThickness = new Thickness(1),
             Background = primary ? ActionFill : ActionSurface, BorderBrush = Look.Aero ? Edge : primary ? Brushes.Transparent : Look.InkA(0x24),
             Foreground = primary ? OnAccent : Look.Ink,
             Cursor = new Cursor(StandardCursorType.Hand), VerticalContentAlignment = VerticalAlignment.Center,

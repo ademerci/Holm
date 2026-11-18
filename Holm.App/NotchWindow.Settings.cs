@@ -125,7 +125,7 @@ public sealed partial class NotchWindow
         string? island = appAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attribute => attribute.Key == "ReleaseIsland")?.Value;
         string versionLabel = string.IsNullOrEmpty(island) ? version : $"{version} • {island}";
-        _settingsWindow = new SettingsWindow(SettingsGroups(), versionLabel, () => _settings.Animations, HubPages(), page,
+        _settingsWindow = new SettingsWindow(_platform, SettingsGroups(), versionLabel, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
             new[] { new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),

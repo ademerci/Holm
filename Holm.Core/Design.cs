@@ -132,9 +132,11 @@ internal static class Designs
         },
         new()
         {
-            Id = "liquid", Name = "Liquid Glass", Description = "Thick glass with bright edges", Wash = false,
-            Fill = new[] { 0xB04A5466u, 0x98262C38u }, Edge = 0xB0FFFFFF, EdgeWidth = 1.5, Accent = 0xFFFFFFFF, Toggle = 0xFF34C759,
-            Panel = 0xA0303644, Sidebar = 0x30FFFFFF, Card = 0x24FFFFFF, Corners = 26, Glass = true,
+            Id = "liquid", Name = "Prism Glass", Description = "Translucent glass with a curved, light-catching rim", Wash = false,
+            Fill = new[] { 0xBF2A303Du, 0xB8181C26u, 0xC8202334u }, WindowEdge = 0x50DFE8FF,
+            Ink = 0xFFF7FAFF, Accent = 0xFFB4E6FF, Toggle = 0xFF59DDAD, Dim = 0xFFE0E7F5, Faint = 0xFFC0CADC,
+            Panel = 0xC41C202B, Sidebar = 0x18232E45, Card = 0x0EF7FAFF, CardStrong = 0x1EF7FAFF,
+            Hover = 0x18F7FAFF, Selected = 0x354E98CA, Line = 0x24E3EDFF, Corners = 24, Glass = true,
         },
         new()
         {

@@ -39,6 +39,16 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
         if (SetWindowRgn(window, combined, true) == 0) DeleteObject(combined);
     }
 
+    public void SetRoundedWindowRegion(IntPtr window, int radius)
+    {
+        if (!WinNotch.Native.GetWindowRect(window, out var rect)) return;
+        int width = rect.Right - rect.Left, height = rect.Bottom - rect.Top;
+        if (width <= 0 || height <= 0) return;
+        int diameter = Math.Min(radius * 2, Math.Min(width, height));
+        IntPtr region = CreateRoundRectRgn(0, 0, width, height, diameter, diameter);
+        if (region != IntPtr.Zero && SetWindowRgn(window, region, true) == 0) DeleteObject(region);
+    }
+
     public void SetKeyboard(IntPtr window, bool take)
     {
         long style = GetWindowLongPtr(window, GWL_EXSTYLE).ToInt64();
@@ -64,6 +74,9 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
 
     [DllImport("gdi32.dll")]
     static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [DllImport("gdi32.dll")]
+    static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
 
     [DllImport("gdi32.dll")]
     static extern int CombineRgn(IntPtr dest, IntPtr src1, IntPtr src2, int mode);

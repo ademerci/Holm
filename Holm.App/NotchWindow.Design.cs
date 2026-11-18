@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Holm.App.Controls;
 using WinNotch;
 using Design = WinNotch.Design;
 
@@ -198,6 +199,8 @@ public sealed partial class NotchWindow
             VerticalAlignment = VerticalAlignment.Top, CornerRadius = new CornerRadius(0, 0, design.Instrument ? 3 : 8, design.Instrument ? 3 : 8),
             BorderBrush = design.Edge != 0 ? Look.Brush(design.Edge) : null, BorderThickness = new Thickness(design.Edge != 0 ? Math.Min(2, design.EdgeWidth) : 0),
         };
+        if (design.Id == PrismGlass.DesignId)
+            notch.Child = new PrismGlass(7) { IsHitTestVisible = false };
         var ink = Look.Brush(design.Ink);
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(10, 0, 10, 9) };
         words.Children.Add(new TextBlock

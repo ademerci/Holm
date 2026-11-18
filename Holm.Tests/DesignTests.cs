@@ -34,6 +34,22 @@ public class DesignTests
     }
 
     [Fact]
+    public void Saved_liquid_design_selects_prism_glass_with_readable_ink_over_white()
+    {
+        var prism = Designs.Current(new AppSettings { Design = "liquid" });
+        Assert.Equal("Prism Glass", prism.Name);
+        Assert.True(prism.Glass);
+        foreach (uint tint in prism.Fill.Append(prism.Panel))
+        {
+            uint alpha = tint >> 24;
+            Assert.InRange(alpha, 1u, 254u);
+            uint OverWhite(int shift) => ((tint >> shift & 0xFF) * alpha + 255 * (255 - alpha) + 127) / 255;
+            uint surface = 0xFF000000 | OverWhite(16) << 16 | OverWhite(8) << 8 | OverWhite(0);
+            Assert.True(Designs.Contrast(prism.Ink, surface) >= 4.5);
+        }
+    }
+
+    [Fact]
     public void Classic_stays_the_default_and_the_old_instrument_switch_still_counts()
     {
         Assert.Equal("classic", Designs.Current(new AppSettings()).Id);

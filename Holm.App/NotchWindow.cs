@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Holm.App.Controls;
 using Holm.Platform;
 using WinNotch;
 
@@ -37,6 +38,7 @@ public sealed partial class NotchWindow : Window
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>
     readonly Panel _backdrop = new();
+    readonly PrismGlass? _prismRim = Look.Prism ? new() { IsHitTestVisible = false } : null;
     // The design's line around the notch (Neon, Terminal, Brutalist …), drawn inside it: the clip keeps the outer half off.
     readonly Avalonia.Controls.Shapes.Path _edge = new()
     {
@@ -181,7 +183,8 @@ public sealed partial class NotchWindow : Window
         StartScreenshots();
         StartUsb();
         StartVpn();
-        StartFullscreen();
+        // Keep the notch on screen for the visual self-test, even behind a fullscreen foreground app.
+        if (SelfTestFolder == null) StartFullscreen();
         StartPrivacy();
         StartMessages();
         StartSharing();
@@ -568,6 +571,7 @@ public sealed partial class NotchWindow : Window
         }
         _backdrop.Clip = outline;
         if (_edge.IsVisible) _edge.Data = outline;
+        _prismRim?.ApplyOutline(outline, h);
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.1 – 2026-11-18
+
+### Changed
+- **Prism Glass.** The design formerly called Liquid Glass now has a translucent notch with an iridescent rim that follows its motion, a floating toolbar and a rounded Holm window with a glass sidebar. Pick it under *Settings › Design*. If you already use Liquid Glass, Holm switches to Prism Glass automatically.
+
 ## 1.15.0 – 2026-11-18
 
 ### Added

@@ -33,12 +33,17 @@ public sealed partial class NotchWindow
         {
             Directory.CreateDirectory(folder);
             await Task.Delay(2500);
+            _hovered = false;
+            ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
 
             _hovered = true;
             ApplyState(animate: true);
             await Task.Delay(3000);
+            // An actual pointer can enter or leave the notch while the app is posing.
+            _hovered = true;
+            ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
             await SnapshotHubAsync(folder);

@@ -16,7 +16,8 @@ namespace Holm.App;
 // each view is named after its counterpart there.
 public sealed partial class NotchWindow
 {
-    static readonly IBrush Dim = Look.InkA(0xA6), Faint = Look.InkA(0x66), ArtFallback = Brush("#FF262628");
+    static readonly IBrush Dim = Look.Prism ? Look.Brush(Look.Current.DimColor) : Look.InkA(0xA6),
+        Faint = Look.Prism ? Look.Brush(Look.Current.FaintColor) : Look.InkA(0x66), ArtFallback = Brush("#FF262628");
     static readonly FontFamily IconFont = Fonts.Icons;
     static readonly FontFamily DisplayFont = Fonts.Display;
     static readonly Geometry PlayGeo = Geometry.Parse("M3,1 L16,9 L3,17 Z"),
@@ -121,6 +122,7 @@ public sealed partial class NotchWindow
         _backdrop.Children.Add(_artLayerA);
         _backdrop.Children.Add(_artLayerB);
         _backdrop.Children.Add(_edge);
+        if (_prismRim != null) _backdrop.Children.Add(_prismRim);
 
         _idleView.Children.Add(_idleClock);
 
