@@ -15,9 +15,21 @@ internal static class HubTheme
 
     // The design's palette (Look.Current): Classic is dark and rounded, Instrument black with grey lines, the others their own.
     static readonly WinNotch.Design D = Look.Current;
-    public static readonly IBrush Panel = B(D.Panel), Sidebar = B(D.Sidebar), Edge = B(D.WindowEdgeColor), Card = B(D.CardColor),
-        CardStrong = B(D.CardStrongColor), Hover = B(D.HoverColor), Selected = B(D.SelectedColor), Line = B(D.LineColor),
+    public static readonly IBrush Panel = Look.Aero ? Look.VerticalGradient((0xFFF4FCFF, 0), (D.Panel, 0.48), (0xFFBCE6F7, 1)) : B(D.Panel),
+        Sidebar = Look.Aero ? Look.VerticalGradient((0xFFD9F7FF, 0), (D.Sidebar, 0.55), (0xFF9EE2A6, 1)) : B(D.Sidebar),
+        Edge = B(D.WindowEdgeColor),
+        Card = Look.Aero ? Look.VerticalGradient((0xFFFFFFFF, 0), (D.CardColor, 0.48), (0xFFDBF1FC, 1)) : B(D.CardColor),
+        CardStrong = B(D.CardStrongColor), Hover = B(D.HoverColor),
+        Selected = Look.Aero ? Look.VerticalGradient((0xFFF6FFE9, 0), (D.SelectedColor, 0.48), (0xFFAAE38B, 1)) : B(D.SelectedColor),
+        Line = B(D.LineColor),
         Dim = B(D.DimColor), Faint = B(D.FaintColor), Accent = Look.Accent, Green = B(0xFF30D158), Red = B(0xFFFF453A), Gold = B(0xFFFFC43D);
+    public static readonly IBrush ActionFill = Look.Aero
+        ? Look.VerticalGradient((Mix(D.Accent, 0xFFFFFFFF, 0.16), 0), (Mix(D.Accent, 0xFFFFFFFF, 0.06), 0.47),
+            (D.Accent, 0.49), (Mix(D.Accent, 0xFF000000, 0.18), 1))
+        : Accent;
+    public static readonly IBrush ActionSurface = Look.Aero
+        ? Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFEBFAFF, 0.47), (0xFFC6E9F8, 0.49), (0xFFE2F7FF, 1))
+        : Card;
     /// <summary>Text and glyphs on <see cref="Accent"/>.</summary>
     public static readonly IBrush OnAccent = Look.OnAccent;
     /// <summary>A surface raised over the panel (dialogs, popups), opaque.</summary>
@@ -44,8 +56,9 @@ internal static class HubTheme
     public static Border IconTile(string glyph, Color color, double size = 30) => new()
     {
         Width = size, Height = size, CornerRadius = new CornerRadius(Look.Pick(3, Round(size * 0.27))),
-        Background = Look.Pick<IBrush?>(null, new SolidColorBrush(color).ToImmutable()),
-        BorderBrush = Look.Pick<IBrush?>(Line, null), BorderThickness = new Thickness(Look.Pick(1, 0)),
+        Background = Look.Aero ? Look.VerticalGradient((Mix(color.ToUInt32(), 0xFFFFFFFF, 0.22), 0), (color.ToUInt32(), 0.46),
+            (Mix(color.ToUInt32(), 0xFF000000, 0.22), 0.48), (color.ToUInt32(), 1)) : Look.Pick<IBrush?>(null, new SolidColorBrush(color).ToImmutable()),
+        BorderBrush = Look.Aero ? B(0x700B5276) : Look.Pick<IBrush?>(Line, null), BorderThickness = new Thickness(Look.Aero ? 1 : Look.Pick(1, 0)),
         Child = Glyph(glyph, size * 0.47, Look.Pick(Dim, Brushes.White)),
     };
 
@@ -72,7 +85,7 @@ internal static class HubTheme
         {
             Content = label, Padding = new Thickness(14, 6, 14, 6), FontSize = 12, FontWeight = FontWeight.SemiBold,
             MinHeight = 32, CornerRadius = new CornerRadius(Round(7)), BorderThickness = new Thickness(1),
-            Background = primary ? Accent : Card, BorderBrush = primary ? Brushes.Transparent : Look.InkA(0x24),
+            Background = primary ? ActionFill : ActionSurface, BorderBrush = Look.Aero ? Edge : primary ? Brushes.Transparent : Look.InkA(0x24),
             Foreground = primary ? OnAccent : Look.Ink,
             Cursor = new Cursor(StandardCursorType.Hand), VerticalContentAlignment = VerticalAlignment.Center,
         };
@@ -83,7 +96,7 @@ internal static class HubTheme
             button.Resources["ButtonForeground" + state] = button.Foreground;
             button.Resources["ButtonBorderBrush" + state] = button.BorderBrush;
         }
-        button.PointerEntered += (_, _) => button.Opacity = 0.82;
+        button.PointerEntered += (_, _) => { if (button.IsEnabled) button.Opacity = 0.82; };
         button.PointerExited += (_, _) => button.Opacity = 1;
         button.PropertyChanged += (_, e) =>
         {
@@ -97,7 +110,7 @@ internal static class HubTheme
     /// <summary>A dark text box with a hint while it's empty.</summary>
     public static TextBox Field(string hint, bool multiline = false)
     {
-        IBrush fill = Look.InkA(0x1F), border = Look.InkA(0x24);
+        IBrush fill = Look.Aero ? Brushes.White : Look.InkA(0x1F), border = Look.Aero ? Line : Look.InkA(0x24);
         var box = new TextBox
         {
             Foreground = Look.Ink, CaretBrush = Look.Ink, SelectionBrush = Look.Pick(B(0xFF5A5C61), Accent), Background = fill, BorderBrush = border,

@@ -22,6 +22,18 @@ public class DesignTests
     }
 
     [Fact]
+    public void Frutiger_aero_is_opaque_and_readable_across_the_notch_gradient()
+    {
+        var aero = Designs.Find("aero");
+        Assert.False(aero.Glass);
+        foreach (uint surface in aero.Fill.Concat(new[] { aero.Panel, aero.Sidebar, aero.CardColor }))
+        {
+            Assert.Equal(0xFFu, surface >> 24);
+            Assert.True(Designs.Contrast(aero.Ink, surface) >= 4.5);
+        }
+    }
+
+    [Fact]
     public void Classic_stays_the_default_and_the_old_instrument_switch_still_counts()
     {
         Assert.Equal("classic", Designs.Current(new AppSettings()).Id);

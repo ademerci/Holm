@@ -15,7 +15,7 @@ public sealed partial class NotchWindow
 
     bool _positionHeld, _positionMoved;
     IPointer? _positionPointer;
-    int _positionStartX;
+    int _positionStartX, _positionLastX;
     double? _positionBeforeDrag;
     double _positionStartFraction;
 
@@ -48,6 +48,7 @@ public sealed partial class NotchWindow
         _positionHeld = true;
         _positionMoved = false;
         _positionStartX = ScreenX(e);
+        _positionLastX = Position.X;
         _positionBeforeDrag = _settings.NotchPosition;
         _positionStartFraction = _settings.NotchPosition is { } fraction && double.IsFinite(fraction) ? fraction : 0.5;
         _expandDelay.Stop();
@@ -59,7 +60,7 @@ public sealed partial class NotchWindow
 
     void PositionDragMove(object? sender, PointerEventArgs e)
     {
-        if (!_positionHeld) return;
+        if (!_positionHeld || e.Pointer != _positionPointer) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { FinishPositionDrag(); return; }
         var screen = ChosenScreen();
         if (screen == null) { FinishPositionDrag(); return; }
@@ -70,13 +71,16 @@ public sealed partial class NotchWindow
         int x = Math.Clamp(start + delta, screen.Bounds.X, Math.Max(screen.Bounds.X, screen.Bounds.Right - width));
         _settings.NotchPosition = NotchPlacement.Fraction(screen.Bounds.X, screen.Bounds.Right, width, x);
         _positionMoved = true;
+        if (_settings.Jelly && _settings.Animations && x != _positionLastX)
+            LeanWhileDragging(Math.Clamp((_positionLastX - x) / screen.Scaling * 3, -18, 18));
+        _positionLastX = x;
         PositionWindow();
         e.Handled = true;
     }
 
     void PositionDragUp(object? sender, PointerReleasedEventArgs e)
     {
-        if (!_positionHeld) return;
+        if (!_positionHeld || e.Pointer != _positionPointer) return;
         bool moved = _positionMoved;
         FinishPositionDrag();
         if (moved) e.Handled = true;
@@ -88,6 +92,7 @@ public sealed partial class NotchWindow
         _positionHeld = false;
         if (_positionPointer != null && Equals(_positionPointer.Captured, _island)) _positionPointer.Capture(null);
         _positionPointer = null;
+        if (_dragLean.Target != 0) LeanWhileDragging(0);
         if (_positionMoved) _settings.Save();
         _positionMoved = false;
         if (_hovered && !PinnedClockOpen && !_island.IsPointerOver) _collapseDelay.Start();
