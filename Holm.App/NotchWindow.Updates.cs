@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -85,7 +85,7 @@ public sealed partial class NotchWindow
         var content = new StackPanel { Margin = new Thickness(20) };
         content.Children.Add(new TextBlock { Text = $"Holm {RunningVersion.ToString(3)}", FontSize = 17, FontWeight = FontWeight.SemiBold });
         content.Children.Add(new TextBlock { Text = "Check for a new release and update Holm when you're ready.", Foreground = HubTheme.Dim, Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
-        var automatic = new CheckBox { Content = "Check for updates automatically", IsChecked = _settings.CheckForUpdatesAutomatically, Foreground = Brushes.White, Margin = new Thickness(0, 18, 0, 0) };
+        var automatic = new CheckBox { Content = "Check for updates automatically", IsChecked = _settings.CheckForUpdatesAutomatically, Foreground = Look.Ink, Margin = new Thickness(0, 18, 0, 0) };
         ToolTip.SetTip(automatic, "Checks shortly after Holm starts and every two hours. Updates are installed only when you choose.");
         automatic.IsCheckedChanged += (_, _) => SetAutomaticUpdateChecks(automatic.IsChecked == true);
         content.Children.Add(automatic);

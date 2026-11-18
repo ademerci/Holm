@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
@@ -37,6 +37,13 @@ public sealed partial class NotchWindow : Window
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>
     readonly Panel _backdrop = new();
+    // The design's line around the notch (Neon, Terminal, Brutalist …), drawn inside it: the clip keeps the outer half off.
+    readonly Avalonia.Controls.Shapes.Path _edge = new()
+    {
+        IsHitTestVisible = false, IsVisible = Look.Current.Edge != 0, Stroke = Look.Brush(Look.Current.Edge),
+        StrokeThickness = Look.Current.EdgeWidth * 2,
+        Effect = Look.Current.Glow ? new DropShadowEffect { BlurRadius = 10, OffsetX = 0, OffsetY = 0, Color = Color.FromUInt32(Look.Current.Edge) } : null,
+    };
     /// <summary>The notch itself: what is in it, and what the mouse opens.</summary>
     readonly Border _island = new() { Background = Brushes.Transparent };
     readonly Grid _islandContent = new();
@@ -82,6 +89,7 @@ public sealed partial class NotchWindow : Window
         // saves, on every system (it was read-only on Windows while the port ran next to the WPF app).
         AppSettings.ReadOnly = SelfTestFolder != null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
 
         Title = "Holm";
         Width = BaseWidth;
@@ -100,7 +108,8 @@ public sealed partial class NotchWindow : Window
         X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dock);
         FontFamily = Fonts.Text;
         Fonts.ApplyRendering(this);
-        Foreground = Brushes.White;
+        Foreground = Look.Ink;
+        FontFamily = Look.Font;
 
         BuildViews();
         BuildShelf();
@@ -417,6 +426,20 @@ public sealed partial class NotchWindow : Window
         StartMotion();
     }
 
+    /// <summary>Jelly's poke: the notch squashes wide and flat and wobbles back (springs pick up jelly's damping).</summary>
+    void Jiggle()
+    {
+        if (!_settings.Animations || _shapeW <= 0) return;
+        double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
+        if (needed > Height) Height = needed;
+        _wSpring.Kick(260, 0.30, 0.58);
+        _hSpring.Kick(-180, 0.32, 0.58);
+        _scaleSpring.Kick(0.35, 0.30, 0.58);
+        UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
+        _shapeAnimating = true;
+        StartMotion();
+    }
+
     /// <summary>Adds a small physical bounce when a live pill updates in place (volume step, back-to-back peek).</summary>
     void PulseNotch(double widthVelocity = 28, double heightVelocity = 16, double scaleVelocity = 0.08)
     {
@@ -525,6 +548,7 @@ public sealed partial class NotchWindow : Window
             c.EndFigure(true);
         }
         _backdrop.Clip = outline;
+        if (_edge.IsVisible) _edge.Data = outline;
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>

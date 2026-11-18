@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -147,7 +147,7 @@ public sealed partial class NotchWindow
         string initial = known || status.Monster.Length == 0 ? "" : status.Monster[..1].ToUpperInvariant();
         string name = status.Monster.Length > 0 ? status.Monster : "Focumon";
         string? time = status.Clock(now) is { } clock ? Focumon.Format(clock) : null;
-        IBrush timeBrush = status.Phase == FocumonPhase.Break ? TimerOrange : Brushes.White;
+        IBrush timeBrush = status.Phase == FocumonPhase.Break ? TimerOrange : Look.Ink;
         foreach (var parts in new[] { _chipParts, _closedParts, _compactParts })
         {
             parts.Sprite.Background = sprite;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
@@ -80,15 +80,19 @@ sealed class SettingsWindow : Window
         _social = social ?? Array.Empty<HubPage>();
         Title = "Holm";
         WindowDecorations = WindowDecorations.None;
-        TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+        // Glass designs blur what's behind where the system can (Windows); elsewhere the panel is see-through.
+        var design = Look.Current;
+        TransparencyLevelHint = design.Glass
+            ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
+            : new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent;
         CanResize = false;
         Width = 980;
         Height = 740;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        FontFamily = Fonts.Text;
+        FontFamily = Look.Font;
         FontSize = 13;
-        Foreground = Brushes.White;
+        Foreground = Look.Ink;
         Fonts.ApplyRendering(this);
 
         // ── sidebar ──
@@ -97,9 +101,9 @@ sealed class SettingsWindow : Window
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
         brand.Children.Add(new Border
         {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Brushes.Black,
+            Width = 30, Height = 30, CornerRadius = new CornerRadius(HubTheme.Round(8)), Background = Look.NotchFill(),
             BorderBrush = Edge, BorderThickness = new Thickness(1),
-            Child = new Border { Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Brushes.White, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) },
+            Child = new Border { Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Look.Ink, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) },
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeight.SemiBold });
@@ -112,7 +116,7 @@ sealed class SettingsWindow : Window
         {
             var card = new Border
             {
-                Background = Card, CornerRadius = new CornerRadius(10), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 14),
+                Background = Card, CornerRadius = new CornerRadius(HubTheme.Round(10)), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 14),
                 Cursor = new Cursor(StandardCursorType.Hand), Child = me(),
             };
             _meCard = card;
@@ -164,9 +168,11 @@ sealed class SettingsWindow : Window
             _titles[page.Key] = (page.Title, page.Subtitle);
             nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
         }
+        // Glass can only blur the whole window: it fills the window, square.
+        double corners = design.Glass ? 0 : design.Corners;
         var sideBorder = new Border
         {
-            Background = Sidebar, CornerRadius = new CornerRadius(14, 0, 0, 14), Padding = new Thickness(14, 16, 10, 16), Child = sidebar,
+            Background = Sidebar, CornerRadius = new CornerRadius(corners, 0, 0, corners), Padding = new Thickness(14, 16, 10, 16), Child = sidebar,
         };
 
         // ── content ──
@@ -214,13 +220,16 @@ sealed class SettingsWindow : Window
 
         _surface = new Border
         {
-            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
-            Margin = new Thickness(16), Child = columns,
-            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
+            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(design.Edge != 0 ? design.EdgeWidth : 1), CornerRadius = new CornerRadius(corners),
+            Margin = new Thickness(design.Glass ? 0 : 16), Child = columns,
+            // A hard shadow in the designs that have one (Brutalist, Pocket), else a soft one.
+            BoxShadow = new BoxShadows(design.Shadow != 0
+                ? new BoxShadow { OffsetX = 7, OffsetY = 7, Color = Color.FromUInt32(design.Shadow) }
+                : new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
         };
         _dialog = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)), CornerRadius = new CornerRadius(14), Margin = new Thickness(16),
+            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)), CornerRadius = new CornerRadius(corners), Margin = new Thickness(design.Glass ? 0 : 16),
             IsVisible = false,
         };
         var layers = new Grid();
@@ -263,7 +272,7 @@ sealed class SettingsWindow : Window
         if (!settings && _social.Concat(_tools).Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
-        (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
+        (_pageTitle.Text, _pageSubtitle.Text) = (Look.Heading(_titles[key].Title), _titles[key].Subtitle);
         _footer.IsVisible = settings;
         foreach (var (k, item) in _navItems)
         {
@@ -326,7 +335,7 @@ sealed class SettingsWindow : Window
         grid.Children.Add(badge);
         var item = new Border
         {
-            CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
+            CornerRadius = new CornerRadius(HubTheme.Round(8)), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
             Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = grid,
         };
         item.PointerEntered += (_, _) => { if (Page != key) item.Background = Hover; };
@@ -348,7 +357,7 @@ sealed class SettingsWindow : Window
         // The instrument look: a plain list between hairlines, no card behind it.
         var card = Look.Instrument
             ? new Border { Child = rows, VerticalAlignment = VerticalAlignment.Top }
-            : new Border { Background = Card, CornerRadius = new CornerRadius(12), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+            : new Border { Background = Card, CornerRadius = new CornerRadius(HubTheme.Round(12)), Child = rows, VerticalAlignment = VerticalAlignment.Top };
         return Scroller(card);
     }
 
@@ -359,15 +368,16 @@ sealed class SettingsWindow : Window
         _rows.Add((setting, toggle));
 
         var row = new Grid { Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), MinHeight = 56 };
-        var hover = Look.Instrument ? new Border() : new Border { CornerRadius = new CornerRadius(first ? 12 : 0, first ? 12 : 0, last ? 12 : 0, last ? 12 : 0) };
+        double round = HubTheme.Round(12);
+        var hover = Look.Instrument ? new Border() : new Border { CornerRadius = new CornerRadius(first ? round : 0, first ? round : 0, last ? round : 0, last ? round : 0) };
         row.Children.Add(hover);
         var content = new Grid { Margin = Look.Pick(new Thickness(2, 11, 4, 11), new Thickness(14, 10, 16, 10)), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         if (!Look.Instrument) // the instrument look has no icon in front of each row
         {
             var tile = new Border
             {
-                Width = 30, Height = 30, CornerRadius = new CornerRadius(30 * 0.27), Background = new SolidColorBrush(color).ToImmutable(),
-                Child = Glyph(setting.Glyph, 30 * 0.47), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
+                Width = 30, Height = 30, CornerRadius = new CornerRadius(HubTheme.Round(30 * 0.27)), Background = new SolidColorBrush(color).ToImmutable(),
+                Child = Glyph(setting.Glyph, 30 * 0.47, Brushes.White), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
             };
             content.Children.Add(tile);
         }
@@ -439,8 +449,8 @@ sealed class SettingsWindow : Window
         content.Children.Add(actions);
         _dialog.Child = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(32, 32, 34)), BorderBrush = Edge, BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(12), Padding = new Thickness(22), Width = 460,
+            Background = HubTheme.Raised, BorderBrush = Edge, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(HubTheme.Round(12)), Padding = new Thickness(22), Width = 460,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 24, Color = Color.FromArgb(0x73, 0, 0, 0) }), Child = content,
         };
@@ -459,7 +469,7 @@ sealed class SettingsWindow : Window
 
     static TextBlock Glyph(string glyph, double size, IBrush? foreground = null) => new()
     {
-        Text = glyph, FontFamily = Fonts.Icons, FontSize = size, Foreground = foreground ?? Brushes.White,
+        Text = glyph, FontFamily = Fonts.Icons, FontSize = size, Foreground = foreground ?? Look.Ink,
         HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
     };
 
@@ -486,8 +496,8 @@ sealed class ToggleSwitch : Control
 {
     public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ToggleSwitch, double>(nameof(Position));
 
-    static readonly Color Off = Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
-        On = Look.Pick(Color.FromRgb(0xF2, 0xF2, 0xF2), Color.FromRgb(0x30, 0xD1, 0x58));
+    static readonly Color Off = Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromUInt32(WinNotch.Designs.WithAlpha(Look.Current.Ink, 0x40))),
+        On = Color.FromUInt32(Look.Current.ToggleColor);
 
     static ToggleSwitch() => AffectsRender<ToggleSwitch>(PositionProperty);
 

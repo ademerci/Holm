@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -24,8 +24,8 @@ internal sealed class ChatPage : HubView
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
 
     // The page's own shades: the list a little lighter than the conversation, bubbles that stand out from both.
-    static readonly IBrush ListBack = B(0x0EFFFFFF), ConversationBack = B(0x40000000), TheirBubble = B(0xFF2E2E31),
-        Composer = B(0xFF2A2A2D), ComposerEdge = B(0x1CFFFFFF), DotEdge = B(0xFF222224);
+    static readonly IBrush ListBack = Look.InkA(0x0E), ConversationBack = B(0x40000000), TheirBubble = HubTheme.CardStrong,
+        Composer = HubTheme.CardStrong, ComposerEdge = Look.InkA(0x1C), DotEdge = HubTheme.Panel;
     static readonly IBrush MyBubble = new LinearGradientBrush
     {
         StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
@@ -70,7 +70,7 @@ internal sealed class ChatPage : HubView
         var searchHost = new Grid { Margin = new Thickness(12, 12, 52, 8) };
         _search = HubTheme.Field("Search");
         _search.Padding = new Thickness(30, 6, 6, 6);
-        _search.Background = B(0x14FFFFFF);
+        _search.Background = Look.InkA(0x14);
         _search.BorderBrush = Brushes.Transparent;
         searchHost.Children.Add(_search);
         var magnifier = HubTheme.Glyph("", 12, HubTheme.Faint);
@@ -306,7 +306,7 @@ internal sealed class ChatPage : HubView
             words.Children.Add(when);
         }
         Control preview;
-        IBrush previewColor = unread > 0 ? Brushes.White : HubTheme.Dim;
+        IBrush previewColor = unread > 0 ? Look.Ink : HubTheme.Dim;
         if (last?.Gif is { } gif)
         {
             var line = new StackPanel { Orientation = Orientation.Horizontal };
@@ -547,7 +547,7 @@ internal sealed class ChatPage : HubView
         Control content = gif
             ? GifPlayer.View(message.Gif!, 220, 160, 0, _social.Animate(), maxSide: 320, fitHeight: true)
             : big ? new TextBlock { Text = message.Text.Trim(), FontSize = 40 }
-            : new SelectableTextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Brushes.White };
+            : new SelectableTextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Look.Ink };
 
         // Bubbles of one group run together: the corners where they meet are small, like in every messenger.
         const double round = 18, joined = 5;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using Avalonia;
@@ -39,7 +39,7 @@ internal sealed class AddFriendPage : HubView
         _code = new TextBlock
         {
             Text = "Making your code…", FontSize = 36, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 18, 0, 6),
-            FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"), Foreground = Brushes.White,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"), Foreground = Look.Ink,
         };
         // The code shrinks to fit the card rather than run past its edge.
         mine.Children.Add(new Viewbox { Child = _code, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Left });

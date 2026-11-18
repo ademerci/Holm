@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
@@ -30,7 +30,7 @@ public sealed partial class NotchWindow
     /// <summary>Shows the sky while the open notch is on home without music, and takes it away otherwise.</summary>
     void ShowSky()
     {
-        bool on = _settings.SkyColors && _state == NotchState.Expanded && (_settings.MediaControls ? _info : null) == null;
+        bool on = _settings.SkyColors && Look.Current.Wash && _state == NotchState.Expanded && (_settings.MediaControls ? _info : null) == null;
         if (on)
         {
             var weather = _settings.Weather ? _weather : null;

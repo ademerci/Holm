@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -15,6 +15,8 @@ internal sealed class AppSettings
     public bool Bounce { get; set; } = true;
     /// <summary>How far the bounce swings: 1 is normal, 0.5 subtle, up to 1.5 lively.</summary>
     public double BounceLevel { get; set; } = 1;
+    /// <summary>Just for fun: everything wobbles like jelly, far too much (<see cref="Spring.Jelly"/>).</summary>
+    public bool Jelly { get; set; }
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
@@ -107,6 +109,10 @@ internal sealed class AppSettings
     public bool SkyColors { get; set; } = true;
     /// <summary>The instrument look (black, white ink, small corners, tool words) in place of the classic one. Applies at the next start.</summary>
     public bool InstrumentLook { get; set; }
+    /// <summary>The design's id (<see cref="Designs"/>); empty means Classic, or Instrument when <see cref="InstrumentLook"/> is on. Applies at the next start.</summary>
+    public string Design { get; set; } = "";
+    /// <summary>The accent colour as "#RRGGBB", or empty for the design's own. Applies at the next start.</summary>
+    public string AccentColor { get; set; } = "";
     /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
     public bool AiUsage { get; set; } = true;
     /// <summary>Large clock view: show seconds next to the time.</summary>

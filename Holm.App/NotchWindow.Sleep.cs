@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -166,7 +166,7 @@ public sealed partial class NotchWindow
         var weather = _settings.Weather ? _weather : null;
         _mediaWeather.IsVisible = weather != null && _settings.MediaControls && _info != null;
         if (weather == null) return;
-        _mediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, Brushes.White);
+        _mediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, Look.Ink);
         _mediaWeatherTemp.Text = weather.Degrees;
         ToolTip.SetTip(_mediaWeather, $"{weather.Summary} · {_settings.WeatherPlace}" + (weather.RainNote != null ? $"\n{weather.RainNote}" : ""));
     }

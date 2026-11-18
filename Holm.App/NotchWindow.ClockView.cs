@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -17,7 +17,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly IBrush PillOn = Brush("#D90A84FF"), PillOff = Brush("#2EFFFFFF");
+    static readonly IBrush PillOn = Look.Accent, PillOff = Look.InkA(0x2E);
 
     /// <summary>The colour choices, as the WPF app's BigClock.Colors (its WPF half).</summary>
     static readonly (string Key, string Label, Color Swatch)[] ClockColors =
@@ -126,7 +126,7 @@ public sealed partial class NotchWindow
         _clockFullView.Children.Add(_clockCustomizePanel);
 
         // The compact music bar.
-        _clockMediaBar.Children.Add(new Border { Height = 1, Background = Brush("#1AFFFFFF"), Margin = new Thickness(0, 0, 0, 10) });
+        _clockMediaBar.Children.Add(new Border { Height = 1, Background = Look.InkA(0x1A), Margin = new Thickness(0, 0, 0, 10) });
         var bar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         _clockMediaArt.Child = _clockMediaArtPlaceholder;
         bar.Children.Add(_clockMediaArt);
@@ -294,10 +294,10 @@ public sealed partial class NotchWindow
     void RefreshClockControls()
     {
         _clockPinBtn.Rest = _clockPinned ? ToolLit : Brushes.Transparent;
-        _clockPinIcon.Foreground = _clockPinned ? Brushes.White : Dim;
+        _clockPinIcon.Foreground = _clockPinned ? Look.Ink : Dim;
         ToolTip.SetTip(_clockPinBtn, _clockPinned ? "Unpin clock" : "Pin clock open");
         _clockCustomizeBtn.Rest = _clockCustomizing ? ToolLit : Brushes.Transparent;
-        _clockCustomizeIcon.Foreground = _clockCustomizing ? Brushes.White : Dim;
+        _clockCustomizeIcon.Foreground = _clockCustomizing ? Look.Ink : Dim;
         _clockCustomizePanel.IsVisible = _clockCustomizing;
         _clockSecToggle.Rest = _settings.ClockShowSeconds ? PillOn : PillOff;
         _clockDateToggle.Rest = _settings.ClockShowDate ? PillOn : PillOff;
@@ -306,6 +306,6 @@ public sealed partial class NotchWindow
         string active = BigClock.NormalizeColor(_settings.ClockColor);
         foreach (var child in _clockColorRow.Children)
             if (child is NotchButton { Tag: string key, Child: Border ring })
-                ring.BorderBrush = key == active ? Brushes.White : Brushes.Transparent;
+                ring.BorderBrush = key == active ? Look.Ink : Brushes.Transparent;
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -23,7 +23,7 @@ public sealed partial class NotchWindow
 {
     enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai }
 
-    static readonly IBrush ToolLit = Brush("#29FFFFFF");
+    static readonly IBrush ToolLit = Look.InkA(0x29);
 
     readonly StackPanel _toolBar = new()
     {
@@ -55,11 +55,11 @@ public sealed partial class NotchWindow
     /// <summary>The WPF app's NotchTextBox style: a soft rounded field whose border turns blue while you type in it.</summary>
     static TextBox NotchTextBox()
     {
-        IBrush fill = Look.Pick<IBrush>(Brushes.Transparent, Brush("#14FFFFFF")), border = Brush(Look.Pick("#33FFFFFF", "#1FFFFFFF")),
+        IBrush fill = Look.Pick<IBrush>(Brushes.Transparent, Look.InkA(0x14)), border = Brush(Look.Pick("#33FFFFFF", "#1FFFFFFF")),
             focused = Brush(Look.Pick("#CCF2F2F2", "#990A84FF"));
         var box = new TextBox
         {
-            Foreground = Brushes.White, CaretBrush = Brushes.White, SelectionBrush = Brush(Look.Pick("#FF5A5C61", "#FF0A84FF")), FontSize = 13,
+            Foreground = Look.Ink, CaretBrush = Look.Ink, SelectionBrush = Look.Pick(Brush("#FF5A5C61"), Look.Accent), FontSize = 13,
             Background = fill, BorderBrush = border, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(Look.Pick(3, 12)),
             Padding = new Thickness(10, 7), MinHeight = 0,
         };
@@ -67,7 +67,7 @@ public sealed partial class NotchWindow
         foreach (string state in new[] { "PointerOver", "Focused" })
         {
             box.Resources["TextControlBackground" + state] = fill;
-            box.Resources["TextControlForeground" + state] = Brushes.White;
+            box.Resources["TextControlForeground" + state] = Look.Ink;
             box.Resources["TextControlBorderBrush" + state] = state == "Focused" ? focused : border;
         }
         box.Resources["TextControlBorderThemeThicknessFocused"] = new Thickness(1);
@@ -84,7 +84,7 @@ public sealed partial class NotchWindow
 
     /// <summary>A tool's button: its icon, or in the instrument look a small word.</summary>
     static NotchButton ToolWord(string word, string glyph) => Look.Instrument
-        ? new(new TextBlock { Text = word, FontSize = 11, Foreground = Dim, Margin = new Thickness(4, 0) }) { Height = 28, Margin = new Thickness(1, 0) }
+        ? new(new TextBlock { Text = Look.Heading(word), FontSize = Look.Current.Caps ? 10 : 11, Foreground = Dim, Margin = new Thickness(4, 0) }) { Height = 28, Margin = new Thickness(1, 0) }
         : new(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Dim }) { Width = 32, Height = 32, Margin = new Thickness(2, 0) };
 
     /// <summary>A tool's button with something other than an icon in the classic look (the AI mark).</summary>
