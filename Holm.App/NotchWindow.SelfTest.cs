@@ -112,6 +112,11 @@ public sealed partial class NotchWindow
     {
         _minute.Stop();
         _idleClock.Text = _clockBig.Text = "09:41";
+        // A minute that turned over just before would leave the big clock mid-roll (faded, shifted) in the picture.
+        StopTween(_clockBig, "roll");
+        StopTween(_clockBig, "roll-fade");
+        _clockBig.RenderTransform = null;
+        _clockBig.Opacity = 1;
         _dateText.Text = "Monday, November 16";
         _volSlider.Value = 0.5;
         _volSlider.Opacity = 1;
