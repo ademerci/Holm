@@ -662,8 +662,8 @@ export function createPages({ base, snapshot, store }) {
       '',
       layout(
         '',
-        'Holm — A little space for your everyday',
-        'A beautifully useful notch for Windows. Your music, everyday tools, notifications and Beam file sharing, right at the top of your screen.',
+        'Holm — a Dynamic Island for Windows and Linux',
+        'A free, open-source notch for Windows and Linux, like the Dynamic Island: your music, notifications, everyday tools and Beam file sharing, right at the top of your screen.',
         home,
       ),
     ],
