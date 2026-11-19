@@ -55,7 +55,7 @@ public sealed partial class NotchWindow
                 Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
                     s => s.HideOverBrowsers, on => { _settings.HideOverBrowsers = on; Save(); WatchFullscreen(); }),
             }),
-            new("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "What the open notch shows and the tools in its bar", new[]
+            new("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "Music and video controls in the notch", new[]
             {
                 Switch("Media controls", "\uE8D6", "Show music and video controls, artwork and track details. On by default.",
                     s => s.MediaControls, on =>
@@ -68,15 +68,6 @@ public sealed partial class NotchWindow
                         ShowSky();
                         ApplyState(animate: true);
                     }),
-                Switch("Notes", "", "A small note in the open notch, kept on this computer.", s => s.Notes, on => { _settings.Notes = on; Save(); RefreshToolBar(); }),
-                Switch("Reminders", "", "Type “20 min laundry” and the notch rings on time.", s => s.Reminders,
-                    on => { _settings.Reminders = on; Save(); RefreshToolBar(); ShowIdleStatus(); }),
-                Switch("Calculator", "", "Type a sum; the result is ready to copy.", s => s.Calculator, on => { _settings.Calculator = on; Save(); RefreshToolBar(); }),
-                Switch("Clipboard history", "", "Your last 20 copied texts and pictures, in memory only.", s => s.ClipboardHistory, SetClipboardHistory),
-                Switch("Volume per app", "", "A volume slider for every app that plays sound.", s => s.AppVolume, on => { _settings.AppVolume = on; Save(); RefreshToolBar(); }),
-                Switch("Color picker", "", "Pick any pixel's color and copy its hex code.", s => s.ColorPicker, on => { _settings.ColorPicker = on; Save(); RefreshToolBar(); }),
-                Switch("Focumon", "\uE7FC", "Show your Focumon monster and timer in the closed notch (instead of weather) and in the open bar. Needs the Focumon for Holm browser extension (extension/focumon in the repo).",
-                    s => s.Focumon, SetFocumon),
             }),
             new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", PopoutSwitches()),
             new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
@@ -87,6 +78,7 @@ public sealed partial class NotchWindow
                 Switch("Dictation with Handy", "\uE720", "Dictate with Handy, free and offline: the notch shows when it listens" + (OperatingSystem.IsWindows() ? ", and Handy's own overlay stays out of sight" : "") + ". Holm finds Handy or offers to install it.",
                     s => s.Dictation, SetDictation),
                 Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
+                Switch("Record clipboard history", "", "Keep up to 20 copied texts and pictures for this session. Turning this off clears the history.", s => s.ClipboardHistory, SetClipboardHistory),
                 Switch("Clear copied passwords after 30 s", "\uE8D7", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read.",
                     s => s.ClearPasswords, SetClearPasswords),
             }),
