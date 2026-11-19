@@ -154,6 +154,8 @@ test('release archives for Windows and Linux get a labelled link, other files no
   assert.equal(assetLabel('Holm-1.13.0-linux-x64.tar.gz'), 'Linux x64');
   assert.equal(assetLabel('Holm.exe'), null);
   assert.equal(assetLabel('Holm-1.13.0-test-build.5.exe'), null);
+});
+
 test('download totals include only the executable and x64 ZIP across all releases', () => {
   const releases = normalizeReleases([
     {
