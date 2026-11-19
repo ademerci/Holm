@@ -36,6 +36,12 @@ public interface INotchWindowPlatform
     void SetKeyboard(IntPtr window, bool take);
 
     /// <summary>
+    /// Puts the overlay back above everything when another window covers it (Windows: another topmost window or a
+    /// lost topmost flag). Nothing where the window manager keeps it above by itself.
+    /// </summary>
+    void KeepOnTop(IntPtr window) { }
+
+    /// <summary>
     /// Hands memory Holm no longer uses back to the system, as the WPF app does while it rests (Windows: the working set;
     /// Linux: the allocator's free pages). Nothing where the system has no such thing.
     /// </summary>

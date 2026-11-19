@@ -31,7 +31,12 @@ public sealed partial class NotchWindow
         _watchTimer.Tick += (_, _) => WatchFullscreen();
     }
 
-    void StartFullscreen() => _watchTimer.Start();
+    void StartFullscreen()
+    {
+        _watchTimer.Start();
+        // A window that comes to the front is answered at once: the notch back on top, the browser pill in or out.
+        _foreground.WatchChanges(WatchFullscreen);
+    }
 
     internal static bool IsBrowser(string name) => Browsers.Is(BrowserAliases.TryGetValue(name, out var known) ? known : name);
 
@@ -63,6 +68,8 @@ public sealed partial class NotchWindow
             UpdateEqualizer();
         }
         if (_browserInFront != wasBrowser || (wasFullscreen && !front.Fullscreen)) ApplyState(animate: true);
+        // As the WPF app: back above a window that covers it, but not while its menu is open (the menu would flicker).
+        if (!_hiddenForFullscreen && !_menuOpen && TryGetPlatformHandle() is { } top) _platform.KeepOnTop(top.Handle);
         MarkFrontRead();
     }
 }
