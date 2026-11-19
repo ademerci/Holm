@@ -237,6 +237,7 @@ public sealed class RelayInboxTests : IDisposable
             restarted = new FriendsService(reloaded, Ui);
             Assert.Equal(Assert.Single(sender.Pending).RequestId, Assert.Single(restarted.Incoming).RequestId);
             Assert.Equal(target.Key, restarted.EnsureMe().PublicKey);
+            restarted.Restart();
             await Until(() => _ntfy.Subscriptions == 3, "the receiver reconnected");
             await sender.CancelRequestAsync(Assert.Single(sender.Pending));
             await Until(() => restarted.Incoming.Count == 0, "the withdrawal removed the saved request");
