@@ -16,6 +16,17 @@ free tier allows about 250 notes a day per address, which Holm outgrew (`ntfy.sh
 - Limits: 60 notes a minute per inbox, 120 a minute per address (Cloudflare's rate limiter, approximate).
 - Sees only ciphertext: notes are sealed end to end by Holm (`Friends.cs`, `FriendInvite.cs`).
 
+## Admin page
+
+`https://relay.holmnotch.ch/admin` shows anonymous counts: about how many Holms are online, active inboxes per day,
+week and month, notes per day and how much of the Free plan's daily quota is used. Each request writes one Analytics
+Engine data point (its kind and 12 hex characters of the inbox's SHA-256; no address, no note, kept 3 months).
+
+Two secrets, set once in your own terminal (`relay/`), each asks for the value:
+- `npx wrangler secret put ADMIN_KEY`: a long password of your choice; the page asks for it.
+- `npx wrangler secret put CF_API_TOKEN`: an API token (dash.cloudflare.com › My Profile › API Tokens › Create
+  Custom Token) with *Account › Account Analytics › Read* for this account, so the Worker can read the counts.
+
 ## Test locally
 
 ```

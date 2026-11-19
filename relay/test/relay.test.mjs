@@ -23,7 +23,7 @@ const poll = async (t, since = "all") => (await (await fetch(`${BASE}/${t}/json?
   .split("\n").filter(Boolean).map((l) => JSON.parse(l));
 
 before(async () => {
-  dev = spawn(`npx wrangler dev --port ${PORT} --ip 127.0.0.1 --show-interactive-dev-session=false`,
+  dev = spawn(`npx wrangler dev --port ${PORT} --ip 127.0.0.1 --show-interactive-dev-session=false --var ADMIN_KEY:test-admin-key`,
               { cwd: fileURLToPath(new URL("..", import.meta.url)), shell: true, stdio: ["ignore", "pipe", "pipe"] });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("wrangler dev didn't start")), 60_000);
@@ -141,4 +141,17 @@ test("an inbox takes 60 notes a minute", async () => {
 test("only a WebSocket follows", async () => {
   assert.equal((await fetch(`${BASE}/${inbox()}/ws`)).status, 426);
   assert.equal((await fetch(`${BASE}/${inbox()}/other`)).status, 405);
+});
+
+test("the admin page is open, its numbers need the key", async () => {
+  const page = await fetch(`${BASE}/admin`);
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /<title>Holm relay<\/title>/);
+  assert.equal((await fetch(`${BASE}/admin/stats`)).status, 401);
+  assert.equal((await fetch(`${BASE}/admin/stats`, { headers: { authorization: "Bearer wrong" } })).status, 401);
+  // The right key gets past the door; locally there is no API token to read the counts with.
+  const stats = await fetch(`${BASE}/admin/stats`, { headers: { authorization: "Bearer test-admin-key" } });
+  assert.equal(stats.status, 503);
+  assert.match((await stats.json()).error, /CF_API_TOKEN/);
+  assert.equal((await fetch(`${BASE}/admin/other`)).status, 404);
 });
