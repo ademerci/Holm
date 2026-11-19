@@ -11,6 +11,7 @@ at FontSize 14 is a 14 by 14 box.
 """
 import json, os, sys
 from fontTools.fontBuilder import FontBuilder
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.recordingPen import DecomposingRecordingPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
@@ -35,13 +36,19 @@ for code, name in wanted:
     glyph_name = f"u{code:04X}"
     recording = DecomposingRecordingPen(glyph_set)
     glyph_set[cmap[names[name]]].draw(recording)
-    bounds = source["glyf"][cmap[names[name]]]
-    dx = (em - (bounds.xMax + bounds.xMin)) / 2
-    dy = (em - (bounds.yMax + bounds.yMin)) / 2
+    # The source glyph set applies bearings and variable-font deltas while drawing.
+    # Its stored glyf box can differ from the outline we actually replay.
+    bounds = BoundsPen(None)
+    recording.replay(bounds)
+    left, bottom, right, top = bounds.bounds
+    dx = round((em - left - right) / 2)
+    dy = round((em - bottom - top) / 2)
     pen = TTGlyphPen(None)
-    recording.replay(TransformPen(pen, (1, 0, 0, 1, round(dx), round(dy))))
-    glyphs[glyph_name] = pen.glyph()
-    metrics[glyph_name] = (em, round(dx) + bounds.xMin)
+    recording.replay(TransformPen(pen, (1, 0, 0, 1, dx, dy)))
+    glyph = pen.glyph()
+    glyph.recalcBounds(None)
+    glyphs[glyph_name] = glyph
+    metrics[glyph_name] = (em, glyph.xMin)
     mapping[code] = glyph_name
     order.append(glyph_name)
 
@@ -60,4 +67,13 @@ builder.setupNameTable({
 builder.setupPost()
 out = os.path.join(here, "..", "..", "Holm.App", "Assets", "HolmIcons.ttf")
 builder.save(out)
+with TTFont(out) as built:
+    icons = built.getGlyphSet()
+    for name in built.getBestCmap().values():
+        bounds = BoundsPen(icons)
+        icons[name].draw(bounds)
+        left, bottom, right, top = bounds.bounds
+        # Check the shipped outlines and their bearings together, allowing for integer font units.
+        if max(abs(left + right - em), abs(bottom + top - em)) > 2:
+            sys.exit(f"{name} is off centre in the generated font")
 print(f"{len(wanted)} icons, {os.path.getsize(out)} bytes -> {os.path.normpath(out)}")

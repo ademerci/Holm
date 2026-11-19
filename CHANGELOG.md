@@ -3,14 +3,25 @@
 ## Unreleased
 
 ### Added
-- **Seven new designs.** Pick Blueprint, Matcha, Kiln, Nocturne, Signal Box, Margin Notes or Command Deck in *Settings › Design*. Each also works as the base for an imported design.
+- **A new series, Herm.** The Holm window shows the name beside the version number.
 
 ### Changed
 - **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.
-- **Prism Glass.** A silver tint and dark lettering keep the notch readable over light and dark desktops. The notch rim catches light as the pointer moves, and clear slider and switch thumbs magnify the coloured track underneath.
 
 ### Fixed
 - **Color picker on scaled displays.** At 150 % or 200 % scale the picker showed the screen zoomed in, so only part of it could be picked. It now shows the whole screen exactly as it was.
+
+## 1.17.2 – 2026-11-19
+
+### Fixed
+- Centered the bundled icons within their buttons, tiles and badges, including achievements, notifications and settings.
+- The closed notch centers the update arrow and shows a green progress ring while Holm downloads an update. Discord notifications use Discord’s own icon.
+
+### Added
+- **Seven new designs.** Pick Blueprint, Matcha, Kiln, Nocturne, Signal Box, Margin Notes or Command Deck in *Settings › Design*. Each also works as the base for an imported design.
+
+### Changed
+- **Prism Glass.** A silver tint and dark lettering keep the notch readable over light and dark desktops. The notch rim catches light as the pointer moves, and clear slider and switch thumbs magnify the coloured track underneath.
 
 ## 1.17.1 – 2026-11-19
 

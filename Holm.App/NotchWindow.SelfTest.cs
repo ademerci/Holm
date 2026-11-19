@@ -38,6 +38,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
+            SnapshotNotificationBadges(folder);
 
             _hovered = true;
             ApplyState(animate: true);
@@ -106,6 +107,24 @@ public sealed partial class NotchWindow
             return string.Join(" ", At(5, h / 2), At(w - 6, h / 2), At(w / 2, h / 2), At(5, 2));
         }
         catch (Exception ex) { return ex.GetType().Name; }
+    }
+
+    void SnapshotNotificationBadges(string folder)
+    {
+        var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
+        strip.Children.Add(AppLogo("discord", BadgeLogoSize));
+        strip.Children.Add(UpdateNotificationIcon(BadgeLogoSize));
+        foreach (int percent in new[] { 0, 50, 100 })
+        {
+            var badge = UpdateNotificationIcon(BadgeLogoSize);
+            badge.SetProgress(percent);
+            strip.Children.Add(badge);
+        }
+        strip.Measure(Avalonia.Size.Infinity);
+        strip.Arrange(new Rect(strip.DesiredSize));
+        using var bitmap = new RenderTargetBitmap(new PixelSize((int)strip.Bounds.Width * 3, (int)strip.Bounds.Height * 3), new Vector(288, 288));
+        bitmap.Render(strip);
+        bitmap.Save(Path.Combine(folder, "notification-badges.png"), new PngBitmapEncoderOptions());
     }
 
     void FreezeForPicture()
