@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.2 – 2026-11-19
 
 ### Fixed
 - Centered the bundled icons within their buttons, tiles and badges, including achievements, notifications and settings.
