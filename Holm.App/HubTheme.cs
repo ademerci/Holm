@@ -55,13 +55,13 @@ internal static class HubTheme
     };
 
     /// <summary>A rounded square with an icon, as in front of each setting.</summary>
-    public static Border IconTile(string glyph, Color color, double size = 30) => new()
+    public static Border IconTile(string glyph, Color color, double size = 30, Func<IBrush, double, Control>? icon = null) => new()
     {
         Width = size, Height = size, CornerRadius = new CornerRadius(Look.Pick(3, Round(size * 0.27))),
         Background = Look.Aero ? Look.VerticalGradient((Mix(color.ToUInt32(), 0xFFFFFFFF, 0.22), 0), (color.ToUInt32(), 0.46),
             (Mix(color.ToUInt32(), 0xFF000000, 0.22), 0.48), (color.ToUInt32(), 1)) : Look.Pick<IBrush?>(null, new SolidColorBrush(color).ToImmutable()),
         BorderBrush = Look.Aero ? B(0x700B5276) : Look.Pick<IBrush?>(Line, null), BorderThickness = new Thickness(Look.Aero ? 1 : Look.Pick(1, 0)),
-        Child = Glyph(glyph, size * 0.47, Look.Pick(Dim, Brushes.White)),
+        Child = icon?.Invoke(Look.Pick(Dim, Brushes.White), size * 0.47) ?? Glyph(glyph, size * 0.47, Look.Pick(Dim, Brushes.White)),
     };
 
     /// <summary>A round face: a picture, or initials on a color.</summary>
