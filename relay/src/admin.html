@@ -17,11 +17,7 @@
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body {
-    margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 Inter, system-ui, sans-serif;
-    background:
-      radial-gradient(900px 420px at 50% -120px, rgba(90, 184, 255, .16), transparent 70%),
-      radial-gradient(700px 360px at 85% 110%, rgba(123, 227, 107, .08), transparent 70%),
-      var(--bg);
+    margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 Inter, system-ui, sans-serif; background: var(--bg);
   }
   main { max-width: 1040px; margin: 0 auto; padding: 0 16px 56px; }
 
@@ -29,27 +25,25 @@
   .notch-wrap { display: flex; justify-content: center; }
   .notch {
     display: flex; align-items: center; gap: 14px; padding: 12px 22px 14px; min-width: 300px; justify-content: center;
-    background: #000; border-radius: 0 0 26px 26px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6), inset 0 -1px 0 rgba(255, 255, 255, .06);
+    background: #000; border-radius: 0 0 26px 26px;
     position: relative;
   }
   .notch::before, .notch::after { content: ""; position: absolute; top: 0; width: 14px; height: 14px; }
   .notch::before { left: -14px; background: radial-gradient(circle at 0 100%, transparent 14px, #000 14.5px); }
   .notch::after { right: -14px; background: radial-gradient(circle at 100% 100%, transparent 14px, #000 14.5px); }
-  .pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--grass); box-shadow: 0 0 0 0 rgba(123, 227, 107, .6); animation: pulse 2.4s infinite; }
-  .pulse.off { background: var(--faint); animation: none; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(123, 227, 107, .55); } 70% { box-shadow: 0 0 0 10px rgba(123, 227, 107, 0); } 100% { box-shadow: 0 0 0 0 rgba(123, 227, 107, 0); } }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--grass); }
+  .pulse.off { background: var(--faint); }
   .notch .count { font: 700 22px/1 var(--mono); letter-spacing: -.5px; }
   .notch .what { color: var(--muted); font-size: 13px; }
-  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 
   header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 36px 0 22px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 28px; letter-spacing: -.6px; font-weight: 700; }
-  h1 span { background: linear-gradient(90deg, var(--sky), var(--grass)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1 span { color: var(--muted); font-weight: 500; }
   .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .updated { color: var(--muted); font: 500 12px var(--mono); display: flex; align-items: center; gap: 8px; }
   .ring-timer { width: 14px; height: 14px; }
 
-  .panel { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
   .label { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .2px; }
   h2 { margin: 0 0 16px; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; }
   h2 small { color: var(--muted); font-weight: 400; font-size: 12px; }
@@ -64,9 +58,9 @@
   .chart .grid { position: absolute; inset: 8px 0 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
   .chart .grid i { border-top: 1px dashed var(--line); }
   .bar { flex: 1; min-width: 0; display: flex; flex-direction: column-reverse; gap: 2px; position: relative; height: 100%; cursor: default; }
-  .bar i { display: block; border-radius: 4px; transition: height .5s cubic-bezier(.2, .8, .2, 1); }
-  .bar .kept { background: linear-gradient(180deg, var(--sky), #2f78c8); }
-  .bar .live { background: linear-gradient(180deg, rgba(123, 227, 107, .55), rgba(123, 227, 107, .25)); }
+  .bar i { display: block; border-radius: 3px; transition: height .5s cubic-bezier(.2, .8, .2, 1); }
+  .bar .kept { background: var(--sky); }
+  .bar .live { background: #2a3540; }
   .bar:hover i { filter: brightness(1.25); }
   .bar .tip {
     position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; display: none; z-index: 2;
@@ -106,10 +100,10 @@
   .login p { color: var(--muted); font-size: 13px; margin: 8px 0 22px; }
   .login form { display: flex; gap: 8px; background: #000; padding: 6px; border-radius: 16px; border: 1px solid var(--line); }
   .login input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text); font: 500 14px var(--mono); padding: 10px 12px; outline: none; }
-  .login button { border: 0; border-radius: 11px; padding: 0 18px; font: 600 14px Inter, sans-serif; color: #04130a; background: linear-gradient(90deg, var(--sky), var(--grass)); cursor: pointer; }
+  .login button { border: 0; border-radius: 11px; padding: 0 18px; font: 600 14px Inter, sans-serif; color: #000; background: var(--text); cursor: pointer; }
   .login button:focus-visible, .login input:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
   .error { color: var(--coral); font-size: 13px; margin-top: 12px; min-height: 18px; }
-  .demo { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: rgba(255, 194, 74, .15); color: var(--sun); font-size: 11px; font-weight: 600; vertical-align: 4px; }
+  .demo { margin-left: 10px; color: var(--sun); font-size: 13px; font-weight: 500; }
 
   @media (max-width: 820px) {
     .row { grid-template-columns: 1fr; }
@@ -154,7 +148,7 @@
         <h2>Notes per day <small>last 14 days</small></h2>
         <div class="chart" id="chart"><div class="grid"><i></i><i></i><i></i><i></i></div></div>
         <div class="days" id="days"></div>
-        <div class="legend"><span><b style="background:var(--sky)"></b>Kept: chat, requests, invites</span><span><b style="background:rgba(123,227,107,.5)"></b>Online checks</span></div>
+        <div class="legend"><span><b style="background:var(--sky)"></b>Kept: chat, requests, invites</span><span><b style="background:#2a3540"></b>Online checks</span></div>
       </div>
       <div class="panel">
         <h2>Free plan <small>last 24 h</small></h2>
@@ -180,8 +174,8 @@ let key = "", left = EVERY;
 try { key = localStorage.getItem("holm-admin-key") || ""; } catch {}
 
 const KINDS = [
-  ["note", "Kept notes", "var(--sky)"], ["live", "Online checks", "var(--grass)"], ["open", "Connections", "#a58bff"],
-  ["invite", "Invite codes", "var(--sun)"], ["poll", "Code lookups", "#4fd1c5"], ["refused", "Refused", "var(--coral)"],
+  ["note", "Kept notes", "var(--sky)"], ["live", "Online checks", "#4a5562"], ["open", "Connections", "#4a5562"],
+  ["invite", "Invite codes", "#4a5562"], ["poll", "Code lookups", "#4a5562"], ["refused", "Refused", "var(--coral)"],
 ];
 const QUOTA = [["workerRequests", "Worker requests"], ["objectRequests", "Object requests"], ["rowsWritten", "Rows written"]];
 
@@ -253,8 +247,8 @@ function render(s) {
   const R = 40, C = 2 * Math.PI * R;
   $("rings").innerHTML = QUOTA.map(([k, name]) => {
     const q = s.quota[k], pct = Math.min(100, q.used / q.free * 100);
-    const color = pct > 90 ? "var(--coral)" : pct > 70 ? "var(--sun)" : "url(#g)";
-    return '<div><div class="ring"><svg viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ab8ff"/><stop offset="1" stop-color="#7be36b"/></linearGradient></defs>' +
+    const color = pct > 90 ? "var(--coral)" : pct > 70 ? "var(--sun)" : "var(--sky)";
+    return '<div><div class="ring"><svg viewBox="0 0 100 100">' +
       '<circle class="track" cx="50" cy="50" r="' + R + '"/><circle class="fill" cx="50" cy="50" r="' + R + '" stroke="' + color + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '" data-to="' + (C * (1 - pct / 100)) + '"/></svg>' +
       '<div class="pct">' + (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + "%</div></div>" +
       '<div class="name">' + name + '</div><div class="of">' + fmt(q.used) + " / " + fmt(q.free / 1000) + "k</div></div>";
