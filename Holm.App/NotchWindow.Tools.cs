@@ -126,7 +126,7 @@ public sealed partial class NotchWindow
         _toolBar.Children.Add(_chatsToolBtn);
         _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
-        _aiToolBtn = ToolWord("AI", AiMarks.For(AiTool.ClaudeCode, 14, Dim));
+        _aiToolBtn = ToolWord("AI", AiUsageGlyph);
         ToolTip.SetTip(_aiToolBtn, "AI usage");
         _aiToolBtn.Click += () => ToggleTool(Tool.Ai);
         _toolBar.Children.Add(_aiToolBtn);
@@ -297,7 +297,9 @@ public sealed partial class NotchWindow
         _colorPickerBtn.IsVisible = _settings.ColorPicker && !_home.IsToolHidden(HomeLayout.ColorPicker);
         foreach (var (_, button, which) in ToolPages())
         {
-            if (!button.IsVisible && which == _tool) ShowTool(Tool.None);
+            // Usage can also be opened from a ring while its toolbar shortcut is hidden.
+            if (!button.IsVisible && which == _tool && (which != Tool.Ai || !_settings.AiUsage || _aiUsage.Count == 0))
+                ShowTool(Tool.None);
         }
         _toolBar.IsVisible = _toolBar.Children.Any(button => button.IsVisible);
     }

@@ -44,7 +44,7 @@ public sealed partial class NotchWindow
         new(HomeLayout.Clipboard, "Clipboard history", (brush, size) => ToolIcon(ClipboardGlyph, brush, size), _settings.ClipboardHistory),
         new(HomeLayout.Mixer, "Volume per app", (brush, size) => ToolIcon(MixerGlyph, brush, size), _settings.AppVolume),
         // Its button shows only while Claude Code or Codex has been used on this computer.
-        new(HomeLayout.Ai, "AI usage", (brush, size) => AiMarks.For(AiTool.ClaudeCode, size, brush), _settings.AiUsage),
+        new(HomeLayout.Ai, "AI usage", (brush, size) => ToolIcon(AiUsageGlyph, brush, size), _settings.AiUsage),
         new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), _settings.ColorPicker),
     });
 
