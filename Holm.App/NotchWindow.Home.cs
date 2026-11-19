@@ -56,6 +56,7 @@ public sealed partial class NotchWindow
         _home = HomeLayout.Read(_settings);
         ArrangeHome();
         ArrangeToolBar();
+        RefreshToolBar();
         SwapSides();
         ShowHomeSections();
         if (_state == NotchState.Expanded) ApplyState(animate: true);

@@ -93,6 +93,8 @@ internal sealed class AppSettings
     public List<string> HomeSwapped { get; set; } = new();
     /// <summary>The tools in the open notch's bar from left to right; empty for Holm's usual order.</summary>
     public List<string> HomeTools { get; set; } = new();
+    /// <summary>Tools hidden from the open notch's bar, independent of their feature switches.</summary>
+    public List<string> HomeHiddenTools { get; set; } = new();
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
     /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>

@@ -34,7 +34,7 @@ internal sealed class HomeLayout
     /// <summary>What has two sides that can swap: the clock and the weather (the cover and the title), the two cards, the batteries and the volume.</summary>
     public static readonly IReadOnlyList<string> CanSwap = new[] { Main, Today, Status };
 
-    public static readonly HomeLayout Usual = new(UsualSections, Array.Empty<string>(), Array.Empty<string>(), UsualTools);
+    public static readonly HomeLayout Usual = new(UsualSections, Array.Empty<string>(), Array.Empty<string>(), UsualTools, Array.Empty<string>());
 
     /// <summary>Every section once, top to bottom.</summary>
     public IReadOnlyList<string> Sections { get; }
@@ -48,25 +48,32 @@ internal sealed class HomeLayout
     /// <summary>Every tool once, left to right.</summary>
     public IReadOnlyList<string> ToolOrder { get; }
 
-    HomeLayout(IReadOnlyList<string> sections, IReadOnlyList<string> hidden, IReadOnlyList<string> swapped, IReadOnlyList<string> tools)
+    /// <summary>The hidden tools, in their usual order.</summary>
+    public IReadOnlyList<string> HiddenTools { get; }
+
+    HomeLayout(IReadOnlyList<string> sections, IReadOnlyList<string> hidden, IReadOnlyList<string> swapped,
+               IReadOnlyList<string> tools, IReadOnlyList<string> hiddenTools)
     {
         Sections = sections;
         Hidden = hidden;
         Swapped = swapped;
         ToolOrder = tools;
+        HiddenTools = hiddenTools;
     }
 
     public bool IsHidden(string section) => Hidden.Contains(section);
 
     public bool IsSwapped(string section) => Swapped.Contains(section);
+    public bool IsToolHidden(string tool) => HiddenTools.Contains(tool);
 
     /// <summary>Holm's usual start page: nothing moved, hidden or swapped.</summary>
-    public bool IsUsual => Sections.SequenceEqual(UsualSections) && Hidden.Count == 0 && Swapped.Count == 0 && ToolOrder.SequenceEqual(UsualTools);
+    public bool IsUsual => Sections.SequenceEqual(UsualSections) && Hidden.Count == 0 && Swapped.Count == 0
+        && ToolOrder.SequenceEqual(UsualTools) && HiddenTools.Count == 0;
 
     /// <summary>The layout the settings hold, made whole.</summary>
     public static HomeLayout Read(AppSettings settings) => new(
         Arrange(settings.HomeSections, UsualSections), Only(settings.HomeHidden, CanHide),
-        Only(settings.HomeSwapped, CanSwap), Arrange(settings.HomeTools, UsualTools));
+        Only(settings.HomeSwapped, CanSwap), Arrange(settings.HomeTools, UsualTools), Only(settings.HomeHiddenTools, UsualTools));
 
     /// <summary>Puts the layout into the settings; a usual order is saved as an empty list.</summary>
     public void Write(AppSettings settings)
@@ -75,19 +82,23 @@ internal sealed class HomeLayout
         settings.HomeHidden = Hidden.ToList();
         settings.HomeSwapped = Swapped.ToList();
         settings.HomeTools = ToolOrder.SequenceEqual(UsualTools) ? new() : ToolOrder.ToList();
+        settings.HomeHiddenTools = HiddenTools.ToList();
     }
 
     /// <summary>The layout with <paramref name="section"/> moved to <paramref name="index"/> (counted without it).</summary>
-    public HomeLayout Move(string section, int index) => new(MoveTo(Sections, section, index), Hidden, Swapped, ToolOrder);
+    public HomeLayout Move(string section, int index) => new(MoveTo(Sections, section, index), Hidden, Swapped, ToolOrder, HiddenTools);
 
     /// <summary>The layout with <paramref name="tool"/> moved to <paramref name="index"/> in the bar (counted without it).</summary>
-    public HomeLayout MoveTool(string tool, int index) => new(Sections, Hidden, Swapped, MoveTo(ToolOrder, tool, index));
+    public HomeLayout MoveTool(string tool, int index) => new(Sections, Hidden, Swapped, MoveTo(ToolOrder, tool, index), HiddenTools);
+
+    /// <summary>The layout with a tool hidden or shown, keeping its place in the bar.</summary>
+    public HomeLayout HideTool(string tool, bool hide) => new(Sections, Hidden, Swapped, ToolOrder, Set(HiddenTools, tool, hide, UsualTools));
 
     /// <summary>The layout with <paramref name="section"/> hidden or shown; a section that can't hide stays shown.</summary>
-    public HomeLayout Hide(string section, bool hide) => new(Sections, Set(Hidden, section, hide, CanHide), Swapped, ToolOrder);
+    public HomeLayout Hide(string section, bool hide) => new(Sections, Set(Hidden, section, hide, CanHide), Swapped, ToolOrder, HiddenTools);
 
     /// <summary>The layout with <paramref name="section"/>'s sides swapped or not.</summary>
-    public HomeLayout Swap(string section, bool swap) => new(Sections, Hidden, Set(Swapped, section, swap, CanSwap), ToolOrder);
+    public HomeLayout Swap(string section, bool swap) => new(Sections, Hidden, Set(Swapped, section, swap, CanSwap), ToolOrder, HiddenTools);
 
     /// <summary>
     /// A saved order made whole: the names it knows, once each and in its order, and every name it misses right after

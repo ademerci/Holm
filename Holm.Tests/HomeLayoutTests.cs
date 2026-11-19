@@ -16,6 +16,7 @@ public class HomeLayoutTests
         Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color" }, layout.ToolOrder);
         Assert.Empty(layout.Hidden);
         Assert.Empty(layout.Swapped);
+        Assert.Empty(layout.HiddenTools);
     }
 
     [Fact]
@@ -28,6 +29,7 @@ public class HomeLayoutTests
         Assert.Empty(settings.HomeHidden);
         Assert.Empty(settings.HomeSwapped);
         Assert.Empty(settings.HomeTools);
+        Assert.Empty(settings.HomeHiddenTools);
     }
 
     [Fact]
@@ -37,7 +39,8 @@ public class HomeLayoutTests
             .Move(HomeLayout.Status, 0)
             .Hide(HomeLayout.Today, true)
             .Swap(HomeLayout.Main, true)
-            .MoveTool(HomeLayout.ColorPicker, 0);
+            .MoveTool(HomeLayout.ColorPicker, 0)
+            .HideTool(HomeLayout.ColorPicker, true);
         var settings = new AppSettings();
         layout.Write(settings);
 
@@ -49,6 +52,23 @@ public class HomeLayoutTests
         Assert.True(again.IsSwapped(HomeLayout.Main));
         Assert.Equal("color", again.ToolOrder[0]);
         Assert.Equal(8, again.ToolOrder.Count);
+        Assert.True(again.IsToolHidden(HomeLayout.ColorPicker));
+        Assert.Equal(again.ToolOrder, again.HideTool(HomeLayout.ColorPicker, false).ToolOrder);
+    }
+
+    [Fact]
+    public void Every_tool_can_hide_and_reset_to_visible()
+    {
+        var layout = HomeLayout.Usual;
+        foreach (string tool in HomeLayout.UsualTools) layout = layout.HideTool(tool, true);
+
+        Assert.False(layout.IsUsual);
+        Assert.Equal(HomeLayout.UsualTools, layout.HiddenTools);
+        Assert.Equal(HomeLayout.UsualTools, layout.ToolOrder);
+        var settings = new AppSettings();
+        layout.Write(settings);
+        HomeLayout.Usual.Write(settings);
+        Assert.True(HomeLayout.Read(settings).IsUsual);
     }
 
     [Theory]
@@ -122,7 +142,8 @@ public class HomeLayoutTests
     [Fact]
     public void The_start_page_goes_with_the_account()
     {
-        foreach (string name in new[] { nameof(AppSettings.HomeSections), nameof(AppSettings.HomeHidden), nameof(AppSettings.HomeSwapped), nameof(AppSettings.HomeTools) })
+        foreach (string name in new[] { nameof(AppSettings.HomeSections), nameof(AppSettings.HomeHidden), nameof(AppSettings.HomeSwapped),
+                                       nameof(AppSettings.HomeTools), nameof(AppSettings.HomeHiddenTools) })
             Assert.Contains(name, WinNotch.Account.SettingsSync.Names);
     }
 }

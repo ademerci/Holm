@@ -39,6 +39,7 @@ sealed class StartPage : HubView
     readonly List<(string Section, Border Row)> _rows = new();
     readonly StackPanel _toolStrip = new() { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _toolName = new() { FontSize = 12, Foreground = HubTheme.Dim, Margin = new Thickness(2, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
+    readonly CheckBox _showTool = new() { FontSize = 12, Margin = new Thickness(2, 4, 0, 0) };
     readonly Button _toolLeft, _toolRight, _reset;
     readonly Border _preview = new() { HorizontalAlignment = HorizontalAlignment.Left };
     readonly Dictionary<string, Border> _previewParts = new();
@@ -81,7 +82,9 @@ sealed class StartPage : HubView
         toolRow.Children.Add(moves);
         var toolCard = new StackPanel { Margin = Look.Pick(new Thickness(2, 10, 2, 10), new Thickness(12, 12, 12, 10)) };
         toolCard.Children.Add(toolRow);
+        toolCard.Children.Add(_showTool);
         toolCard.Children.Add(_toolName);
+        _showTool.Click += (_, _) => Change(layout => layout.HideTool(_tool, _showTool.IsChecked != true));
         left.Children.Add(Card(toolCard));
 
         // ── the picture ──
@@ -289,14 +292,15 @@ sealed class StartPage : HubView
         {
             if (_tools.FirstOrDefault(t => t.Name == name) is not { } tool) continue;
             bool picked = name == _tool;
+            bool hidden = _layout.IsToolHidden(name);
             var chip = new Border
             {
                 Width = 32, Height = 32, CornerRadius = new CornerRadius(Look.Pick(2, HubTheme.Round(9))), Cursor = new Cursor(StandardCursorType.Hand),
                 Background = picked ? HubTheme.Selected : Brushes.Transparent, BorderBrush = picked ? HubTheme.Accent : HubTheme.Line,
-                BorderThickness = new Thickness(picked ? 1.5 : 1), Opacity = tool.On ? 1 : 0.4,
+                BorderThickness = new Thickness(picked ? 1.5 : 1), Opacity = tool.On && !hidden ? 1 : 0.4,
                 Child = Center(tool.Icon(picked ? Look.Ink : HubTheme.Dim, 15)),
             };
-            ToolTip.SetTip(chip, tool.On ? tool.Title : tool.Title + " (switched off)");
+            ToolTip.SetTip(chip, hidden ? tool.Title + " (hidden)" : tool.On ? tool.Title : tool.Title + " (switched off)");
             chip.PointerReleased += (_, e) =>
             {
                 if (e.InitialPressMouseButton != MouseButton.Left) return;
@@ -309,9 +313,11 @@ sealed class StartPage : HubView
         _toolLeft.IsEnabled = at > 0;
         _toolRight.IsEnabled = at >= 0 && at < order.Count - 1;
         var chosen = _tools.FirstOrDefault(t => t.Name == _tool);
-        _toolName.Text = chosen == null ? "" : chosen.On
-            ? $"Picked: {chosen.Title}. Move it with the arrows, or pick another tool."
-            : $"Picked: {chosen.Title}, switched off in Settings › Open notch. It keeps its place for when it's on.";
+        _showTool.IsEnabled = chosen != null;
+        _showTool.IsChecked = chosen != null && !_layout.IsToolHidden(_tool);
+        _showTool.Content = chosen == null ? "Show in tool bar" : $"Show {chosen.Title} in tool bar";
+        _toolName.IsVisible = chosen is { On: false };
+        _toolName.Text = "This feature is switched off in Settings › Open notch.";
     }
 
     void MoveTool(int step)
@@ -366,7 +372,8 @@ sealed class StartPage : HubView
             {
                 var icons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = Look.Pick(HorizontalAlignment.Right, HorizontalAlignment.Center), Margin = Look.Pick(new Thickness(0, 0, 16, 0), new Thickness(0)) };
                 foreach (string name in _layout.ToolOrder)
-                    if (_tools.FirstOrDefault(t => t.Name == name) is { On: true } tool) icons.Children.Add(tool.Icon(dim, 9));
+                    if (!_layout.IsToolHidden(name) && _tools.FirstOrDefault(t => t.Name == name) is { On: true } tool)
+                        icons.Children.Add(tool.Icon(dim, 9));
                 var row = new Grid { Height = 16 };
                 row.Children.Add(icons);
                 row.Children.Add(new TextBlock { Text = "", FontFamily = Fonts.Icons, FontSize = 8, Foreground = faint, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center });
