@@ -228,7 +228,8 @@ public sealed class RelayInboxTests : IDisposable
         try
         {
             var target = receiver.EnsureMe().AsFriend();
-            await Until(() => _ntfy.Followers == 1, "the receiver connected");
+            sender.EnsureMe();
+            await Until(() => _ntfy.Subscriptions == 2, "both inboxes connected");
             await sender.RequestAddAsync(target, TimeSpan.FromMilliseconds(100), Net.Timeout());
             await Until(() => receiver.Incoming.Count == 1, "the request arrived");
             receiver.Stop();
@@ -236,7 +237,7 @@ public sealed class RelayInboxTests : IDisposable
             restarted = new FriendsService(reloaded, Ui);
             Assert.Equal(Assert.Single(sender.Pending).RequestId, Assert.Single(restarted.Incoming).RequestId);
             Assert.Equal(target.Key, restarted.EnsureMe().PublicKey);
-            await Until(() => _ntfy.Followers == 3, "the receiver reconnected");
+            await Until(() => _ntfy.Subscriptions == 3, "the receiver reconnected");
             await sender.CancelRequestAsync(Assert.Single(sender.Pending));
             await Until(() => restarted.Incoming.Count == 0, "the withdrawal removed the saved request");
         }
@@ -347,10 +348,12 @@ sealed class FakeInboxServer : IDisposable
     readonly List<(string Id, long Time, string Topic, string Text)> _kept = new();
     readonly List<(string Topic, Func<string, Task> Send)> _followers = new();
     readonly CancellationTokenSource _stop = new();
+    int _subscriptions;
     public string Url { get; }
     public volatile int Status = 200;
     public ConcurrentQueue<(string Topic, string Text, bool Keep)> Posts { get; } = new();
     public int Followers { get { lock (_followers) return _followers.Count; } }
+    public int Subscriptions => Volatile.Read(ref _subscriptions);
 
     public FakeInboxServer()
     {
@@ -438,6 +441,7 @@ sealed class FakeInboxServer : IDisposable
                 foreach (string line in KeptSince(topic, since)) await Send(line);
                 var follower = (topic, (Func<string, Task>)Send);
                 lock (_followers) _followers.Add(follower);
+                Interlocked.Increment(ref _subscriptions);
                 try { await ws.ReceiveAsync(new byte[16], _stop.Token); } catch { }
                 lock (_followers) _followers.Remove(follower);
                 return;
@@ -461,6 +465,7 @@ sealed class FakeInboxServer : IDisposable
                 foreach (string line in KeptSince(topic, since)) await Send(line);
                 var follower = (topic, (Func<string, Task>)Send);
                 lock (_followers) _followers.Add(follower);
+                Interlocked.Increment(ref _subscriptions);
                 try { await Task.Delay(Timeout.Infinite, _stop.Token); } catch { }
                 lock (_followers) _followers.Remove(follower);
                 return;
