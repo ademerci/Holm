@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.1 – 2026-11-19
+
+### Changed
+- **Start page settings.** Toolbox visibility, Media controls and Focumon are in Settings › Start page. Clipboard recording is under Calls and privacy.
+- **AI usage icons.** The toolbox, Start page preview and AI usage settings use a speedometer icon.
+
+### Fixed
+- **Chat alignment.** The Add a friend button is centered beside Search, and the message placeholder and text are centered in the composer.
+
 ## 2.0.0 – 2026-11-19
 
 **Friends requires Holm 2.0.0 or later.** We moved Friends to a new server and changed how friend codes work. Friends features are no longer available on older versions, including friend requests, chat, online status, and sharing with friends. Everyone in a conversation needs to update. Use friend codes generated in the updated app when adding friends.
