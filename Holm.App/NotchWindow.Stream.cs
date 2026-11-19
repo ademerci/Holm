@@ -385,22 +385,4 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Diag.Log("Couldn't decline a stream: " + ex.Message); }
     }
 
-    /// <summary>Friends › Stream my screen to › (each friend), and Stop streaming while live.</summary>
-    void FillStreamMenu(MenuItem menu)
-    {
-        if (Streaming)
-        {
-            var stop = new MenuItem { Header = "Stop streaming" };
-            stop.Click += (_, _) => StopStreaming();
-            menu.Items.Add(stop);
-        }
-        var to = new MenuItem { Header = Streaming ? "Add a viewer" : "Stream my screen to" };
-        foreach (var friend in _friends.Friends.ToList())
-        {
-            var item = new MenuItem { Header = friend.Name.Replace("_", "__"), IsEnabled = _stream?.Has(friend.Key) != true };
-            item.Click += (_, _) => StreamTo(friend);
-            to.Items.Add(item);
-        }
-        menu.Items.Add(to);
-    }
 }

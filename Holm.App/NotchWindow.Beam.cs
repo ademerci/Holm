@@ -635,19 +635,20 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Diag.Log("Couldn't decline: " + ex.Message); }
     }
 
-    /// <summary>Someone added us as a friend: offer to add them back (or keep it for the menu while busy).</summary>
+    /// <summary>Someone added us as a friend: keep the offer on Add a friend and pop it out when possible.</summary>
     void OnFriendAddedUs(Friend card)
     {
         if (_friends.Find(card.Key) != null) return;
         _addBack.RemoveAll(f => f.Key == card.Key);
+        _addBack.Add(card);
+        _social?.Raise();
         if (_busy || _taskVisible || _hiddenForFullscreen)
         {
-            _addBack.Add(card);
             ShowPeek("", $"{card.Name} added you", "", null);
             return;
         }
         ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"{card.Name} added you as a friend", "Add them back to send each other files",
-                 null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", () => { _addBack.Add(card); HideTask(); }), textIcon: true);
+                 null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", HideTask), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(30);
         _taskHide.Start();
     }
@@ -691,20 +692,19 @@ public sealed partial class NotchWindow
 
     void OnFriendRemovedUs(Friend friend)
     {
-        _addBack.RemoveAll(f => f.Key == friend.Key);
+        if (_addBack.RemoveAll(f => f.Key == friend.Key) > 0) _social?.Raise();
         if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); }
         ShowPeek("", $"{friend.Name} removed you", "", null, seconds: 4);
     }
 
     async Task AddFriendAsync(Friend card, bool tellThem)
     {
+        if (_addBack.RemoveAll(f => f.Key == card.Key) > 0) _social?.Raise();
         if (_friends.Find(card.Key) != null)
         {
-            _addBack.RemoveAll(f => f.Key == card.Key);
             ShowPeek("", $"{card.Name} is already your friend", "", null, seconds: 4);
             return;
         }
-        _addBack.RemoveAll(f => f.Key == card.Key);
         if (!tellThem)
         {
             await _friends.AddAsync(card, tellThem: false);
@@ -943,92 +943,6 @@ public sealed partial class NotchWindow
         }
         _lastOfferedCode = code;
         _ = ReceiveWithCodeAsync(secret);
-    }
-
-    /// <summary>Friends › Add a friend…, Chat…, Add back…, requests, Remove friend ›</summary>
-    void FillFriendsMenu(MenuItem menu)
-    {
-        menu.Items.Clear();
-        menu.IsEnabled = _settings.Beam;
-        var add = new MenuItem { Header = "Add a friend…" };
-        add.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("add"), DispatcherPriority.Background);
-        menu.Items.Add(add);
-        var chat = new MenuItem { Header = "Chat…" };
-        chat.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
-        menu.Items.Add(chat);
-        var profile = new MenuItem { Header = "Edit my profile…" };
-        profile.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("profile"), DispatcherPriority.Background);
-        menu.Items.Add(profile);
-        foreach (var card in _addBack.ToList())
-        {
-            var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
-            back.Click += (_, _) => _ = AddFriendAsync(card, tellThem: false);
-            menu.Items.Add(back);
-        }
-        foreach (var request in _friendRequests.ToList())
-        {
-            var answer = new MenuItem { Header = $"Friend request from {request.Card.Name.Replace("_", "__")}" };
-            var accept = new MenuItem { Header = "Accept" };
-            accept.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: true);
-            var decline = new MenuItem { Header = "Decline" };
-            decline.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: false);
-            answer.Items.Add(accept);
-            answer.Items.Add(decline);
-            menu.Items.Add(answer);
-        }
-        if (_friends.Friends.Count == 0) return;
-        menu.Items.Add(new Separator());
-        AddFriendProfiles(menu);
-        menu.Items.Add(new Separator());
-        FillStreamMenu(menu);
-        // Friends › Wave at › (each friend), and the switch for waves coming in.
-        if (_settings.Waves)
-        {
-            var wave = new MenuItem { Header = "Wave at" };
-            foreach (var friend in _friends.Friends.ToList())
-            {
-                var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
-                item.Click += (_, _) => WaveAt(friend);
-                wave.Items.Add(item);
-            }
-            menu.Items.Add(wave);
-        }
-        var allow = new MenuItem { Header = "Waves from friends", ToggleType = MenuItemToggleType.CheckBox, IsChecked = _settings.Waves };
-        allow.Click += (_, _) => { _settings.Waves = !_settings.Waves; _settings.Save(); };
-        menu.Items.Add(allow);
-        var remove = new MenuItem { Header = "Remove friend" };
-        foreach (var friend in _friends.Friends.ToList())
-        {
-            var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
-            item.Click += async (_, _) =>
-            {
-                bool notified = await _friends.RemoveAsync(friend);
-                _chats.Forget(friend.Key);
-                ShowPeek("", $"{friend.Name} removed", "", null);
-                if (!notified) ShowPeek("", $"Couldn't notify {friend.Name}", "They may still have you as a friend", RedBrush, seconds: 5);
-            };
-            remove.Items.Add(item);
-        }
-        menu.Items.Add(remove);
-    }
-
-    /// <summary>Friends › each friend with their picture and status (the WPF app's AddFriendProfiles).</summary>
-    void AddFriendProfiles(MenuItem menu)
-    {
-        foreach (var friend in _friends.Friends.Take(12).ToList())
-        {
-            var row = new StackPanel { Orientation = Orientation.Horizontal };
-            row.Children.Add(Avatar(FaceText(friend.Name), FaceBrush(friend.Name)));
-            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
-            words.Children.Add(new TextBlock { Text = friend.Name });
-            if (friend.Status != null)
-                words.Children.Add(new TextBlock { Text = friend.Status, FontSize = 11, Opacity = 0.6, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis });
-            if (_friends.IsOnline(friend))
-                words.Children.Add(new TextBlock { Text = "Online", FontSize = 11, Foreground = GreenBrush });
-            row.Children.Add(words);
-            // Shown, not chosen: clicking one keeps the menu open.
-            menu.Items.Add(new MenuItem { Header = row, StaysOpenOnClick = true });
-        }
     }
 
     // ───────────── helpers ─────────────

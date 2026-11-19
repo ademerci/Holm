@@ -102,6 +102,7 @@ public sealed partial class NotchWindow
                 Switch("Share my activity", "\uE716", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note.",
                     s => s.ShareActivity, SetShareActivity),
                 Switch("Chat pop-outs", "\uE8BD", "A friend's message pops out of the notch with Reply. It's in Chat either way.", s => s.ChatPopups, on => { _settings.ChatPopups = on; Save(); }),
+                Switch("Waves from friends", "\uE716", "Show a pop-out when a friend waves at you.", s => s.Waves, on => { _settings.Waves = on; Save(); }),
                 Switch("Achievement pop-outs", "\uE734", "A trophy pops out of the notch when you unlock an achievement.", s => s.AchievementPopups, on => { _settings.AchievementPopups = on; Save(); }),
             }),
             new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", WeatherSwitches()),

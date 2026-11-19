@@ -97,7 +97,6 @@ public sealed partial class NotchWindow
         var beamText = new MenuItem { Header = "Beam text" };
         var receive = new MenuItem { Header = "Receive with copied code" };
         receive.Click += (_, _) => _ = ReceiveCopiedCodeAsync();
-        var friends = new MenuItem { Header = "Friends" };
         var hub = new MenuItem { Header = "Friends and chat…" };
         hub.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         var network = new MenuItem { Header = "Wi-Fi and speed test…" };
@@ -107,7 +106,6 @@ public sealed partial class NotchWindow
         menu.Items.Add(_menuSleep);
         menu.Items.Add(beamText);
         menu.Items.Add(receive);
-        menu.Items.Add(friends);
         menu.Items.Add(new Separator());
         menu.Items.Add(hub);
         menu.Items.Add(network);
@@ -127,7 +125,6 @@ public sealed partial class NotchWindow
             FillWeatherMenu(weather);
             FillMessagesMenu(messages);
             FillAiMenu(ai);
-            FillFriendsMenu(friends);
             FillBeamTextMenu(beamText);
             receive.IsEnabled = _settings.Beam;
             FillQuietMenu(quiet);

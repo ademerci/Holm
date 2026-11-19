@@ -205,6 +205,12 @@ internal sealed class AddFriendPage : HubView
     void Refresh()
     {
         _requests.Children.Clear();
+        foreach (var card in _social.AddBackOffers())
+        {
+            var addBack = HubTheme.Action("Add back", primary: true);
+            addBack.Click += (_, _) => _social.AddBack(card);
+            _requests.Children.Add(RequestRow(card, "Added you as a friend", addBack));
+        }
         foreach (var (card, requestId) in _social.Incoming())
         {
             var accept = HubTheme.Action("Accept", primary: true);
