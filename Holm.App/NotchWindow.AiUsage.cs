@@ -140,7 +140,19 @@ public sealed partial class NotchWindow
     internal (bool Left, bool Right) AiWingsShown { get; private set; }
 
     readonly StackPanel _aiPage = new() { IsVisible = false };
-    const string AiUsageGlyph = "\uE9D9";
+    static readonly Geometry AiUsageDial = Geometry.Parse(
+        "M2.3,10.9 A5.45,5.45 0 1 1 11.7,10.9 M7.8,7.8 L9.7,5.6 " +
+        "M8.1,8.6 A1.1,1.1 0 1 1 5.9,8.6 A1.1,1.1 0 1 1 8.1,8.6 Z");
+
+    static Control AiUsageIcon(IBrush brush, double size) => new Viewbox
+    {
+        Width = size, Height = size,
+        Child = new Canvas
+        {
+            Width = 14, Height = 14,
+            Children = { new Path { Data = AiUsageDial, Stroke = brush, StrokeThickness = 1.2, StrokeLineCap = PenLineCap.Round } },
+        },
+    };
     NotchButton _aiToolBtn = null!;
 
     void StartAiUsage()
