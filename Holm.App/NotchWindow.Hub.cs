@@ -83,12 +83,15 @@ public sealed partial class NotchWindow
         Chats = _chats,
         Face = name => (FaceText(name), FaceBrush(name)),
         IsOnline = _friends.IsOnline,
+        Remove = RemoveFriendFromChatAsync,
         Send = SendChat,
         Retry = RetryChat,
         Invite = GetInviteAsync,
         AddByCode = AddFriendByCodeAsync,
         Incoming = () => _friendRequests,
         Pending = () => _friends.Pending,
+        AddBackOffers = () => _addBack,
+        AddBack = card => _ = AddFriendAsync(card, tellThem: false),
         Answer = (card, id, yes) => _ = AnswerFromHubAsync(card, id, yes),
         Withdraw = p => _ = WithdrawAsync(p),
         LongCode = () => _settings.Beam ? _friends.EnsureMe().FriendCode : null,
@@ -106,6 +109,13 @@ public sealed partial class NotchWindow
         Copy = TrySetClipboardAsync,
         Open = (page, friend) => { _hubFriend = friend; ShowHub(page); },
     };
+
+    async Task<bool> RemoveFriendFromChatAsync(Friend friend)
+    {
+        var notified = _friends.RemoveAsync(friend);
+        _chats.Forget(friend.Key);
+        return await notified;
+    }
 
     void SendChatFiles(Friend friend, string[] paths)
     {

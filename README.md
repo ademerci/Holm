@@ -106,13 +106,13 @@ Received files land in your **Downloads** folder; when they're in, the notch off
 
 ### Friends
 
-1. Right-click the notch › **Friends › Copy my friend code** and send it to your friend in any chat.
+1. Open **Add a friend › Copy my long friend code** and send it to your friend in any chat.
 2. Your friend copies your code and chooses **Add**. Their Holm waits while yours asks you to *Accept* or *Decline* the request. Neither friend list changes until you accept; acceptance adds each of you to the other's list.
 3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it. A **green dot** means their Holm is running right now, so they'll see your files at once.
 
 Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer within 15 seconds, the files wait (*Send later*, shown in the open notch with *Don't send*) and go as soon as their Holm is back: Holm asks every 15 minutes for two hours, then hourly, and every six hours leaves a sealed "something waits" note that their Holm answers when it starts. After a week it gives up. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
 
-**Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
+**Waves.** The wave button in Chat pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
 
 **Chat.** *Friends and chat…* (or *Reply* on a message that pops out of the notch) opens the conversations with your friends: bubbles, days and times, *Sending…* until the message is in their inbox and *Not sent · Click to try again* if it couldn't go. Each message is one sealed note like a file offer, so only the two of you can read it, and a friend whose Holm is closed gets it when it starts (the inbox keeps notes for about 12 hours). A long text goes as several messages. The history stays on your PC (the last 300 messages per friend, in `chats.json`).
 
@@ -126,7 +126,7 @@ Both notches have to be running for a friend request or file transfer. If your f
 
   ![Active now](docs/activity.png)
 
-**Streaming.** Friends › *Stream my screen to*, *Stream my screen* in a chat, or *Stream to* on a friend's card invites them to watch your screen. Their notch pops out *Watch* / *Not now*; *Watch* opens a window with your screen (double-click for full screen). Your notch sends up to 8 pictures a second through the same relay and encryption as Beam; a slower connection gets fewer pictures instead of falling behind. While you're live a red badge sits under the notch with who's watching and *Stop*. The notch, the badge and the Holm window stay out of the picture, so the messages it pops out and your chats don't go along.
+**Streaming.** *Stream my screen* in a chat or *Stream to* on a friend's card invites them to watch your screen. Their notch pops out *Watch* / *Not now*; *Watch* opens a window with your screen (double-click for full screen). Your notch sends up to 8 pictures a second through the same relay and encryption as Beam; a slower connection gets fewer pictures instead of falling behind. While you're live a red badge sits under the notch with who's watching and *Stop*. The notch, the badge and the Holm window stay out of the picture, so the messages it pops out and your chats don't go along.
 
   ![Watching a friend's stream](docs/stream.png)
 
@@ -134,7 +134,7 @@ Both notches have to be running for a friend request or file transfer. If your f
 
   ![Achievements](docs/achievements.png)
 
-**Profiles.** At the top of *Settings…* (or Friends › *Edit my profile…*) you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in their Friends menu (and as a tooltip on your chip). The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
+**Profiles.** At the top of the Holm window you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in Chat and on Active now. The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
 
   ![Friends with a picture and a color](docs/profiles.png)
 

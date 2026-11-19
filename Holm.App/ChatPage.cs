@@ -43,6 +43,7 @@ internal sealed class ChatPage : HubView
     readonly StackPanel _list = new(), _messages = new();
     readonly ScrollViewer _scroll = null!;
     readonly Border _header = new();
+    readonly Border _conversationView;
     readonly TextBox _input = null!, _search = null!;
     readonly TextBlock _counter = null!;
     readonly Border _send = null!;
@@ -55,13 +56,6 @@ internal sealed class ChatPage : HubView
     public ChatPage(SocialContext social, Friend? with)
     {
         _social = social;
-        var friends = social.Friends();
-        if (friends.Count == 0)
-        {
-            Child = AddFriendPage.EmptyWithAdd(social, "", "No friends yet", "Send a friend your invite code, or type in theirs. Then chat here.");
-            return;
-        }
-
         // One card, split in two: the conversations and the one you're in.
         var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("272,1,*") };
 
@@ -180,11 +174,11 @@ internal sealed class ChatPage : HubView
         Grid.SetColumn(conversation, 2);
         layout.Children.Add(conversation);
 
-        Child = new Border { CornerRadius = new CornerRadius(14), ClipToBounds = true, BorderBrush = HubTheme.Line, BorderThickness = new Thickness(1), Child = layout };
+        _conversationView = new Border { CornerRadius = new CornerRadius(14), ClipToBounds = true, BorderBrush = HubTheme.Line, BorderThickness = new Thickness(1), Child = layout };
 
         RefreshComposer();
-        // Unread first, then whoever wrote last.
-        Select(with ?? friends.OrderByDescending(f => social.Chats.Unread(f.Key)).ThenByDescending(f => social.Chats.Last(f.Key)?.Sent ?? 0).First());
+        _friend = with;
+        RefreshFriends();
         social.Chats.Changed += OnChanged;
         social.Changed += OnFriendsChanged;
         AttachedToVisualTree += (_, _) => _input.Focus();
@@ -205,8 +199,57 @@ internal sealed class ChatPage : HubView
         if (_friend != null && TopLevel.GetTopLevel(this) is Window { IsActive: true }) _social.Chats.MarkRead(_friend.Key);
     }
 
-    /// <summary>Someone came online or changed their picture or status.</summary>
-    void OnFriendsChanged() => Dispatcher.UIThread.Post(() => { ShowHeader(); ShowList(); });
+    void OnFriendsChanged() => Dispatcher.UIThread.Post(() => { if (Parent != null) RefreshFriends(); });
+
+    void RefreshFriends()
+    {
+        var friends = _social.Friends();
+        if (_friend is { } current && friends.FirstOrDefault(f => f.Key == current.Key) is { } updated && Child == _conversationView)
+        {
+            _friend = updated;
+            ShowHeader();
+            ShowList();
+            return;
+        }
+
+        var next = friends.FirstOrDefault(f => f.Key == _friend?.Key)
+            ?? friends.OrderByDescending(f => _social.Chats.Unread(f.Key)).ThenByDescending(f => _social.Chats.Last(f.Key)?.Sent ?? 0).FirstOrDefault();
+        if (next != null)
+        {
+            _input.Text = "";
+            Child = _conversationView;
+            Select(next);
+        }
+        else if (_friend != null || Child == null)
+        {
+            _friend = null;
+            _header.Child = null;
+            _messages.Children.Clear();
+            _list.Children.Clear();
+            _bubbles.Clear();
+            _shown = ShownAtFirst;
+            _input.Text = "";
+            Child = AddFriendPage.EmptyWithAdd(_social, "", "No friends yet", "Send a friend your invite code, or type in theirs. Then chat here.");
+        }
+    }
+
+    ContextMenu FriendMenu(Friend friend)
+    {
+        var remove = new MenuItem { Header = "Remove friend…" };
+        remove.Click += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (TopLevel.GetTopLevel(this) is SettingsWindow window)
+                window.ShowDialog($"Remove {friend.Name}?", "This removes the friend and deletes your local conversation history.",
+                    ("Cancel", () => { }), ("Remove friend", () => _ = RemoveFriendAsync(friend, window)));
+        }, DispatcherPriority.Background);
+        return new ContextMenu { Items = { remove } };
+    }
+
+    async System.Threading.Tasks.Task RemoveFriendAsync(Friend friend, SettingsWindow window)
+    {
+        if (!await _social.Remove(friend) && TopLevel.GetTopLevel(this) == window)
+            window.ShowDialog($"Couldn't notify {friend.Name}", "They may still have you as a friend.", ("OK", () => { }));
+    }
 
     /// <summary>A conversation changed: the page catches up once, after input and drawing.</summary>
     void OnChanged(string key)
@@ -350,7 +393,8 @@ internal sealed class ChatPage : HubView
         };
         item.PointerEntered += (_, _) => { if (!selected) item.Background = HubTheme.Hover; };
         item.PointerExited += (_, _) => { if (!selected) item.Background = Brushes.Transparent; };
-        item.PointerReleased += (_, _) => Select(friend);
+        item.ContextMenu = FriendMenu(friend);
+        item.PointerReleased += (_, e) => { if (e.InitialPressMouseButton == MouseButton.Left) Select(friend); };
         return item;
     }
 
@@ -367,6 +411,7 @@ internal sealed class ChatPage : HubView
         if (_friend == null) return;
         var friend = _friend;
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        row.ContextMenu = FriendMenu(friend);
         row.Children.Add(FaceWithDot(friend, 38));
         var words = new StackPanel { Margin = new Thickness(11, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = friend.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });

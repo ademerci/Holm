@@ -228,9 +228,9 @@ public sealed partial class NotchWindow
         if (!Look.Instrument || _installingUpdate)
         {
             var logo = _closedUpdateBadge = UpdateNotificationIcon(BadgeLogoSize);
-            logo.Margin = new Thickness(0, 0, 3, 0);
+            logo.Margin = new Thickness(0, 0, BadgeLogoSpacing, 0);
             var small = _mediaUpdateBadge = UpdateNotificationIcon(MediaBadgeLogoSize);
-            small.Margin = new Thickness(0, 0, 3, 0);
+            small.Margin = new Thickness(0, 0, BadgeLogoSpacing, 0);
             if (_installingUpdate)
             {
                 logo.SetProgress(_updatePercent);

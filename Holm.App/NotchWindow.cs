@@ -320,7 +320,9 @@ public sealed partial class NotchWindow : Window
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Badge: (w, h, r) = (Look.Pick(110, 170), 30, 15); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
-            case NotchState.Media: (w, h, r) = (220, 32, 16); break;
+            case NotchState.Media:
+                (w, h, r) = (220 + Math.Max(0, _mediaBadgeLogos.Children.Count - 2) * (MediaBadgeLogoSize + BadgeLogoSpacing), 32, 16);
+                break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;

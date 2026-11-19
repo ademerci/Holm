@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -125,7 +126,7 @@ public sealed partial class NotchWindow
         _toolBar.Children.Add(_chatsToolBtn);
         _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
-        _aiToolBtn = ToolWord("AI", AiMarks.For(AiTool.ClaudeCode, 14, Dim));
+        _aiToolBtn = ToolWord("AI", AiUsageGlyph);
         ToolTip.SetTip(_aiToolBtn, "AI usage");
         _aiToolBtn.Click += () => ToggleTool(Tool.Ai);
         _toolBar.Children.Add(_aiToolBtn);
@@ -286,20 +287,21 @@ public sealed partial class NotchWindow
     /// <summary>Which tools are switched on; the bar hides when none is.</summary>
     void RefreshToolBar()
     {
-        _notesToolBtn.IsVisible = _settings.Notes;
-        _remindersToolBtn.IsVisible = _settings.Reminders;
-        _calculatorToolBtn.IsVisible = _settings.Calculator;
-        _clipboardToolBtn.IsVisible = _settings.ClipboardHistory;
-        _mixerToolBtn.IsVisible = _settings.AppVolume;
-        _aiToolBtn.IsVisible = _settings.AiUsage && _aiUsage.Count > 0;
-        _colorPickerBtn.IsVisible = _settings.ColorPicker;
-        bool any = false;
+        _notesToolBtn.IsVisible = _settings.Notes && !_home.IsToolHidden(HomeLayout.Notes);
+        _remindersToolBtn.IsVisible = _settings.Reminders && !_home.IsToolHidden(HomeLayout.Reminders);
+        _calculatorToolBtn.IsVisible = _settings.Calculator && !_home.IsToolHidden(HomeLayout.Calculator);
+        _chatsToolBtn.IsVisible = !_home.IsToolHidden(HomeLayout.Chats);
+        _clipboardToolBtn.IsVisible = _settings.ClipboardHistory && !_home.IsToolHidden(HomeLayout.Clipboard);
+        _mixerToolBtn.IsVisible = _settings.AppVolume && !_home.IsToolHidden(HomeLayout.Mixer);
+        _aiToolBtn.IsVisible = _settings.AiUsage && _aiUsage.Count > 0 && !_home.IsToolHidden(HomeLayout.Ai);
+        _colorPickerBtn.IsVisible = _settings.ColorPicker && !_home.IsToolHidden(HomeLayout.ColorPicker);
         foreach (var (_, button, which) in ToolPages())
         {
-            if (button.IsVisible) any = true;
-            else if (which == _tool) ShowTool(Tool.None); // its switch was turned off while it was open
+            // Usage can also be opened from a ring while its toolbar shortcut is hidden.
+            if (!button.IsVisible && which == _tool && (which != Tool.Ai || !_settings.AiUsage || _aiUsage.Count == 0))
+                ShowTool(Tool.None);
         }
-        _toolBar.IsVisible = any || _colorPickerBtn.IsVisible;
+        _toolBar.IsVisible = _toolBar.Children.Any(button => button.IsVisible);
     }
 
     // ───────────── notes ─────────────

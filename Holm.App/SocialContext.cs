@@ -18,6 +18,7 @@ internal sealed class SocialContext
     /// <summary>A friend's initials (empty over a picture) and fill, by name.</summary>
     public required Func<string, (string Text, IBrush Fill)> Face { get; init; }
     public required Func<Friend, bool> IsOnline { get; init; }
+    public required Func<Friend, Task<bool>> Remove { get; init; }
     /// <summary>Sends a chat text (split into several messages if long); the store shows how it goes.</summary>
     public required Action<Friend, string> Send { get; init; }
     /// <summary>Sends a message that didn't go again.</summary>
@@ -63,6 +64,8 @@ internal sealed class SocialContext
     public Func<IReadOnlyList<(Friend Card, string RequestId)>> Incoming { get; init; } = () => Array.Empty<(Friend, string)>();
     /// <summary>Our requests waiting for theirs.</summary>
     public Func<IReadOnlyList<PendingFriendRequest>> Pending { get; init; } = () => Array.Empty<PendingFriendRequest>();
+    public Func<IReadOnlyList<Friend>> AddBackOffers { get; init; } = () => Array.Empty<Friend>();
+    public Action<Friend> AddBack { get; init; } = _ => { };
     public Action<Friend, string, bool> Answer { get; init; } = (_, _, _) => { };
     public Action<PendingFriendRequest> Withdraw { get; init; } = _ => { };
     /// <summary>Our long friend code, for friends on an older Holm.</summary>

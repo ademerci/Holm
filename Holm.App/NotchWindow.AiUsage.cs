@@ -140,6 +140,7 @@ public sealed partial class NotchWindow
     internal (bool Left, bool Right) AiWingsShown { get; private set; }
 
     readonly StackPanel _aiPage = new() { IsVisible = false };
+    const string AiUsageGlyph = "\uE9D9";
     NotchButton _aiToolBtn = null!;
 
     void StartAiUsage()
