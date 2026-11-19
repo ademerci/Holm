@@ -198,10 +198,14 @@ internal sealed class AppSettings
     public string? FriendsTopic { get; set; }
     /// <summary>Our private key, encrypted for this Windows account (DPAPI).</summary>
     public string? FriendsKey { get; set; }
-    /// <summary>ntfy server for our inbox; null means ntfy.sh. Set it before copying your friend code.</summary>
+    /// <summary>ntfy server for our inbox; null means Holm's relay (and ntfy.sh for older friends). Set it before copying your friend code.</summary>
     public string? FriendsServer { get; set; }
     /// <summary>Server time of the last note in our inbox, to catch up from after a restart.</summary>
     public long? FriendsSince { get; set; }
+    /// <summary>Our inbox moved to Holm's relay: our friend code names it and friends were told (FriendsService.MoveToRelay).</summary>
+    public bool FriendsRelay { get; set; }
+    /// <summary>Server time of the last note in our inbox on the relay, to catch up from after a restart.</summary>
+    public long? FriendsRelaySince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
     /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>

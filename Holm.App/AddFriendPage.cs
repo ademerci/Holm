@@ -149,7 +149,7 @@ internal sealed class AddFriendPage : HubView
         if (_invite == null)
         {
             _code.Text = "No code yet";
-            _codeNote.Text = error != null ? error + ". Try again in a moment." : "The invite server (ntfy) couldn't be reached. Check your connection and try again.";
+            _codeNote.Text = error != null ? error + ". Try again in a moment." : "The invite server couldn't be reached. Check your connection and try again.";
             _newCode.Content = "Try again";
             _newCode.IsEnabled = true;
             return;

@@ -217,7 +217,7 @@ internal sealed partial class FriendsService
             var key = ECDiffieHellman.Create();
             key.ImportPkcs8PrivateKey(pkcs8, out _);
             CryptographicOperations.ZeroMemory(pkcs8);
-            return new FriendIdentity(MyName, _settings.FriendsTopic, _settings.FriendsServer, key);
+            return new FriendIdentity(MyName, _settings.FriendsTopic, OwnServer, key);
         }
         catch (Exception ex)
         {
@@ -227,17 +227,20 @@ internal sealed partial class FriendsService
         }
     }
 
+    /// <summary>Where our friend code says our inbox is: the server set in the settings, else the relay once it let us in.</summary>
+    string? OwnServer => _settings.FriendsServer ?? (_settings.FriendsRelay ? FriendIdentity.RelayServer : null);
+
     /// <summary>Our identity, made on first use. Friends who had an unreadable older one must add us again.</summary>
     public FriendIdentity EnsureMe()
     {
         if (Me is { } me) return me;
-        me = FriendIdentity.Create(MyName, _settings.FriendsServer);
+        me = FriendIdentity.Create(MyName, OwnServer);
         byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
         _settings.FriendsKey = Convert.ToBase64String(ProtectKey(pkcs8, KeyEntropy));
         CryptographicOperations.ZeroMemory(pkcs8);
         _settings.FriendsTopic = me.Topic;
         // Catch up from now on: a friend may write while Holm isn't running.
-        _settings.FriendsSince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        _settings.FriendsSince = _settings.FriendsRelaySince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         _settings.FriendsSeen.Clear();
         _settings.Save();
         _me = me;
@@ -317,7 +320,7 @@ internal sealed partial class FriendsService
 
     /// <summary>
     /// Becomes the account's identity, so friends reach us here with the same friend code as on our other PCs.
-    /// The inbox is caught up on the last 12 hours (what ntfy keeps), as after a restart.
+    /// The inbox is caught up on what the servers keep (ntfy 12 hours, the relay a week), as after a restart.
     /// </summary>
     internal void AdoptIdentity(Account.IdentityPayload identity)
     {
@@ -332,8 +335,9 @@ internal sealed partial class FriendsService
         _settings.FriendsTopic = identity.Topic;
         _settings.FriendsServer = identity.Server;
         _settings.FriendsSince = Now - 12 * 60 * 60;
+        _settings.FriendsRelaySince = Now - 7 * 24 * 60 * 60; // what the relay keeps
         _settings.FriendsSeen.Clear();
-        _me = new FriendIdentity(MyName, identity.Topic, identity.Server, key);
+        _me = new FriendIdentity(MyName, identity.Topic, OwnServer, key);
         _loaded = true;
         _settings.Save();
         Restart();
@@ -606,12 +610,32 @@ internal sealed partial class FriendsService
         if (!_settings.Beam || Me is not { } me) return;
         var cts = new CancellationTokenSource();
         _follow = cts;
-        long? since = _settings.FriendsSince;
-        _ = Task.Run(() => FriendInbox.FollowAsync(me, since,
-            (id, age, text) => _ui(() => { if (_follow == cts) Handle(me, id, age, text); }),
+        Func<string, long, string, Task> received = (id, age, text) => _ui(() => { if (_follow == cts) Handle(id, age, text); });
+        // Our inbox on the server the settings name, or else on ntfy (where older friends write) and on the relay.
+        _ = Task.Run(() => FriendInbox.FollowAsync(_settings.FriendsServer, me.Topic, _settings.FriendsSince, received,
             time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsSince = time; _settings.Save(); } }),
             Diag.Log, cts.Token));
+        if (_settings.FriendsServer == null)
+            _ = Task.Run(() => FriendInbox.FollowRelayAsync(me.Topic, _settings.FriendsRelaySince ?? Now, received,
+                time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsRelaySince = time; _settings.Save(); } }),
+                () => _ = _ui(() => { if (_follow == cts) MoveToRelay(); }),
+                Diag.Log, cts.Token));
         SyncProfiles();
+    }
+
+    /// <summary>
+    /// The relay let us in for the first time: from now on our friend code names it, and every friend gets the new code,
+    /// which their Holm (any version) takes in silently for a friend it has. Their notes then come to the relay; a friend
+    /// that hasn't heard yet still writes to ntfy, which we keep following.
+    /// </summary>
+    internal void MoveToRelay()
+    {
+        if (_settings.FriendsRelay || _settings.FriendsServer != null || Me is not { } me) return;
+        _settings.FriendsRelay = true;
+        _settings.Save();
+        _me = new FriendIdentity(me.Name, me.Topic, FriendIdentity.RelayServer, me.Key);
+        Diag.Log("Friends: our inbox moved to the relay");
+        Reintroduce(_settings.Friends);
     }
 
     public void Stop()
@@ -651,7 +675,8 @@ internal sealed partial class FriendsService
         string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity, Trophies: trophies));
         _ = Task.Run(async () =>
         {
-            try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
+            // "Are you there?" and its answer are stale after 30 seconds: the server passes them on without keeping them.
+            try { await FriendInbox.PostAsync(to, text, CancellationToken.None, keep: !presence); }
             catch (IOException ex) { Diag.Log($"Friends: couldn't reach {to.Name}'s inbox: {ex.Message}"); }
         });
     }
@@ -661,8 +686,9 @@ internal sealed partial class FriendsService
         if (_presence.Saw(friend.Key, DateTime.UtcNow)) FriendOnline?.Invoke(friend);
     }
 
-    void Handle(FriendIdentity me, string id, long age, string text)
+    void Handle(string id, long age, string text)
     {
+        if (_me is not { } me) return;
         // Catching up after a reconnect can repeat the last note.
         if (_settings.FriendsSeen.Contains(id)) return;
         _settings.FriendsSeen.Add(id);
