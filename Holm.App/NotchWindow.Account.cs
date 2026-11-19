@@ -57,9 +57,8 @@ public sealed partial class NotchWindow
     /// <summary>Runs the merge (<paramref name="apply"/>), then what each switch it changed does here.</summary>
     void ApplyAccountSettings(Action apply)
     {
-        var switches = SettingsGroups().SelectMany(g => g.Switches).ToList();
+        var switches = SettingsGroups().SelectMany(g => g.Switches).Concat(StartPageSwitches()).ToList();
         var before = switches.Select(s => s.Get()).ToList();
-        bool focumonBefore = _settings.Focumon;
         bool remindersBefore = _settings.Reminders;
         apply();
         for (int i = 0; i < switches.Count; i++)
@@ -71,7 +70,6 @@ public sealed partial class NotchWindow
         }
         try
         {
-            if (_settings.Focumon != focumonBefore) SetFocumon(_settings.Focumon);
             if (_settings.Reminders != remindersBefore) ShowIdleStatus();
         }
         catch (Exception ex) { Diag.Error(ex); }

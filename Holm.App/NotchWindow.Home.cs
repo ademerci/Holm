@@ -48,7 +48,7 @@ public sealed partial class NotchWindow
         // Its button shows only while Claude Code or Codex has been used on this computer.
         new(HomeLayout.Ai, "AI usage", AiUsageIcon, () => _settings.AiUsage, DisabledHint: "Enable local AI usage in Settings › General to use this tool."),
         new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), () => _settings.ColorPicker, () => _settings.ColorPicker = true),
-    }, _settings.Focumon, SetFocumon);
+    }, StartPageSwitches());
 
     static TextBlock ToolIcon(string glyph, IBrush brush, double size) => new() { Text = glyph, FontFamily = IconFont, FontSize = size, Foreground = brush };
 

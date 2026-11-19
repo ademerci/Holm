@@ -53,7 +53,7 @@ sealed class StartPage : HubView
     bool _dragging;
     int _dropIndex = -1;
 
-    public StartPage(Func<HomeLayout> read, Action<HomeLayout> apply, IReadOnlyList<BarTool> tools, bool focumon, Action<bool> setFocumon)
+    public StartPage(Func<HomeLayout> read, Action<HomeLayout> apply, IReadOnlyList<BarTool> tools, IReadOnlyList<SettingsSwitch> switches)
     {
         _read = read;
         _apply = apply;
@@ -95,10 +95,13 @@ sealed class StartPage : HubView
             Change(layout => layout.HideTool(_tool, !show));
         };
         left.Children.Add(Card(toolCard));
-        var showFocumon = new CheckBox { Content = "Show Focumon", IsChecked = focumon, Margin = new Thickness(4, 10, 0, 0) };
-        showFocumon.Click += (_, _) => setFocumon(showFocumon.IsChecked == true);
-        left.Children.Add(showFocumon);
-        left.Children.Add(Note("Show your monster and timer in the open toolbar and the closed notch. Requires the Focumon for Holm browser extension."));
+        foreach (var setting in switches)
+        {
+            var toggle = new CheckBox { Content = setting.Header, IsChecked = setting.Get(), Margin = new Thickness(4, 10, 0, 0) };
+            toggle.Click += (_, _) => setting.Set(toggle.IsChecked == true);
+            left.Children.Add(toggle);
+            if (setting.Help is { } help) left.Children.Add(Note(help));
+        }
 
         // ── the picture ──
         var right = new StackPanel { Width = PreviewWidth, VerticalAlignment = VerticalAlignment.Top };
