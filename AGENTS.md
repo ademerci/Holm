@@ -16,12 +16,13 @@ Holm.slnx
 │   ├── ChatExtras.cs          # Reaction bar, full emoji picker (+ customization), GIPHY picker
 │   ├── Gifs.cs                # GifInspector, GifDecoder (SKCodec), GifCache, GifPlayer, GifSearch
 │   ├── SettingsWindow.cs      # Hub shell + settings switches + ToggleSwitch
+│   ├── StartPage.cs           # Settings › Start page: arrange the open notch's sections and tools (NotchWindow.Home.cs applies it)
 │   └── ...                    # ActivityPage, AchievementsPage, AddFriendPage, NetworkPage, ProfileEditor, ColorPickerWindow, StreamWindows
 ├── Holm.Core/                 # Pure net10.0 domain logic, state, math & networking (0 UI/OS deps)
 │   ├── Notify/                # DownloadWatcher, Messengers, NotificationBadges
 │   ├── Sharing/               # Beam P2P: Friends, FriendInvite, Chat, FileTransfer, RelayLink, SecureChannel, ShareCode, NearbyService, PhoneShare, ScreenStream
 │   ├── Updates/               # UpdateService, UpdateInstaller
-│   └── *.cs                   # Settings (AppSettings), Spring, CoverMath, LevelEnvelope, NotchPlacement, Sky, BigClock, Calculator, Notepad, Reminders, Countdown, SleepTimer, ClipboardHistory, ColorPick, Weather, Focumon, SpeedTest, NetworkInfo, AiUsage, Achievements, Today, Shelf, DiskSpace, UsbDrives, VpnNames, Outage
+│   └── *.cs                   # Settings (AppSettings), Spring, CoverMath, LevelEnvelope, NotchPlacement, HomeLayout, Sky, BigClock, Calculator, Notepad, Reminders, Countdown, SleepTimer, ClipboardHistory, ColorPick, Weather, Focumon, SpeedTest, NetworkInfo, AiUsage, Achievements, Today, Shelf, DiskSpace, UsbDrives, VpnNames, Outage
 ├── Holm.Platform/             # net10.0 platform abstraction interfaces & No* fallbacks
 │   ├── IPlatformServices.cs   # Root service container injected into NotchWindow
 │   └── I*Platform.cs          # 22 domain interfaces (Window, Media, Audio, Power, Bluetooth, Autostart, Clipboard, Screen, AppVolume, Shell, Connectivity, CapsLock, HotKey, Drives, ClickAway, Foreground, Sensors, Notifications, Identity, Dictation, MediaKeys, Location)

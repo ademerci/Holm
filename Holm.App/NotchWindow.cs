@@ -134,10 +134,11 @@ public sealed partial class NotchWindow : Window
         InitDictation(platform);
         InitPhone();
         BuildToday();
-        // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
-        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
-            _homePanel.Children.Remove(row);
-        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
+        // The rows of home in the WPF app's order (MainWindow.xaml), each in its section; the sections go where you put
+        // them (Settings › Start page), in that order unless you moved them.
+        _liveSection.Children.AddRange(new Control[] { _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow });
+        _shelfSection.Children.Add(_shelfRow);
+        ApplyHomeLayout();
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -301,6 +302,7 @@ public sealed partial class NotchWindow : Window
             case NotchState.Expanded:
                 ShowQuietNote();
                 if (_clockPanel.IsVisible) ShowToday();
+                SpaceHome();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
                 UpdateLayout();

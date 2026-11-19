@@ -5,6 +5,7 @@
 ### Added
 - **A new series, Herm.** The Holm window shows the name beside the version number.
 - **AI usage rings switch.** You can now hide the two small usage rings at the ends of the closed notch while keeping the usage visible on the AI page of the open notch. *AI usage* still turns the whole feature off.
+- **Arrange the start page.** *Settings › Start page* (or right-click › *Customize* › *Start page…*) lets you decide what the open notch shows and where. Drag its sections into another order (the tool bar, the player and clock, the reminder and note, the activity, the shelf, and the battery and volume), hide the tool bar, the two cards or the battery and volume, swap a section's left and right side, and put the tools of the bar in your order. A small preview shows the result, and each change applies at once. Until you change something the open notch looks as before, and *Reset to default* brings that back. With a Holm account the layout is the same on every computer.
 
 ### Changed
 - **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.

@@ -104,6 +104,10 @@ public sealed partial class NotchWindow
             _devicesPanel.Children.Add(DeviceChip("", null, _power.Percent, _power.OnAc));
         foreach (var d in _bt.Where(d => d.IsConnected))
             _devicesPanel.Children.Add(DeviceChip(d.Glyph, d.Name, d.Battery, false));
+        // On the right of the line (Settings › Start page) the gap between the chips goes on their left.
+        if (_devicesSwapped)
+            foreach (var chip in _devicesPanel.Children)
+                chip.Margin = new Thickness(chip.Margin.Right, chip.Margin.Top, chip.Margin.Left, chip.Margin.Bottom);
         // Chips may wrap onto another line: the open notch gets taller or shorter.
         if (_devicesPanel.Children.Count != before && _state == NotchState.Expanded) ApplyState(animate: true);
     }

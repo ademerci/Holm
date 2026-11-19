@@ -30,7 +30,6 @@ public sealed partial class NotchWindow
         Orientation = Orientation.Horizontal, HorizontalAlignment = Look.Pick(HorizontalAlignment.Right, HorizontalAlignment.Center),
         Margin = Look.Pick(new Thickness(8, 0, 4, 0), new Thickness(36, 0, 36, 0)),
     };
-    readonly StackPanel _homePanel = new();
     readonly Grid _toolPage = new() { IsVisible = false };
     NotchButton _notesToolBtn = null!, _remindersToolBtn = null!, _calculatorToolBtn = null!, _chatsToolBtn = null!;
     Tool _tool;
@@ -258,7 +257,7 @@ public sealed partial class NotchWindow
         if (tool == Tool.None) EndTyping();
         _tool = tool;
         Control? activePage = null;
-        _homePanel.IsVisible = tool == Tool.None;
+        ShowHomeSections();
         _toolPage.IsVisible = tool != Tool.None;
         foreach (var (page, button, which) in ToolPages())
         {
@@ -276,7 +275,11 @@ public sealed partial class NotchWindow
         else if (tool == Tool.Clipboard) ShowClipboardPage();
         else if (tool == Tool.Mixer) ShowMixerPage();
         else if (tool == Tool.Ai) FillAiPage();
-        if (changed && _hovered && _state == NotchState.Expanded) AnimateToolSwitch(activePage ?? _homePanel);
+        if (changed && _hovered && _state == NotchState.Expanded)
+        {
+            if (activePage != null) AnimateToolSwitch(activePage);
+            else foreach (var section in HomeContent()) if (section.IsVisible) AnimateToolSwitch(section);
+        }
         if (_state == NotchState.Expanded) ApplyState(animate: true); // a page has its own height
     }
 

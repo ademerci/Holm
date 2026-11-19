@@ -30,7 +30,7 @@ public sealed partial class NotchWindow
         _drives = platform.Drives;
         _drives.Arrived += drive => Dispatcher.UIThread.Post(() => UsbArrived(drive));
         _drives.Removed += id => Dispatcher.UIThread.Post(() => UsbRemoved(id));
-        _homePanel.Children.Add(_usbRows);
+        // _usbRows joins the activity section of home in the constructor.
     }
 
     async void StartUsb()
