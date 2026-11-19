@@ -226,7 +226,7 @@ public sealed partial class NotchWindow
     {
         var claude = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.ClaudeCode);
         var codex = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.Codex);
-        bool on = _settings.AiUsage && !mini && !_hiddenForFullscreen && (claude != null || codex != null)
+        bool on = _settings.AiUsage && _settings.AiRings && !mini && !_hiddenForFullscreen && (claude != null || codex != null)
                   && target is NotchState.Idle or NotchState.Media or NotchState.Badge or NotchState.Timer or NotchState.Focumon or NotchState.Call or NotchState.Dictation;
         var left = on && claude != null && codex != null ? claude : null;
         var right = on ? codex ?? claude : null;

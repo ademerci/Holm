@@ -115,6 +115,8 @@ internal sealed class AppSettings
     public string AccentColor { get; set; } = "";
     /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
     public bool AiUsage { get; set; } = true;
+    /// <summary>With <see cref="AiUsage"/> on: the rings at the ends of the closed notch. Off, the usage shows only on the AI page.</summary>
+    public bool AiRings { get; set; } = true;
     /// <summary>Large clock view: show seconds next to the time.</summary>
     public bool ClockShowSeconds { get; set; } = true;
     /// <summary>Large clock view: show the date under the time.</summary>

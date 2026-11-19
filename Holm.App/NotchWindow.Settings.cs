@@ -42,8 +42,10 @@ public sealed partial class NotchWindow
                     s => s.Draggable, on => { FinishPositionDrag(); _settings.Draggable = on; Save(); }, "Reset Position", ResetNotchPosition),
                 Switch("Minimize when idle", "\uE921", "The notch shrinks to a small pill while nothing is going on.", s => s.MiniIdle,
                     on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
-                Switch("AI usage rings", "\uE9D9", "A ring at each end of the notch shows how much of your Claude and Codex limits you have used. Hover a ring for each limit and the sessions at work.",
+                Switch("AI usage", "\uE9D9", "Shows how much of your Claude and Codex limits you have used, with each limit and the sessions at work on the AI page of the open notch.",
                     s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }),
+                Switch("AI usage rings", "", "A ring at each end of the closed notch shows the usage at a glance. Hover a ring to open the AI page. Needs AI usage on.",
+                    s => s.AiRings, on => { _settings.AiRings = on; Save(); ApplyState(animate: true); }),
                 // Not a setting of the file: the system's own sign-in list, so its default is "off".
                 new SettingsSwitch(OperatingSystem.IsWindows() ? "Start with Windows" : "Start at sign-in", "",
                     OperatingSystem.IsWindows() ? "Holm starts when you sign in to Windows." : "Holm starts when you sign in.", () => _autostart.IsEnabled,
