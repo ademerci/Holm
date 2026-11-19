@@ -388,7 +388,6 @@ sealed partial class SettingsWindow : Window
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*,Auto") };
         var icon = Glyph(glyph, 15, Dim);
-        icon.HorizontalAlignment = HorizontalAlignment.Left;
         grid.Children.Add(icon);
         var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, FontSize = 13.5 };
         Grid.SetColumn(label, 1);

@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- Centered the bundled icons within their buttons, tiles and badges, including achievements, notifications and settings.
 - The closed notch centers the update arrow and shows a green progress ring while Holm downloads an update. Discord notifications use Discord’s own icon.
 
 ### Added
