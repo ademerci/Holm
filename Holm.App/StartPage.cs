@@ -23,7 +23,11 @@ sealed class StartPage : HubView
     public const string Key = "start";
 
     /// <summary>A tool of the bar as the page shows it: its name, its icon in a colour and size, and whether its switch is on.</summary>
-    public sealed record BarTool(string Name, string Title, Func<IBrush, double, Control> Icon, bool On);
+    public sealed record BarTool(string Name, string Title, Func<IBrush, double, Control> Icon,
+                                 Func<bool>? Enabled = null, Action? Enable = null, string? DisabledHint = null)
+    {
+        public bool On => Enabled?.Invoke() ?? true;
+    }
 
     const double PreviewWidth = 236;
 
@@ -49,7 +53,7 @@ sealed class StartPage : HubView
     bool _dragging;
     int _dropIndex = -1;
 
-    public StartPage(Func<HomeLayout> read, Action<HomeLayout> apply, IReadOnlyList<BarTool> tools)
+    public StartPage(Func<HomeLayout> read, Action<HomeLayout> apply, IReadOnlyList<BarTool> tools, bool focumon, Action<bool> setFocumon)
     {
         _read = read;
         _apply = apply;
@@ -84,8 +88,17 @@ sealed class StartPage : HubView
         toolCard.Children.Add(toolRow);
         toolCard.Children.Add(_showTool);
         toolCard.Children.Add(_toolName);
-        _showTool.Click += (_, _) => Change(layout => layout.HideTool(_tool, _showTool.IsChecked != true));
+        _showTool.Click += (_, _) =>
+        {
+            bool show = _showTool.IsChecked == true;
+            if (show && _tools.FirstOrDefault(tool => tool.Name == _tool) is { On: false } tool) tool.Enable?.Invoke();
+            Change(layout => layout.HideTool(_tool, !show));
+        };
         left.Children.Add(Card(toolCard));
+        var showFocumon = new CheckBox { Content = "Show Focumon", IsChecked = focumon, Margin = new Thickness(4, 10, 0, 0) };
+        showFocumon.Click += (_, _) => setFocumon(showFocumon.IsChecked == true);
+        left.Children.Add(showFocumon);
+        left.Children.Add(Note("Show your monster and timer in the open toolbar and the closed notch. Requires the Focumon for Holm browser extension."));
 
         // ── the picture ──
         var right = new StackPanel { Width = PreviewWidth, VerticalAlignment = VerticalAlignment.Top };
@@ -313,11 +326,11 @@ sealed class StartPage : HubView
         _toolLeft.IsEnabled = at > 0;
         _toolRight.IsEnabled = at >= 0 && at < order.Count - 1;
         var chosen = _tools.FirstOrDefault(t => t.Name == _tool);
-        _showTool.IsEnabled = chosen != null;
-        _showTool.IsChecked = chosen != null && !_layout.IsToolHidden(_tool);
+        _showTool.IsEnabled = chosen is { On: true } || chosen?.Enable != null;
+        _showTool.IsChecked = chosen is { On: true } && !_layout.IsToolHidden(_tool);
         _showTool.Content = chosen == null ? "Show in tool bar" : $"Show {chosen.Title} in tool bar";
-        _toolName.IsVisible = chosen is { On: false };
-        _toolName.Text = "This feature is switched off in Settings › Open notch.";
+        _toolName.Text = chosen is { On: false } ? chosen.DisabledHint : null;
+        _toolName.IsVisible = _toolName.Text != null;
     }
 
     void MoveTool(int step)

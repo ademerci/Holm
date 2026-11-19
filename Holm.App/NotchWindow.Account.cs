@@ -59,6 +59,8 @@ public sealed partial class NotchWindow
     {
         var switches = SettingsGroups().SelectMany(g => g.Switches).ToList();
         var before = switches.Select(s => s.Get()).ToList();
+        bool focumonBefore = _settings.Focumon;
+        bool remindersBefore = _settings.Reminders;
         apply();
         for (int i = 0; i < switches.Count; i++)
         {
@@ -67,6 +69,12 @@ public sealed partial class NotchWindow
             try { switches[i].Set(now); }
             catch (Exception ex) { Diag.Error(ex); } // one switch's trouble mustn't stop the others
         }
+        try
+        {
+            if (_settings.Focumon != focumonBefore) SetFocumon(_settings.Focumon);
+            if (_settings.Reminders != remindersBefore) ShowIdleStatus();
+        }
+        catch (Exception ex) { Diag.Error(ex); }
         ApplyBounce();
         ApplyHomeLayout(); // the start page as arranged on the other computer
         ApplyState(animate: true);

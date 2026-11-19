@@ -37,16 +37,18 @@ public sealed partial class NotchWindow
         ApplyHomeLayout();
     }, new StartPage.BarTool[]
     {
-        new(HomeLayout.Notes, "Notes", (brush, size) => ToolIcon("", brush, size), _settings.Notes),
-        new(HomeLayout.Reminders, "Reminders", (brush, size) => ToolIcon(BellGlyph, brush, size), _settings.Reminders),
-        new(HomeLayout.Calculator, "Calculator", (brush, size) => ToolIcon("", brush, size), _settings.Calculator),
-        new(HomeLayout.Chats, "Chats", (brush, size) => ToolIcon(ChatsGlyph, brush, size), true),
-        new(HomeLayout.Clipboard, "Clipboard history", (brush, size) => ToolIcon(ClipboardGlyph, brush, size), _settings.ClipboardHistory),
-        new(HomeLayout.Mixer, "Volume per app", (brush, size) => ToolIcon(MixerGlyph, brush, size), _settings.AppVolume),
+        new(HomeLayout.Notes, "Notes", (brush, size) => ToolIcon("", brush, size), () => _settings.Notes, () => _settings.Notes = true),
+        new(HomeLayout.Reminders, "Reminders", (brush, size) => ToolIcon(BellGlyph, brush, size), () => _settings.Reminders,
+            () => { _settings.Reminders = true; ShowIdleStatus(); }),
+        new(HomeLayout.Calculator, "Calculator", (brush, size) => ToolIcon("", brush, size), () => _settings.Calculator, () => _settings.Calculator = true),
+        new(HomeLayout.Chats, "Chats", (brush, size) => ToolIcon(ChatsGlyph, brush, size)),
+        new(HomeLayout.Clipboard, "Clipboard history", (brush, size) => ToolIcon(ClipboardGlyph, brush, size), () => _settings.ClipboardHistory,
+            DisabledHint: "Enable clipboard recording in Settings › Calls and privacy to use this tool."),
+        new(HomeLayout.Mixer, "Volume per app", (brush, size) => ToolIcon(MixerGlyph, brush, size), () => _settings.AppVolume, () => _settings.AppVolume = true),
         // Its button shows only while Claude Code or Codex has been used on this computer.
-        new(HomeLayout.Ai, "AI usage", AiUsageIcon, _settings.AiUsage),
-        new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), _settings.ColorPicker),
-    });
+        new(HomeLayout.Ai, "AI usage", AiUsageIcon, () => _settings.AiUsage, DisabledHint: "Enable local AI usage in Settings › General to use this tool."),
+        new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), () => _settings.ColorPicker, () => _settings.ColorPicker = true),
+    }, _settings.Focumon, SetFocumon);
 
     static TextBlock ToolIcon(string glyph, IBrush brush, double size) => new() { Text = glyph, FontFamily = IconFont, FontSize = size, Foreground = brush };
 
