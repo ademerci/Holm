@@ -109,6 +109,7 @@ public sealed partial class NotchWindow
         var compactRight = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         _eqPanel.HorizontalAlignment = HorizontalAlignment.Left;
         _compactTimer.HorizontalAlignment = HorizontalAlignment.Left;
+        compactRight.Children.Add(_verityCompact);
         compactRight.Children.Add(_mediaBadgeLogos);
         compactRight.Children.Add(_mediaBadge);
         compactRight.Children.Add(_compactTimer);

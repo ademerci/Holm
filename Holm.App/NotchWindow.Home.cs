@@ -86,6 +86,7 @@ public sealed partial class NotchWindow
             if (section == HomeLayout.Main) parts.Add(_toolPage);
             parts.Add(Section(section));
         }
+        parts.Add(_verityLane); // her floor, at the bottom
         if (_expandedPanel.Children.SequenceEqual(parts)) return;
         _expandedPanel.Children.Clear();
         _expandedPanel.Children.AddRange(parts);
@@ -118,6 +119,7 @@ public sealed partial class NotchWindow
         _liveSection.IsVisible = home;
         _shelfSection.IsVisible = home;
         _statusSection.IsVisible = !_home.IsHidden(HomeLayout.Status);
+        _verityLane.IsVisible = home && VerityHome;
     }
 
     /// <summary>

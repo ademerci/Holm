@@ -125,6 +125,7 @@ public sealed partial class NotchWindow : Window
         InitBeam(platform);
         InitHub();
         InitAchievements();
+        InitVerity();
         InitAccount();
         InitActivity();
         InitStreaming();
@@ -331,6 +332,7 @@ public sealed partial class NotchWindow : Window
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
         w += PlaceAiWings(target, mini); // Codenotch's rings at the ends of the closed notch
+        w += VerityRoom(target, mini);
 
         // Media apps report every few seconds; only animate when the shape really changes.
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
@@ -371,6 +373,7 @@ public sealed partial class NotchWindow : Window
         UpdateBackdrop();
         UpdateEqualizer();
         ShowSky();
+        ShowVerity();
     }
 
     /// <summary>Room for a shape this high at this scale, including the spring's overshoot.</summary>

@@ -42,6 +42,24 @@ public sealed partial class NotchWindow
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
             foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
             SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
+            // Verity at her sizes in the notch and big, awake and asleep, on the notch's black.
+            var verity = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8, Background = Avalonia.Media.Brushes.Black };
+            foreach (var (size, mood) in new[] { (16.0, WinNotch.VerityMood.Awake), (30.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Asleep) })
+                verity.Children.Add(new Holm.App.Controls.VerityFace { Width = size, Height = size, Mood = mood, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom });
+            SnapshotIconStrip(verity, folder, "verity.png");
+            // And moving: a leap with its somersault and the hops after it, one pose every tenth of a second.
+            var roam = new WinNotch.VerityRoam(480, 30, new Random(4));
+            roam.Jump();
+            var moves = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Background = Avalonia.Media.Brushes.Black };
+            for (int frame = 0; frame < 36; frame++)
+            {
+                for (int i = 0; i < 3; i++) roam.Step(1 / 30.0, WinNotch.VerityMood.Awake);
+                if (frame % 2 == 1) continue;
+                var face = new Holm.App.Controls.VerityFace { Width = 30, Height = 30, Margin = new Thickness(2, 34 - roam.Lift, 2, roam.Lift) };
+                face.Pose(roam.Squash, roam.Angle, roam.Moving ? roam.Facing : 0);
+                moves.Children.Add(face);
+            }
+            SnapshotIconStrip(moves, folder, "verity-moves.png");
 
             _hovered = true;
             ApplyState(animate: true);

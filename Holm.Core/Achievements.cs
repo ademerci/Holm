@@ -21,7 +21,7 @@ internal sealed class AchievementBook
     public const string Friends = "friends", FilesSent = "files-sent", MegabytesSent = "mb-sent", Messages = "messages",
         Waves = "waves", Streams = "streams", StreamMinutes = "stream-minutes", Watched = "watched", Timers = "timers",
         Screenshots = "screenshots", Colors = "colors", Reminders = "reminders", Songs = "songs", ProfilePicture = "profile-picture",
-        Night = "night", Streak = "streak", Notes = "notes";
+        Night = "night", Streak = "streak", Notes = "notes", Verity = "verity";
 
     const uint Blue = 0xFF0A84FF, Pink = 0xFFFF375F, Green = 0xFF30D158, Purple = 0xFF5E5CE6, Orange = 0xFFFF9F0A, Teal = 0xFF32ADE6,
         Red = 0xFFFF453A, Gold = 0xFFFFC43D;
@@ -49,6 +49,7 @@ internal sealed class AchievementBook
         new("night-owl", "Night owl", "Use Holm between 2 and 4 at night", "", Purple, Night, 1),
         new("streak-7", "Regular", "Use Holm 7 days in a row", "", Gold, Streak, 7),
         new("streak-30", "Part of the furniture", "Use Holm 30 days in a row", "", Gold, Streak, 30),
+        new("verity", "Verity", "Find the secret code on Settings › General", "", Gold, Verity, 1),
     };
 
     readonly string? _path;

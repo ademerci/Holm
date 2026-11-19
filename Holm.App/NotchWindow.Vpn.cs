@@ -36,6 +36,7 @@ public sealed partial class NotchWindow
             right.Children.Add(part);
         }
         right.Children.Add(_idleLock);
+        right.Children.Add(_verityIdle);
         _idleView.Children.Add(right);
         // Connecting changes the addresses several times in a row; look once it has settled.
         _vpnSettle.Tick += (_, _) => { _vpnSettle.Stop(); CheckVpn(announce: true); };
