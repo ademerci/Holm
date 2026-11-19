@@ -39,6 +39,9 @@ public sealed partial class NotchWindow
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
+            var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
+            foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
+            SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
 
             _hovered = true;
             ApplyState(animate: true);
@@ -121,11 +124,16 @@ public sealed partial class NotchWindow
             badge.SetProgress(percent);
             strip.Children.Add(badge);
         }
+        SnapshotIconStrip(strip, folder, "notification-badges.png");
+    }
+
+    static void SnapshotIconStrip(StackPanel strip, string folder, string file)
+    {
         strip.Measure(Avalonia.Size.Infinity);
         strip.Arrange(new Rect(strip.DesiredSize));
         using var bitmap = new RenderTargetBitmap(new PixelSize((int)strip.Bounds.Width * 3, (int)strip.Bounds.Height * 3), new Vector(288, 288));
         bitmap.Render(strip);
-        bitmap.Save(Path.Combine(folder, "notification-badges.png"), new PngBitmapEncoderOptions());
+        bitmap.Save(Path.Combine(folder, file), new PngBitmapEncoderOptions());
     }
 
     void FreezeForPicture()

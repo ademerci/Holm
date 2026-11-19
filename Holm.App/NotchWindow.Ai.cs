@@ -3,9 +3,10 @@ using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Holm.App.Controls;
@@ -14,20 +15,29 @@ using WinNotch;
 namespace Holm.App;
 
 /// <summary>
-/// The AI button (the WPF app's AiLauncher and its part of MainWindow.xaml.cs): Claude, Gemini, ChatGPT or any program
-/// you pick, at the bottom right of the open notch. A preset opens its website; a program you picked starts itself.
+/// The AI launcher at the bottom right of the open notch. A preset opens its website, and a custom target opens the selected program.
 /// </summary>
 public sealed partial class NotchWindow
 {
     const string AiCustom = "custom";
 
-    sealed record AiPreset(string Key, string Name, string Web);
+    sealed record AiPreset(string Key, string Name, string Web)
+    {
+        // Marks from Lobe Icons, bundled so they work offline and on both platforms.
+        public Lazy<Bitmap> Icon { get; } = new(() =>
+        {
+            using var stream = AssetLoader.Open(new Uri($"avares://Holm.App/Assets/AiLauncher/{Key}.png"));
+            return new Bitmap(stream);
+        });
+    }
 
     static readonly AiPreset[] AiPresets =
     {
         new("claude", "Claude", "https://claude.ai/new"),
         new("gemini", "Gemini", "https://gemini.google.com/app"),
         new("chatgpt", "ChatGPT", "https://chatgpt.com/"),
+        new("copilot", "Microsoft Copilot", "https://copilot.microsoft.com/"),
+        new("github-copilot", "GitHub Copilot", "https://github.com/copilot"),
     };
 
     NotchButton _aiBtn = null!;
@@ -89,7 +99,7 @@ public sealed partial class NotchWindow
         UpdateAiButton();
     }
 
-    /// <summary>AI button › Claude, Gemini, ChatGPT, the app you picked, Choose app…, Off.</summary>
+    /// <summary>Presets, the selected custom app, and Off.</summary>
     void FillAiMenu(MenuItem menu)
     {
         menu.Items.Clear();
@@ -107,6 +117,7 @@ public sealed partial class NotchWindow
     MenuItem AiChoice(string header, string? key, string? path)
     {
         var item = new MenuItem { Header = header, ToggleType = MenuItemToggleType.Radio, IsChecked = _settings.Ai == key };
+        if (key != null && AiTile(key, 16) is { } icon) item.Icon = icon;
         item.Click += (_, _) => SetAi(key, path);
         return item;
     }
@@ -128,89 +139,17 @@ public sealed partial class NotchWindow
         catch (Exception ex) when (ex is not OutOfMemoryException) { Diag.Log("AI app: " + ex.GetType().Name); }
     }
 
-    // ───────────── the presets' tiles, drawn on a 24 × 24 grid ─────────────
-
-    /// <summary>A preset as a favicon-style tile (its mark, light on its brand color); null for anything else.</summary>
     static Border? AiTile(string key, double size)
     {
-        (Geometry Mark, IBrush Fill, IBrush Back)? look = key switch
+        if (AiPresets.FirstOrDefault(preset => preset.Key == key) is not { } preset) return null;
+        return new Border
         {
-            "claude" => (ClaudeMark.Value, Brush("#FFFFF6EE"), Brush("#FFD97757")),
-            "gemini" => (GeminiMark.Value, Brushes.White, GeminiBrush.Value),
-            "chatgpt" => (ChatGptMark.Value, Brush("#FF0D0D0D"), Brush("#FFF4F4F4")),
-            _ => null,
+            Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = Brushes.White,
+            Child = new Image
+            {
+                Source = preset.Icon.Value, Width = size * 0.76, Height = size * 0.76,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
         };
-        if (look is not { } l) return null;
-        // The mark takes two thirds of the tile, centred: the margin a favicon keeps.
-        var mark = new Viewbox
-        {
-            Width = size * 0.68, Height = size * 0.68, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
-            Child = new Canvas { Width = 24, Height = 24, Children = { new Avalonia.Controls.Shapes.Path { Data = l.Mark, Fill = l.Fill } } },
-        };
-        return new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28), Background = l.Back, Child = mark };
     }
-
-    /// <summary>Claude: a hand-drawn looking starburst.</summary>
-    static readonly Lazy<Geometry> ClaudeMark = new(() =>
-    {
-        double[] lengths = { 11.5, 9, 10.7, 9.4, 11.5, 9.9, 10.9, 8.7, 11.3, 9.7, 10.4, 9.2 };
-        var geometry = new StreamGeometry();
-        using (var c = geometry.Open())
-        {
-            for (int i = 0; i < lengths.Length; i++)
-            {
-                double angle = (i * 30 - 90 + (i % 2 == 1 ? 3 : 0)) * Math.PI / 180;
-                var along = new Vector(Math.Cos(angle), Math.Sin(angle));
-                var across = new Vector(-along.Y, along.X);
-                var centre = new Point(12, 12);
-                double length = lengths[i];
-                // A ray: wide at the centre, narrowing to a rounded tip.
-                c.BeginFigure(centre + across * 1.55, true);
-                c.LineTo(centre + along * (length - 0.6) + across * 0.45);
-                c.QuadraticBezierTo(centre + along * length, centre + along * (length - 0.6) - across * 0.45);
-                c.LineTo(centre - across * 1.55);
-                c.EndFigure(true);
-            }
-        }
-        return geometry;
-    });
-
-    /// <summary>Gemini: the four-pointed sparkle in its blue-to-rose gradient.</summary>
-    static readonly Lazy<Geometry> GeminiMark = new(() =>
-        Geometry.Parse("M12,0 C12.8,6.2 17.8,11.2 24,12 C17.8,12.8 12.8,17.8 12,24 C11.2,17.8 6.2,12.8 0,12 C6.2,11.2 11.2,6.2 12,0 Z"));
-
-    static readonly Lazy<IBrush> GeminiBrush = new(() => new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-        GradientStops =
-        {
-            new GradientStop(Color.FromRgb(0x47, 0x96, 0xE3), 0),
-            new GradientStop(Color.FromRgb(0x91, 0x77, 0xC7), 0.55),
-            new GradientStop(Color.FromRgb(0xCA, 0x66, 0x73), 1),
-        },
-    }.ToImmutable());
-
-    /// <summary>ChatGPT: the outline of six interlocking capsules, a simplified blossom.</summary>
-    static readonly Lazy<Geometry> ChatGptMark = new(() =>
-    {
-        Geometry Petals(double shrink)
-        {
-            Geometry? all = null;
-            for (int k = 0; k < 6; k++)
-            {
-                double angle = k * 60 * Math.PI / 180;
-                double length = 13 - 2 * shrink, thickness = 6.4 - 2 * shrink;
-                var capsule = new RectangleGeometry(new Rect(-length / 2, -thickness / 2, length, thickness), thickness / 2, thickness / 2)
-                {
-                    Transform = new TransformGroup
-                    {
-                        Children = { new RotateTransform(k * 60 + 120), new TranslateTransform(12 - Math.Sin(angle) * 3, 12 + Math.Cos(angle) * 3) },
-                    },
-                };
-                all = all == null ? capsule : new CombinedGeometry(GeometryCombineMode.Union, all, capsule);
-            }
-            return all!;
-        }
-        return new CombinedGeometry(GeometryCombineMode.Exclude, Petals(0), Petals(1.5));
-    });
 }
