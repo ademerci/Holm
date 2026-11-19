@@ -68,6 +68,7 @@ public sealed partial class NotchWindow
             catch (Exception ex) { Diag.Error(ex); } // one switch's trouble mustn't stop the others
         }
         ApplyBounce();
+        ApplyHomeLayout(); // the start page as arranged on the other computer
         ApplyState(animate: true);
         _settingsWindow?.Refresh();
     }

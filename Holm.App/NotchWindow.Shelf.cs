@@ -56,8 +56,7 @@ public sealed partial class NotchWindow
         clear.Click += () => { _settings.Shelf.Clear(); _settings.Save(); ShowShelf(); };
         header.Children.Add(clear);
         _shelfRow.Children.Add(header);
-        _shelfRow.Children.Add(_shelfItems);
-        _homePanel.Children.Add(_shelfRow);
+        _shelfRow.Children.Add(_shelfItems); // into its section of home in the constructor
         _shelfTitle.PointerPressed += (_, e) => _ = DragOffShelfAsync(e, ShelfItems.ToArray());
 
         _shareView.Children.Add(_shareTitle);

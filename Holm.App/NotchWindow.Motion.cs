@@ -260,8 +260,14 @@ public sealed partial class NotchWindow
         foreach (var part in _expandedPanel.Children)
         {
             if (!part.IsVisible) continue;
-            if (part != _homePanel) { yield return part; continue; }
-            foreach (var row in _homePanel.Children)
+            if (part == _statusSection)
+            {
+                foreach (var inner in _statusSection.Children)
+                    if (inner.IsVisible) yield return inner;
+                continue;
+            }
+            if (part is not StackPanel section) { yield return part; continue; } // the tool bar, a tool's page
+            foreach (var row in section.Children)
             {
                 if (!row.IsVisible) continue;
                 if (row == _clockPanel)

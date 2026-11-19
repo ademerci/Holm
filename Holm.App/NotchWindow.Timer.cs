@@ -82,7 +82,11 @@ public sealed partial class NotchWindow
         var ai = new MenuItem { Header = "AI button" };
         var messages = new MenuItem { Header = "Messages" };
         var quiet = new MenuItem { Header = "Quiet hours" };
+        var startPage = new MenuItem { Header = "Start page…" };
+        startPage.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub(StartPage.Key), DispatcherPriority.Background);
         var customize = new MenuItem { Header = "Customize" };
+        customize.Items.Add(startPage);
+        customize.Items.Add(new Separator());
         customize.Items.Add(messages);
         customize.Items.Add(quiet);
         customize.Items.Add(weather);

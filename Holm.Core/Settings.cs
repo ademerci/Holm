@@ -85,6 +85,14 @@ internal sealed class AppSettings
     public bool ColorPicker { get; set; } = true;
     /// <summary>Your Focumon and its timer in the open notch's top bar, fed by the Focumon browser extension.</summary>
     public bool Focumon { get; set; } = true;
+    /// <summary>The open notch's start page from top to bottom (<see cref="HomeLayout"/>); empty for Holm's usual order.</summary>
+    public List<string> HomeSections { get; set; } = new();
+    /// <summary>Sections of the start page you hid: the tool bar, the two cards, or the battery and volume.</summary>
+    public List<string> HomeHidden { get; set; } = new();
+    /// <summary>Sections of the start page with their two sides swapped (the volume on the left, say).</summary>
+    public List<string> HomeSwapped { get; set; } = new();
+    /// <summary>The tools in the open notch's bar from left to right; empty for Holm's usual order.</summary>
+    public List<string> HomeTools { get; set; } = new();
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
     /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>

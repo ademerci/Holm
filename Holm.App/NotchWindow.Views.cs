@@ -168,12 +168,12 @@ public sealed partial class NotchWindow
     {
         var panel = _expandedPanel;
         // Tools: each opens its page in place of home; click again to go back
-        panel.Children.Add(BuildToolRow());
+        _toolRow = BuildToolRow();
 
         // Home: the player (or the clock)
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         _bigArt.Child = _artPlaceholder;
-        var texts = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var texts = _playerTexts = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         texts.Children.Add(_titleText);
         texts.Children.Add(_artistText);
         texts.Children.Add(_appText);
@@ -221,8 +221,8 @@ public sealed partial class NotchWindow
         _mediaPanel.Children.Add(controls);
 
         // No music: time and date stay at the top of home.
-        var clockHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var clockStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+        var clockHeader = _clockHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var clockStack = _clockStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
         clockStack.Children.Add(_clockBig);
         clockStack.Children.Add(_dateText);
         clockHeader.Children.Add(clockStack);
@@ -231,28 +231,28 @@ public sealed partial class NotchWindow
         BuildSky(clockStack);
         BuildClockView(clockStack);
 
-        _homePanel.Children.Add(_mediaPanel);
-        _homePanel.Children.Add(_clockPanel);
-        _homePanel.Children.Add(_downloadRow);
-        panel.Children.Add(_homePanel);
-        panel.Children.Add(BuildToolPages());
-
-        panel.Children.Add(new Border { Height = 1, Background = Look.InkA(0x1A), Margin = new Thickness(0, 12, 0, 8) });
+        // The sections of home; the rows of the others join them later (the constructor), and ApplyHomeLayout puts
+        // them into the open notch in your order.
+        _mainSection.Children.Add(_mediaPanel);
+        _mainSection.Children.Add(_clockPanel);
+        BuildToolPages();
 
         // Below the line: the battery and connected devices on the left, the volume on the right.
         var muteBtn = new NotchButton(_volIcon) { Width = 30, Height = 30 };
         muteBtn.Click += () => { _audio.ToggleMute(); ReadVolume(); };
         _volSlider.ValueChanging += v => { _audio.SetVolume((float)v); UpdateVolumeIcon(v, false); };
-        var sound = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var sound = _soundPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         sound.Children.Add(muteBtn);
         sound.Children.Add(_volSlider);
         BuildAiButton(sound);
         BuildOutputButtons(sound);
-        var bottom = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var bottom = _statusRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(sound, 1);
         bottom.Children.Add(_devicesPanel);
         bottom.Children.Add(sound);
-        panel.Children.Add(bottom);
+        _statusSection.Children.Add(_statusLineAbove);
+        _statusSection.Children.Add(bottom);
+        _statusSection.Children.Add(_statusLineBelow);
         _expandedView.Children.Add(panel);
     }
 
@@ -309,7 +309,9 @@ public sealed partial class NotchWindow
         {
             _mediaPanel.IsVisible = media;
             _clockPanel.IsVisible = !media;
+            ShowHomeSections(); // the cards come and go with the clock
             FadeIn(media ? _mediaPanel : _clockPanel);
+            if (!media && _todaySection.IsVisible) FadeIn(_todaySection);
         }
         _compactArt.Background = ArtBrush(info?.Art);
         RefreshBigClockMedia();

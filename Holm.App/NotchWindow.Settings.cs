@@ -130,7 +130,8 @@ public sealed partial class NotchWindow
         _settingsWindow = new SettingsWindow(_platform, SettingsGroups(), versionLabel, () => _settings.Animations, HubPages(), page,
             new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
             () => MeCard(CurrentProfile()),
-            new[] { new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),
+            new[] { new HubPage(StartPage.Key, "\uE8A9", "Start page", "What the open notch shows, and where", BuildStartPage),
+                new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),
                 new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
             new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) },
             BuildAccountPage);
