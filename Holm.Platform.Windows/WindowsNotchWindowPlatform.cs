@@ -8,7 +8,7 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
 {
     const int GWL_EXSTYLE = -20, RGN_OR = 2;
     const long WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
-    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
     static readonly IntPtr HWND_TOPMOST = new(-1);
 
     public void MakeOverlay(IntPtr window)
@@ -16,6 +16,13 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
         long style = GetWindowLongPtr(window, GWL_EXSTYLE).ToInt64();
         SetWindowLongPtr(window, GWL_EXSTYLE, new IntPtr(style | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE));
         SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    // As the WPF app: only when another window really covers it, since re-ordering makes the window draw itself again.
+    public void KeepOnTop(IntPtr window)
+    {
+        if (WinNotch.Native.IsCovered(window))
+            SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
 
     public void SetHitRegion(IntPtr window, int x, int y, int width, int height)

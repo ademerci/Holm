@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3 – 2026-11-19
+
+### Fixed
+
+- **Always on top.** The notch stays above other windows again on Windows. Since 1.13, opening or clicking another window could leave the notch behind it. Holm now puts it back on top as soon as another window comes to the front.
+- **Minimize over browser tabs.** The notch turns into the small pill only while a maximized browser is the window in front on the notch's screen. It reacts the moment you switch windows: it grows back as soon as you switch to another app and shrinks again when you return to the browser.
+
 ## 2.0.2 – 2026-11-19
 
 ### Fixed
