@@ -36,9 +36,9 @@ public sealed partial class NotchWindow
     readonly Dictionary<string, Bitmap?> _logoCache = new();
 
     // Badge: nothing playing, unread messages
-    readonly Grid _badgeView = new() { Margin = new Thickness(10, 0), ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*") };
+    readonly Grid _badgeView = new() { Margin = new Thickness(10, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
     readonly StackPanel _badgeLogoList = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, ClipToBounds = true };
-    readonly Border _badgePrivacyHost = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), IsVisible = false };
+    readonly Border _badgePrivacyHost = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), IsVisible = false };
     readonly TextBlock _badgeText = CountText();
     Border _badgePill = null!;
 
@@ -78,11 +78,12 @@ public sealed partial class NotchWindow
         _chat.OtherArrived += OnOtherNotification;
         _notifications.Changed += () => Dispatcher.UIThread.Post(() => _ = ReadNotificationsAsync());
 
-        // App logos sit immediately before the count, with privacy dots at the right edge.
+        // With no media, the standalone badge leads with the count and ends with the privacy dots.
         _badgePill = CountPill(_badgeText);
-        _badgeView.Children.Add(_badgeLogoList);
-        Grid.SetColumn(_badgePill, 1);
+        _badgePill.Margin = new Thickness(0, 0, 7, 0);
         _badgeView.Children.Add(_badgePill);
+        Grid.SetColumn(_badgeLogoList, 1);
+        _badgeView.Children.Add(_badgeLogoList);
         Grid.SetColumn(_badgePrivacyHost, 2);
         _badgeView.Children.Add(_badgePrivacyHost);
 
