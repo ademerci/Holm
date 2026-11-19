@@ -100,7 +100,11 @@ public sealed partial class NotchWindow
         _pickClose.Tick += (_, _) => { _pickClose.Stop(); EndShare(); };
         // Picking with clicks: leaving means "never mind".
         _island.PointerExited += (_, _) => { if (_pickFiles != null) _pickClose.Start(); };
-        _island.PointerEntered += (_, _) => _pickClose.Stop();
+        _island.PointerEntered += (_, _) =>
+        {
+            _pickClose.Stop();
+            _pickClose.Interval = TimeSpan.FromMilliseconds(900); // in once, leaving again means "never mind"
+        };
 
         DragDrop.SetAllowDrop(_island, true);
         _island.AddHandler(DragDrop.DragEnterEvent, OnDrag);
@@ -169,6 +173,7 @@ public sealed partial class NotchWindow
         _settings.Save();
         if (on) StartSharing();
         else StopSharing();
+        RefreshToolBar();
     }
 
     // ───────────── dragging files onto the notch ─────────────
@@ -221,8 +226,11 @@ public sealed partial class NotchWindow
         ApplyState(animate: true);
     }
 
-    /// <summary>The share view, to click where the files go instead of dropping them; it closes when the mouse leaves.</summary>
-    void PickTarget(string[] files)
+    /// <summary>
+    /// The share view, to click where the files go instead of dropping them; it closes when the mouse leaves. After a
+    /// file picker (<paramref name="patient"/>) the mouse is still over where the picker was: it waits a while for it.
+    /// </summary>
+    void PickTarget(string[] files, bool patient = false)
     {
         HideTask();
         _pickFiles = files;
@@ -231,6 +239,7 @@ public sealed partial class NotchWindow
         SetExpanded(false);
         RefreshShareTargets();
         ApplyState(animate: true);
+        _pickClose.Interval = TimeSpan.FromMilliseconds(patient ? 12000 : 900);
         if (!_island.IsPointerOver) _pickClose.Start();
         _ = RefreshPeersAsync();
         if (_settings.Beam) _friends.PingAll();

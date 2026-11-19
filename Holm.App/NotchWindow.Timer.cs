@@ -97,6 +97,8 @@ public sealed partial class NotchWindow
         var beamText = new MenuItem { Header = "Beam text" };
         var receive = new MenuItem { Header = "Receive with copied code" };
         receive.Click += (_, _) => _ = ReceiveCopiedCodeAsync();
+        var fromPhone = new MenuItem { Header = "Receive from phone…" };
+        fromPhone.Click += (_, _) => Dispatcher.UIThread.Post(ReceiveFromPhone, DispatcherPriority.Background);
         var hub = new MenuItem { Header = "Friends and chat…" };
         hub.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         var network = new MenuItem { Header = "Wi-Fi and speed test…" };
@@ -106,6 +108,7 @@ public sealed partial class NotchWindow
         menu.Items.Add(_menuSleep);
         menu.Items.Add(beamText);
         menu.Items.Add(receive);
+        menu.Items.Add(fromPhone);
         menu.Items.Add(new Separator());
         menu.Items.Add(hub);
         menu.Items.Add(network);
@@ -126,7 +129,7 @@ public sealed partial class NotchWindow
             FillMessagesMenu(messages);
             FillAiMenu(ai);
             FillBeamTextMenu(beamText);
-            receive.IsEnabled = _settings.Beam;
+            receive.IsEnabled = fromPhone.IsEnabled = _settings.Beam;
             FillQuietMenu(quiet);
             FillSizeMenu(collapsedSize, expanded: false);
             FillSizeMenu(expandedSize, expanded: true);

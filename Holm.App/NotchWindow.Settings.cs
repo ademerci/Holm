@@ -88,6 +88,13 @@ public sealed partial class NotchWindow
             {
                 Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
                     s => s.Beam, SetBeam),
+                Switch("Beam in the tool bar", "", "A Beam button in the open notch's tool bar: drag files in to send them, or receive from your phone or with a code. Also under Settings › Start page.",
+                    s => !HomeLayout.Read(s).IsToolHidden(HomeLayout.Beam), on =>
+                    {
+                        HomeLayout.Read(_settings).HideTool(HomeLayout.Beam, !on).Write(_settings);
+                        Save();
+                        ApplyHomeLayout();
+                    }),
                 Switch("Send folders as ZIP", "\uE8B7", "Folders are packed as a ZIP before they're sent.", s => s.SendFolders, on => { _settings.SendFolders = on; Save(); }),
                 Switch("Send later when a friend is offline", "\uE823", "Files for an offline friend wait and go once they're back.", s => s.SendLater, SetSendLater),
             }),

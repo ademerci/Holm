@@ -13,7 +13,7 @@ public class HomeLayoutTests
 
         Assert.True(layout.IsUsual);
         Assert.Equal(new[] { "tools", "main", "today", "live", "shelf", "status" }, layout.Sections);
-        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color" }, layout.ToolOrder);
+        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color", "beam" }, layout.ToolOrder);
         Assert.Empty(layout.Hidden);
         Assert.Empty(layout.Swapped);
         Assert.Empty(layout.HiddenTools);
@@ -51,7 +51,7 @@ public class HomeLayoutTests
         Assert.True(again.IsHidden(HomeLayout.Today));
         Assert.True(again.IsSwapped(HomeLayout.Main));
         Assert.Equal("color", again.ToolOrder[0]);
-        Assert.Equal(8, again.ToolOrder.Count);
+        Assert.Equal(HomeLayout.UsualTools.Count, again.ToolOrder.Count);
         Assert.True(again.IsToolHidden(HomeLayout.ColorPicker));
         Assert.Equal(again.ToolOrder, again.HideTool(HomeLayout.ColorPicker, false).ToolOrder);
     }

@@ -288,14 +288,14 @@ public static class FileTransfer
     /// The "downloaded from the internet" mark, so Windows warns before opening programs or macros. Linux has none
     /// (there the stream would be a second file).
     /// </summary>
-    static void MarkFromInternet(string path)
+    internal static void MarkFromInternet(string path)
     {
         if (!OperatingSystem.IsWindows()) return;
         try { File.WriteAllText(path + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n"); }
         catch { } // not NTFS, or not allowed: the file is still fine
     }
 
-    static bool HasRoom(string folder, long bytes)
+    internal static bool HasRoom(string folder, long bytes)
     {
         try
         {
