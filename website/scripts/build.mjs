@@ -64,6 +64,10 @@ for (const name of [
   'home.js',
 ])
   await copyFile(path.join(root, 'src', name), path.join(out, 'assets', name));
+// Photos of the people behind Holm (About page), checked-in and already cropped for privacy.
+await mkdir(path.join(out, 'assets/team'), { recursive: true });
+for (const name of ['lake.jpg', 'cafe.jpg'])
+  await copyFile(path.join(root, 'src/assets/team', name), path.join(out, 'assets/team', name));
 await writeFile(path.join(out, 'assets/releases.json'), JSON.stringify(snapshot));
 const pages = createPages({ base, snapshot, store });
 for (const [route, html] of pages) {

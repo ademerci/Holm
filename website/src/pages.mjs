@@ -341,6 +341,44 @@ export function createPages({ base, snapshot, store }) {
   };
 
   const about = /* HTML */ `${intro('A SMALL IDEA. AN OPEN PROJECT.', 'A little more care.<br>For the everyday.', 'Holm brings useful things closer, without asking your desktop to become something else.')}
+    <section class="team wrap" aria-labelledby="team-title">
+      <p class="eyebrow">THE PEOPLE BEHIND HOLM</p>
+      <h2 id="team-title">Two friends.<br /><span>One notch.</span></h2>
+      <div class="devs">
+        <article class="dev">
+          <img
+            src="${link('assets/team/lake.jpg')}"
+            alt="Holm's developer by a lake at night, the city lights behind"
+            width="900"
+            height="736"
+            loading="lazy"
+            decoding="async"
+          />
+          <div>
+            <h3>ademerci</h3>
+            <p>
+              Started Holm. The notch, Beam, friends and chat, and most late nights by the lake.
+            </p>
+            <a href="https://github.com/ademerci">GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+        <article class="dev">
+          <img
+            src="${link('assets/team/cafe.jpg')}"
+            alt="Holm's developer having a coffee in a café"
+            width="1035"
+            height="900"
+            loading="lazy"
+            decoding="async"
+          />
+          <div>
+            <h3>ALeandro08</h3>
+            <p>The Microsoft Store version, releases and the user counter, mostly over a coffee.</p>
+            <a href="https://github.com/ALeandro08">GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+      </div>
+    </section>
     <section class="about-story wrap">
       <div class="about-icon">
         <img

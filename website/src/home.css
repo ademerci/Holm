@@ -241,9 +241,7 @@ body.is-home {
   border-radius: 34px;
   overflow: hidden;
   background:
-    radial-gradient(900px 600px at 12% 100%, rgba(120, 80, 255, 0.5), transparent 62%),
-    radial-gradient(800px 520px at 90% 0%, rgba(10, 132, 255, 0.38), transparent 60%),
-    linear-gradient(160deg, #161b31, #0c0e18);
+    linear-gradient(160deg, #1c1c21, #0c0c0f);
   box-shadow:
     0 50px 140px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 255, 255, 0.1);
@@ -430,7 +428,7 @@ body.is-home {
   height: 112px;
   border-radius: 20px;
   overflow: hidden;
-  background: linear-gradient(135deg, #ff6a88, #5b247a);
+  background: linear-gradient(135deg, #ff6a88, #ff9f45);
 }
 .art i {
   position: absolute;
@@ -493,7 +491,7 @@ body.is-home {
   background:
     radial-gradient(400px 260px at 15% 30%, rgba(255, 95, 109, 0.8), transparent 70%),
     radial-gradient(420px 300px at 85% 10%, rgba(255, 170, 60, 0.5), transparent 70%),
-    radial-gradient(500px 340px at 70% 110%, rgba(91, 36, 122, 0.95), transparent 70%), #2a0e30;
+    radial-gradient(500px 340px at 70% 110%, rgba(150, 40, 60, 0.95), transparent 70%), #2a0e14;
 }
 [data-step='1'] .wash {
   opacity: 0.55;
@@ -550,8 +548,8 @@ body.is-home {
 /* Today, under a night sky */
 .sky {
   background:
-    radial-gradient(330px 250px at 120px -30px, rgba(58, 63, 200, 0.6), transparent),
-    radial-gradient(270px 200px at 540px -20px, rgba(106, 60, 176, 0.42), transparent);
+    radial-gradient(330px 250px at 120px -30px, rgba(255, 255, 255, 0.14), transparent),
+    radial-gradient(270px 200px at 540px -20px, rgba(255, 255, 255, 0.08), transparent);
 }
 [data-step='4'] .sky {
   opacity: 1;
@@ -693,7 +691,7 @@ body.is-home {
   color: #fff;
 }
 .a1 {
-  background: linear-gradient(135deg, #ff6a88, #bf5af2);
+  background: linear-gradient(135deg, #ff6a88, #ff9f45);
 }
 .a2 {
   background: linear-gradient(135deg, #64d2ff, #0a84ff);
@@ -775,7 +773,7 @@ body.is-home {
   font-weight: 700;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  background: linear-gradient(90deg, #64d2ff, #0a84ff 45%, #bf5af2);
+  background: linear-gradient(180deg, #fff 35%, #86868b);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -831,7 +829,7 @@ body.is-home {
   font-size: clamp(54px, 9.5vw, 140px) !important;
   line-height: 0.98 !important;
   padding-bottom: 0.06em;
-  background: linear-gradient(90deg, #64d2ff, #0a84ff 45%, #bf5af2);
+  background: linear-gradient(180deg, #fff 35%, #86868b);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
