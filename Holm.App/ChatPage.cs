@@ -61,7 +61,8 @@ internal sealed class ChatPage : HubView
 
         // ── Left: search and conversations ──
         var left = new Grid { Background = ListBack, RowDefinitions = new RowDefinitions("Auto,*") };
-        var searchHost = new Grid { Margin = new Thickness(12, 12, 52, 8) };
+        var searchRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(12, 12, 12, 8) };
+        var searchHost = new Grid { VerticalAlignment = VerticalAlignment.Center };
         _search = HubTheme.Field("Search");
         _search.Padding = new Thickness(30, 6, 6, 6);
         _search.Background = Look.InkA(0x14);
@@ -73,13 +74,14 @@ internal sealed class ChatPage : HubView
         magnifier.IsHitTestVisible = false;
         searchHost.Children.Add(magnifier);
         _search.TextChanged += (_, _) => ShowList();
-        left.Children.Add(searchHost);
+        searchRow.Children.Add(searchHost);
         var addFriend = RoundButton(HubTheme.Glyph("", 14), "Add a friend", 34, HubTheme.Card, HubTheme.Selected);
-        addFriend.HorizontalAlignment = HorizontalAlignment.Right;
-        addFriend.VerticalAlignment = VerticalAlignment.Top;
-        addFriend.Margin = new Thickness(0, 14, 12, 0);
+        addFriend.VerticalAlignment = VerticalAlignment.Center;
+        addFriend.Margin = new Thickness(6, 0, 0, 0);
         addFriend.PointerReleased += (_, e) => { e.Handled = true; social.Open?.Invoke("add", null); };
-        left.Children.Add(addFriend);
+        Grid.SetColumn(addFriend, 1);
+        searchRow.Children.Add(addFriend);
+        left.Children.Add(searchRow);
         _list.Margin = new Thickness(8, 0, 2, 8);
         var listScroll = HubTheme.Scroller(_list);
         Grid.SetRow(listScroll, 1);
