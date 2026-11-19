@@ -58,7 +58,7 @@ internal sealed record Design
     public bool Glass { get; init; }
     /// <summary>A hard shadow under the window, or 0.</summary>
     public uint Shadow { get; init; }
-    /// <summary>"sans", "mono" or "serif".</summary>
+    /// <summary>"sans", "mono", "serif", "plex" (IBM Plex Mono) or "spectral".</summary>
     public string Font { get; init; } = "sans";
     /// <summary>Headings and tool words in capitals.</summary>
     public bool Caps { get; init; }
@@ -132,11 +132,11 @@ internal static class Designs
         },
         new()
         {
-            Id = "liquid", Name = "Prism Glass", Description = "Translucent glass with a curved, light-catching rim", Wash = false,
-            Fill = new[] { 0xBF2A303Du, 0xB8181C26u, 0xC8202334u }, WindowEdge = 0x50DFE8FF,
-            Ink = 0xFFF7FAFF, Accent = 0xFFB4E6FF, Toggle = 0xFF59DDAD, Dim = 0xFFE0E7F5, Faint = 0xFFC0CADC,
-            Panel = 0xC41C202B, Sidebar = 0x18232E45, Card = 0x0EF7FAFF, CardStrong = 0x1EF7FAFF,
-            Hover = 0x18F7FAFF, Selected = 0x354E98CA, Line = 0x24E3EDFF, Corners = 24, Glass = true,
+            Id = "liquid", Name = "Prism Glass", Description = "Silver glass, polished edges and clear lens controls", Wash = false,
+            Fill = new[] { 0xCCF4F7FBu, 0xB6E7EBF1u, 0xC2DDE4EEu }, WindowEdge = 0x805F6E80,
+            Ink = 0xFF121A24, Accent = 0xFF005CAA, Toggle = 0xFF249552, Dim = 0xFF273344, Faint = 0xFF303E4E,
+            Panel = 0xCDE8ECF1, Sidebar = 0x3CF9FCFF, Card = 0x40FFFFFF, CardStrong = 0x64FFFFFF,
+            Hover = 0x201A507D, Selected = 0x385577A1, Line = 0x30415570, Corners = 24, Glass = true,
         },
         new()
         {
@@ -190,6 +190,55 @@ internal static class Designs
             Id = "album", Name = "Album", Description = "The cover's colours flow strongly into the notch", Wash = true, Shade = 0.55,
             Fill = new[] { 0xFF121212u }, Accent = 0xFF1ED760, Panel = 0xFF181818, Sidebar = 0xFF000000, Card = 0xFF242424,
             Selected = 0xFF282828, Dim = 0xFFB3B3B3, Corners = 10,
+        },
+        new()
+        {
+            Id = "blueprint", Name = "Blueprint", Description = "Cyan drafting lines on engineer’s blue, with monospaced labels", Instrument = true, Wash = false,
+            Fill = new[] { 0xFF183D68u }, Edge = 0xFF739FC5, EdgeWidth = 1, Ink = 0xFFE6F5FC, Accent = 0xFFA8EDFF,
+            Panel = 0xFF163557, Sidebar = 0xFF102C4C, Card = 0xFF1C4063, Selected = 0xFF28547A, Line = 0xFF456A8D,
+            Dim = 0xFFB2CFDF, Faint = 0xFF9DBBCC, Corners = 3, Font = "plex", Caps = true,
+        },
+        new()
+        {
+            Id = "matcha", Name = "Matcha", Description = "Pale celadon, forest-green ink and rounded ceramic surfaces", Wash = false,
+            Fill = new[] { 0xFFE8EED7u, 0xFFC4D7B5u }, Ink = 0xFF203C30, Accent = 0xFF35634A,
+            Panel = 0xFFE6EDDD, Sidebar = 0xFFD1DECB, Card = 0xFFF3F5EA, Selected = 0xFFBED4B7,
+            Line = 0xFFA7BEA4, Dim = 0xFF405B4C, Faint = 0xFF516958, Corners = 26,
+        },
+        new()
+        {
+            Id = "kiln", Name = "Kiln", Description = "Fired clay, cream lettering and a copper lip", Wash = false,
+            Fill = new[] { 0xFF713E32u, 0xFF4B2924u, 0xFF392625u }, FillKind = "diagonal", Edge = 0xFFCC8966, EdgeWidth = 1,
+            Ink = 0xFFFFEFDF, Accent = 0xFFFFBA86, Panel = 0xFF432B27, Sidebar = 0xFF34231F, Card = 0xFF53352E,
+            Selected = 0xFF70483A, Line = 0xFF825B4C, Dim = 0xFFE5C6B4, Faint = 0xFFCFAE9D, Corners = 12,
+        },
+        new()
+        {
+            Id = "nocturne", Name = "Nocturne", Description = "Plum velvet with lavender serif type", Wash = false,
+            Fill = new[] { 0xFF392B46u, 0xFF221D32u }, Ink = 0xFFF0E6F9, Accent = 0xFFD6B2EE,
+            Panel = 0xFF2C2438, Sidebar = 0xFF221D2E, Card = 0xFF393044, Selected = 0xFF50405F,
+            Line = 0xFF5B4969, Dim = 0xFFCCBFD6, Faint = 0xFFB7A7C5, Corners = 18, Font = "spectral",
+        },
+        new()
+        {
+            Id = "signalbox", Name = "Signal Box", Description = "Enamel yellow, square keys and railway-red switches", Instrument = true, Wash = false,
+            Fill = new[] { 0xFFFFD65Cu }, Edge = 0xFF332C21, EdgeWidth = 2, Ink = 0xFF241F19, Accent = 0xFF9F2B1E,
+            Panel = 0xFFFFE6A2, Sidebar = 0xFFF6C954, Card = 0xFFFFF0C8, Selected = 0xFFF0BB46,
+            Line = 0xFF907740, Dim = 0xFF554731, Faint = 0xFF685737, Corners = 2, Shadow = 0xFF493820, Caps = true,
+        },
+        new()
+        {
+            Id = "marginnotes", Name = "Margin Notes", Description = "Terracotta margin rules on warm ivory, with bookish serif type", Wash = false,
+            Fill = new[] { 0xFFF7F2E9u, 0xFFEDE3D5u }, Edge = 0xFFB9987F, EdgeWidth = 1, Ink = 0xFF302923, Accent = 0xFFA24429,
+            Panel = 0xFFF7F3EA, Sidebar = 0xFFECE4D7, Card = 0xFFFCFAF4, Selected = 0xFFE9D4BF,
+            Line = 0xFFD5C4AF, Dim = 0xFF5F5146, Faint = 0xFF726254, Corners = 10, Font = "spectral",
+        },
+        new()
+        {
+            Id = "commanddeck", Name = "Command Deck", Description = "Graphite panels, blue cursor marks and monospaced tool labels", Instrument = true, Wash = false,
+            Fill = new[] { 0xFF232932u, 0xFF14171Du }, Edge = 0xFF526475, EdgeWidth = 1, Ink = 0xFFE8EEF5, Accent = 0xFF8CC8FF,
+            Panel = 0xFF191D24, Sidebar = 0xFF12151A, Card = 0xFF20262F, Selected = 0xFF2F4053,
+            Line = 0xFF384350, Dim = 0xFFB6C1CF, Faint = 0xFF96A7BA, Corners = 6, Font = "plex",
         },
     };
 
@@ -317,7 +366,7 @@ internal static class Designs
                 Corners = Num("corners", d.Corners, 0, 30),
                 Glass = Flag("glass", d.Glass),
                 Shadow = C("shadow", d.Shadow),
-                Font = Pick("font", d.Font, "sans", "mono", "serif"),
+                Font = Pick("font", d.Font, "sans", "mono", "serif", "plex", "spectral"),
                 Caps = Flag("caps", d.Caps),
                 Shade = Num("coverShade", d.Shade, 0.2, 1.5),
             };

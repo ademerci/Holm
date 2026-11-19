@@ -9,7 +9,7 @@ public class DesignTests
     [Fact]
     public void Every_built_in_design_has_its_own_id_and_readable_ink()
     {
-        Assert.Equal(17, Designs.BuiltIn.Count);
+        Assert.Equal(24, Designs.BuiltIn.Count);
         Assert.Equal(Designs.BuiltIn.Count, Designs.BuiltIn.Select(d => d.Id).Distinct().Count());
         foreach (var d in Designs.BuiltIn)
         {
@@ -34,7 +34,7 @@ public class DesignTests
     }
 
     [Fact]
-    public void Saved_liquid_design_selects_prism_glass_with_readable_ink_over_white()
+    public void Saved_liquid_design_keeps_text_readable_over_light_and_dark_desktops()
     {
         var prism = Designs.Current(new AppSettings { Design = "liquid" });
         Assert.Equal("Prism Glass", prism.Name);
@@ -43,10 +43,34 @@ public class DesignTests
         {
             uint alpha = tint >> 24;
             Assert.InRange(alpha, 1u, 254u);
-            uint OverWhite(int shift) => ((tint >> shift & 0xFF) * alpha + 255 * (255 - alpha) + 127) / 255;
-            uint surface = 0xFF000000 | OverWhite(16) << 16 | OverWhite(8) << 8 | OverWhite(0);
-            Assert.True(Designs.Contrast(prism.Ink, surface) >= 4.5);
+            foreach (uint background in new[] { 0u, 255u })
+            {
+                uint Channel(int shift) => ((tint >> shift & 0xFF) * alpha + background * (255 - alpha) + 127) / 255;
+                uint surface = 0xFF000000 | Channel(16) << 16 | Channel(8) << 8 | Channel(0);
+                foreach (uint ink in new[] { prism.Ink, prism.DimColor, prism.FaintColor })
+                    Assert.True(Designs.Contrast(ink, surface) >= 4.5, $"Ink {ink:X8} on glass {surface:X8}");
+            }
         }
+    }
+
+    [Theory]
+    [InlineData("blueprint", true)]
+    [InlineData("matcha", false)]
+    [InlineData("kiln", false)]
+    [InlineData("nocturne", false)]
+    [InlineData("signalbox", true)]
+    [InlineData("marginnotes", false)]
+    [InlineData("commanddeck", true)]
+    public void New_designs_load_from_settings_and_support_readable_JSON_derivatives(string id, bool instrument)
+    {
+        var saved = Designs.Current(new AppSettings { Design = id });
+        Assert.Equal(id, saved.Id);
+        Assert.Equal(instrument, saved.Instrument);
+        Assert.True(Designs.Parse($$"""{ "name": "My edition", "base": "{{id}}" }""", out var imported, out var error), error);
+        Assert.Equal(saved.Fill, imported!.Fill);
+        Assert.Equal(saved.Font, imported.Font);
+        foreach (uint surface in saved.Fill.Append(saved.Sidebar).Append(saved.CardColor).Append(saved.SelectedColor))
+            Assert.True(Designs.Contrast(saved.Ink, surface) >= 4.5, id);
     }
 
     [Fact]

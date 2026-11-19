@@ -125,12 +125,17 @@ public sealed partial class NotchWindow
         };
         _island.PointerExited += (_, _) =>
         {
+            _prismRim?.ClearLight();
             if (_positionHeld) return;
             _expandDelay.Stop();
             SetHoverBoost(false);
             if (_hovered && !PinnedClockOpen) _collapseDelay.Start();
         };
-        AddHandler(PointerMovedEvent, (_, e) => _lastPointer = e.GetPosition(this), Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerMovedEvent, (_, e) =>
+        {
+            _lastPointer = e.GetPosition(this);
+            if (_prismRim != null && _island.IsPointerOver) _prismRim.AimLight(e.GetPosition(_prismRim).X);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
         {

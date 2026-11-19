@@ -41,10 +41,17 @@ internal static class Look
     public static readonly IBrush OnAccent = Brush(Designs.OnColor(Current.Accent));
 
     /// <summary>The design's type for text: Inter, or a system monospace or serif face.</summary>
-    public static readonly FontFamily Font = Current.Font switch
+    static readonly FontFamily Mono = new("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Liberation Mono, monospace");
+    static readonly FontFamily Serif = new("Georgia, Cambria, DejaVu Serif, Liberation Serif, serif");
+    static readonly FontFamily Plex = new("avares://Holm.App/Assets/IBMPlexMono#IBM Plex Mono");
+    static readonly FontFamily Spectral = new("avares://Holm.App/Assets/Spectral#Spectral");
+    public static readonly FontFamily Font = FontFor(Current);
+    public static FontFamily FontFor(Design design) => design.Font switch
     {
-        "mono" => new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Liberation Mono, monospace"),
-        "serif" => new FontFamily("Georgia, Cambria, DejaVu Serif, Liberation Serif, serif"),
+        "mono" => Mono,
+        "serif" => Serif,
+        "plex" => Plex,
+        "spectral" => Spectral,
         _ => Fonts.Text,
     };
 

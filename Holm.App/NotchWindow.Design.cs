@@ -28,18 +28,18 @@ public sealed partial class NotchWindow
     };
 
     /// <summary>What to tell an AI so it writes a design Holm can import.</summary>
-    const string DesignPrompt = """
+    static readonly string DesignPrompt = $"""
         Write a design for Holm, a notch app for Windows and Linux, as one JSON object. Holm imports it in Settings › Design.
         Only "name" is required. Colours are "#RRGGBB" or "#AARRGGBB" (alpha first). Keys:
         - "name": up to 40 characters; "description": one short line
-        - "base": the built-in design to start from: classic, instrument, frosted, neon, paper, terminal, brutalist, aurora, liquid, material, mica, dotmatrix, hardware, aero, retro98, pocket, album
+        - "base": the built-in design to start from: {string.Join(", ", Designs.BuiltIn.Select(d => d.Id))}
         - "layout": "classic" (icons, round) or "instrument" (tools as words, small corners)
         - "fill": the notch's colour, or a list of 2-8 colours for a gradient; "fillKind": "vertical", "diagonal" or "conic"
         - "edge": a line around the notch and window; "edgeWidth": 0-4; "glow": true to make the edge glow
         - "ink": text and icons; "accent": buttons, switches, progress; "toggle": switches when on, if not the accent
         - "panel", "sidebar", "card", "line", "dim" (secondary text), "faint": the Holm window
         - "corners": 0-30; "glass": true for a frosted window; "shadow": a hard shadow colour
-        - "font": "sans", "mono" or "serif"; "caps": true for headings in capitals
+        - "font": "sans", "mono", "serif", "plex" (IBM Plex Mono) or "spectral" (Spectral serif); "caps": true for headings in capitals
         - "coverColors": true to wash the notch in the playing song's cover colours
         Keep "ink" readable on "fill" and "panel". Answer with the JSON only.
         The design I want:
@@ -205,12 +205,13 @@ public sealed partial class NotchWindow
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(10, 0, 10, 9) };
         words.Children.Add(new TextBlock
         {
-            Text = design.Caps ? design.Name.ToUpperInvariant() : design.Name, Foreground = ink, FontSize = 13, FontWeight = FontWeight.SemiBold,
+            Text = design.Caps ? design.Name.ToUpperInvariant() : design.Name, Foreground = ink, FontFamily = Look.FontFor(design), FontSize = 13, FontWeight = FontWeight.SemiBold,
             TextTrimming = TextTrimming.CharacterEllipsis,
         });
         var accent = new Border { Width = 18, Height = 4, CornerRadius = new CornerRadius(2), Background = Look.Brush(design.Accent), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 5, 0, 0) };
         words.Children.Add(accent);
         var face = new Grid();
+        DesignDetail.AddTo(face, design, preview: true);
         if (design.Id == DotMatrix.DesignId) face.Children.Add(new Avalonia.Controls.Shapes.Rectangle { Fill = DotMatrix.Grid(design.Ink, 0x30, 5, 1.2), IsHitTestVisible = false });
         face.Children.Add(notch);
         face.Children.Add(words);

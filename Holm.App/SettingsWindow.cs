@@ -206,6 +206,7 @@ sealed partial class SettingsWindow : Window
         }
         var sideContent = new Grid();
         if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
+        DesignDetail.AddTo(sideContent, design);
         if (DotTextBlock.Enabled) sideContent.Children.Add(new Avalonia.Controls.Shapes.Rectangle { Fill = DotMatrix.Grid(design.Ink, 0x14), IsHitTestVisible = false });
         sideContent.Children.Add(sidebar);
         if (Look.Prism) sideContent.Children.Add(new PrismGlass(design.Corners) { IsHitTestVisible = false });
@@ -378,7 +379,7 @@ sealed partial class SettingsWindow : Window
     {
         _apply.IsEnabled = HasChanges;
         _apply.Background = HasChanges ? HubTheme.ActionFill : HubTheme.ActionSurface;
-        if (!Look.Instrument && !Look.Aero) return;
+        if (!Look.Instrument && !Look.Aero && Look.Current.IsDark) return;
         _apply.Foreground = HasChanges ? OnAccent : Dim;
         foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) _apply.Resources["ButtonForeground" + state] = _apply.Foreground;
     }
@@ -611,6 +612,13 @@ sealed class ToggleSwitch : Control
             (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
             (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
         var center = new Point(12 + 16 * Position, 12);
+        if (Look.Prism)
+        {
+            var rail = new Rect(3, 6.5, 34, 11);
+            dc.DrawRectangle(track, null, rail, 5.5, 5.5);
+            PrismGlass.DrawLens(dc, new Rect(1.5 + 14 * t, 1.5, 23, 21), rail, track);
+            return;
+        }
         if (Look.Aero)
         {
             dc.DrawRectangle(track, AeroRim, new RoundedRect(new Rect(0.5, 0.5, 39, 23), 11.5));

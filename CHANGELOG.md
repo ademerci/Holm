@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Seven new designs.** Pick Blueprint, Matcha, Kiln, Nocturne, Signal Box, Margin Notes or Command Deck in *Settings › Design*. Each also works as the base for an imported design.
+
+### Changed
+- **Prism Glass.** A silver tint and dark lettering keep the notch readable over light and dark desktops. The notch rim catches light as the pointer moves, and clear slider and switch thumbs magnify the coloured track underneath.
+
 ## 1.17.1 – 2026-11-19
 
 ### Changed

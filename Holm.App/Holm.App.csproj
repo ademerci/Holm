@@ -62,6 +62,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\HolmIcons.ttf" />
+    <AvaloniaResource Include="Assets\IBMPlexMono\*;Assets\Spectral\*" />
     <AvaloniaResource Include="Assets\incoming-file.wav" />
   </ItemGroup>
 
