@@ -7,6 +7,7 @@
 - **AI usage rings switch.** You can now hide the two small usage rings at the ends of the closed notch while keeping the usage visible on the AI page of the open notch. *AI usage* still turns the whole feature off.
 
 ### Changed
+- **Friends on Holm's own server.** Invites, friend requests, chat and online status now go through Holm's relay instead of ntfy.sh's free tier, whose daily limit made short friend codes fail with "refused the note (429)". Messages left while a friend's Holm is closed now wait a week instead of 12 hours. Friends on older Holm versions keep reaching you: Holm still listens on ntfy.sh and tells them your new address by itself.
 - **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.
 
 ### Fixed
