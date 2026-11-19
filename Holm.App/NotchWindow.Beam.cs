@@ -47,7 +47,6 @@ public sealed partial class NotchWindow
     NearbyService? _nearby;
     FriendsService _friends = null!;
     readonly List<Friend> _addBack = new(); // people who added us while the notch was busy
-    readonly List<(Friend Card, string RequestId)> _friendRequests = new();
     string? _shownFriendRequestId;
     readonly DispatcherTimer _shareWatch = new() { Interval = TimeSpan.FromMilliseconds(200) };
     readonly DispatcherTimer _pickClose = new() { Interval = TimeSpan.FromMilliseconds(900) };
@@ -656,8 +655,6 @@ public sealed partial class NotchWindow
     void OnFriendRequested(Friend card, string requestId)
     {
         if (_friends.Find(card.Key) != null) return;
-        if (_friendRequests.Any(request => request.RequestId == requestId)) return;
-        _friendRequests.Add((card, requestId));
         if (_busy || _taskVisible || _hiddenForFullscreen)
         {
             ShowPeek("", $"{card.Name} wants to be your friend", "", null, seconds: 4);
@@ -678,7 +675,6 @@ public sealed partial class NotchWindow
 
     void OnFriendRequestCancelled(Friend card, string requestId)
     {
-        _friendRequests.RemoveAll(request => request.RequestId == requestId);
         if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); }
         if (_shownFriendRequestId == requestId)
         {
@@ -686,8 +682,7 @@ public sealed partial class NotchWindow
             HideTask();
         }
         ShowPeek("", $"{card.Name} cancelled the friend request", "", null, seconds: 4);
-        if (_friendRequests.Count > 0 && !_taskVisible && !_busy)
-            ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
+        ShowNextFriendRequest();
     }
 
     void OnFriendRemovedUs(Friend friend)
@@ -739,7 +734,6 @@ public sealed partial class NotchWindow
         try
         {
             await _friends.RespondToFriendRequestAsync(card, requestId, accepted);
-            _friendRequests.RemoveAll(request => request.RequestId == requestId);
             if (accepted && _friends.Find(card.Key) != null)
             {
                 ShowPeek("", $"You and {card.Name} are now friends", "", null, seconds: 4);
@@ -752,7 +746,13 @@ public sealed partial class NotchWindow
             Diag.Log($"Couldn't answer {card.Name}'s friend request: {ex.Message}");
             ShowPeek("", "Couldn't answer friend request", ex.Message, RedBrush, seconds: 5);
         }
-        if (_friendRequests.Count > 0 && !_taskVisible && !_busy) ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
+        ShowNextFriendRequest();
+    }
+
+    void ShowNextFriendRequest()
+    {
+        if (!_taskVisible && !_busy && _friends.Incoming.FirstOrDefault() is { } request)
+            ShowFriendRequest(request.Card, request.RequestId);
     }
 
     /// <summary>Someone on the network connected (worker thread). We answer on the UI thread; busy means no.</summary>

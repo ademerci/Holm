@@ -189,6 +189,59 @@ public sealed class RelayInboxTests : IDisposable
     static string Chat(FriendIdentity from, Friend to, string text)
         => FriendNotes.Seal(from, to, new FriendNote(FriendNoteKind.Chat, from.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                                                      Text: text, MessageId: Guid.NewGuid().ToString("N")));
+
+    [Fact]
+    public async Task Resending_a_request_keeps_the_original_accept_button_working()
+    {
+        var sender = new FriendsService(new AppSettings { Beam = true, FriendsServer = _ntfy.Url }, Ui);
+        var receiver = new FriendsService(new AppSettings { Beam = true, FriendsServer = _ntfy.Url }, Ui);
+        try
+        {
+            var target = receiver.EnsureMe().AsFriend();
+            sender.EnsureMe();
+            await Until(() => _ntfy.Followers == 2, "both inboxes connected");
+            Assert.Equal(FriendRequestResult.NoResponse,
+                await sender.RequestAddAsync(target, TimeSpan.FromMilliseconds(100), Net.Timeout()));
+            await Until(() => receiver.Incoming.Count == 1, "the request arrived");
+            var original = Assert.Single(receiver.Incoming);
+
+            Assert.Equal(FriendRequestResult.NoResponse,
+                await sender.RequestAddAsync(target, TimeSpan.FromMilliseconds(100), Net.Timeout()));
+            Assert.Equal(original.RequestId, Assert.Single(sender.Pending).RequestId);
+            Assert.Equal(original.RequestId, Assert.Single(receiver.Incoming).RequestId);
+
+            await receiver.RespondToFriendRequestAsync(original.Card, original.RequestId, true, Net.Timeout());
+            await Until(() => sender.Find(target.Key) != null, "the sender received the acceptance");
+            Assert.NotNull(receiver.Find(sender.Me!.PublicKey));
+            Assert.Empty(receiver.Incoming);
+        }
+        finally { sender.Stop(); receiver.Stop(); }
+    }
+
+    [Fact]
+    public async Task An_unanswered_request_survives_a_settings_reload_and_can_be_withdrawn()
+    {
+        var settings = new AppSettings { Beam = true, FriendsServer = _ntfy.Url };
+        var sender = new FriendsService(new AppSettings { Beam = true, FriendsServer = _ntfy.Url }, Ui);
+        var receiver = new FriendsService(settings, Ui);
+        FriendsService? restarted = null;
+        try
+        {
+            var target = receiver.EnsureMe().AsFriend();
+            await Until(() => _ntfy.Followers == 1, "the receiver connected");
+            await sender.RequestAddAsync(target, TimeSpan.FromMilliseconds(100), Net.Timeout());
+            await Until(() => receiver.Incoming.Count == 1, "the request arrived");
+            receiver.Stop();
+            var reloaded = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+            restarted = new FriendsService(reloaded, Ui);
+            Assert.Equal(Assert.Single(sender.Pending).RequestId, Assert.Single(restarted.Incoming).RequestId);
+            Assert.Equal(target.Key, restarted.EnsureMe().PublicKey);
+            await Until(() => _ntfy.Followers == 3, "the receiver reconnected");
+            await sender.CancelRequestAsync(Assert.Single(sender.Pending));
+            await Until(() => restarted.Incoming.Count == 0, "the withdrawal removed the saved request");
+        }
+        finally { sender.Stop(); receiver.Stop(); restarted?.Stop(); }
+    }
 }
 
 /// <summary>

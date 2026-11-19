@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.2 – 2026-11-19
+
+### Fixed
+
+- **Friend requests.** Resending a request keeps the original acceptance valid. Unanswered incoming requests stay available after restarting Holm.
+- **Settings.** Interrupted saves preserve the previous settings file and notes.
+- **Reminders.** Invalid times and durations show a validation error.
+- **App volume.** Mixer operations run in order and apply pending changes before closing.
+- **Clipboard.** Password clearing stops retrying after you copy something else.
+- **Linux.** USB eject commands time out and report power-off failures. Album art can recover after a temporary loading error.
+
 ## 2.0.1 – 2026-11-19
 
 ### Changed

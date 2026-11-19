@@ -88,7 +88,7 @@ public sealed partial class NotchWindow
         Retry = RetryChat,
         Invite = GetInviteAsync,
         AddByCode = AddFriendByCodeAsync,
-        Incoming = () => _friendRequests,
+        Incoming = () => _friends.Incoming.Select(request => (request.Card, request.RequestId)).ToList(),
         Pending = () => _friends.Pending,
         AddBackOffers = () => _addBack,
         AddBack = card => _ = AddFriendAsync(card, tellThem: false),

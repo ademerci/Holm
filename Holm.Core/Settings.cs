@@ -222,6 +222,7 @@ internal sealed class AppSettings
     public List<OwnInvite> FriendInvites { get; set; } = new();
     /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
     public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
+    public List<PendingFriendRequest> IncomingFriendRequests { get; set; } = new();
 
     /// <summary>The Holm account was offered once, at the first start after it came (Settings › Account any time after).</summary>
     public bool AccountOffered { get; set; }

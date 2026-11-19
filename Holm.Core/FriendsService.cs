@@ -125,13 +125,17 @@ internal sealed partial class FriendsService
     const long PendingFor = 2 * 24 * 60 * 60;
 
     bool Prune(long now)
-        => _settings.FriendInvites.RemoveAll(i => i.Expires + InviteGrace < now) + _settings.PendingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now) > 0;
+        => _settings.FriendInvites.RemoveAll(i => i.Expires + InviteGrace < now)
+         + _settings.PendingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now)
+         + _settings.IncomingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now) > 0;
 
     /// <summary>Our invite codes that still work, newest last.</summary>
     public IReadOnlyList<OwnInvite> Invites => _settings.FriendInvites.Where(i => i.Expires > Now).ToList();
 
     /// <summary>Requests we sent that haven't been answered yet.</summary>
     public IReadOnlyList<PendingFriendRequest> Pending => _settings.PendingFriendRequests;
+    public IReadOnlyList<PendingFriendRequest> Incoming
+        => _settings.IncomingFriendRequests.Where(p => p.Sent + PendingFor >= Now && Find(p.Card.Key) == null).ToList();
 
     /// <summary>
     /// The invite code to give a friend: the current one while it works for at least another hour, else a new one,
@@ -242,6 +246,7 @@ internal sealed partial class FriendsService
         // Catch up from now on: a friend may write while Holm isn't running.
         _settings.FriendsSince = _settings.FriendsRelaySince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         _settings.FriendsSeen.Clear();
+        _settings.IncomingFriendRequests.Clear();
         _settings.Save();
         _me = me;
         Restart();
@@ -337,6 +342,7 @@ internal sealed partial class FriendsService
         _settings.FriendsSince = Now - 12 * 60 * 60;
         _settings.FriendsRelaySince = Now - 7 * 24 * 60 * 60; // what the relay keeps
         _settings.FriendsSeen.Clear();
+        _settings.IncomingFriendRequests.Clear();
         _me = new FriendIdentity(MyName, identity.Topic, OwnServer, key);
         _loaded = true;
         _settings.Save();
@@ -418,11 +424,12 @@ internal sealed partial class FriendsService
         }
 
         var me = EnsureMe(); // starts our inbox before the request is posted
-        string requestId = Guid.NewGuid().ToString("N");
+        var previous = _settings.PendingFriendRequests.FirstOrDefault(p => p.Card.Key == friend.Key);
+        string requestId = previous?.RequestId ?? Guid.NewGuid().ToString("N");
         var answer = new TaskCompletionSource<FriendRequestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_friendRequests.TryAdd(requestId, answer)) throw new InvalidOperationException("Duplicate friend request id");
+        if (!_friendRequests.TryAdd(requestId, answer)) return FriendRequestResult.NoResponse;
         var pending = new PendingFriendRequest { RequestId = requestId, Card = friend, Sent = Now, ByInvite = invite != null };
-        _settings.PendingFriendRequests.RemoveAll(p => p.Card.Key == friend.Key); // the newest request to them counts
+        _settings.PendingFriendRequests.RemoveAll(p => p.Card.Key == friend.Key);
         _settings.PendingFriendRequests.Add(pending);
         _settings.Save();
         InvitesChanged?.Invoke();
@@ -445,7 +452,7 @@ internal sealed partial class FriendsService
         }
         catch (IOException)
         {
-            ForgetPending(requestId); // never got out
+            if (previous == null) ForgetPending(requestId);
             throw;
         }
         finally { _friendRequests.TryRemove(requestId, out _); }
@@ -483,6 +490,14 @@ internal sealed partial class FriendsService
             RequestId: requestId, Accepted: accepted);
         await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
         if (accepted && !_cancelledFriendRequests.Contains(requestId)) AddOrUpdateFriend(friend, requestId);
+        ForgetIncoming(friend.Key, requestId);
+    }
+
+    void ForgetIncoming(string sender, string requestId)
+    {
+        if (_settings.IncomingFriendRequests.RemoveAll(p => p.RequestId == requestId && p.Card.Key == sender) == 0) return;
+        _settings.Save();
+        InvitesChanged?.Invoke();
     }
 
     void AddOrUpdateFriend(Friend card, string? requestId = null)
@@ -729,9 +744,17 @@ internal sealed partial class FriendsService
                     UpdateFriendCard(friend, card);
                     _ = ReplyToRequestAsync(me, card, requestId, accepted: true);
                 }
-                else if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
-                    _ = AcceptInviteAsync(card, requestId); // they had our code: no need to ask
-                else FriendRequested?.Invoke(card, requestId);
+                else if (age <= PendingFor && !_cancelledFriendRequests.Contains(requestId))
+                {
+                    bool isNew = !_settings.IncomingFriendRequests.Any(p => p.RequestId == requestId && p.Card.Key == sender);
+                    if (!isNew) break;
+                    _settings.IncomingFriendRequests.Add(new PendingFriendRequest { Card = card, RequestId = requestId, Sent = Now - age });
+                    _settings.Save();
+                    InvitesChanged?.Invoke();
+                    if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
+                        _ = AcceptInviteAsync(card, requestId);
+                    else FriendRequested?.Invoke(card, requestId);
+                }
                 break;
             case FriendNoteKind.FriendResponse when note.RequestId is { } responseId && note.Accepted is { } accepted:
             {
@@ -744,11 +767,12 @@ internal sealed partial class FriendsService
                     if (accepted) AddOrUpdateFriend(pending.Card, responseId);
                     if (!waiting) LateAnswer?.Invoke(pending.Card, accepted);
                 }
-                if (waiting) answer!.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
+                if (waiting && pending != null) answer!.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
                 break;
             }
             case FriendNoteKind.FriendRequestCancelled when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } cancelledId:
                 _cancelledFriendRequests.Add(cancelledId);
+                ForgetIncoming(sender, cancelledId);
                 RemoveFriendAddedByRequest(cancelledId);
                 FriendRequestCancelled?.Invoke(card, cancelledId);
                 break;
