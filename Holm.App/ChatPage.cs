@@ -136,6 +136,7 @@ internal sealed class ChatPage : HubView
         foreach (string state in new[] { "PointerOver", "Focused" }) _input.Resources["TextControlBackground" + state] = Brushes.Transparent;
         _input.Resources["TextControlBorderThemeThicknessFocused"] = new Thickness(0);
         _input.Padding = new Thickness(4, 9, 4, 9);
+        _input.VerticalContentAlignment = VerticalAlignment.Center;
         _input.FontSize = 13.5;
         _input.MaxHeight = 120;
         _input.AcceptsReturn = false;
