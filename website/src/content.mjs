@@ -200,7 +200,7 @@ export const docs = [
       ],
       [
         'Local data and external services',
-        'Notes, chat history and settings stay on your PC. Weather uses Open-Meteo; GIF search uses GIPHY. Beam uses Holm's relay at relay.holmnotch.ch (hosted on Cloudflare) and, for friends on older versions, ntfy.sh for sealed signalling and a magic-wormhole transit relay for encrypted transfers. Service operators can still observe connection metadata. See the repository README for the detailed privacy and network model.',
+        'Notes, chat history and settings stay on your PC. Weather uses Open-Meteo; GIF search uses GIPHY. Beam uses the Holm relay at relay.holmnotch.ch (hosted on Cloudflare) and, for friends on older versions, ntfy.sh for sealed signalling and a magic-wormhole transit relay for encrypted transfers. Service operators can still observe connection metadata. See the repository README for the detailed privacy and network model.',
       ],
     ],
   },
