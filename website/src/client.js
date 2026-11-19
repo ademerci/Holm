@@ -6,6 +6,8 @@ import {
   dateLabel,
   sizeLabel,
   releaseHtml,
+  downloadTotal,
+  combinedDownloads,
 } from './releases.mjs';
 const base = document.body.dataset.base;
 const menu = document.querySelector('.menu-toggle');
@@ -135,6 +137,22 @@ function applyReleaseFilter() {
 }
 filter?.addEventListener('change', applyReleaseFilter);
 
+const countElement = document.querySelector('[data-download-total]');
+let githubCount = countElement ? Number(countElement.dataset.githubCount) : null;
+let storeCount = null;
+function renderDownloadCount() {
+  const combined = combinedDownloads(githubCount, storeCount);
+  if (!combined) return;
+  const count = combined.count.toLocaleString('en-US');
+  document.querySelectorAll('[data-download-number]').forEach((el) => (el.textContent = count));
+  document.querySelectorAll('[data-download-total]').forEach((el) => {
+    el.textContent = `${count} downloads`;
+  });
+  document.querySelectorAll('[data-download-description]').forEach((el) => {
+    el.textContent = 'downloads';
+  });
+}
+
 // One request per visit, at most once per 15 minutes per browser. Never store tokens.
 if (document.querySelector('[data-releases]')) void updateReleases();
 async function updateReleases() {
@@ -142,8 +160,8 @@ async function updateReleases() {
   const initialStatus = status.innerHTML;
   status.textContent = 'Checking the latest release information…';
   const result = await loadReleaseFeed({
-    readCache: () => JSON.parse(localStorage.getItem('holm-releases-v1')),
-    writeCache: (value) => localStorage.setItem('holm-releases-v1', JSON.stringify(value)),
+    readCache: () => JSON.parse(localStorage.getItem('holm-releases-v2')),
+    writeCache: (value) => localStorage.setItem('holm-releases-v2', JSON.stringify(value)),
     snapshotAt: Number(document.querySelector('[data-releases]').dataset.snapshotAt || 0),
   });
   if (result.releases) render(result.releases);
@@ -160,6 +178,8 @@ async function updateReleases() {
   }
 }
 function render(releases) {
+  githubCount = downloadTotal(releases);
+  renderDownloadCount();
   const list = document.querySelector('[data-release-list]');
   if (list) {
     list.innerHTML = releases.map(releaseHtml).join('');
@@ -186,4 +206,45 @@ function render(releases) {
       assets.append(anchor);
     }
   }
+}
+
+// Only aggregate counts are requested; no browser identifier is sent.
+if (document.querySelector('[data-user-total]')) {
+  fetch('https://stats.holmnotch.ch/stats', {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(8000),
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error('Unavailable');
+      return response.json();
+    })
+    .then((stats) => {
+      if (!Number.isSafeInteger(stats.last30) || stats.last30 < 0) throw new Error('Invalid count');
+      document.querySelectorAll('[data-user-total]').forEach((el) => {
+        el.textContent = `Used by ${stats.last30.toLocaleString('en-US')} people this month`;
+      });
+    })
+    .catch(() => {});
+}
+
+if (countElement) {
+  fetch('https://stats.holmnotch.ch/store', {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(8000),
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error('Unavailable');
+      return response.json();
+    })
+    .then((stats) => {
+      if (
+        !Number.isSafeInteger(stats.installs) ||
+        stats.installs < 0 ||
+        !Number.isFinite(Date.parse(stats.checkedAt))
+      )
+        throw new Error('Invalid count');
+      storeCount = stats.installs;
+      renderDownloadCount();
+    })
+    .catch(() => {});
 }

@@ -1,5 +1,5 @@
 export const REPO = 'https://github.com/ademerci/Holm';
-export const API = 'https://api.github.com/repos/ademerci/Holm/releases?per_page=30';
+export const API = 'https://api.github.com/repos/ademerci/Holm/releases?per_page=100';
 export const TTL = 15 * 60 * 1000;
 export const escapeHtml = (value = '') =>
   String(value).replace(
@@ -51,10 +51,39 @@ export function normalizeReleases(data) {
         .map((a) => ({
           name: a.name,
           size: a.size,
+          download_count:
+            Number.isSafeInteger(a.download_count) && a.download_count >= 0 ? a.download_count : 0,
           browser_download_url: officialUrl(a.browser_download_url, true),
         })),
     }))
     .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+}
+export const downloadTotal = (releases) =>
+  releases.reduce(
+    (sum, release) =>
+      sum +
+      release.assets
+        .filter((asset) => asset.name === 'Holm.exe' || /^Holm-.*-win-x64\.zip$/.test(asset.name))
+        .reduce((total, asset) => total + asset.download_count, 0),
+    0,
+  );
+export function combinedDownloads(github, store) {
+  if (!Number.isSafeInteger(github) || github < 0) return null;
+  if (store === null) return { count: github, complete: false };
+  if (!Number.isSafeInteger(store) || store < 0 || !Number.isSafeInteger(github + store))
+    return null;
+  return { count: github + store, complete: true };
+}
+export async function fetchReleases(fetcher, options) {
+  const all = [];
+  for (let page = 1; ; page++) {
+    const response = await fetcher(`${API}&page=${page}`, options);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const batch = await response.json();
+    if (!Array.isArray(batch)) throw new Error('Expected a release list');
+    all.push(...batch);
+    if (batch.length < 100) return normalizeReleases(all);
+  }
 }
 export const latestRelease = (releases) =>
   releases.find((r) => !r.prerelease && r.assets.some((a) => a.name === 'Holm.exe'));
@@ -97,12 +126,10 @@ export async function loadReleaseFeed({
   if (saved && now - cached.fetched < TTL)
     return { releases: saved, source: 'cache', checkedAt: cached.fetched };
   try {
-    const response = await fetcher(API, {
+    const releases = await fetchReleases(fetcher, {
       headers: { Accept: 'application/vnd.github+json' },
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const releases = normalizeReleases(await response.json());
     if (!releases.length) throw new Error('No usable release data');
     try {
       writeCache({ fetched: now, releases });

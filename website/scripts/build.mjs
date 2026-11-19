@@ -55,8 +55,19 @@ for (const size of [96, 192, 512])
     path.join(out, `assets/icon-${size}.png`),
   );
 await copyFile(path.join(screenshotDirectory, 'expanded.png'), path.join(out, 'assets/social.png'));
-for (const name of ['style.css', 'noscript.css', 'client.js', 'releases.mjs'])
+for (const name of [
+  'style.css',
+  'noscript.css',
+  'client.js',
+  'releases.mjs',
+  'home.css',
+  'home.js',
+])
   await copyFile(path.join(root, 'src', name), path.join(out, 'assets', name));
+// Photos of the people behind Holm (About page), checked-in and already cropped for privacy.
+await mkdir(path.join(out, 'assets/team'), { recursive: true });
+for (const name of ['lake.jpg', 'cafe.jpg'])
+  await copyFile(path.join(root, 'src/assets/team', name), path.join(out, 'assets/team', name));
 await writeFile(path.join(out, 'assets/releases.json'), JSON.stringify(snapshot));
 const pages = createPages({ base, snapshot, store });
 for (const [route, html] of pages) {
@@ -78,7 +89,7 @@ await writeFile(
 await writeFile(path.join(out, '.nojekyll'), '');
 await writeFile(
   path.join(out, '_headers'),
-  `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://api.github.com; base-uri 'none'; frame-ancestors 'none'; form-action 'none'\n/assets/*\n  Cache-Control: public, max-age=3600\n`,
+  `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Content-Security-Policy: default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://api.github.com https://stats.holmnotch.ch; base-uri 'none'; frame-ancestors 'none'; form-action 'none'\n/assets/*\n  Cache-Control: public, max-age=3600\n`,
 );
 await writeFile(
   path.join(out, 'build.json'),
