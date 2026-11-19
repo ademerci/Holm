@@ -23,6 +23,7 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     const int InputIndex = 0, InputVolumeChannels = 172, InputVolumeValues = 176, InputMute = 336, InputProplist = 344, InputCorked = 352;
 
     readonly ContextCallback _onState;
+    readonly SuccessCallback _onWrite;
     readonly SubscribeCallback _onEvent;
     readonly InputCallback _onInput;
     readonly object _gate = new();
@@ -41,6 +42,7 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     public LinuxAppVolumePlatform()
     {
         _onState = OnState;
+        _onWrite = (_, _, _) => pa_threaded_mainloop_signal(_loop, 0);
         _onEvent = OnEvent;
         _onInput = OnInput;
     }
@@ -51,14 +53,21 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
         try
         {
             _loop = pa_threaded_mainloop_new();
-            if (_loop == IntPtr.Zero || pa_threaded_mainloop_start(_loop) < 0) { _unavailable = true; return; }
+            if (_loop == IntPtr.Zero) { _unavailable = true; return; }
+            if (pa_threaded_mainloop_start(_loop) < 0)
+            {
+                pa_threaded_mainloop_free(_loop);
+                _loop = IntPtr.Zero;
+                _unavailable = true;
+                return;
+            }
             pa_threaded_mainloop_lock(_loop);
             try
             {
                 _context = pa_context_new(pa_threaded_mainloop_get_api(_loop), "Holm mixer");
                 if (_context == IntPtr.Zero) return;
                 pa_context_set_state_callback(_context, _onState, IntPtr.Zero);
-                pa_context_connect(_context, null, 0, IntPtr.Zero);
+                if (pa_context_connect(_context, null, 0, IntPtr.Zero) < 0) return;
                 // Wait until the connection is up or has failed, so the first read finds it ready.
                 while (true)
                 {
@@ -171,14 +180,14 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
             {
                 var volume = new CVolume { Channels = channels };
                 unsafe { for (int i = 0; i < channels; i++) volume.Values[i] = raw; }
-                Unref(pa_context_set_sink_input_volume(_context, index, ref volume, IntPtr.Zero, IntPtr.Zero));
+                WaitForWrite(pa_context_set_sink_input_volume(_context, index, ref volume, _onWrite, IntPtr.Zero));
             });
     }
 
     public void SetMute(string key, bool mute)
     {
         foreach (var (index, _) in StreamsOf(key))
-            Locked(() => Unref(pa_context_set_sink_input_mute(_context, index, mute ? 1 : 0, IntPtr.Zero, IntPtr.Zero)));
+            Locked(() => WaitForWrite(pa_context_set_sink_input_mute(_context, index, mute ? 1 : 0, _onWrite, IntPtr.Zero)));
     }
 
     List<(uint Index, byte Channels)> StreamsOf(string key)
@@ -190,8 +199,21 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     {
         if (_loop == IntPtr.Zero) return;
         pa_threaded_mainloop_lock(_loop);
-        try { if (_context != IntPtr.Zero) action(); }
+        try { if (_context != IntPtr.Zero && pa_context_get_state(_context) == ContextReady) action(); }
         finally { pa_threaded_mainloop_unlock(_loop); }
+    }
+
+    // Wait for the server's reply so closing the mixer cannot disconnect before the write is applied.
+    void WaitForWrite(IntPtr operation)
+    {
+        const int Running = 0; // PA_OPERATION_RUNNING
+        if (operation == IntPtr.Zero) return;
+        try
+        {
+            while (pa_operation_get_state(operation) == Running && pa_context_get_state(_context) == ContextReady)
+                pa_threaded_mainloop_wait(_loop);
+        }
+        finally { pa_operation_unref(operation); }
     }
 
     public AppIcon? IconOf(string key)
@@ -233,6 +255,7 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     unsafe struct CVolume { public byte Channels; public fixed uint Values[32]; }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void ContextCallback(IntPtr context, IntPtr userdata);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void SuccessCallback(IntPtr context, int success, IntPtr userdata);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void SubscribeCallback(IntPtr context, int type, uint index, IntPtr userdata);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void InputCallback(IntPtr context, IntPtr info, int end, IntPtr userdata);
 
@@ -256,8 +279,9 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     [DllImport(Pulse)] static extern void pa_context_set_subscribe_callback(IntPtr context, SubscribeCallback? callback, IntPtr userdata);
     [DllImport(Pulse)] static extern IntPtr pa_context_subscribe(IntPtr context, uint mask, IntPtr callback, IntPtr userdata);
     [DllImport(Pulse)] static extern IntPtr pa_context_get_sink_input_info_list(IntPtr context, InputCallback callback, IntPtr userdata);
-    [DllImport(Pulse)] static extern IntPtr pa_context_set_sink_input_volume(IntPtr context, uint index, ref CVolume volume, IntPtr callback, IntPtr userdata);
-    [DllImport(Pulse)] static extern IntPtr pa_context_set_sink_input_mute(IntPtr context, uint index, int mute, IntPtr callback, IntPtr userdata);
+    [DllImport(Pulse)] static extern IntPtr pa_context_set_sink_input_volume(IntPtr context, uint index, ref CVolume volume, SuccessCallback callback, IntPtr userdata);
+    [DllImport(Pulse)] static extern IntPtr pa_context_set_sink_input_mute(IntPtr context, uint index, int mute, SuccessCallback callback, IntPtr userdata);
     [DllImport(Pulse)] static extern IntPtr pa_proplist_gets(IntPtr proplist, [MarshalAs(UnmanagedType.LPUTF8Str)] string key);
     [DllImport(Pulse)] static extern void pa_operation_unref(IntPtr operation);
+    [DllImport(Pulse)] static extern int pa_operation_get_state(IntPtr operation);
 }

@@ -207,6 +207,7 @@ public sealed partial class NotchWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        HideMixer();
         _eqTimer.Stop();
         _powerPlatform.Stop();
         _audio.Stop();

@@ -229,6 +229,7 @@ internal sealed class AppSettings
     public bool AccountHidden { get; set; }
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
+    static readonly object SaveGate = new();
 
     /// <summary>Set while posing for screenshots, which change settings that must never reach your settings file.</summary>
     internal static bool ReadOnly;
@@ -245,12 +246,22 @@ internal sealed class AppSettings
     public void Save()
     {
         if (ReadOnly) return;
-        try
+        lock (SaveGate)
         {
-            Directory.CreateDirectory(Diag.Folder);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+            string path = FilePath;
+            string temp = path + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(Diag.Folder);
+                File.WriteAllText(temp, JsonSerializer.Serialize(this));
+                File.Move(temp, path, overwrite: true);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Diag.Log("Settings save: " + ex.GetType().Name);
+                return;
+            }
         }
-        catch { return; }
         Saved?.Invoke();
     }
 }

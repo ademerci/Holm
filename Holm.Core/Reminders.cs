@@ -67,14 +67,17 @@ internal static class ReminderParser
             foreach (Match part in RelativePart.Matches(relative.Groups["all"].Value))
             {
                 if (!double.TryParse(part.Groups["n"].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double n)) return false;
-                length += part.Groups["unit"].Value.ToLowerInvariant() switch
+                double secondsPerUnit = part.Groups["unit"].Value.ToLowerInvariant() switch
                 {
-                    "stunden" or "stunde" or "std" or "hours" or "hour" or "hrs" or "hr" or "h" => TimeSpan.FromHours(n),
-                    "sekunden" or "seconds" or "secs" or "sec" or "s" => TimeSpan.FromSeconds(n),
-                    _ => TimeSpan.FromMinutes(n),
+                    "stunden" or "stunde" or "std" or "hours" or "hour" or "hrs" or "hr" or "h" => 3600,
+                    "sekunden" or "seconds" or "secs" or "sec" or "s" => 1,
+                    _ => 60,
                 };
+                double seconds = n * secondsPerUnit;
+                if (!double.IsFinite(seconds) || seconds > Longest.TotalSeconds) return false;
+                length += TimeSpan.FromSeconds(seconds);
             }
-            if (length <= TimeSpan.Zero || length > Longest) return false;
+            if (length <= TimeSpan.Zero || length > Longest || length > DateTime.MaxValue - now) return false;
             due = now + length;
             text = Tidy(Cut(s, relative));
             return true;
@@ -86,8 +89,9 @@ internal static class ReminderParser
             string suffix = clock.Groups["suffix"].Value.ToLowerInvariant().Replace(".", "");
             // A bare number is no time ("buy 3 apples"); "9 Uhr", "9am" and "9:15" are.
             if (!hasMinutes && suffix.Length == 0) continue;
-            int hour = int.Parse(clock.Groups["h"].Value, CultureInfo.InvariantCulture);
-            int minute = hasMinutes ? int.Parse(clock.Groups["m"].Value, CultureInfo.InvariantCulture) : 0;
+            if (!int.TryParse(clock.Groups["h"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int hour)) return false;
+            int minute = 0;
+            if (hasMinutes && !int.TryParse(clock.Groups["m"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out minute)) return false;
             if (suffix is "am" or "pm")
             {
                 if (hour is < 1 or > 12) return false;
@@ -95,12 +99,13 @@ internal static class ReminderParser
             }
             if (hour > 23 || minute > 59) return false;
 
-            due = now.Date.AddDays(days).AddHours(hour).AddMinutes(minute);
-            if (due <= now)
+            var offset = new TimeSpan(days, hour, minute, 0);
+            if (offset <= now.TimeOfDay)
             {
-                if (dayGiven && days > 0) return false; // "tomorrow" in the past can't be
-                due = due.AddDays(1);
+                offset += TimeSpan.FromDays(1);
             }
+            if (offset > DateTime.MaxValue - now.Date) return false;
+            due = now.Date + offset;
             text = Tidy(Cut(s, clock));
             return true;
         }

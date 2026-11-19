@@ -148,6 +148,34 @@ public class LinuxPlatformTests : IDisposable
     [InlineData("ftp://example.invalid/cover.jpg")]
     public async Task A_cover_that_cannot_be_read_is_no_cover(string url)
         => Assert.Null(await LinuxMediaPlatform.LoadCoverAsync(url));
+
+    [Fact]
+    public async Task A_failed_cover_load_can_recover_after_a_short_cooldown()
+    {
+        Directory.CreateDirectory(_folder);
+        string file = Path.Combine(_folder, "late-cover.jpg");
+        string url = new Uri(file).AbsoluteUri;
+        var time = new CoverClock();
+        var platform = new LinuxMediaPlatform(Bus.Session, time);
+
+        Assert.Null(await platform.ReadCoverAsync(url));
+        File.WriteAllBytes(file, new byte[] { 1, 2, 3 });
+        Assert.Null(await platform.ReadCoverAsync(url));
+
+        time.Advance(TimeSpan.FromSeconds(3));
+        Assert.Equal(new byte[] { 1, 2, 3 }, await platform.ReadCoverAsync(url));
+        File.Delete(file);
+        time.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(new byte[] { 1, 2, 3 }, await platform.ReadCoverAsync(url));
+    }
+
+    sealed class CoverClock : TimeProvider
+    {
+        long _ticks;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => _ticks;
+        public void Advance(TimeSpan time) => _ticks += time.Ticks;
+    }
 }
 
 /// <summary>Where Linux desktops keep the Downloads folder.</summary>
@@ -180,6 +208,18 @@ public class RemovableDriveTests : IDisposable
         });
         Assert.True(Holm.Platform.Linux.LinuxRemovableDrivesPlatform.IsMountPoint("/run/media/me/MY STICK", _mounts));
         Assert.False(Holm.Platform.Linux.LinuxRemovableDrivesPlatform.IsMountPoint("/run/media/me/OTHER", _mounts));
+    }
+
+    [Fact]
+    public async Task A_drive_command_times_out_while_its_output_streams_are_open()
+    {
+        // The child keeps both redirected streams open without writing anything.
+        var (tool, args) = OperatingSystem.IsWindows()
+            ? ("cmd.exe", new[] { "/d", "/c", "ping -n 20 127.0.0.1 >nul" })
+            : ("sh", new[] { "-c", "sleep 20" });
+        string? error = await LinuxRemovableDrivesPlatform.RunAsync(tool, args, TimeSpan.FromSeconds(1))
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(tool + " timed out", error);
     }
 }
 
