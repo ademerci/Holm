@@ -105,7 +105,7 @@ internal sealed class UsageRing
     }
 
     /// <summary>The arc from twelve o'clock, clockwise.</summary>
-    static Geometry? Arc(double c, double r, double percent)
+    internal static Geometry? Arc(double c, double r, double percent)
     {
         if (percent < 0.5) return null;
         if (percent >= 99.5) return new EllipseGeometry { Center = new Point(c, c), RadiusX = r, RadiusY = r };

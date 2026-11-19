@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- The closed notch centers the update arrow and shows a green progress ring while Holm downloads an update. Discord notifications use Discord’s own icon.
+
 ### Added
 - **Seven new designs.** Pick Blueprint, Matcha, Kiln, Nocturne, Signal Box, Margin Notes or Command Deck in *Settings › Design*. Each also works as the base for an imported design.
 

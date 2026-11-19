@@ -33,6 +33,9 @@ public sealed partial class NotchWindow
     Version? _notifiedUpdateVersion, _dismissedUpdateVersion;
     TextBlock? _updatesStatusText;
     Button? _checkUpdatesButton, _installUpdateButton;
+    int _updatePercent;
+    UpdateBadge? _closedUpdateBadge, _mediaUpdateBadge;
+    TextBlock? _updateRowStatus;
 
     bool HasUpdateNotification => _availableUpdate is { } update && update.Version != _dismissedUpdateVersion;
 
@@ -184,34 +187,69 @@ public sealed partial class NotchWindow
         ApplyState(animate: true);
     }
 
-    static Border UpdateNotificationIcon(double size) => new()
+    sealed class UpdateBadge : Control
     {
-        Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = Brush("#FF0A84FF"),
-        Child = new TextBlock
+        static readonly IBrush Blue = Brush("#FF0A84FF");
+        static readonly Pen Track = new(Brush("#FF49494D"), 1.8);
+        static readonly Pen Green = new(UsageRing.Ample, 1.8, lineCap: PenLineCap.Round);
+        static readonly Pen Arrow = new(Brushes.White, 1.5, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+        static readonly Geometry Download = Geometry.Parse("M10,4.5 V12.5 M6.5,9 L10,12.5 L13.5,9 M5.5,15.5 H14.5");
+        Geometry? _arc;
+        bool _showRing;
+
+        public UpdateBadge(double size) { Width = Height = size; }
+
+        public void SetProgress(int percent)
         {
-            Text = "", FontFamily = IconFont, FontSize = size * 12 / 19, Foreground = Brushes.White,
-            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
-        },
-    };
+            _showRing = true;
+            _arc = UsageRing.Arc(10, 9, percent);
+            InvalidateVisual();
+        }
+
+        public override void Render(DrawingContext dc)
+        {
+            using var scale = dc.PushTransform(Matrix.CreateScale(Bounds.Width / 20, Bounds.Height / 20));
+            var center = new Point(10, 10);
+            double radius = _showRing ? 7.4 : 10;
+            dc.DrawEllipse(Blue, null, center, radius, radius);
+            dc.DrawGeometry(null, Arrow, Download);
+            if (!_showRing) return;
+            dc.DrawEllipse(null, Track, center, 9, 9);
+            if (_arc != null) dc.DrawGeometry(null, Green, _arc);
+        }
+    }
+
+    static UpdateBadge UpdateNotificationIcon(double size) => new(size);
 
     /// <summary>The update as a notification: a logo on the badges and a row in the open notch.</summary>
     void AddUpdateNotification()
     {
         if (!HasUpdateNotification || _availableUpdate is not { } release) return;
-        if (!Look.Instrument)
+        if (!Look.Instrument || _installingUpdate)
         {
-            var logo = UpdateNotificationIcon(BadgeLogoSize);
+            var logo = _closedUpdateBadge = UpdateNotificationIcon(BadgeLogoSize);
             logo.Margin = new Thickness(0, 0, 3, 0);
-            _badgeLogoList.Children.Add(logo);
-            var small = UpdateNotificationIcon(MediaBadgeLogoSize);
+            var small = _mediaUpdateBadge = UpdateNotificationIcon(MediaBadgeLogoSize);
             small.Margin = new Thickness(0, 0, 3, 0);
-            _mediaBadgeLogos.Children.Add(small);
+            if (_installingUpdate)
+            {
+                logo.SetProgress(_updatePercent);
+                small.SetProgress(_updatePercent);
+                _badgeLogoList.Children.Insert(0, logo);
+                _mediaBadgeLogos.Children.Insert(0, small);
+            }
+            else
+            {
+                _badgeLogoList.Children.Add(logo);
+                _mediaBadgeLogos.Children.Add(small);
+            }
         }
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         row.Children.Add(UpdateNotificationIcon(28));
         var text = new StackPanel { Margin = new Thickness(10, 0, 10, 0) };
         text.Children.Add(new TextBlock { Text = $"Holm {release.Version.ToString(3)} is available", FontSize = 13, FontWeight = FontWeight.SemiBold });
-        text.Children.Add(new TextBlock { Text = _installingUpdate ? _updateStatus : InstallsItself ? "Click to update and restart Holm" : "Click to get it", FontSize = 12, Foreground = Dim });
+        _updateRowStatus = new TextBlock { Text = _installingUpdate ? _updateStatus : InstallsItself ? "Click to update and restart Holm" : "Click to get it", FontSize = 12, Foreground = Dim };
+        text.Children.Add(_updateRowStatus);
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
         var button = NotchButton.Row(row);
@@ -255,6 +293,8 @@ public sealed partial class NotchWindow
             return;
         }
         _installingUpdate = true;
+        _dismissedUpdateVersion = null;
+        _updatePercent = 0;
         _updateStatus = "Downloading update…";
         RefreshUpdateMenu();
         StopSharing(); // no new transfers while preparing to restart
@@ -266,8 +306,12 @@ public sealed partial class NotchWindow
             var progress = new Progress<int>(percent =>
             {
                 if (_updatesClosing || !_installingUpdate) return;
+                _updatePercent = percent;
+                _closedUpdateBadge?.SetProgress(percent);
+                _mediaUpdateBadge?.SetProgress(percent);
                 _updateStatus = $"Downloading update… {percent}%";
-                RefreshUpdateMenu();
+                if (_updateRowStatus != null) _updateRowStatus.Text = _updateStatus;
+                RefreshUpdateMenu(refreshNotification: false);
             });
             string executable = await _updates.DownloadAsync(release, staging, progress, _updateLifetime.Token);
             if (_updatesClosing) return;
