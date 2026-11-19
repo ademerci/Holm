@@ -1,0 +1,22 @@
+Holm 1.18.0 — Herm starts a new series, puts the notification count on the left and fixes the color picker on scaled displays.
+
+## Download
+
+| File | For whom |
+| --- | --- |
+| **Holm-1.18.0-win-x64.zip** | Unzip and run `Holm.exe`. Holm's updater uses this file too. |
+| **Holm.exe** | Run the self-contained app directly. No .NET installation needed. |
+| **Holm-1.18.0-linux-x64.tar.gz** | Unpack and run `./Holm`. No .NET installation needed. |
+
+Requires Windows 10 (2004 or newer) or Windows 11, x64, or Linux x64 with X11 (Wayland through XWayland).
+
+Holm is unsigned. Windows SmartScreen may warn on first launch, and Smart App Control may block an unsigned app.
+
+### Added
+- **A new series, Herm.** The Holm window shows the name beside the version number.
+
+### Changed
+- **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.
+
+### Fixed
+- **Color picker on scaled displays.** At 150 % or 200 % scale the picker showed the screen zoomed in, so only part of it could be picked. It now shows the whole screen exactly as it was.

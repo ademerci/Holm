@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.18.0 – 2026-11-19
+
+### Added
+- **A new series, Herm.** The Holm window shows the name beside the version number.
+
+### Changed
+- **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.
+
+### Fixed
+- **Color picker on scaled displays.** At 150 % or 200 % scale the picker showed the screen zoomed in, so only part of it could be picked. It now shows the whole screen exactly as it was.
+
 ## 1.17.2 – 2026-11-19
 
 ### Fixed

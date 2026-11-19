@@ -36,9 +36,9 @@ public sealed partial class NotchWindow
     readonly Dictionary<string, Bitmap?> _logoCache = new();
 
     // Badge: nothing playing, unread messages
-    readonly Grid _badgeView = new() { Margin = new Thickness(10, 0), ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+    readonly Grid _badgeView = new() { Margin = new Thickness(10, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
     readonly StackPanel _badgeLogoList = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, ClipToBounds = true };
-    readonly Border _badgePrivacyHost = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0), IsVisible = false };
+    readonly Border _badgePrivacyHost = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), IsVisible = false };
     readonly TextBlock _badgeText = CountText();
     Border _badgePill = null!;
 
@@ -49,7 +49,7 @@ public sealed partial class NotchWindow
     readonly TextBlock _messageText = new() { FontSize = 12, Foreground = Dim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
 
     // Beside the music
-    readonly StackPanel _mediaBadgeLogos = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
+    readonly StackPanel _mediaBadgeLogos = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, Look.Pick(0, 6), 0) };
     readonly TextBlock _mediaBadgeText = CountText();
     Border _mediaBadge = null!;
 
@@ -78,16 +78,15 @@ public sealed partial class NotchWindow
         _chat.OtherArrived += OnOtherNotification;
         _notifications.Changed += () => Dispatcher.UIThread.Post(() => _ = ReadNotificationsAsync());
 
-        // The closed notch's badge: the apps' logos, then the dots and the count.
-        _badgeView.Children.Add(_badgeLogoList);
-        // The instrument look shows only the count, centred; the classic one the apps' logos, then the count.
-        var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = Look.Pick(HorizontalAlignment.Center, HorizontalAlignment.Stretch), VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(_badgePrivacyHost);
+        // The closed notch's badge: the count always at the left, then the apps' logos (the instrument look shows
+        // only the count), and the dots at the right.
         _badgePill = CountPill(_badgeText);
-        right.Children.Add(_badgePill);
-        if (Look.Instrument) Grid.SetColumnSpan(right, 2);
-        else Grid.SetColumn(right, 1);
-        _badgeView.Children.Add(right);
+        _badgePill.Margin = new Thickness(0, 0, 7, 0);
+        _badgeView.Children.Add(_badgePill);
+        Grid.SetColumn(_badgeLogoList, 1);
+        _badgeView.Children.Add(_badgeLogoList);
+        Grid.SetColumn(_badgePrivacyHost, 2);
+        _badgeView.Children.Add(_badgePrivacyHost);
 
         _messageView.Children.Add(_messageLogoHost);
         var texts = new StackPanel { Margin = new Thickness(11, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -102,17 +101,17 @@ public sealed partial class NotchWindow
             _islandContent.Children.Add(view);
         }
 
-        // Beside the music: the logos and the count before the timer and the equalizer, as in the WPF app.
+        // Beside the music: the count, left of the logos, before the timer and the equalizer.
         _mediaBadge = CountPill(_mediaBadgeText);
-        _mediaBadge.Margin = new Thickness(0, 0, 9, 0);
+        _mediaBadge.Margin = new Thickness(0, 0, Look.Pick(9, 7), 0);
         _mediaBadge.IsVisible = false;
         _compactView.Children.Remove(_eqPanel);
         _compactView.Children.Remove(_compactTimer);
         var compactRight = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         _eqPanel.HorizontalAlignment = HorizontalAlignment.Left;
         _compactTimer.HorizontalAlignment = HorizontalAlignment.Left;
-        compactRight.Children.Add(_mediaBadgeLogos);
         compactRight.Children.Add(_mediaBadge);
+        compactRight.Children.Add(_mediaBadgeLogos);
         compactRight.Children.Add(_compactTimer);
         compactRight.Children.Add(_eqPanel);
         _compactView.Children.Add(compactRight);
