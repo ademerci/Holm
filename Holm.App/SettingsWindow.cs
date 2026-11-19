@@ -19,6 +19,7 @@ namespace Holm.App;
 /// <summary>One switch in the settings: its words, an icon, and how to read and apply it.</summary>
 sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null)
 {
+    public Func<IBrush, double, Control>? Icon { get; init; }
     public bool Hidden { get; init; }
 }
 
@@ -450,7 +451,7 @@ sealed partial class SettingsWindow : Window
         var content = new Grid { Margin = Look.Pick(new Thickness(2, 11, 4, 11), new Thickness(14, 10, 16, 10)), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         if (!Look.Instrument) // the instrument look has no icon in front of each row
         {
-            var tile = HubTheme.IconTile(setting.Glyph, color);
+            var tile = HubTheme.IconTile(setting.Glyph, color, icon: setting.Icon);
             tile.Margin = new Thickness(0, 0, 14, 0);
             tile.VerticalAlignment = VerticalAlignment.Center;
             content.Children.Add(tile);
