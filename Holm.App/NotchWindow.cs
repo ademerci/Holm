@@ -166,7 +166,10 @@ public sealed partial class NotchWindow : Window
         _opened = true;
         if (TryGetPlatformHandle() is { } handle) _platform.MakeOverlay(handle.Handle);
         PositionWindow();
-        Screens.Changed += (_, _) => PositionWindow(); // a display came or went
+        // A display came or went, or the notch moved to one with another scale (125 % to 100 %): the window's cut-out is
+        // in device pixels, so it is worked out again, or the notch shows clipped into a stale, shifted rectangle.
+        Screens.Changed += (_, _) => FitToScreen();
+        ScalingChanged += (_, _) => FitToScreen();
         UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
         StartClock();
         ShowIdleStatus();
@@ -228,6 +231,14 @@ public sealed partial class NotchWindow : Window
         StopAccount();
         ForgetClipFiles();
         base.OnClosed(e);
+    }
+
+    /// <summary>Places the window on its screen again and redoes its size and cut-out for that screen's scale.</summary>
+    void FitToScreen()
+    {
+        PositionWindow();
+        if (!_motionRunning) FitWindowHeight(); // a moving shape sizes the window itself
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
     }
 
     /// <summary>Top centre of the primary screen.</summary>
