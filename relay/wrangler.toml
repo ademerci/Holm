@@ -21,3 +21,11 @@ new_sqlite_classes = ["Inbox"]
 name = "POST_LIMIT"
 namespace_id = "4711"
 simple = { limit = 120, period = 60 }
+
+# Anonymous counts for /admin (src/stats.js): kind of request and a short inbox hash, kept 3 months.
+[[analytics_engine_datasets]]
+binding = "STATS"
+dataset = "holm_relay"
+
+[vars]
+ACCOUNT_ID = "da003fbb12066f6b085ccf1b73ad4433"
