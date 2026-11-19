@@ -1,5 +1,249 @@
 # Changelog
 
+## 2.0.3 – 2026-11-19
+
+### Fixed
+
+- **Always on top.** The notch stays above other windows again on Windows. Since 1.13, opening or clicking another window could leave the notch behind it. Holm now puts it back on top as soon as another window comes to the front.
+- **Minimize over browser tabs.** The notch turns into the small pill only while a maximized browser is the window in front on the notch's screen. It reacts the moment you switch windows: it grows back as soon as you switch to another app and shrinks again when you return to the browser.
+
+## 2.0.2 – 2026-11-19
+
+### Fixed
+
+- **Friend requests.** Resending a request keeps the original acceptance valid. Unanswered incoming requests stay available after restarting Holm.
+- **Settings.** Interrupted saves preserve the previous settings file and notes.
+- **Reminders.** Invalid times and durations show a validation error.
+- **App volume.** Mixer operations run in order and apply pending changes before closing.
+- **Clipboard.** Password clearing stops retrying after you copy something else.
+- **Linux.** USB eject commands time out and report power-off failures. Album art can recover after a temporary loading error.
+
+## 2.0.1 – 2026-11-19
+
+### Changed
+- **Start page settings.** Toolbox visibility, Media controls and Focumon are in Settings › Start page. Clipboard recording is under Calls and privacy.
+- **AI usage icons.** The toolbox, Start page preview and AI usage settings use a speedometer icon.
+
+### Fixed
+- **Chat alignment.** The Add a friend button is centered beside Search, and the message placeholder and text are centered in the composer.
+
+## 2.0.0 – 2026-11-19
+
+**Friends requires Holm 2.0.0 or later.** We moved Friends to a new server and changed how friend codes work. Friends features are no longer available on older versions, including friend requests, chat, online status, and sharing with friends. Everyone in a conversation needs to update. Use friend codes generated in the updated app when adding friends.
+
+### Changed
+- You can show or hide each Start page tool individually.
+- The closed notch shows branded notification icons and keeps the unread count first while media is playing.
+- You can remove a friend from Chat.
+- The AI toolbox uses a usage glyph, and the AI launcher shows branded icons and additional Copilot choices.
+
+## 1.18.0 – 2026-11-19
+
+### Added
+- **A new series, Herm.** The Holm window shows the name beside the version number.
+- **AI usage rings switch.** You can now hide the two small usage rings at the ends of the closed notch while keeping the usage visible on the AI page of the open notch. *AI usage* still turns the whole feature off.
+- **Arrange the start page.** *Settings › Start page* (or right-click › *Customize* › *Start page…*) lets you decide what the open notch shows and where. Drag its sections into another order (the tool bar, the player and clock, the reminder and note, the activity, the shelf, and the battery and volume), hide the tool bar, the two cards or the battery and volume, swap a section's left and right side, and put the tools of the bar in your order. A small preview shows the result, and each change applies at once. Until you change something the open notch looks as before, and *Reset to default* brings that back. With a Holm account the layout is the same on every computer.
+
+### Changed
+- **Friends on Holm's own server.** Invites, friend requests, chat and online status now go through Holm's relay instead of ntfy.sh's free tier, whose daily limit made short friend codes fail with "refused the note (429)". Messages left while a friend's Holm is closed now wait a week instead of 12 hours. Friends on older Holm versions keep reaching you: Holm still listens on ntfy.sh and tells them your new address by itself.
+- **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.
+
+### Fixed
+- **Color picker on scaled displays.** At 150 % or 200 % scale the picker showed the screen zoomed in, so only part of it could be picked. It now shows the whole screen exactly as it was.
+
+## 1.17.2 – 2026-11-19
+
+### Fixed
+- Centered the bundled icons within their buttons, tiles and badges, including achievements, notifications and settings.
+- The closed notch centers the update arrow and shows a green progress ring while Holm downloads an update. Discord notifications use Discord’s own icon.
+
+### Added
+- **Seven new designs.** Pick Blueprint, Matcha, Kiln, Nocturne, Signal Box, Margin Notes or Command Deck in *Settings › Design*. Each also works as the base for an imported design.
+
+### Changed
+- **Prism Glass.** A silver tint and dark lettering keep the notch readable over light and dark desktops. The notch rim catches light as the pointer moves, and clear slider and switch thumbs magnify the coloured track underneath.
+
+## 1.17.1 – 2026-11-19
+
+### Changed
+- **Close the account card.** The sign-in card on the profile page has a small cross. It folds the card to one line with *Sign in…* to bring it back, and Holm remembers it. On the first-start offer the cross means *Not now*.
+
+### Fixed
+- **The notch after switching monitors.** On a display with another scale, for example a laptop at 125 % and a monitor at 100 %, the open notch showed clipped into a shifted rectangle until Holm restarted. Holm now fits itself to the new display at once.
+
+## 1.17.0 – 2026-11-18
+
+### Added
+- **Dot Matrix in real dots.** The Dot Matrix design now writes the clock in the notch, the big clock, the weather temperature and the page titles of the Holm window in a dot font, and lays a fine grid of dots over the notch and the sidebar, like the dot display on the back of a phone. Pick it under *Settings › Design*. The other designs look as before. Made by Diekartoffel19.
+- **A new series, Lundy.** The Holm window shows the name beside the version number.
+- **Holm account, if you want one.** Sign in on each computer and your settings, profile, achievements and friends stay the same everywhere, with one friend code. It sits on the profile page under your profile, and Holm offers it once at the first start. Everything is encrypted on your computer before it goes: the account service (Google Firebase, stored in Zürich) keeps your email address and data it can't read. Notes, reminders, chats and files stay on each computer. A forgotten password can't be reset. Without an account Holm works as before.
+
+## 1.15.3 – unreleased
+
+### Fixed
+- **Files in chats and Beam arrive after Accept.** After the other person pressed *Accept*, the transfer could stand still at 0 % on both sides: the receiver waited for its own check "did the sender cancel?" to stop before answering, and on some systems that check never stopped, while the sender waited for the answer. The receiver now answers straight away.
+
+## 1.15.2 – 2026-11-18
+
+### Fixed
+- **Beam nearby can't be blocked any more.** A device on the same network that connected and then sent nothing kept Beam busy until Holm restarted: other nearby files were turned away and dropping files, copied codes and friend requests stopped working. Holm now lets such a connection go after 30 seconds.
+
+### Changed
+- **Clearer questions for incoming files.** A file from someone nearby says *nearby, not verified*, since the name is only what their device says. An offer with a program in it, such as an `.exe`, `.msi` or script, says so.
+
+## 1.15.1 – 2026-11-18
+
+### Changed
+- **Prism Glass.** The design formerly called Liquid Glass now has a translucent notch with an iridescent rim that follows its motion, a floating toolbar and a rounded Holm window with a glass sidebar. Pick it under *Settings › Design*. If you already use Liquid Glass, Holm switches to Prism Glass automatically.
+
+## 1.15.0 – 2026-11-18
+
+### Added
+- **Island names.** This series is called Skokholm. The Holm window shows the name beside the version number.
+
+### Changed
+- **Frutiger Aero.** Blue skies, green hills and glossy water bubbles come to the open notch and the Holm window. The notch's buttons and cards have a glass finish. Pick it under *Settings › Design*. Classic is still the default.
+- **A little more Jelly.** The Easter egg now makes the notch lean when you drag it and the Holm window wobble when you click or move it.
+
+### Fixed
+- **Long chat messages wrap.** Sent and received messages stay inside the conversation, even when a long word has no spaces.
+
+## 1.14.1 – 2026-11-18
+
+### Fixed
+- **Automatic updates work again.** Holm 1.13.0 and 1.14.0 couldn't install updates by themselves: the updater only accepts an app named Holm, and those builds carried another name inside. This version has the right name, so Holm 1.13.0 and 1.14.0 can update to it (and to everything after it) with *Update*.
+
+## 1.14.0 – 2026-11-18
+
+### Added
+- **Designs.** Settings › Design has 17 looks: Classic, Instrument, Frosted Glass, Neon, Paper, Terminal, Brutalist, Aurora, Liquid Glass, Material, Mica, Dot Matrix, Hardware, Aero, Retro 98, Pocket and Album. Each changes the notch and the Holm window: surfaces, lines and glow, corners, glass, type, and whether tools show as icons or words. Holm restarts to switch.
+- **Accent colour.** Pick one of eight colours, type a hex code or take one from the screen. It colours buttons, switches and the progress in the notch.
+- **Your own designs.** A design is a small JSON file. *Copy AI prompt* gives an AI everything it needs to write one; *Import a design…* checks every value and adds it to the list.
+
+### Changed
+- The *Instrument look* switch in General is replaced by the Design page. If it was on, Holm starts in the Instrument design.
+
+## 1.13.0 – 2026-11-17
+
+### Added
+- **Holm for Linux.** The notch, music, volume and Bluetooth, messages and notifications, Beam, friends and chat, the tools, weather and the AI usage rings work on Linux too (PulseAudio or PipeWire, BlueZ, NetworkManager, UPower). Copying text from screenshots uses `tesseract` when it is installed. On Linux, *Update* opens the release page.
+
+### Changed
+- **New foundation.** Holm is built with Avalonia instead of WPF, one app for both systems. It reads the same settings file, friends key, chats and achievements as 1.12 and keeps the same autostart entry.
+
+## 1.12.11 – 2026-11-17
+
+### Changed
+- **The classic look is back.** Holm opens with the design from before 1.12.9 again: the cover's colours over the open notch, tool icons, rounded cards and the original settings window. The app icons beside the notification count in the closed notch are back too, and so are the earlier settings texts.
+
+### Added
+- **Instrument look, if you prefer it.** *Settings › General › Instrument look* switches to the design from 1.12.9 and 1.12.10: a black notch with white ink, small corners, tools as words and only the count in the closed notch. Holm switches at its next start.
+
+## 1.12.10 – 2026-11-17
+
+### Changed
+- **Only the count in the closed notch.** New notifications show as a red number in the middle of the closed notch, without app icons. Open the notch to see which apps wrote, each with its logo.
+
+## 1.12.9 – 2026-11-17
+
+### Changed
+- **A calmer look.** The open notch stays black: Holm no longer washes the cover's colours over it, and the progress bar, volume and equalizer share one white ink. Tools are words in place of icons, top right, or in a row under the clock while music plays. Today's reminder and note sit as rows under a hairline, and Holm drops the greeting.
+- **A plain settings window.** Black panels with white as the only signal colour, a list between hairlines in place of cards and coloured icons, and square switches.
+- **Settings in plain words.** Holm rewrote every setting's description by the [stop-slop](https://github.com/hardikpandya/stop-slop) rules: you or Holm do something in each sentence, without filler. A reminder due today shows its time alone, "14:30" in place of "today at 14:30".
+
+## 1.12.8 – 2026-11-17
+
+### Changed
+- **AI usage, the Codenotch way.** The closed notch now carries a ring at each end – Claude on the left, Codex on the right – that fills and turns from green to yellow to red as a limit runs out, with a thin arc circling while an agent works. Hover or click a ring to open the notch on the new *AI usage* page: every limit with its reset time ("Resets in 51 min") and the sessions at work. Ported from [Codenotch](https://github.com/vinzdg/codenotch) by Vinz (MIT).
+- **Claude's real limits.** Claude's percentages now come from Anthropic, the same numbers `/usage` shows, using the sign-in Claude Code already keeps on your PC. Holm only reads it and sends it nowhere but Anthropic, asks at most every five minutes, and never sends an expired sign-in. Without one, it falls back to the estimate from the logs and says so.
+
+## 1.12.7 – 2026-11-16
+
+### Added
+- **Put the notch where you want it.** *Settings › General › Drag notch position* lets you hold the notch by its top edge and move it left or right along the selected screen. Its position is remembered after a restart and stays put when dragging is switched off. The small *Reset Position* button beside the switch brings it back to the centre.
+
+### Fixed
+- **Codex usage follows the reported limit.** A weekly allowance could show as a five-hour limit because Holm assumed the first limit was always five hours. The card now reads each limit's actual duration from Codex's local logs, shows additional limits only when reported, and includes the date in reset times. Old readings say they may be outdated; passing the reset time no longer invents zero usage.
+
+## 1.12.6 – 2026-11-16
+
+### Added
+- **AI usage beside the notch.** A small black circle sits at the notch's right shoulder, like a second activity on the iPhone's island: the mark of the coding agent that matters most right now (Claude Code's spark or OpenAI's knot for Codex) inside a thin ring that fills with its usage. It shows in every closed state, also while music plays; beside the minimized notch it flattens into a capsule with a bar, and the open notch grows over it. Hovering it (which doesn't open the notch) shows a calm card with each agent you use: the percentage, when it resets, and the sessions at work with their project and latest step. Codex logs its real 5-hour and weekly limits; Claude Code logs only tokens, so its ring compares the current 5-hour window with your busiest one this week. Read from the tools' own logs on this PC at most once a minute, off the UI thread and only what was added since the last look; nothing is sent or shared. *Settings › General › AI usage ring* turns it off.
+
+### Fixed
+- **Snapshots stay private.** Holm's `--snap` picture mode no longer lets a friend's real chat message pop out over a pose.
+
+## 1.12.5 – 2026-11-15
+
+### Changed
+- **Leaner and faster, part 1** (led by Djordje Mojsilovic, see `docs/opt/REPORT.md`; not finished yet). The notch is ready about a fifth sooner after start (median 1.56 → 1.27 s in 25 interleaved runs), because efficiency mode now starts once the notch is up, not during start-up. The Holm window's logo no longer carries a second copy of the 381 KB icon.
+- **Fewer clicks.** Opening notes, reminders, the calculator or the weather place puts the cursor in its field; if you only look, the notch still closes when the mouse leaves. Enter in the profile's name or status applies it.
+- **Keyboard and screen readers.** The Holm window's switches, sidebar and close button work with Tab and Space/Enter and say whether a switch is on; 21 icon-only notch buttons have names, and previous/play/next have tooltips.
+- **Clearer texts.** Beam says *Couldn't reach …* instead of blaming a friend as offline and shows plain words when a connection drops; the invite page says that anyone with the code becomes your friend and that *New code* doesn't stop the old one; settings explain the weather location, what the clipboard history keeps and that Beam looks at copied text for codes; the phone link warns that it isn't encrypted; unreadable reminders say why.
+
+### Fixed
+- **Double clicks.** A double click on a reminder's × no longer removes the next reminder too, and a double click on *Accept* no longer cancels the transfer it just accepted.
+- **Weather place search.** Only one search runs at a time, nothing is saved after you close the notch, and a failed forecast no longer asks you to choose a city again.
+- **Speed test.** A ping that gets no answer gives up after 5 seconds instead of hanging.
+
+## 1.12.4 – 2026-11-15
+
+### Added
+- **Large clock view in the open notch.** Clicking the clock in the open notch (on home or in the top bar while music plays) opens a large clock that fills the notch. Pin it open so it stays on screen, customize seconds, date, font style (*Light*, *Bold*, *Mono*) and colour, and control playback from the toggleable music bar at the bottom.
+
+### Changed
+- **More room for Bluetooth devices.** Battery chips in the open notch get vertical space between rows, and devices in the Bluetooth menu sit in taller rows.
+
+## 1.12.3 – 2026-11-15
+
+### Changed
+- **A smaller Holm.exe.** The self-contained exe drops from 213 to about 157 MB: the framework keeps its own precompiled code instead of being compiled again into one large image, with nothing left out.
+- **Bigger app icons in the closed notch.** While notifications wait, their app icons in the closed notch are as big as the album art, so they read at a glance.
+
+## 1.12.2 – 2026-11-15
+
+### Added
+- **Sky colours can be switched off.** *Settings › Weather › Sky colours*: off, the open notch stays plain black when nothing plays, and the greeting is grey instead of tinted. On by default.
+
+## 1.12.1 – 2026-11-15
+
+### Added
+- **Ctrl+H opens the notch.** Press Ctrl+H anywhere to open the notch, and again to close it (a click elsewhere closes it too). While it's on, other apps don't get Ctrl+H (browser history, Replace in editors); *Settings › General* turns it off.
+
+## 1.12.0 – 2026-11-14
+
+### Changed
+- **Physics-based, bouncier motion.** The notch's size, corner radius, shoulders and scale now run on a live damped harmonic oscillator instead of fixed-duration ease curves, so interrupting mid-flight preserves momentum and every refresh rate stays identical. Opening springs further with a softer vertical squash-and-stretch bounce, normal collapses snap back into place gently, hovering the closed notch swells slightly toward the cursor, in-place volume/peek updates give a small physical pulse, open rows cascade out, switching tools or toggling settings switches bounces lightly, and chat reaction hovers/pops use spring curves.
+- **Choose how bouncy.** *Settings › General › Bouncy motion* turns the bounce off (everything glides in without overshooting, still on springs), and right-click › *Customize › Bounce* picks *Subtle*, *Normal* or *Lively*.
+
+### Added
+- **Chats in the tool bar.** A chat bubble in the middle of the open notch's tool row, between *Calculator* and *Clipboard*, opens your chats in the Holm window straight away.
+- **Dictation with Handy.** *Settings › Calls and privacy › Dictation with Handy* hooks Holm into [Handy](https://github.com/cjpais/Handy), the free, offline dictation app by CJ Pais (MIT licence). While Handy listens, the closed notch shows a softly breathing violet dot with *Listening*, and Handy's own pink overlay is kept off screen. Holm finds an installed Handy and starts it in the tray if it isn't running; without Handy it offers to fetch the official installer from Handy's GitHub releases (you go through Handy's own installer). Handy's overlay must stay on (*minimal* or *live*) in Handy's settings: it's how Holm can tell that Handy listens.
+- **All notifications in the notch.** *Settings › Pop-outs › All notifications in the notch* pops every app's notification out at the top in the notch, not only messages: Slack, Teams, mail, calendars. Windows has no way for an app to move its own banners, so the switch offers to open Windows' notification settings: with *Do not disturb* on, Windows' banners stay away and the notifications still reach Holm. Needs notification access, like messages.
+- **Volume and media only in the notch.** *Settings › Pop-outs › Volume and media only in the notch* stops Windows' own volume and media pop-up from showing next to the notch's. Windows has no way to hide that pop-up from another app, so Holm takes the volume and media keys before Windows sees them and changes the volume (in Windows' own 2 % steps) or the track itself; a key Windows never receives opens no pop-up, and the notch shows the change. Media keys are taken only while something plays that Holm can control, and in a fullscreen game, where the notch steps aside, Windows gets the keys and shows its own pop-up as before. Brightness keys usually go through the PC's firmware, not as keys, and stay with Windows. Windows itself shows no Caps Lock pop-up; one on your PC comes from its maker's software (Lenovo Vantage, HP, Dell) and is turned off there.
+- **Wi-Fi and speed test.** Right-click › *Wi-Fi and speed test…* opens a new *Wi-Fi* page under *Tools* in the Holm window. It measures ping, download and upload against Cloudflare's public speed test, with the Cloudflare location and your public IP once it has run, and shows the connection's details: network name, signal bars, link speed, IPv4 and IPv6 address, gateway, DNS servers, DHCP, DNS suffix, MAC address and adapter. A click copies a value. The test runs only when you press *Start* (about 15 seconds, at most ~600 MB on a very fast line) and stops when you leave the page; the details are read from Windows and refresh when the network changes.
+- **Tailscale in the VPN indicator.** Tailscale counts as a VPN while it's connected to your tailnet (it holds a 100.64.0.0/10 or fd7a:115c:a1e0::/48 address), and says *exit node* when your internet goes through one. Turning an exit node on or off is noticed at once: Holm now also listens for route changes, not only address changes. A VPN that carries all traffic still wins over Tailscale used only for the tailnet.
+
+### Changed
+- **The AI button wears a proper icon.** Claude, Gemini and ChatGPT show as small rounded tiles with their mark in their colors, like the messenger icons, instead of the apps' plain icons.
+- **The Holm window isn't always on top any more.** It comes to the front when it opens and stays there until you click somewhere else (at most 10 seconds if Windows won't make it the active window), then it behaves like any window: others can go over it.
+
+### Fixed
+- **The chat opens in a moment and keeps up.** Measured with a 300-message chat on the same PC: opening it took 23.6 s on 1.11.1 and takes 1.5 s now; sending a message and getting an answer froze the window for 11 s (up to 20 s) and now takes about a tenth of a second. Every change in a chat (added, sent, read) rebuilt every bubble; changes in a row are now caught up with once, after input, and bubbles that didn't change are kept. The chat shows the latest 80 messages, with *Show earlier messages* above them. The emoji font, which took 2–4 s on the UI thread the first time, loads in the background as soon as you open the notch or a friend writes: until then Holm is as light as before (137 MB private on 1.11.1, 139 MB now, measured idle with `tools/Measure-Footprint.ps1`), afterwards it holds some 75 MB more, as 1.11.1 did after the first chat. Plain text no longer goes through the color emoji renderer. The window's shadow is drawn once instead of blurring the whole window again on every change, Holm no longer pages out its memory while the Holm window is open (the next click waited for it), the window opens straight on the page it was opened for, and the Activity page isn't built first and thrown away.
+- **GIFs cost far less.** Decoding a 480×270, 100-frame GIF allocated 50.8 MB; now 12.9 MB. GIFs that are out of sight or hidden stop moving, and GIFs in the Holm window move only while it is the window you use (left open behind other windows, its chat's GIFs kept half a CPU core busy), GIFs in the picker move only while you point at them, GIFs that won't move decode only their first frame, the cache holds its 96 MB limit once a decode finishes instead of only at the next request, and the GIF in a message pop-out no longer keeps animating in the notch after the pop-out closed.
+- **Sending files no longer gets stuck.** Cancelling *Add* on a copied invite code left the notch busy until Holm restarted, so every file sent or received was refused. Connecting to the relay now tries its IPv4 addresses first, with 5 s each, and a connection that times out is retried until the time is up instead of ending the send; on networks that silently drop IPv6 every send failed. The sender now waits 40 s for the friend's notch instead of 15. Both of you need 1.12 for every fix to apply.
+- **Screen sharing holds up on a slow connection.** Frames are at most 1280 px on their longer side and start at JPEG quality 60 (168 KB → 107 KB a frame on a 1920×1080 screen), captured and shrunk by GDI in one step with buffers kept from frame to frame. A viewer on 1.12 sends a receipt for every frame it shows, and the next frame waits for it, so the relay and routers no longer pile up seconds of old frames; the time it takes sets the quality between 30 and 75. A viewer that was busy still gets the latest picture, one that stops answering is let go after 15 s, and nothing is captured while no viewer can take a frame. Older Holm on either side keeps working as before.
+- **Fewer ways to crash.** A download renamed at the wrong moment could end Holm from a timer thread; crashes off the UI thread are now logged.
+- **Bluetooth keyboards show a keyboard.** Bluetooth LE keyboards such as *MX Keys* showed the mouse icon, because the name was checked for mice first. Keyboard names now come first (*clavier* and *teclado* count too, *trackball* and *trackpad* are mice), classic keyboards with a touchpad show a keyboard, and gamepads and joysticks show a controller.
+
+## 1.11.1 – 2026-11-12
+
+### Changed
+- **Sunshine in gold.** The top-right glow of the open notch is a muted golden yellow in sunny daytime weather, instead of turquoise.
+
+### Fixed
+- **The notch stays within reach over browser tabs.** *Settings › General › Minimize over browser tabs* now shrinks Holm to the same small pill as *Minimize when idle*, instead of hiding it completely. Hover over or click the pill to open it; moving away from the maximized browser brings the normal notch back. Messages, volume, downloads, calls and privacy indicators still get their normal space.
+
 ## 1.11.0 – 2026-11-12
 
 ### Added

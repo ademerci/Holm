@@ -10,6 +10,7 @@ import {
   escapeHtml,
   loadReleaseFeed,
   TTL,
+  assetLabel,
 } from '../src/releases.mjs';
 
 const source = JSON.parse(
@@ -143,4 +144,11 @@ test('malformed API data and corrupted cache fall back without destroying markup
   });
   assert.equal(result.source, 'snapshot');
   assert.equal(result.releases, null);
+});
+
+test('release archives for Windows and Linux get a labelled link, other files none', () => {
+  assert.equal(assetLabel('Holm-1.13.0-win-x64.zip'), 'Windows x64 ZIP');
+  assert.equal(assetLabel('Holm-1.13.0-linux-x64.tar.gz'), 'Linux x64');
+  assert.equal(assetLabel('Holm.exe'), null);
+  assert.equal(assetLabel('Holm-1.13.0-test-build.5.exe'), null);
 });

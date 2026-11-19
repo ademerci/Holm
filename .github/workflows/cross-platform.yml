@@ -1,0 +1,138 @@
+# Builds and tests Holm on Windows and Linux.
+name: Cross-platform
+
+on:
+  push:
+    paths: ["Holm.*/**", "Holm.slnx", "tools/selftest/**", ".github/workflows/cross-platform.yml"]
+    branches: ["main", "dev"]
+  pull_request:
+    paths: ["Holm.*/**", "Holm.slnx", "tools/selftest/**", ".github/workflows/cross-platform.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    # Both systems must pass: the app is meant to look and work the same on each. Never drop one of the two from
+    # this matrix, nor from release.yml and dev-release.yml (AGENTS.md: every build is for Windows and Linux).
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        # Not the solution: it also holds the Windows backend, which only builds on Windows.
+        run: dotnet build Holm.App -c Release && dotnet build Holm.Tests -c Release
+
+      - name: Test (Windows)
+        if: matrix.os == 'windows-latest'
+        run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual"
+
+      # The updater replaces Holm.exe through PowerShell: Windows only by design, so its tests stay out here.
+      - name: Test (Linux)
+        if: matrix.os != 'windows-latest'
+        run: dotnet test Holm.Tests -c Release --no-build --filter "Category!=Local&Category!=Online&Category!=Manual&FullyQualifiedName!~UpdateInstallerTests"
+
+      # The app itself, started on each system without a person: it opens the notch, reads what the backend offers,
+      # saves a picture of the closed and the open notch and quits. A native call declared wrong crashes it here, and
+      # both systems' pictures, laid over each other, show whether the notch still looks the same on each.
+      - name: Self-test (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 3
+        run: HOLM_SELFTEST="$PWD/selftest" xvfb-run -a -s "-screen 0 1920x1080x24" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Self-test (Windows)
+        if: matrix.os == 'windows-latest'
+        timeout-minutes: 3
+        shell: bash
+        run: HOLM_SELFTEST="$PWD/selftest" dotnet run --project Holm.App -c Release --no-build
+
+      - name: Upload self-test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-${{ runner.os }}
+          path: selftest/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # The Linux build as people would get it: self-contained, one file. Kept for a few days to try out; it is
+      # a test build of an experimental branch, not a release.
+      - name: Publish (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet publish Holm.App -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/linux-x64
+
+      - name: Upload (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-linux-x64-test-build.${{ github.run_number }}
+          path: out/linux-x64/
+          retention-days: 7
+
+      # The Windows build as people would get it: self-contained, one file, named as a test build (AGENTS.md).
+      - name: Publish (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          dotnet publish Holm.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o out/win-x64
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Holm.App/Holm.App.csproj | head -1)
+          mv out/win-x64/Holm.App.exe "out/win-x64/Holm-$version-test-build.${{ github.run_number }}.exe"
+
+      - name: Check the file version (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path Holm.App/Holm.App.csproj -Pattern '<Version>(.*)</Version>').Matches[0].Groups[1].Value
+
+          # Holm 1.12's updater replaces Holm.exe only when the new file's version is exactly the release's (x.y.z.0).
+          $info = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path "out/win-x64/Holm-$version-test-build.${{ github.run_number }}.exe").Path)
+          $file = '{0}.{1}.{2}.{3}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart
+          if ($file -ne "$version.0") { throw "The exe's file version is $file, not $version.0: the 1.12 updater would refuse it." }
+          if ($info.ProductName -ne "Holm") { throw "The exe's product name is '$($info.ProductName)', not 'Holm': every updater would refuse it." }
+          Write-Host "File version $file, as the 1.12 updater expects"
+
+      - name: Upload (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Holm-win-x64-test-build.${{ github.run_number }}
+          path: out/win-x64/
+          retention-days: 7
+
+  # Both systems' self-test pictures laid over each other: the notch must look the same on each.
+  compare:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: selftest-*
+          path: selftest
+
+      - name: Compare
+        run: |
+          pip install --quiet pillow
+          python3 tools/selftest/compare.py selftest compare
+
+      - name: Upload differences
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-differences
+          path: compare/
+          retention-days: 7
+          if-no-files-found: ignore

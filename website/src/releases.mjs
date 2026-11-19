@@ -59,6 +59,13 @@ export function normalizeReleases(data) {
 export const latestRelease = (releases) =>
   releases.find((r) => !r.prerelease && r.assets.some((a) => a.name === 'Holm.exe'));
 export const releaseAsset = (r) => r?.assets.find((a) => a.name === 'Holm.exe');
+/** The archives shown next to Holm.exe, by what they're for; other files get no link. */
+export const assetLabel = (name) =>
+  /^Holm-.*-win-x64\.zip$/.test(name)
+    ? 'Windows x64 ZIP'
+    : /^Holm-.*-linux-x64\.tar\.gz$/.test(name)
+      ? 'Linux x64'
+      : null;
 export const dateLabel = (value) =>
   new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
@@ -149,7 +156,7 @@ export function notesHtml(text) {
 }
 export function releaseHtml(r, index) {
   return `<article class="release" data-prerelease="${r.prerelease}"><div class="release-meta"><time datetime="${escapeHtml(r.published_at)}">${dateLabel(r.published_at)}</time><span class="tag ${r.prerelease ? 'preview' : ''}">${r.prerelease ? 'Prerelease' : 'Public release'}</span></div><div><h2>${escapeHtml(r.name)}</h2><p class="release-channel">GitHub release</p><details ${index === 0 ? 'open' : ''}><summary>What’s changed</summary><div class="release-notes">${notesHtml(r.body || 'Read the release notes on GitHub.')}</div></details><div class="release-links"><a href="${r.html_url}">Full release notes ↗</a>${r.assets
-    .filter((a) => a.name === 'Holm.exe' || /^Holm-.*-win-x64\.zip$/.test(a.name))
+    .filter((a) => a.name === 'Holm.exe' || assetLabel(a.name))
     .map((a) => `<a href="${a.browser_download_url}">${escapeHtml(a.name)} ↓</a>`)
     .join('')}</div></div></article>`;
 }

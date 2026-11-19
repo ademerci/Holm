@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>WinNotch</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Holm.App" />
+    <InternalsVisibleTo Include="Holm.Tests" />
+    <InternalsVisibleTo Include="Holm.Platform.Windows" />
+    <InternalsVisibleTo Include="Holm.Platform.Linux" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,241 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Threading;
+using WinNotch;
+
+namespace Holm.App;
+
+/// <summary>
+/// Settings… in the right-click menu opens the on/off switches in a window of their own (SettingsWindow), as in the
+/// WPF app (MainWindow.Settings.cs): the same groups, icons and words, for the features this app has so far.
+/// Customize › Bounce picks how much the springs swing while Bouncy motion is on.
+/// </summary>
+public sealed partial class NotchWindow
+{
+    static readonly (string Name, double Level)[] BounceLevels = { ("Subtle", 0.5), ("Normal", 1), ("Lively", Spring.MaxBounce) };
+
+    SettingsWindow? _settingsWindow;
+
+    SettingsSwitch Switch(string header, string glyph, string? help, Func<AppSettings, bool> get, Action<bool> set, string? actionLabel = null, Action? runAction = null)
+        => new(header, glyph, help, () => get(_settings), set, get(new AppSettings()), actionLabel, runAction);
+
+    SettingsSwitch[] StartPageSwitches() => new[]
+    {
+        Switch("Media controls", "\uE8D6", "Show music and video controls, artwork and track details.", s => s.MediaControls, on =>
+        {
+            _settings.MediaControls = on;
+            _settings.Save();
+            if (!on) { CancelSleep(); _callPause.Reset(); }
+            RefreshMediaUi();
+            ShowSleep();
+            ShowSky();
+            ApplyState(animate: true);
+        }),
+        Switch("Show Focumon", "\uE7FC", "Show your monster and timer in the open toolbar and the closed notch. Requires the Focumon for Holm browser extension.",
+            s => s.Focumon, SetFocumon),
+    };
+
+    List<SettingsGroup> SettingsGroups()
+    {
+        void Save() => _settings.Save();
+        var groups = new List<SettingsGroup>
+        {
+            new("general", "General", "", Color.FromRgb(0x63, 0x63, 0x66), "How the notch looks and starts", new[]
+            {
+                Switch("Animations", "", "Smooth transitions, the moving equalizer, GIFs and the animated sky.", s => s.Animations,
+                    on => { _settings.Animations = on; Save(); ApplyState(animate: false); }),
+                Switch("Bouncy motion", "", "The notch springs open with a little bounce. Off, it glides in without overshooting. How much it bounces: right-click the notch › Customize › Bounce.",
+                    s => s.Bounce, on => { _settings.Bounce = on; Save(); ApplyBounce(); }),
+                Switch("shi lwk jelly", "", "Everything wobbles like jelly. Way too much. Just for fun.",
+                    s => s.Jelly, on => { _settings.Jelly = on; Save(); ApplyBounce(); }) with { Hidden = true },
+                Switch("Equalizer follows the music", "", "The equalizer bars move with the music that plays. Only the loudness is read, nothing is recorded.",
+                    s => s.ReactiveEqualizer, on => { _settings.ReactiveEqualizer = on; Save(); UpdateEqualizer(); }),
+                Switch("Drag notch position", "\uE7C2", "Drag the notch by its top edge to move it left or right. Its position is remembered, even with dragging off.",
+                    s => s.Draggable, on => { FinishPositionDrag(); _settings.Draggable = on; Save(); }, "Reset Position", ResetNotchPosition),
+                Switch("Minimize when idle", "\uE921", "The notch shrinks to a small pill while nothing is going on.", s => s.MiniIdle,
+                    on => { _settings.MiniIdle = on; Save(); ApplyState(animate: true); }),
+                Switch("AI usage", "", "Shows how much of your Claude and Codex limits you have used, with each limit and the sessions at work on the AI page of the open notch.",
+                    s => s.AiUsage, on => { _settings.AiUsage = on; Save(); StartAiUsage(); if (on) _ = RefreshAiUsageAsync(); }) with { Icon = AiUsageIcon },
+                Switch("AI usage rings", "", "A ring at each end of the closed notch shows the usage at a glance. Hover a ring to open the AI page. Needs AI usage on.",
+                    s => s.AiRings, on => { _settings.AiRings = on; Save(); ApplyState(animate: true); }) with { Icon = AiUsageIcon },
+                // Not a setting of the file: the system's own sign-in list, so its default is "off".
+                new SettingsSwitch(OperatingSystem.IsWindows() ? "Start with Windows" : "Start at sign-in", "",
+                    OperatingSystem.IsWindows() ? "Holm starts when you sign in to Windows." : "Holm starts when you sign in.", () => _autostart.IsEnabled,
+                    on => _autostart.Set(on), false),
+                Switch("Ctrl+H opens and closes the notch", "\uE765", "Press Ctrl+H anywhere to open the notch, and again to close it. Other apps don't get Ctrl+H while this is on.",
+                    s => s.HotKey, SetHotKey),
+                Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
+                    s => s.HideOverBrowsers, on => { _settings.HideOverBrowsers = on; Save(); WatchFullscreen(); }),
+            }),
+            new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", PopoutSwitches()),
+            new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
+            {
+                Switch("Calls", "\uE717", "Shows a call with its time and a mute button.", s => s.Calls, SetCalls),
+                Switch("Pause music during calls", "\uE769", "Music pauses when a call starts and plays on after.", s => s.PauseForCalls, SetPauseForCalls),
+                Switch("Microphone and camera dot", "\uE720", "A dot beside the notch while an app uses the microphone or camera.", s => s.Privacy, SetPrivacy),
+                Switch("Dictation with Handy", "\uE720", "Dictate with Handy, free and offline: the notch shows when it listens" + (OperatingSystem.IsWindows() ? ", and Handy's own overlay stays out of sight" : "") + ". Holm finds Handy or offers to install it.",
+                    s => s.Dictation, SetDictation),
+                Switch("VPN indicator", "\uE72E", "A small lock while a VPN is connected.", s => s.Vpn, SetVpn),
+                Switch("Record clipboard history", "", "Keep up to 20 copied texts and pictures for this session. Turning this off clears the history.", s => s.ClipboardHistory, SetClipboardHistory),
+                Switch("Clear copied passwords after 30 s", "\uE8D7", "Copied passwords leave the clipboard after 30 seconds. Copied texts stay in memory; copied pictures wait in your temp folder until the list is cleared or Holm restarts. Passwords marked private by password managers are never read.",
+                    s => s.ClearPasswords, SetClearPasswords),
+            }),
+            new("beam", "Beam", "\uE724", Color.FromRgb(0x0A, 0x84, 0xFF), "Sending files to friends, people nearby and your phone", new[]
+            {
+                Switch("Beam (drop files on the notch)", "\uE724", "Drop files on the notch to send them. Also needed for friends and chat. Holm looks at copied text for friend and file codes; nothing of it is kept or sent.",
+                    s => s.Beam, SetBeam),
+                Switch("Send folders as ZIP", "\uE8B7", "Folders are packed as a ZIP before they're sent.", s => s.SendFolders, on => { _settings.SendFolders = on; Save(); }),
+                Switch("Send later when a friend is offline", "\uE823", "Files for an offline friend wait and go once they're back.", s => s.SendLater, SetSendLater),
+            }),
+            new("friends", "Friends", "\uE716", Color.FromRgb(0xFF, 0x37, 0x5F), "Chat and what your friends see", new[]
+            {
+                Switch("Share my activity", "\uE716", "Friends see what you're doing: the song, a call, the game you play, a timer. Only friends, sealed like every note.",
+                    s => s.ShareActivity, SetShareActivity),
+                Switch("Chat pop-outs", "\uE8BD", "A friend's message pops out of the notch with Reply. It's in Chat either way.", s => s.ChatPopups, on => { _settings.ChatPopups = on; Save(); }),
+                Switch("Waves from friends", "\uE716", "Show a pop-out when a friend waves at you.", s => s.Waves, on => { _settings.Waves = on; Save(); }),
+                Switch("Achievement pop-outs", "\uE734", "A trophy pops out of the notch when you unlock an achievement.", s => s.AchievementPopups, on => { _settings.AchievementPopups = on; Save(); }),
+            }),
+            new("weather", "Weather", "\uE706", Color.FromRgb(0x32, 0xAD, 0xE6), "The weather in the notch", WeatherSwitches()),
+        };
+        return groups;
+    }
+
+    void OpenSettings() => ShowHub(SettingsGroups()[0].Key);
+
+    /// <summary>Opens the Holm window on a page: a friends page ("chat", "add", …) or a group of settings.</summary>
+    void ShowHub(string page)
+    {
+        // The notch closes first, so it can't hide the window.
+        CloseFromInside();
+        if (_settingsWindow != null)
+        {
+            _settingsWindow.Navigate(page);
+            _settingsWindow.Activate();
+            return;
+        }
+        var appAssembly = typeof(NotchWindow).Assembly;
+        string version = appAssembly.GetName().Version?.ToString(3) ?? "";
+        string? island = appAssembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "ReleaseIsland")?.Value;
+        string versionLabel = string.IsNullOrEmpty(island) ? version : $"{version} • {island}";
+        _settingsWindow = new SettingsWindow(_platform, SettingsGroups(), versionLabel, () => _settings.Animations, HubPages(), page,
+            new ProfileEditor(FriendsService.AccountName(), CurrentProfile, ApplyProfile, AvatarColors, AvatarColor),
+            () => MeCard(CurrentProfile()),
+            new[] { new HubPage(StartPage.Key, "\uE8A9", "Start page", "What the open notch shows, and where", BuildStartPage),
+                new HubPage("design", "\uE790", "Design", "How Holm looks: the design, its accent colour, your own designs", DesignPage),
+                new HubPage("updates", "\uE896", "Updates", "New versions of Holm", UpdatesPage) },
+            new[] { new HubPage("network", "\uE701", "Wi-Fi", "Speed test and connection details", () => new NetworkPage(CurrentLink, TrySetClipboardAsync)) },
+            BuildAccountPage);
+        if ((Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null)) is { } screen)
+            _settingsWindow.Height = Math.Min(740, screen.WorkingArea.Height / screen.Scaling - 24);
+        _settingsWindow.Closed += (_, _) => { _settingsWindow = null; GifCache.ReleaseDecoded(); UpdateStreamMask(); HandMemoryBackSoon(); };
+        _settingsWindow.Opened += (_, _) => KeepOutOfStream();
+        _settingsWindow.Show();
+        _settingsWindow.Activate();
+    }
+
+    List<SettingsSwitch> PopoutSwitches()
+    {
+        var list = new List<SettingsSwitch>
+        {
+            Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
+            Switch("Screenshots", "\uE722", "A new screenshot pops out with Send and Shelf.", s => s.Screenshots, SetScreenshots),
+            Switch("Copy text from screenshots", "\uE8D2", OperatingSystem.IsWindows() ? "Read the text in a screenshot with Windows' own OCR." : "Read the text in a screenshot with tesseract, on this computer.",
+                s => s.ScreenshotText, on => { _settings.ScreenshotText = on; Save(); }),
+            Switch("Caps Lock hint", "\uE765", "The notch says when Caps Lock goes on or off.", s => s.CapsLock, SetCapsLock),
+            Switch("All notifications in the notch", "\uE7E7", OperatingSystem.IsWindows()
+                    ? "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in Windows to keep its own banners away; they still reach Holm."
+                    : "Every app's notification pops out at the top in the notch, not only messages. Turn on Do not disturb in your desktop to keep its own banners away; they still reach Holm.",
+                s => s.AllNotifications, SetAllNotifications),
+        };
+        if (_mediaKeys.IsSupported)
+            list.Add(Switch("Volume and media only in the notch", "\uE995", "Holm takes the volume and media keys and changes the volume or track itself, so Windows' own pop-up doesn't show and the notch does. Brightness keys stay with Windows.",
+                s => s.NotchOnlyPopups, SetNotchOnlyPopups));
+        list.AddRange(new[]
+        {
+            Switch("Low disk space warning", "\uEDA2", "One warning when the system drive runs low.", s => s.DiskWarning, SetDiskWarning),
+            Switch("USB drives", "\uE88E", "USB sticks pop out with Open and Eject.", s => s.UsbDrives, SetUsbDrives),
+            Switch("Internet connection lost", "\uE701", "Says when the internet drops and when it's back.", s => s.Connectivity, SetConnectivity),
+        });
+        return list;
+        void Save() => _settings.Save();
+    }
+
+    List<SettingsSwitch> WeatherSwitches()
+    {
+        var list = new List<SettingsSwitch>();
+        if (_location.IsSupported)
+            list.Add(Switch("Set up weather using approximate location", "\uE81D", "Uses Windows location once if no city is set. Coordinates are rounded and sent only to Open-Meteo for the forecast; no IP lookup.",
+                s => s.WeatherAutoLocation, SetWeatherAutoLocation));
+        list.Add(Switch("Sky colours", "\uE790", "With nothing playing, the open notch glows in the colours of the time of day and the weather. Off, it stays plain black.",
+            s => s.SkyColors, SetSkyColors));
+        return list;
+    }
+
+    // ───────────── memory ─────────────
+
+    /// <summary>A while after the notch rests (started, closed, music stopped), Holm hands unused memory back, as the WPF app.</summary>
+    DispatcherTimer? _trimTimerField;
+    DispatcherTimer _trimTimer => _trimTimerField ??= OneShot(6000, () => { if (!_hovered && _settingsWindow == null) _platform.TrimMemory(); });
+    DispatcherTimer? _handBack;
+
+    static DispatcherTimer OneShot(double ms, Action act)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+        timer.Tick += (_, _) => { timer.Stop(); act(); };
+        return timer;
+    }
+
+    /// <summary>
+    /// The Holm window closed. Its pictures and the decoded GIFs of its chats would otherwise stay in memory; they go,
+    /// and a moment later Holm hands the memory back to the system.
+    /// </summary>
+    void HandMemoryBackSoon()
+    {
+        _handBack ??= OneShot(5000, HandMemoryBack);
+        _handBack.Stop();
+        _handBack.Start();
+    }
+
+    void HandMemoryBack()
+    {
+        if (_settingsWindow != null) return; // opened again meanwhile
+        GC.Collect();
+        GC.WaitForPendingFinalizers(); // the pictures' memory goes with their finalizers
+        GC.Collect();
+        if (!_hovered) _platform.TrimMemory();
+    }
+
+    void ApplyBounce()
+    {
+        Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
+        if (!Spring.Jelly)
+        {
+            _dragLean.Snap(0);
+            _dragSkew.AngleX = 0;
+        }
+    }
+
+    /// <summary>Customize › Bounce: Subtle, Normal or Lively, while Bouncy motion is on.</summary>
+    void FillBounceMenu(MenuItem menu)
+    {
+        menu.Items.Clear();
+        menu.IsEnabled = _settings.Bounce;
+        foreach (var (name, level) in BounceLevels)
+        {
+            var item = new MenuItem { Header = name, ToggleType = MenuItemToggleType.Radio, IsChecked = Math.Abs(_settings.BounceLevel - level) < 0.01 };
+            item.Click += (_, _) =>
+            {
+                _settings.BounceLevel = level;
+                _settings.Save();
+                ApplyBounce();
+            };
+            menu.Items.Add(item);
+        }
+    }
+}

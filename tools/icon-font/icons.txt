@@ -1,0 +1,96 @@
+# The icons Holm draws from a font, by the code point the app uses (the one in Segoe Fluent Icons / Segoe MDL2
+# Assets, which Windows has and nobody may redistribute) and the Fluent System Icons glyph (MIT) that stands in
+# for it on Linux and macOS. Add a line here, then run build.py; see README.md.
+#
+# code  Fluent System Icons name   Segoe name
+E701 Wifi1Regular               # Wifi
+E702 BluetoothRegular           # Bluetooth
+E706 WeatherSunnyRegular        # Brightness
+E708 WeatherMoonRegular         # QuietHours
+E70B NoteRegular                # QuickNote
+E710 AddRegular                 # Add
+E711 DismissRegular             # Cancel
+E713 SettingsRegular            # Setting
+E714 VideoRegular               # Video
+E715 MailRegular                # Mail
+E716 PeopleRegular              # People
+E717 CallRegular                # Phone
+E718 PinRegular                 # Pin
+E71B LinkRegular                # Link
+E71D AppsListRegular            # AllApps
+E720 MicRegular                 # Microphone
+E721 SearchRegular              # Search
+E722 CameraRegular              # Camera
+E724 SendRegular                # Send
+E72B ArrowLeftRegular           # Back
+E72D ShareRegular               # Share
+E72E LockClosedRegular          # Lock
+E734 StarRegular                # FavoriteStar
+E735 StarFilled                 # FavoriteStarFill
+E73E CheckmarkRegular           # CheckMark
+E740 FullScreenMaximizeRegular  # FullScreen
+E74D DeleteRegular              # Delete
+E74F SpeakerMuteRegular         # Mute
+E765 KeyboardRegular            # KeyboardClassic
+E767 Speaker2Regular            # Volume
+E768 PlayRegular                # Play
+E769 PauseRegular               # Pause
+E76C ChevronRightRegular        # ChevronRight
+E774 GlobeRegular               # Globe
+E77B PersonRegular              # Contact
+E77F ClipboardPasteRegular      # Paste
+E783 ErrorCircleRegular         # Error
+E785 LockOpenRegular            # Unlock
+E787 CalendarLtrRegular         # Calendar
+E790 ColorRegular               # Color
+E7B3 EyeRegular                 # RedEye
+E7B8 BoxRegular                 # Package
+E7E8 PowerRegular               # PowerButton
+E7F4 DesktopRegular             # TVMonitor
+E7F5 Speaker2Regular            # Speakers
+E7F6 HeadphonesRegular          # Headphone
+E7F8 LaptopRegular              # DeviceLaptopNoPic
+E7FC XboxControllerRegular      # Game
+E81D LocationRegular            # Location
+E823 ClockRegular               # Recent
+E88E UsbStickRegular            # USB
+E894 DismissRegular             # Clear
+E895 ArrowSyncRegular           # Sync
+E896 ArrowDownloadRegular       # Download
+E8A9 AppsListRegular            # ViewAll
+E8B1 ArrowShuffleRegular        # Shuffle
+E8B7 FolderRegular              # Folder
+E8BD ChatRegular                # Message
+E8C8 CopyRegular                # Copy
+E8D6 MusicNote2Regular          # Audio
+E8D7 KeyRegular                 # Permissions
+E8EA PhoneRegular               # CellPhone
+E8ED ArrowRepeat1Regular        # RepeatOne
+E8EE ArrowRepeatAllRegular      # RepeatAll
+E8EF CalculatorRegular          # Calculator
+E8FA PersonAddRegular           # AddFriend
+E916 TimerRegular               # Stopwatch
+E945 FlashRegular               # LightningBolt
+E962 KeyboardMouseRegular       # Mouse
+E993 Speaker0Regular            # Volume1
+E994 Speaker1Regular            # Volume2
+E995 Speaker2Regular            # Volume3
+EA8F AlertRegular               # Ringer
+EC4F MusicNote1Regular          # MusicNote
+EC54 MicOffRegular              # MicOff
+EDA2 HardDriveRegular           # HardDrive
+EDC6 PenRegular                 # PenWorkspace
+EF3C EyedropperRegular          # EyeDropper
+E76E EmojiRegular               # Emoji2
+E7E7 AlertBadgeRegular          # notification banner
+E8D2 ScanTextRegular            # text in a screenshot
+E8F2 ChatMultipleRegular        # ChatBubbles
+E8F8 EyeOffRegular              # not shared
+E921 SubtractRegular            # ChromeMinimize (mini notch)
+E93E LiveRegular                # streaming
+E95B HeadsetRegular             # Headset
+EA3B CircleFilled               # filled circle (colour swatch)
+EB63 GlobeProhibitedRegular     # offline
+E8A5 DocumentRegular            # Document
+E7C2 ArrowMoveRegular           # Move (drag notch position)
+E9D9 DataUsageRegular           # Diagnostic / usage ring (AI usage)

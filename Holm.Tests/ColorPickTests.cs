@@ -1,0 +1,64 @@
+using System.Text.Json;
+
+namespace WinNotch.Tests;
+
+public class ColorPickTests
+{
+    [Theory]
+    [InlineData(0, 0, 0, "#000000")]
+    [InlineData(255, 255, 255, "#FFFFFF")]
+    [InlineData(10, 132, 255, "#0A84FF")]
+    public void Hex_codes(byte r, byte g, byte b, string expected) => Assert.Equal(expected, ColorPick.Hex(r, g, b));
+
+    [Fact]
+    public void Reads_a_pixel_from_a_bgra_buffer()
+    {
+        // 2 × 2 pixels, a stride with padding
+        int stride = 12;
+        var bgra = new byte[stride * 2];
+        bgra[1 * stride + 1 * 4 + 0] = 0xFF; // blue
+        bgra[1 * stride + 1 * 4 + 1] = 0x84; // green
+        bgra[1 * stride + 1 * 4 + 2] = 0x0A; // red
+        Assert.Equal(((byte)0x0A, (byte)0x84, (byte)0xFF), ColorPick.At(bgra, stride, 1, 1));
+        Assert.Equal(((byte)0, (byte)0, (byte)0), ColorPick.At(bgra, stride, 0, 1));
+    }
+
+    static readonly ColorPick.Area Display = new(0, 0, 1920, 1080);
+
+    [Fact]
+    public void Magnifier_sits_below_right_of_the_cursor() => Assert.Equal((524, 324), ColorPick.LoupeAt(500, 300, 140, 160, Display));
+
+    [Fact]
+    public void Magnifier_flips_at_the_right_and_bottom_edges()
+    {
+        Assert.Equal((1900 - 24 - 140, 324), ColorPick.LoupeAt(1900, 300, 140, 160, Display));
+        Assert.Equal((524, 1000 - 24 - 160), ColorPick.LoupeAt(500, 1000, 140, 160, Display));
+    }
+
+    [Fact]
+    public void Magnifier_stays_on_a_display_left_of_the_main_one()
+    {
+        var left = new ColorPick.Area(-2560, -200, 0, 1240);
+        Assert.Equal((-2560 + 10 + 24, -200 + 24), ColorPick.LoupeAt(-2560 + 10, -200, 140, 160, left));
+        Assert.Equal((-10 - 24 - 140, 1240 - 10 - 24 - 160), ColorPick.LoupeAt(-10, 1240 - 10, 140, 160, left));
+    }
+
+    [Fact]
+    public void Settings_from_before_the_color_picker_still_load()
+    {
+        var old = JsonSerializer.Deserialize<AppSettings>("{\"ClearPasswords\":false}")!;
+        Assert.False(old.ClearPasswords);
+        Assert.True(old.ColorPicker);
+    }
+
+    [Theory]
+    [InlineData(0x25u, false, -1, 0)]
+    [InlineData(0x26u, false, 0, -1)]
+    [InlineData(0x27u, false, 1, 0)]
+    [InlineData(0x28u, false, 0, 1)]
+    [InlineData(0x25u, true, -10, 0)]
+    [InlineData(0x28u, true, 0, 10)]
+    [InlineData(0x0Du, false, 0, 0)] // Enter picks, it doesn't move
+    public void Arrow_keys_move_one_pixel_or_ten_with_shift(uint key, bool shift, int dx, int dy)
+        => Assert.Equal((dx, dy), ColorPick.Step(key, shift));
+}

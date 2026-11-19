@@ -29,15 +29,15 @@ jobs:
           # The same build the Release workflow ships.
           $common = @('-c', 'Release', '-r', 'win-x64', '-p:SelfContained=true', '-p:PublishSingleFile=true', '-p:PublishReadyToRun=true',
                       '-p:DebugType=none', '-p:IncludeNativeLibrariesForSelfExtract=true')
-          dotnet publish WinNotch @common -o out/release
-          if ($env:VARIANT) { dotnet publish WinNotch @common @($env:VARIANT -split '\s+' | Where-Object { $_ }) -o out/variant }
-          Get-ChildItem out/*/Holm.exe | Format-Table FullName, Length
+          dotnet publish Holm.App @common -o out/release
+          if ($env:VARIANT) { dotnet publish Holm.App @common @($env:VARIANT -split '\s+' | Where-Object { $_ }) -o out/variant }
+          Get-ChildItem out/*/Holm.App.exe | Format-Table FullName, Length
 
       - name: Measure
         shell: pwsh
         run: |
-          $variants = @(@{ Label = 'release'; Exe = 'out/release/Holm.exe' })
-          if ($env:VARIANT) { $variants += @{ Label = "variant ($env:VARIANT)"; Exe = 'out/variant/Holm.exe' } }
+          $variants = @(@{ Label = 'release'; Exe = 'out/release/Holm.App.exe' })
+          if ($env:VARIANT) { $variants += @{ Label = "variant ($env:VARIANT)"; Exe = 'out/variant/Holm.App.exe' } }
           # First runs unpack the native libraries and fill the disk cache; they don't count.
           foreach ($v in $variants) { ./tools/Measure-Footprint.ps1 -Exe $v.Exe -WarmupSeconds 10 -SampleSeconds 5 | Out-Null }
           $results = foreach ($round in 1..3) {

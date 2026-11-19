@@ -1,0 +1,31 @@
+# Holm relay (see README.md). Nothing here is published until someone runs `npx wrangler deploy`.
+name = "holm-relay"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = false
+
+# The relay's address, on our own domain (the zone holmnotch.ch must be on this Cloudflare account).
+routes = [{ pattern = "relay.holmnotch.ch", custom_domain = true }]
+
+[[durable_objects.bindings]]
+name = "INBOX"
+class_name = "Inbox"
+
+# Free plan: Durable Objects must keep their data in SQLite.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Inbox"]
+
+# 120 notes a minute per address (approximate, per Cloudflare location); each inbox also takes 60 a minute at most.
+[[ratelimits]]
+name = "POST_LIMIT"
+namespace_id = "4711"
+simple = { limit = 120, period = 60 }
+
+# Anonymous counts for /admin (src/stats.js): kind of request and a short inbox hash, kept 3 months.
+[[analytics_engine_datasets]]
+binding = "STATS"
+dataset = "holm_relay"
+
+[vars]
+ACCOUNT_ID = "da003fbb12066f6b085ccf1b73ad4433"

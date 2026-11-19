@@ -1,0 +1,114 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Holm.App.App"
+             RequestedThemeVariant="Dark">
+    <!-- Always dark, as the WPF app is: the system's light or dark setting must not change how Holm looks. -->
+
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="FlyoutPresenter.bare">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MaxWidth" Value="520" />
+            <Setter Property="MaxHeight" Value="520" />
+        </Style>
+    </Application.Styles>
+
+    <Application.Resources>
+        <FontFamily x:Key="HolmText">fonts:Inter#Inter</FontFamily>
+        <FontFamily x:Key="HolmIcons">avares://Holm.App/Assets/HolmIcons.ttf#Holm Icons</FontFamily>
+
+        <!-- The WPF app's dark, rounded right-click menu (WinNotch/App.xaml), drawn the same on every system. -->
+        <ControlTheme x:Key="{x:Type ContextMenu}" TargetType="ContextMenu">
+            <Setter Property="Background" Value="#F7202022" />
+            <Setter Property="BorderBrush" Value="#2EFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="{StaticResource HolmText}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="WindowManagerAddShadowHint" Value="False" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                                            KeyboardNavigation.TabNavigation="Continue" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+
+        <ControlTheme x:Key="{x:Type MenuItem}" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel>
+                        <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="8,7,16,7" MinWidth="210">
+                            <Grid ColumnDefinitions="24,*,Auto">
+                                <TextBlock Text="&#xE73E;" FontFamily="{StaticResource HolmIcons}" FontSize="12"
+                                           VerticalAlignment="Center" IsVisible="{TemplateBinding IsChecked}" />
+                                <ContentPresenter Name="PART_HeaderPresenter" Grid.Column="1" Content="{TemplateBinding Header}"
+                                                  VerticalAlignment="Center" RecognizesAccessKey="True" />
+                                <TextBlock Name="PART_Chevron" Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource HolmIcons}"
+                                           FontSize="10" Opacity="0.7" Margin="8,0,-6,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Popup Name="PART_Popup" Placement="RightEdgeAlignedTop" HorizontalOffset="8" VerticalOffset="-5"
+                               IsLightDismissEnabled="False" WindowManagerAddShadowHint="False"
+                               IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
+                            <Border Background="#F7202022" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="10" Padding="4"
+                                    TextElement.FontFamily="{StaticResource HolmText}" TextElement.FontSize="13"
+                                    TextElement.Foreground="White">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="#24FFFFFF" />
+            </Style>
+            <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="#24FFFFFF" />
+            </Style>
+            <Style Selector="^:empty /template/ TextBlock#PART_Chevron">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Opacity" Value="0.45" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="{x:Type Separator}" TargetType="Separator">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Height="1" Background="#24FFFFFF" Margin="8,4" />
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+
+        <ControlTheme x:Key="{x:Type ToolTip}" TargetType="ToolTip">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="{StaticResource HolmText}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="#F7202022" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                        <ContentPresenter Content="{TemplateBinding Content}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </Application.Resources>
+</Application>
