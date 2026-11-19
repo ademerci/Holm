@@ -8,6 +8,9 @@
 ### Changed
 - **Prism Glass.** A silver tint and dark lettering keep the notch readable over light and dark desktops. The notch rim catches light as the pointer moves, and clear slider and switch thumbs magnify the coloured track underneath.
 
+### Fixed
+- **Color picker on scaled displays.** At 150 % or 200 % scale the picker showed the screen zoomed in, so only part of it could be picked. It now shows the whole screen exactly as it was.
+
 ## 1.17.1 – 2026-11-19
 
 ### Changed
