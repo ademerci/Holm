@@ -1,9 +1,12 @@
 # Changelog
 
-## 1.17.1 – unreleased
+## 1.17.1 – 2026-11-19
 
 ### Changed
 - **Close the account card.** The sign-in card on the profile page has a small cross. It folds the card to one line with *Sign in…* to bring it back, and Holm remembers it. On the first-start offer the cross means *Not now*.
+
+### Fixed
+- **The notch after switching monitors.** On a display with another scale, for example a laptop at 125 % and a monitor at 100 %, the open notch showed clipped into a shifted rectangle until Holm restarted. Holm now fits itself to the new display at once.
 
 ## 1.17.0 – 2026-11-18
 
