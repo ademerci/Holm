@@ -39,6 +39,16 @@ public sealed partial class NotchWindow
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
+            _peekActive = false;
+            _hovered = false;
+            var preview = InstallUpdateAsync();
+            await Task.Delay(6500);
+            if (!_installingUpdate || _updatePercent is <= 0 or >= 100 || _closedUpdateBadge == null)
+                throw new InvalidOperationException("The preview did not show download progress.");
+            Snapshot(Path.Combine(folder, "preview-downloading.png"));
+            await preview;
+            if (_installingUpdate || _updatePercent != 100 || !HasUpdateNotification)
+                throw new InvalidOperationException("The preview did not finish ready for replay.");
 
             _hovered = true;
             ApplyState(animate: true);

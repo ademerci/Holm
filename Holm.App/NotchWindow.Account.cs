@@ -23,7 +23,7 @@ public sealed partial class NotchWindow
     {
         bool test = Path.GetFileNameWithoutExtension(Environment.ProcessPath ?? "").StartsWith("testhost", StringComparison.OrdinalIgnoreCase);
         // Self-tests and the test runner pose with made-up data, which must never reach an account.
-        if (!AccountService.Available || test || SelfTestFolder != null) return;
+        return; // The badge preview starts directly on the notch.
         _account = new AccountService(_settings, _achievements, _friends, action => Dispatcher.UIThread.InvokeAsync(action).GetTask(), Diag.Folder);
         _account.ApplyingSettings = ApplyAccountSettings;
         _account.ProfileApplied += AccountProfileApplied;

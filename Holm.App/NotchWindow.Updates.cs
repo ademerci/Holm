@@ -59,12 +59,7 @@ public sealed partial class NotchWindow
         };
     }
 
-    void StartUpdates()
-    {
-        if (_updatesClosing || !_settings.CheckForUpdatesAutomatically) return;
-        _updateTimer.Interval = TimeSpan.FromSeconds(20);
-        _updateTimer.Start();
-    }
+    void StartUpdates() => _ = CheckForUpdatesAsync(manual: false);
 
     void SetAutomaticUpdateChecks(bool enabled)
     {
@@ -118,54 +113,24 @@ public sealed partial class NotchWindow
             ApplyState(animate: true);
         }
         if (_updatesStatusText == null || _checkUpdatesButton == null || _installUpdateButton == null) return;
-        string? unavailable = InstallsItself ? UpdateInstaller.UnavailableReason : null;
-        _updatesStatusText.Text = _updateStatus ?? "Check for updates when you want to see if a new version is available.";
-        _checkUpdatesButton.Content = _checkingUpdates ? "Checking…" : "Check for updates";
-        _checkUpdatesButton.IsEnabled = !_checkingUpdates && !_installingUpdate;
-        _installUpdateButton.IsVisible = _availableUpdate != null;
-        _installUpdateButton.Content = _installingUpdate ? "Updating…"
-            : _availableUpdate is { } release ? (InstallsItself ? $"Update to {release.Version.ToString(3)} and restart" : $"Get {release.Version.ToString(3)}")
-            : "Update and restart";
-        _installUpdateButton.IsEnabled = !_checkingUpdates && !_installingUpdate && unavailable == null;
-        ToolTip.SetTip(_installUpdateButton, unavailable ?? (InstallsItself ? "Downloads the update and restarts Holm. Your settings stay." : "Opens the release page to download it."));
-        if (unavailable != null && _availableUpdate != null) _updatesStatusText.Text += "\n" + unavailable;
+        _updatesStatusText.Text = _updateStatus ?? "Preview the closed-notch update badge.";
+        _checkUpdatesButton.Content = "Show preview notification";
+        _checkUpdatesButton.IsEnabled = !_installingUpdate;
+        _installUpdateButton.Content = _installingUpdate ? "Preview running�" : "Test download ring";
+        _installUpdateButton.IsEnabled = !_installingUpdate;
     }
 
-    async Task CheckForUpdatesAsync(bool manual)
+    Task CheckForUpdatesAsync(bool manual)
     {
-        if (_updatesClosing || _checkingUpdates || _installingUpdate || (!manual && !_settings.CheckForUpdatesAutomatically)) return;
-        _checkingUpdates = true;
-        if (manual) _updateStatus = "Checking GitHub for a new release…";
+        if (_updatesClosing || _installingUpdate) return Task.CompletedTask;
+        var placeholder = new Uri("https://example.invalid/");
+        _availableUpdate = new UpdateRelease(RunningVersion, "preview", placeholder, placeholder, 0, "");
+        _dismissedUpdateVersion = null;
+        _notifiedUpdateVersion = null;
+        _updateStatus = "Ready to preview";
         RefreshUpdateMenu();
-        try
-        {
-            _updates ??= new UpdateService();
-            var release = await _updates.CheckAsync(RunningVersion, _updateLifetime.Token);
-            if (_updatesClosing) return;
-            _availableUpdate = release;
-            _updateStatus = release != null ? $"Version {release.Version.ToString(3)} is ready to download"
-                : manual ? $"You're up to date · {RunningVersion.ToString(3)}" : null;
-        }
-        catch (OperationCanceledException) when (_updatesClosing) { }
-        catch (Exception ex)
-        {
-            Diag.Log("Update check failed: " + ex.Message);
-            if (manual) _updateStatus = "Couldn't check for updates. Please try again.";
-        }
-        finally
-        {
-            _checkingUpdates = false;
-            if (!_updatesClosing)
-            {
-                RefreshUpdateMenu();
-                NotifyAvailableUpdate();
-            }
-            if (!manual && !_updatesClosing && !_trimmedAfterFirstCheck)
-            {
-                _trimmedAfterFirstCheck = true; // the first look pulled in the network stack and JSON
-                _trimTimer.Start();
-            }
-        }
+        NotifyAvailableUpdate();
+        return Task.CompletedTask;
     }
 
     void NotifyAvailableUpdate()
@@ -174,8 +139,8 @@ public sealed partial class NotchWindow
             || _hiddenForFullscreen || _hovered || _busy || _sharing || _taskVisible
             || _peekActive || _installingUpdate || _updatesClosing) return;
         _messageLogoHost.Child = UpdateNotificationIcon(28);
-        _messageTitle.Text = $"Holm {release.Version.ToString(3)} is available";
-        _messageText.Text = InstallsItself ? "Click to update and restart Holm" : "Click to get it";
+        _messageTitle.Text = "Update badge preview";
+        _messageText.Text = "Click to test the download ring";
         _messageText.IsVisible = true;
         _updateNotification = true;
         _notifiedUpdateVersion = release.Version;
@@ -247,8 +212,8 @@ public sealed partial class NotchWindow
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         row.Children.Add(UpdateNotificationIcon(28));
         var text = new StackPanel { Margin = new Thickness(10, 0, 10, 0) };
-        text.Children.Add(new TextBlock { Text = $"Holm {release.Version.ToString(3)} is available", FontSize = 13, FontWeight = FontWeight.SemiBold });
-        _updateRowStatus = new TextBlock { Text = _installingUpdate ? _updateStatus : InstallsItself ? "Click to update and restart Holm" : "Click to get it", FontSize = 12, Foreground = Dim };
+        text.Children.Add(new TextBlock { Text = "Update badge preview", FontSize = 13, FontWeight = FontWeight.SemiBold });
+        _updateRowStatus = new TextBlock { Text = _installingUpdate ? _updateStatus : "Click to test the download ring", FontSize = 12, Foreground = Dim };
         text.Children.Add(_updateRowStatus);
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
@@ -256,7 +221,7 @@ public sealed partial class NotchWindow
         row.HorizontalAlignment = HorizontalAlignment.Stretch;
         button.Margin = new Thickness(0, 0, 0, 8);
         button.IsEnabled = !_installingUpdate;
-        ToolTip.SetTip(button, "Update and restart Holm");
+        ToolTip.SetTip(button, "Test the download ring");
         button.Click += async () =>
         {
             SetExpanded(false);
@@ -275,77 +240,31 @@ public sealed partial class NotchWindow
     async Task InstallUpdateAsync()
     {
         if (_updatesClosing || _checkingUpdates || _installingUpdate || _availableUpdate is not { } release) return;
-        if (!InstallsItself)
-        {
-            try { _shell.Open(release.ReleaseUrl.ToString()); } catch (Exception ex) { Diag.Log("Release page: " + ex.Message); }
-            return;
-        }
-        if (_busy || _sharing || _taskVisible)
-        {
-            _updateStatus = "Finish or dismiss the current activity, then try again.";
-            RefreshUpdateMenu();
-            return;
-        }
-        if (UpdateInstaller.UnavailableReason is { } reason)
-        {
-            _updateStatus = reason;
-            RefreshUpdateMenu();
-            return;
-        }
         _installingUpdate = true;
         _dismissedUpdateVersion = null;
         _updatePercent = 0;
-        _updateStatus = "Downloading update…";
+        _updateStatus = "Preview download� 0%";
         RefreshUpdateMenu();
-        StopSharing(); // no new transfers while preparing to restart
-        string staging = Path.Combine(Path.GetTempPath(), "Holm-update-" + Guid.NewGuid().ToString("N"));
-        bool handedOff = false;
         try
         {
-            _updates ??= new UpdateService();
-            var progress = new Progress<int>(percent =>
+            for (int percent = 1; percent <= 100; percent++)
             {
-                if (_updatesClosing || !_installingUpdate) return;
+                await Task.Delay(120, _updateLifetime.Token);
                 _updatePercent = percent;
                 _closedUpdateBadge?.SetProgress(percent);
                 _mediaUpdateBadge?.SetProgress(percent);
-                _updateStatus = $"Downloading update… {percent}%";
+                _updateStatus = $"Preview download� {percent}%";
                 if (_updateRowStatus != null) _updateRowStatus.Text = _updateStatus;
                 RefreshUpdateMenu(refreshNotification: false);
-            });
-            string executable = await _updates.DownloadAsync(release, staging, progress, _updateLifetime.Token);
-            if (_updatesClosing) return;
-            if (_busy || _sharing || _taskVisible)
-            {
-                _updateStatus = "Finish or dismiss the current activity, then try updating again.";
-                return;
             }
-            _updateStatus = "Preparing to restart…";
-            RefreshUpdateMenu();
-            await UpdateInstaller.BeginInstallAsync(executable, release.Version, _updateLifetime.Token);
-            handedOff = true;
-            StopUpdates();
-            (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+            await Task.Delay(1800, _updateLifetime.Token);
+            _updateStatus = "Preview complete. Click to replay.";
         }
         catch (OperationCanceledException) when (_updatesClosing) { }
-        catch (Exception ex)
-        {
-            Diag.Error(ex);
-            _updateStatus = "Update couldn't finish. Your current version is unchanged; try again.";
-        }
         finally
         {
             _installingUpdate = false;
-            if (!handedOff)
-            {
-                try { if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true); }
-                catch (Exception ex) { Diag.Log("Update staging cleanup: " + ex.Message); }
-            }
-            if (!_updatesClosing)
-            {
-                StartSharing();
-                RefreshUpdateMenu();
-            }
+            if (!_updatesClosing) RefreshUpdateMenu();
         }
     }
 }
