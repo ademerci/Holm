@@ -112,7 +112,8 @@ public sealed partial class NotchWindow
     void SnapshotNotificationBadges(string folder)
     {
         var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
-        strip.Children.Add(AppLogo("discord", BadgeLogoSize));
+        foreach (var app in WinNotch.Notify.Messengers.All)
+            strip.Children.Add(AppLogo(app.Key, BadgeLogoSize));
         strip.Children.Add(UpdateNotificationIcon(BadgeLogoSize));
         foreach (int percent in new[] { 0, 50, 100 })
         {
