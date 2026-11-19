@@ -126,7 +126,7 @@ public sealed partial class NotchWindow
         _toolBar.Children.Add(_chatsToolBtn);
         _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
-        _aiToolBtn = ToolWord("AI", AiUsageGlyph);
+        _aiToolBtn = ToolWord("AI", AiUsageIcon(Look.Aero ? Look.Ink : Dim, 14));
         ToolTip.SetTip(_aiToolBtn, "AI usage");
         _aiToolBtn.Click += () => ToggleTool(Tool.Ai);
         _toolBar.Children.Add(_aiToolBtn);
