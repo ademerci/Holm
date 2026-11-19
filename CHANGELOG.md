@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.18.0 – 2026-11-19
 
 ### Added
 - **A new series, Herm.** The Holm window shows the name beside the version number.
