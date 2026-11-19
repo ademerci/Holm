@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 – 2026-11-19
+
+**Friends requires Holm 2.0.0 or later.** We moved Friends to a new server and changed how friend codes work. Friends features are no longer available on older versions, including friend requests, chat, online status, and sharing with friends. Everyone in a conversation needs to update. Use friend codes generated in the updated app when adding friends.
+
+### Changed
+- You can show or hide each Start page tool individually.
+- The closed notch shows branded notification icons and keeps the unread count first while media is playing.
+- You can remove a friend from Chat.
+- The AI toolbox uses a usage glyph, and the AI launcher shows branded icons and additional Copilot choices.
+
 ## 1.18.0 – 2026-11-19
 
 ### Added
