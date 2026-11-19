@@ -4,6 +4,7 @@
 
 ### Added
 - **A new series, Herm.** The Holm window shows the name beside the version number.
+- **AI usage rings switch.** You can now hide the two small usage rings at the ends of the closed notch while keeping the usage visible on the AI page of the open notch. *AI usage* still turns the whole feature off.
 
 ### Changed
 - **Notification count on the left.** In the closed notch the red count now always sits at the left, before the apps' logos, also beside the music and in the instrument layout.

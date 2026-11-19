@@ -145,7 +145,7 @@ internal static class SettingsSync
         nameof(AppSettings.AppVolume), nameof(AppSettings.ClearPasswords), nameof(AppSettings.ColorPicker), nameof(AppSettings.Focumon),
         nameof(AppSettings.CapsLock), nameof(AppSettings.AllNotifications), nameof(AppSettings.NotchOnlyPopups), nameof(AppSettings.Dictation),
         nameof(AppSettings.HotKey), nameof(AppSettings.DiskWarning), nameof(AppSettings.UsbDrives), nameof(AppSettings.Connectivity),
-        nameof(AppSettings.Weather), nameof(AppSettings.SkyColors), nameof(AppSettings.InstrumentLook), nameof(AppSettings.AiUsage),
+        nameof(AppSettings.Weather), nameof(AppSettings.SkyColors), nameof(AppSettings.InstrumentLook), nameof(AppSettings.AiUsage), nameof(AppSettings.AiRings),
         nameof(AppSettings.ClockShowSeconds), nameof(AppSettings.ClockShowDate), nameof(AppSettings.ClockShowMedia), nameof(AppSettings.ClockStyle),
         nameof(AppSettings.ClockColor), nameof(AppSettings.WeatherAutoLocation), nameof(AppSettings.Beam), nameof(AppSettings.AchievementPopups),
         nameof(AppSettings.ShareActivity), nameof(AppSettings.ChatPopups), nameof(AppSettings.QuickReactions), nameof(AppSettings.Waves),
