@@ -23,6 +23,22 @@ public sealed partial class NotchWindow
     SettingsSwitch Switch(string header, string glyph, string? help, Func<AppSettings, bool> get, Action<bool> set, string? actionLabel = null, Action? runAction = null)
         => new(header, glyph, help, () => get(_settings), set, get(new AppSettings()), actionLabel, runAction);
 
+    SettingsSwitch[] StartPageSwitches() => new[]
+    {
+        Switch("Media controls", "\uE8D6", "Show music and video controls, artwork and track details.", s => s.MediaControls, on =>
+        {
+            _settings.MediaControls = on;
+            _settings.Save();
+            if (!on) { CancelSleep(); _callPause.Reset(); }
+            RefreshMediaUi();
+            ShowSleep();
+            ShowSky();
+            ApplyState(animate: true);
+        }),
+        Switch("Show Focumon", "\uE7FC", "Show your monster and timer in the open toolbar and the closed notch. Requires the Focumon for Holm browser extension.",
+            s => s.Focumon, SetFocumon),
+    };
+
     List<SettingsGroup> SettingsGroups()
     {
         void Save() => _settings.Save();
@@ -54,20 +70,6 @@ public sealed partial class NotchWindow
                     s => s.HotKey, SetHotKey),
                 Switch("Minimize over browser tabs", "\uE774", "While a maximized browser is in front on the notch's screen, the notch shrinks to a small pill so the tabs under it can be clicked. Hover over or click the pill to open Holm. Off by default.",
                     s => s.HideOverBrowsers, on => { _settings.HideOverBrowsers = on; Save(); WatchFullscreen(); }),
-            }),
-            new("notch", "Open notch", "", Color.FromRgb(0x5E, 0x5C, 0xE6), "Music and video controls in the notch", new[]
-            {
-                Switch("Media controls", "\uE8D6", "Show music and video controls, artwork and track details. On by default.",
-                    s => s.MediaControls, on =>
-                    {
-                        _settings.MediaControls = on;
-                        Save();
-                        if (!on) { CancelSleep(); _callPause.Reset(); }
-                        RefreshMediaUi();
-                        ShowSleep();
-                        ShowSky();
-                        ApplyState(animate: true);
-                    }),
             }),
             new("popouts", "Pop-outs", "\uEA8F", Color.FromRgb(0xFF, 0x9F, 0x0A), "What pops out of the notch when it happens", PopoutSwitches()),
             new("privacy", "Calls and privacy", "\uE72E", Color.FromRgb(0x34, 0xC7, 0x59), "Calls, the microphone and camera, and your clipboard", new[]
