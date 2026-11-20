@@ -101,7 +101,7 @@ sealed class StartPage : HubView
             toggle.Click += (_, _) =>
             {
                 setting.Set(toggle.IsChecked == true);
-                FillTools();
+                Refresh();
             };
             left.Children.Add(toggle);
             if (setting.Help is { } help) left.Children.Add(Note(help));
