@@ -1,5 +1,18 @@
 // Motion for the home page (home.mjs, home.css). The page reads fine without it; with reduced motion, nothing
-// moves. Work happens only while a moving part is on screen: no timers, one animation frame per scroll at most.
+// moves. Scroll effects use at most one animation frame per scroll.
+const clocks = document.querySelectorAll('[data-local-clock]');
+const clockFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+let clockTimer;
+function refreshClocks() {
+  clearTimeout(clockTimer);
+  if (document.hidden || !clocks.length) return;
+  const now = new Date();
+  const time = clockFormat.format(now);
+  for (const clock of clocks) clock.textContent = time;
+  clockTimer = setTimeout(refreshClocks, 60000 - (now.getTime() % 60000));
+}
+refreshClocks();
+document.addEventListener('visibilitychange', refreshClocks);
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const watch = 'IntersectionObserver' in window;
 document.documentElement.classList.add('h-js');
