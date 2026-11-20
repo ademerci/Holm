@@ -36,6 +36,8 @@ public sealed partial class NotchWindow
             await Task.Delay(2500);
             _hovered = false;
             ApplyState(animate: false);
+            if (_expandedView.IsVisible)
+                throw new InvalidOperationException("The closed notch still lays out the expanded view.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
@@ -69,6 +71,8 @@ public sealed partial class NotchWindow
             // An actual pointer can enter or leave the notch while the app is posing.
             _hovered = true;
             ApplyState(animate: false);
+            if (!_expandedView.IsVisible || _phoneView.IsVisible)
+                throw new InvalidOperationException("The open notch has the wrong views in layout.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
             CheckExpandedVolumeFeedback();
@@ -176,6 +180,7 @@ public sealed partial class NotchWindow
 
     void CheckPhoneActionsFit()
     {
+        _phoneView.IsVisible = true;
         _phoneStatus.Text = $"Receiving {new string('a', 240)}.jpg · 20%";
         var size = new Size(420, 160);
         foreach (var actions in new[] { _phoneButtons, _phoneAskButtons })
@@ -196,6 +201,7 @@ public sealed partial class NotchWindow
         _phoneStatus.Text = "";
         _phoneButtons.IsVisible = true;
         _phoneAskButtons.IsVisible = false;
+        _phoneView.IsVisible = false;
     }
 
     static void CheckMediaButtonAlignment()
