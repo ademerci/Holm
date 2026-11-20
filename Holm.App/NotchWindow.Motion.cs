@@ -47,7 +47,30 @@ public sealed partial class NotchWindow
 
     readonly Dictionary<(object Target, string Property), Tween> _tweens = new();
     readonly List<((object Target, string Property) Key, Tween Tween)> _finishedTweens = new();
-    bool _tweening;
+    bool _animationFramePending;
+
+    void ScheduleAnimationFrame()
+    {
+        if (!_opened || _animationFramePending) return;
+        _animationFramePending = true;
+        _platform.SetAnimationTiming(true);
+        RequestAnimationFrame(OnAnimationFrame);
+    }
+
+    void OnAnimationFrame(TimeSpan _)
+    {
+        if (!_opened) return;
+        long now = Stopwatch.GetTimestamp();
+        if (_motionRunning) StepShape(now);
+        if (_tweens.Count > 0) StepTweens(now);
+        if (_motionRunning || _tweens.Count > 0)
+        {
+            RequestAnimationFrame(OnAnimationFrame);
+            return;
+        }
+        _animationFramePending = false;
+        _platform.SetAnimationTiming(false);
+    }
 
     /// <summary>Animates one value; a new animation of the same target and property replaces the running one.</summary>
     void Animate(object target, string property, Action<double> set, double from, double to, double ms, double delayMs,
@@ -58,16 +81,13 @@ public sealed partial class NotchWindow
             Set = set, From = from, To = to, Start = Stopwatch.GetTimestamp(), DelayMs = delayMs, Ms = ms, Ease = ease, Done = done,
         };
         if (delayMs <= 0) set(from);
-        if (_tweening) return;
-        _tweening = true;
-        RequestAnimationFrame(OnTweenFrame);
+        ScheduleAnimationFrame();
     }
 
     void StopTween(object target, string property) => _tweens.Remove((target, property));
 
-    void OnTweenFrame(TimeSpan _)
+    void StepTweens(long now)
     {
-        long now = Stopwatch.GetTimestamp();
         foreach (var (key, tween) in _tweens)
         {
             double elapsed = (now - tween.Start) * 1000.0 / Stopwatch.Frequency - tween.DelayMs;
@@ -84,8 +104,6 @@ public sealed partial class NotchWindow
             done.Done?.Invoke();
         }
         _finishedTweens.Clear();
-        if (_tweens.Count == 0) { _tweening = false; return; }
-        RequestAnimationFrame(OnTweenFrame);
     }
 
     // ───────────── views ─────────────

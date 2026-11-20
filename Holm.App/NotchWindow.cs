@@ -210,6 +210,8 @@ public sealed partial class NotchWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _opened = false;
+        _platform.SetAnimationTiming(false);
         HideMixer();
         _eqTimer.Stop();
         _powerPlatform.Stop();
@@ -560,13 +562,12 @@ public sealed partial class NotchWindow : Window
         _motionRunning = true;
         UpdateEqualizer(); // the bars rest while the shape moves
         _motionLastTick = Stopwatch.GetTimestamp();
-        RequestAnimationFrame(OnMotionFrame);
+        ScheduleAnimationFrame();
     }
 
-    void OnMotionFrame(TimeSpan _)
+    void StepShape(long now)
     {
-        if (!_motionRunning) return;
-        long now = Stopwatch.GetTimestamp();
+        _selfTestMotionFrames?.Add(now);
         double dt = Math.Clamp((double)(now - _motionLastTick) / Stopwatch.Frequency, 0.001, 0.05);
         _motionLastTick = now;
 
@@ -600,9 +601,7 @@ public sealed partial class NotchWindow : Window
             // No further frame is asked for: nothing runs while the notch rests.
             _motionRunning = false;
             OnShapeSettled();
-            return;
         }
-        RequestAnimationFrame(OnMotionFrame);
     }
 
     void EnsureFrameFits(double shapeWidth, double shapeHeight)

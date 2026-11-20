@@ -10,6 +10,23 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
     const long WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
     const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
     static readonly IntPtr HWND_TOPMOST = new(-1);
+    bool _preciseAnimationTiming;
+
+    public void SetAnimationTiming(bool active)
+    {
+        if (active == _preciseAnimationTiming) return;
+        // Avalonia's software render loop uses timed waits. The normal Windows timer
+        // granularity can make those waits miss an entire refresh on a 60 Hz display.
+        if (active) _preciseAnimationTiming = timeBeginPeriod(1) == 0;
+        else
+        {
+            timeEndPeriod(1);
+            _preciseAnimationTiming = false;
+        }
+    }
+
+    [DllImport("winmm.dll")] static extern uint timeBeginPeriod(uint period);
+    [DllImport("winmm.dll")] static extern uint timeEndPeriod(uint period);
 
     public void MakeOverlay(IntPtr window)
     {

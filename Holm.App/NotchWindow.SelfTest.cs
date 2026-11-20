@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,6 +22,7 @@ namespace Holm.App;
 public sealed partial class NotchWindow
 {
     static readonly string? SelfTestFolder = Environment.GetEnvironmentVariable("HOLM_SELFTEST") is { Length: > 0 } f ? f : null;
+    List<long>? _selfTestMotionFrames;
 
     void StartSelfTest()
     {
@@ -65,9 +68,12 @@ public sealed partial class NotchWindow
             }
             SnapshotIconStrip(moves, folder, "verity-moves.png");
 
+            var motionFrames = new List<long>();
+            _selfTestMotionFrames = motionFrames;
             _hovered = true;
             ApplyState(animate: true);
             await Task.Delay(3000);
+            _selfTestMotionFrames = null;
             // An actual pointer can enter or leave the notch while the app is posing.
             _hovered = true;
             ApplyState(animate: false);
@@ -104,6 +110,7 @@ public sealed partial class NotchWindow
                 $"system: {Environment.OSVersion} ({System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture})",
                 $"backend: {_platform.GetType().Name}",
                 $"scaling: {RenderScaling}",
+                DescribeMotionFrames(motionFrames),
                 $"volume: {(volume ? $"{level:0.00}{(muted ? " muted" : "")}" : "none")}",
                 $"meter: {(_audio.MeterWorking ? "follows the sound" : "bounces")}",
                 $"battery: {(power.HasBattery ? $"{power.Percent} %{(power.OnAc ? ", plugged in" : "")}" : "none")}",
@@ -123,6 +130,16 @@ public sealed partial class NotchWindow
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
     }
 
+    static string DescribeMotionFrames(List<long> frames)
+    {
+        if (frames.Count < 2) return "opening frame callbacks: no sample";
+        double fps = (frames.Count - 1) / Stopwatch.GetElapsedTime(frames[0], frames[^1]).TotalSeconds;
+        var intervals = frames.Zip(frames.Skip(1), (first, next) => Stopwatch.GetElapsedTime(first, next).TotalMilliseconds)
+            .OrderBy(ms => ms).ToArray();
+        double p90 = intervals[(int)Math.Ceiling(intervals.Length * 0.9) - 1];
+        return $"opening frame callbacks: {fps:0.#}/s, 90th percentile interval {p90:0.#} ms ({frames.Count} frames)";
+    }
+
     async Task CheckWideSpringFrameAsync()
     {
         double restingWidth = Width;
@@ -131,7 +148,7 @@ public sealed partial class NotchWindow
         _wSpring.Retarget(_shapeW, 0.34, 0.63);
         _motionRunning = true;
         _motionLastTick = System.Diagnostics.Stopwatch.GetTimestamp();
-        OnMotionFrame(default);
+        StepShape(Stopwatch.GetTimestamp());
         _motionRunning = false;
         // X11 reports the new client size asynchronously after the resize request.
         await Task.Delay(200);
