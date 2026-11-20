@@ -221,6 +221,11 @@ public sealed partial class NotchWindow
         UpdateLayout();
         CheckNotchWidth();
 
+        double reservedWidth = Width, reservedHeight = Height;
+        OnShapeSettled();
+        if (Width != reservedWidth || Height != reservedHeight)
+            throw new InvalidOperationException("The animated overlay resized at the end of opening.");
+
         double displayWidth = _screenWidth;
         _screenWidth = 400;
         ApplyState(animate: false);

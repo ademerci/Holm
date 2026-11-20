@@ -24,7 +24,7 @@ public sealed partial class NotchWindow
     readonly TextBlock _bluetoothIcon = new() { Text = BluetoothGlyph, FontFamily = IconFont, FontSize = 14, Foreground = Dim };
     readonly TextBlock _outputIcon = new() { Text = AudioOutput.Speakers, FontFamily = IconFont, FontSize = 14, Foreground = Dim };
     bool? _radioOn;
-    bool _bluetoothListing;
+    bool _bluetoothListing, _refreshingOutputButtons;
 
     void BuildOutputButtons(Panel sound)
     {
@@ -39,9 +39,20 @@ public sealed partial class NotchWindow
     /// <summary>When the notch opens: is there Bluetooth, is it on, and is there more than one place for sound.</summary>
     async void RefreshOutputButtons()
     {
-        RefreshOutput();
-        try { _radioOn = await _bluetoothPlatform.RadioAsync(); } catch { _radioOn = null; }
-        ShowBluetoothState();
+        if (_refreshingOutputButtons) return;
+        _refreshingOutputButtons = true;
+        try
+        {
+            try { _radioOn = await _bluetoothPlatform.RadioAsync(); } catch { _radioOn = null; }
+            if (!_opened) return;
+            bool outputWasVisible = _outputBtn.IsVisible, radioWasVisible = _bluetoothBtn.IsVisible;
+            RefreshOutput();
+            ShowBluetoothState();
+            if (_state == NotchState.Expanded &&
+                (outputWasVisible != _outputBtn.IsVisible || radioWasVisible != _bluetoothBtn.IsVisible))
+                ApplyState(animate: true);
+        }
+        finally { _refreshingOutputButtons = false; }
     }
 
     void ShowBluetoothState()
