@@ -39,14 +39,17 @@
   h1 span { color: var(--muted); font-weight: 400; }
   .sub { color: var(--text2); font-size: 13px; margin-top: 4px; }
   .meta { color: var(--muted); font: 12px var(--mono); display: flex; align-items: center; gap: 8px; }
-  .meta svg { width: 12px; height: 12px; }
+  .meta i { display: inline-block; width: 40px; height: 2px; background: var(--raised); position: relative; }
+  .meta i b { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--muted); transform-origin: left; }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 2px; padding: 20px; }
   .label { color: var(--text2); font-size: 13px; }
   h2 { margin: 0 0 16px; font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   h2 small { color: var(--muted); font: 12px var(--mono); }
 
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--card); }
+  .stats .card { border: 0; border-radius: 0; background: none; }
+  .stats .card + .card { border-left: 1px solid var(--line); }
   .stat .big { font-size: 36px; font-weight: 500; letter-spacing: -1px; line-height: 1.2; margin-top: 8px; }
   .stat .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .stat:first-child .big { color: var(--lamp); }
@@ -58,15 +61,15 @@
   .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .chart .gridline { stroke: var(--line); }
   .chart .axis { fill: var(--muted); font: 11px var(--mono); }
-  .chart .kept { fill: none; stroke: var(--lamp); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .kept { fill: none; stroke: var(--lamp); stroke-width: 2; stroke-linejoin: miter; }
   .chart .kept-area { fill: var(--lamp); opacity: .1; }
-  .chart .checks { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 4; stroke-linejoin: round; }
+  .chart .checks { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 4; }
   .chart .guide { stroke: var(--text2); stroke-width: 1; opacity: 0; transition: opacity .15s var(--ease); }
-  .chart .point { fill: var(--bg); stroke: var(--lamp); stroke-width: 2; opacity: 0; transition: opacity .15s var(--ease); }
+  .chart .point { fill: var(--lamp); stroke: none; opacity: 0; transition: opacity .15s var(--ease); }
   .chart.hover .guide, .chart.hover .point { opacity: 1; }
   .readout {
     position: absolute; top: 0; pointer-events: none; opacity: 0; transition: opacity .15s var(--ease);
-    background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: 12px/1.6 var(--mono); white-space: nowrap;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 2px; padding: 8px 12px; font: 12px/1.6 var(--mono); white-space: nowrap;
   }
   .chart.hover .readout { opacity: 1; }
   .readout b { font-weight: 500; color: var(--text); }
@@ -78,27 +81,25 @@
   .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
 
   /* Quota */
-  .quota { display: flex; flex-direction: column; gap: 16px; }
-  .q { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; }
-  .q svg { width: 48px; height: 48px; transform: rotate(-90deg); }
-  .q circle { fill: none; stroke-width: 5; }
-  .q .track { stroke: var(--raised); }
-  .q .fill { stroke: var(--text2); stroke-linecap: round; transition: stroke-dashoffset .6s var(--ease); }
-  .q.warn .fill { stroke: var(--lamp); }
-  .q.over .fill { stroke: var(--bad); }
-  .q .name { font-size: 13px; }
-  .q .of { color: var(--muted); font: 12px var(--mono); }
-  .q .pct { float: right; font: 13px var(--mono); color: var(--text2); }
+  .quota { display: flex; flex-direction: column; gap: 20px; }
+  .q .top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
+  .q .pct { font: 13px var(--mono); color: var(--text2); }
   .q.warn .pct { color: var(--lamp); }
   .q.over .pct { color: var(--bad); }
+  .q .meter { position: relative; height: 6px; background: var(--raised); margin-top: 8px; }
+  .q .meter i { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--text2); transform-origin: left; transition: transform .6s var(--ease); }
+  .q.warn .meter i { background: var(--lamp); }
+  .q.over .meter i { background: var(--bad); }
+  .q .meter b { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+  .q .of { color: var(--muted); font: 12px var(--mono); margin-top: 8px; }
   .reset { color: var(--muted); font: 12px var(--mono); margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 
   /* Last 24 hours: a ranked list with thin bars */
   .kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 32px; }
   .kind .top { display: flex; justify-content: space-between; align-items: baseline; }
   .kind .n { font-size: 15px; font-weight: 500; }
-  .kind .bar { height: 4px; background: var(--raised); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .kind .bar i { display: block; height: 100%; border-radius: 2px; background: var(--step); transform-origin: left; transition: transform .6s var(--ease); }
+  .kind .bar { height: 4px; background: var(--raised); margin-top: 8px; overflow: hidden; }
+  .kind .bar i { display: block; height: 100%; background: var(--step); transform-origin: left; transition: transform .6s var(--ease); }
   .kind.lead .bar i { background: var(--lamp); }
   .kind.bad .bar i { background: var(--bad); }
 
@@ -110,8 +111,8 @@
   .login { max-width: 360px; margin: 16vh auto 0; }
   .login p { color: var(--text2); font-size: 13px; margin: 8px 0 24px; }
   .login form { display: flex; gap: 8px; }
-  .login input { flex: 1; min-width: 0; height: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: 14px var(--mono); padding: 0 12px; }
-  .login button { height: 40px; border: 0; border-radius: 8px; padding: 0 16px; font: 500 14px Geist, sans-serif; color: var(--deep); background: var(--text); cursor: pointer; transition: background-color .15s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+  .login input { flex: 1; min-width: 0; height: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 2px; color: var(--text); font: 14px var(--mono); padding: 0 12px; }
+  .login button { height: 40px; border: 0; border-radius: 2px; padding: 0 16px; font: 500 14px Geist, sans-serif; color: var(--deep); background: var(--text); cursor: pointer; transition: background-color .15s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
   .login button:hover { background: #fff; }
   .login input:focus-visible, .login button:focus-visible, .foot a:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
   .error { color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 20px; }
@@ -124,6 +125,7 @@
   @media (max-width: 520px) {
     main { padding: 0 16px 48px; }
     .stats { grid-template-columns: 1fr; }
+    .stats .card + .card { border-left: 0; border-top: 1px solid var(--line); }
     .stat .big { font-size: 28px; }
     .chart { height: 220px; }
     .notch { min-width: 0; width: 100%; border-radius: 0 0 20px 20px; }
@@ -147,7 +149,7 @@
         <h1>Holm <span>relay</span><span class="demo" id="demo" hidden>demo data</span></h1>
         <div class="sub">Inboxes are short hashes, no names, addresses or notes</div>
       </div>
-      <div class="meta"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#232325" stroke-width="3"/><circle id="tick" cx="10" cy="10" r="8" fill="none" stroke="#85858b" stroke-width="3" stroke-dasharray="50.3" stroke-dashoffset="0" transform="rotate(-90 10 10)"/></svg><span id="updated"></span></div>
+      <div class="meta"><span id="updated"></span><i aria-hidden="true"><b id="tick"></b></i></div>
     </header>
 
     <div class="stats">
@@ -254,7 +256,7 @@ function drawChart() {
   out += '<path class="kept-area" d="' + path(kept) + " L" + x(kept.length - 1).toFixed(1) + " " + y(0) + " L" + x(0).toFixed(1) + " " + y(0) + 'Z"/>';
   out += '<path class="checks" d="' + path(checks) + '"/>';
   out += '<path class="kept" d="' + path(kept) + '"/>';
-  out += '<line class="guide" id="guide" y1="' + T + '" y2="' + y(0) + '"/><circle class="point" id="point" r="4"/>';
+  out += '<line class="guide" id="guide" y1="' + T + '" y2="' + y(0) + '"/><rect class="point" id="point" width="7" height="7"/>';
   svg.innerHTML = out;
 
   const pick = (e) => {
@@ -262,7 +264,7 @@ function drawChart() {
     let i = Math.round((px - L) / ((w - L - 8) / Math.max(1, days.length - 1)));
     i = Math.max(0, Math.min(days.length - 1, i));
     $("guide").setAttribute("x1", x(i)); $("guide").setAttribute("x2", x(i));
-    $("point").setAttribute("cx", x(i)); $("point").setAttribute("cy", y(kept[i]));
+    $("point").setAttribute("x", x(i) - 3.5); $("point").setAttribute("y", y(kept[i]) - 3.5);
     const ro = $("readout");
     ro.innerHTML = "<b>" + dateOf(days[i].day) + '</b><br><span class="k">' + fmt(kept[i]) + ' kept</span><br><span class="c">' + fmt(checks[i]) + " online checks</span>";
     const left = x(i) + 12 + ro.offsetWidth > w ? x(i) - 12 - ro.offsetWidth : x(i) + 12;
@@ -289,15 +291,13 @@ function render(s) {
   days = s.days;
   drawChart();
 
-  const R = 20, C = 2 * Math.PI * R;
   $("quota").innerHTML = QUOTA.map(([k, name]) => {
     const q = s.quota[k], pct = Math.min(100, q.used / q.free * 100);
     const state = pct > 90 ? " over" : pct > 70 ? " warn" : "";
-    return '<div class="q' + state + '"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="track" cx="24" cy="24" r="' + R + '"/>' +
-      '<circle class="fill" cx="24" cy="24" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '" data-to="' + (C * (1 - pct / 100)) + '"/></svg>' +
-      '<div><div class="name">' + name + '<span class="pct">' + (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%</span></div><div class="of">' + fmt(q.used) + " of " + fmt(q.free) + "</div></div></div>";
+    return '<div class="q' + state + '"><div class="top"><span>' + name + '</span><span class="pct">' + (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%</span></div>' +
+      '<div class="meter"><i style="transform:scaleX(' + (pct / 100) + ')"></i><b style="left:70%"></b><b style="left:90%"></b></div>' +
+      '<div class="of">' + fmt(q.used) + " of " + fmt(q.free) + "</div></div>";
   }).join("");
-  requestAnimationFrame(() => document.querySelectorAll(".q .fill").forEach((c) => { c.style.strokeDashoffset = c.dataset.to; }));
   const now = new Date(), reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
   $("reset").textContent = "Resets in " + Math.floor((reset - now) / 3600000) + " h " + Math.floor((reset - now) / 60000) % 60 + " min, at 00:00 UTC";
 
@@ -319,7 +319,7 @@ addEventListener("resize", () => { if (days.length) drawChart(); });
 setInterval(() => {
   if ($("stats").hidden || document.hidden) return;
   left--;
-  $("tick").style.strokeDashoffset = String(50.3 * (1 - left / EVERY));
+  $("tick").style.transform = "scaleX(" + (left / EVERY) + ")";
   if (left <= 0) load();
 }, 1000);
 load();
