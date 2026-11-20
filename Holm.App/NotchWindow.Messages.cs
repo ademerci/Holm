@@ -401,6 +401,7 @@ public sealed partial class NotchWindow
 
     // ───────────── quiet hours ─────────────
 
+    const string MutePopOutsLabel = "Mute pop-outs";
     static readonly string[] QuietStarts = { "20:00", "21:00", "22:00", "23:00", "00:00" };
     static readonly string[] QuietEnds = { "05:00", "06:00", "07:00", "08:00", "09:00" };
 
@@ -478,6 +479,13 @@ public sealed partial class NotchWindow
         _settings.Save();
         ShowQuietNote();
         if (_hovered && _state == NotchState.Expanded) ApplyState(animate: true);
+    }
+
+    void SetMutePopOuts(bool muted)
+    {
+        _settings.MutePopOuts = muted;
+        SaveQuiet();
+        _settingsWindow?.RefreshSwitch(MutePopOutsLabel);
     }
 
     // ───────────── menus and settings ─────────────

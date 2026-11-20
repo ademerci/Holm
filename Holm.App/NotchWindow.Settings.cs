@@ -157,6 +157,7 @@ public sealed partial class NotchWindow
     {
         var list = new List<SettingsSwitch>
         {
+            Switch(MutePopOutsLabel, "\uE74F", "Hide message and notification pop-outs. Unread counts still appear.", s => s.MutePopOuts, SetMutePopOuts),
             Switch("Downloads", "\uE896", "A finished download pops out with Open and Show.", s => s.Downloads, SetDownloads),
             Switch("Screenshots", "\uE722", "A new screenshot pops out with Send and Shelf.", s => s.Screenshots, SetScreenshots),
             Switch("Copy text from screenshots", "\uE8D2", OperatingSystem.IsWindows() ? "Read the text in a screenshot with Windows' own OCR." : "Read the text in a screenshot with tesseract, on this computer.",

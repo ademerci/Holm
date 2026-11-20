@@ -381,6 +381,14 @@ sealed partial class SettingsWindow : Window
         RefreshApplyState();
     }
 
+    /// <summary>Reflects a setting changed outside this window while preserving other edits.</summary>
+    public void RefreshSwitch(string header)
+    {
+        foreach (var (setting, toggle) in _rows)
+            if (setting.Header == header) toggle.Set(setting.Get(), animate: false);
+        RefreshApplyState();
+    }
+
     void RefreshApplyState()
     {
         _apply.IsEnabled = HasChanges;
