@@ -26,6 +26,13 @@ class Program
         }
         using var _ = instance;
         if (instance == null) return;
+#if HOLM_WINDOWS
+        if (WinNotch.Diag.DevFolder == null && Holm.Platform.Windows.WindowsStoreInstance.IsRunning())
+        {
+            WinNotch.Diag.Log("The Microsoft Store copy of Holm is already running.");
+            return;
+        }
+#endif
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
