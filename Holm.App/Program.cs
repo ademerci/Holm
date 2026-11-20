@@ -49,5 +49,15 @@ class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
+            .With(Gpu ? new Win32PlatformOptions() : new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
+            .With(Gpu ? new X11PlatformOptions() : new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software } })
             .LogToTrace();
+
+    /// <summary>
+    /// Holm draws on the CPU (Skia's raster backend), not the graphics card. Its windows are small and mostly still, and
+    /// the GPU path costs far more than it saves: ANGLE/Direct3D, the graphics driver and Skia's GPU caches held about
+    /// 290 MB of private memory in an idle Holm on Windows (340 MB with them, 51 MB without, tools/Measure-Footprint.ps1).
+    /// HOLM_GPU=1 brings the graphics card back, should a system draw badly without it.
+    /// </summary>
+    static bool Gpu => Environment.GetEnvironmentVariable("HOLM_GPU") == "1";
 }

@@ -1,4 +1,4 @@
-Holm 2.1.1 — Lihou fixes notch clipping, restores volume feedback, and makes the phone QR card easier to use.
+Holm 2.1.1 — Lihou uses far less memory, fixes notch clipping, restores volume feedback, and makes the phone QR card easier to use.
 
 ## Download
 
@@ -11,6 +11,10 @@ Holm 2.1.1 — Lihou fixes notch clipping, restores volume feedback, and makes t
 Requires Windows 10 (2004 or newer) or Windows 11, x64, or Linux x64 with X11 (Wayland through XWayland).
 
 Holm is unsigned. Windows SmartScreen may warn on first launch, and Smart App Control may block an unsigned app.
+
+### Changed
+
+- **Much less memory.** Holm now draws on the processor instead of the graphics card. Its windows are small, and the graphics card's drivers and caches cost far more memory than they saved. On Windows, an idle Holm drops from about 115–340 MB to about 50 MB of private memory, and it stays near 60 MB after you open and close the notch (it was over 200 MB). Should Holm draw badly on your system, start it with the environment variable `HOLM_GPU=1` to use the graphics card again.
 
 ### Fixed
 

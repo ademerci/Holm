@@ -104,6 +104,7 @@ dotnet run --project Holm.App -c Release
 # Writes closed.png, open.png, report.txt; compare across OSes with:
 # python3 tools/selftest/compare.py <folder-with-selftest-Windows-and-selftest-Linux> <out>
 ```
+Holm draws with Skia on the CPU (`Program.cs`): the GPU path held ~290 MB more private memory when idle. `$env:HOLM_GPU = "1"` switches the graphics card back on (any build).
 In debug builds, `$env:HOLM_DEV_TOP = "300"` offsets the notch downward and `$env:HOLM_DATA = "<dir>"` isolates settings/data from the default user directory.
 
 ### Publishing
