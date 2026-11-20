@@ -371,7 +371,8 @@ public sealed partial class NotchWindow : Window
 
         if (target != _state || mini != _mini || !animate)
         {
-            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded) Unfold();
+            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded && _expandedView.Opacity == 0)
+                Unfold();
             SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
