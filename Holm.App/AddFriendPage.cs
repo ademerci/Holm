@@ -71,6 +71,11 @@ internal sealed class AddFriendPage : HubView
         var entry = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         _input = HubTheme.Field("HOLM-XXXXX-XXXXX");
         _input.FontSize = 16;
+        _input.TemplateApplied += (_, e) =>
+        {
+            if (e.NameScope.Find("PART_Placeholder") is TextBlock placeholder)
+                placeholder.FontSize = 13;
+        };
         _input.KeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; _ = Add(); } };
         _input.TextChanged += (_, _) =>
         {
