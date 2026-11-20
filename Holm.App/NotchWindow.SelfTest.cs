@@ -182,12 +182,16 @@ public sealed partial class NotchWindow
         {
             _phoneButtons.IsVisible = actions == _phoneButtons;
             _phoneAskButtons.IsVisible = actions == _phoneAskButtons;
+            // Measure the new set of visible buttons immediately, before the normal layout pass.
+            (actions.GetVisualParent() as Grid)?.InvalidateMeasure();
+            _phoneView.InvalidateMeasure();
             _phoneView.Measure(size);
             _phoneView.Arrange(new Rect(size));
             var bottom = actions.TranslatePoint(new Point(0, actions.Bounds.Height), _phoneView);
             if (bottom is null || actions.Bounds.Height < 25 || bottom.Value.Y > _phoneView.Bounds.Height + 0.5)
                 throw new InvalidOperationException(
-                    $"Phone actions have bounds {actions.Bounds} and end at {bottom} inside a card with bounds {_phoneView.Bounds}.");
+                    $"Phone {(actions == _phoneButtons ? "Done/Copy link" : "Accept/Decline")} actions have bounds {actions.Bounds} " +
+                    $"and end at {bottom} inside a card with bounds {_phoneView.Bounds}.");
         }
         _phoneStatus.Text = "";
         _phoneButtons.IsVisible = true;
