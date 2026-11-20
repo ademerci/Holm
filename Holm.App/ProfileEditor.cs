@@ -65,7 +65,7 @@ internal sealed class ProfileEditor : Border
 
         // Picture | name and status side by side, then the colors and the picture buttons in one row.
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-        _initials = new TextBlock { FontSize = 22, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        _initials = new TextBlock { FontSize = 22, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         _avatar = new Border
         {
             Width = 64, Height = 64, CornerRadius = new CornerRadius(32), Child = _initials, Cursor = new Cursor(StandardCursorType.Hand),
@@ -157,6 +157,7 @@ internal sealed class ProfileEditor : Border
         var picture = PictureBrush(_picture);
         _avatar.Background = picture ?? (_color != null && Color.TryParse(_color, out var c) ? new SolidColorBrush(c) : _nameColor(name));
         _initials.Text = picture != null ? "" : NotchWindow.Initials(name);
+        _initials.Foreground = Look.InkOn(_avatar.Background);
         _remove.IsEnabled = _picture != null;
         foreach (var swatch in _swatches.Children.OfType<Border>())
             swatch.BorderBrush = _color != null && swatch.Tag is string hex && hex == _color ? Brushes.White : Brushes.Transparent;

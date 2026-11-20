@@ -283,9 +283,12 @@ public sealed partial class NotchWindow
             });
             Grid.SetColumn(textPanel, 1);
             row.Children.Add(textPanel);
-            var pill = CountPill(CountText());
-            ((TextBlock)pill.Child!).Text = appCount > 99 ? "99+" : appCount.ToString(CultureInfo.InvariantCulture);
-            pill.Background = BrandBrush(group.App);
+            var count = CountText();
+            count.Text = appCount > 99 ? "99+" : appCount.ToString(CultureInfo.InvariantCulture);
+            var brand = BrandBrush(group.App);
+            count.Foreground = Look.InkOn(brand);
+            var pill = CountPill(count);
+            pill.Background = brand;
             Grid.SetColumn(pill, 2);
             row.Children.Add(pill);
 

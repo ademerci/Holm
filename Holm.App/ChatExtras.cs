@@ -100,7 +100,7 @@ internal static class ChatExtras
         {
             Width = 36, Height = 36, CornerRadius = new CornerRadius(18), Cursor = new Cursor(StandardCursorType.Hand),
             Background = HubTheme.Card, Margin = new Thickness(4, 0, 0, 0),
-            Child = HubTheme.Glyph("\uE710", 14, Brushes.White),
+            Child = HubTheme.Glyph("\uE710", 14),
         };
         ToolTip.SetTip(more, "More emoji");
         more.PointerEntered += (_, _) => more.Background = HubTheme.CardStrong;

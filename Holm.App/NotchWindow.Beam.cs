@@ -447,7 +447,7 @@ public sealed partial class NotchWindow
         Child = new TextBlock
         {
             Text = text, FontSize = icon ? 14 : 12, FontWeight = FontWeight.SemiBold,
-            FontFamily = icon ? IconFont : FontFamily.Default, Foreground = Brushes.White,
+            FontFamily = icon ? IconFont : FontFamily.Default, Foreground = Look.InkOn(background),
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
         },
     };
