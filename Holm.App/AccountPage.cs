@@ -157,7 +157,7 @@ internal sealed class AccountPage : HubView
 
         // The privacy statement in five lines; the whole of it one click away.
         var about = new StackPanel { Spacing = 4 };
-        about.Children.Add(HubTheme.Caption("What the account keeps"));
+        about.Children.Add(PrivacyHeading());
         foreach (string line in new[]
                  {
                      "Settings, profile, achievements and friends, the same on every computer",
@@ -167,7 +167,7 @@ internal sealed class AccountPage : HubView
                      "A forgotten password can't be reset",
                  })
             about.Children.Add(Words("•  " + line, dim: false));
-        var whole = Words(Privacy, dim: true);
+        var whole = Words(Privacy, dim: false);
         whole.IsVisible = false;
         whole.Margin = new Thickness(0, 8, 0, 0);
         var more = HubTheme.Action("Read all");
@@ -247,7 +247,7 @@ internal sealed class AccountPage : HubView
         content.Children.Add(Card(top));
 
         var what = new StackPanel { Spacing = 4 };
-        what.Children.Add(HubTheme.Caption("What the account keeps"));
+        what.Children.Add(PrivacyHeading());
         foreach (string line in new[]
                  {
                      "Settings that mean the same on every computer",
@@ -256,7 +256,7 @@ internal sealed class AccountPage : HubView
                      "Your friends and your friends key",
                  })
             what.Children.Add(Words("•  " + line, dim: false));
-        what.Children.Add(Words("Notes, reminders, the shelf, chats and files stay on each computer.", dim: true));
+        what.Children.Add(Words("Notes, reminders, the shelf, chats and files stay on each computer.", dim: false));
         content.Children.Add(Card(what));
     }
 
@@ -274,8 +274,17 @@ internal sealed class AccountPage : HubView
 
     static Border Card(Control child) => new()
     {
-        Background = HubTheme.Card, CornerRadius = new CornerRadius(12), Padding = new Thickness(18), Child = child,
+        // Light desktops can wash out white text through a dark glass card.
+        Background = Look.Current.Glass && Look.Current.IsDark ? HubTheme.Raised : HubTheme.Card,
+        CornerRadius = new CornerRadius(12), Padding = new Thickness(18), Child = child,
     };
+
+    static TextBlock PrivacyHeading()
+    {
+        var heading = HubTheme.Caption("What the account keeps");
+        heading.Foreground = Look.Ink;
+        return heading;
+    }
 
     static TextBlock Words(string text, bool dim) => new()
     {
