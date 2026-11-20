@@ -351,7 +351,7 @@ public sealed partial class NotchWindow
         _shareTitle.Text = beam ? "Send " + what : what;
         var peers = beam ? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _friends.Friends : Array.Empty<Friend>();
-        int online = friends.Take(8).Count(_friends.IsOnline);
+        int online = friends.Count(_friends.IsOnline);
         _shareHint.Text = _pickFiles != null ? (beam ? "Click where it should go." : "Click Shelf to keep it here.")
             : !beam ? "Drop it on Shelf to keep it here and drag it out later."
             : friends.Count > 0
@@ -361,7 +361,7 @@ public sealed partial class NotchWindow
                 : "Drop it on a person, or on Code to send it anywhere.";
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
-        string shown = beam + "|" + string.Join("|", friends.Take(8).Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}")
+        string shown = beam + "|" + string.Join("|", friends.Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}")
                                                      .Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && _shareTargets.Children.Count > 0)
         {
@@ -371,7 +371,7 @@ public sealed partial class NotchWindow
         _shownPeers = shown;
         _shareTargets.Children.Clear();
         _onlineDots.Clear();
-        foreach (var friend in friends.Take(8))
+        foreach (var friend in friends)
         {
             var chip = PersonChip(friend.Name, new ShareTarget(null, friend), isFriend: true);
             if (friend.Status != null) ToolTip.SetTip(chip, friend.Status);
