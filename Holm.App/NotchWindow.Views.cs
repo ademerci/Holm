@@ -161,7 +161,7 @@ public sealed partial class NotchWindow
         }
 
         _live.Tick += (_, _) => { UpdateLive(); UpdateBigClock(); };
-        _minute.Tick += (_, _) => { UpdateClock(); ShowIdleStatus(); ScheduleMinute(); };
+        _minute.Tick += (_, _) => { UpdateClock(); ShowIdleStatus(); ShowVerity(); ScheduleMinute(); };
     }
 
     void BuildExpanded()

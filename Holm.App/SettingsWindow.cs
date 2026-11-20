@@ -20,7 +20,10 @@ namespace Holm.App;
 sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null)
 {
     public Func<IBrush, double, Control>? Icon { get; init; }
-    public bool Hidden { get; init; }
+    /// <summary>A switch nobody sees until this word is typed on its page (the General page only).</summary>
+    public string? Secret { get; init; }
+    /// <summary>Runs when <see cref="Secret"/> was typed and the switch shows.</summary>
+    public Action? Revealed { get; init; }
 }
 
 /// <summary>A page of switches.</summary>
@@ -62,9 +65,9 @@ sealed partial class SettingsWindow : Window
     // The instrument look drops the subtitle under the page title: the rows say what the page holds.
     readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), IsVisible = !Look.Instrument };
     readonly Border _pageHost = new() { Focusable = true };
-    const string JellyPage = "general", JellyCode = "jelly";
-    Control? _jellyRow;
-    int _typedLetters;
+    const string SecretPage = "general";
+    readonly List<(string Code, Control Row, SettingsSwitch Setting)> _secretRows = new();
+    string _typed = "";
     readonly Button _apply;
     readonly Border _surface, _dialog;
     readonly Func<bool> _animations;
@@ -288,7 +291,7 @@ sealed partial class SettingsWindow : Window
         InitJellyMotion();
         Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
-        AddHandler(KeyDownEvent, RevealJelly, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, RevealSecret, RoutingStrategies.Tunnel);
         KeyDown += (_, e) =>
         {
             if (e.Key != Key.Escape) return;
@@ -297,11 +300,11 @@ sealed partial class SettingsWindow : Window
         };
         Activated += (_, _) =>
         {
-            if (Page == JellyPage && FocusManager?.GetFocusedElement() == null) _pageHost.Focus();
+            if (Page == SecretPage && FocusManager?.GetFocusedElement() == null) _pageHost.Focus();
             if (!HasChanges && !_dialog.IsVisible) Refresh();
             (_shownView as ChatPage)?.Seen();
         };
-        Deactivated += (_, _) => _typedLetters = 0;
+        Deactivated += (_, _) => _typed = "";
         Closing += (_, e) =>
         {
             if (_allowClose || !HasChanges && !_dialog.IsVisible) return;
@@ -318,14 +321,14 @@ sealed partial class SettingsWindow : Window
     public void Navigate(string key)
     {
         if (!_titles.ContainsKey(key)) return;
-        _typedLetters = 0;
+        _typed = "";
         _shownView?.Detach();
         _shownView = null;
         bool settings = _pages.TryGetValue(key, out var page);
         if (!settings && _social.Concat(_tools).Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
-        if (key == JellyPage && IsActive) _pageHost.Focus();
+        if (key == SecretPage && IsActive) _pageHost.Focus();
         (_pageTitle.Text, _pageSubtitle.Text) = (Look.Heading(_titles[key].Title), _titles[key].Subtitle);
         _footer.IsVisible = settings;
         foreach (var (k, item) in _navItems)
@@ -338,18 +341,20 @@ sealed partial class SettingsWindow : Window
         WobbleSettings(0, 0.60);
     }
 
-    void RevealJelly(object? sender, KeyEventArgs e)
+    /// <summary>Letters typed on the General page, not into a box: a secret word shows its switch.</summary>
+    void RevealSecret(object? sender, KeyEventArgs e)
     {
-        if (Page != JellyPage || _dialog.IsVisible || _jellyRow is not { IsVisible: false } row) return;
-        char letter = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) == 0 ? e.Key switch
+        if (Page != SecretPage || _dialog.IsVisible || !_secretRows.Any(s => !s.Row.IsVisible)) return;
+        bool plain = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) == 0;
+        _typed = plain && e.Key is >= Key.A and <= Key.Z ? (_typed + (char)('a' + (e.Key - Key.A)))[^Math.Min(_typed.Length + 1, 16)..] : "";
+        foreach (var (code, row, setting) in _secretRows)
         {
-            Key.J => 'j', Key.E => 'e', Key.L => 'l', Key.Y => 'y', _ => '\0',
-        } : '\0';
-        _typedLetters = letter == JellyCode[_typedLetters] ? _typedLetters + 1 : letter == JellyCode[0] ? 1 : 0;
-        if (_typedLetters != JellyCode.Length) return;
-        _typedLetters = 0;
-        row.IsVisible = true;
-        e.Handled = true;
+            if (row.IsVisible || !_typed.EndsWith(code, StringComparison.Ordinal)) continue;
+            _typed = "";
+            row.IsVisible = true;
+            e.Handled = true;
+            setting.Revealed?.Invoke();
+        }
     }
 
     /// <summary>Updates the counts beside the friends pages (unread messages).</summary>
@@ -420,10 +425,10 @@ sealed partial class SettingsWindow : Window
         {
             var setting = group.Switches[i];
             var target = rows;
-            if (setting.Hidden)
+            if (setting.Secret is { } secret)
             {
                 target = new StackPanel { IsVisible = false };
-                _jellyRow = target;
+                _secretRows.Add((secret, target, setting));
                 rows.Children.Add(target);
             }
             if (Look.Instrument) target.Children.Add(new Border { Height = 1, Background = Line });
@@ -510,7 +515,7 @@ sealed partial class SettingsWindow : Window
     /// <summary>A question over the window; each choice closes it and runs.</summary>
     internal void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
     {
-        _typedLetters = 0;
+        _typed = "";
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeight.SemiBold });
         content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Dim, Margin = new Thickness(0, 10, 0, 20) });
