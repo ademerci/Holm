@@ -179,7 +179,7 @@
       <div class="kinds" id="kinds"></div>
     </div>
 
-    <div class="foot"><span>Online counts open connections, one account on two PCs counts once. Quotas are estimates, the Cloudflare dashboard has the exact ones</span><a href="#" id="logout">Forget key</a></div>
+    <div class="foot"><span>Online counts open connections, one account on two PCs counts once. Quotas are estimates, the Cloudflare dashboard has the exact ones</span><a href="#" id="logout">Log out</a></div>
   </section>
 </main>
 <script>
@@ -188,7 +188,7 @@ const fmt = (v) => Number(v || 0).toLocaleString("en");
 const demo = new URLSearchParams(location.search).has("demo");
 const EVERY = 60;
 let key = "", left = EVERY, days = [];
-try { key = localStorage.getItem("holm-admin-key") || ""; } catch {}
+try { localStorage.removeItem("holm-admin-key"); } catch {} // the key lives only in this tab: every visit asks for it
 
 const KINDS = [["note", "Kept notes"], ["live", "Online checks"], ["open", "Connections"], ["invite", "Invite codes"], ["poll", "Code lookups"], ["refused", "Refused"]];
 const QUOTA = [["workerRequests", "Worker requests"], ["objectRequests", "Durable Object requests"], ["rowsWritten", "Rows written"]];
@@ -217,7 +217,7 @@ async function load() {
     const response = await fetch("/admin/stats", { headers: { authorization: "Bearer " + key } }).catch(() => null);
     body = response ? await response.json().catch(() => ({ error: "No answer from the relay" })) : { error: "No connection" };
     if (!response || !response.ok) {
-      if (response && response.status === 401) { key = ""; try { localStorage.removeItem("holm-admin-key"); } catch {} }
+      if (response && response.status === 401) key = "";
       return showLogin(body.error || "Error " + (response && response.status));
     }
   }
@@ -310,11 +310,10 @@ function render(s) {
 $("form").addEventListener("submit", (e) => {
   e.preventDefault();
   key = $("key").value.trim();
-  try { localStorage.setItem("holm-admin-key", key); } catch {}
   $("error").textContent = "";
   load();
 });
-$("logout").addEventListener("click", (e) => { e.preventDefault(); key = ""; try { localStorage.removeItem("holm-admin-key"); } catch {} location.replace(location.pathname); });
+$("logout").addEventListener("click", (e) => { e.preventDefault(); key = ""; $("key").value = ""; showLogin(); });
 addEventListener("resize", () => { if (days.length) drawChart(); });
 setInterval(() => {
   if ($("stats").hidden || document.hidden) return;
