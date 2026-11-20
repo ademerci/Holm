@@ -70,6 +70,7 @@ internal sealed class AddFriendPage : HubView
         });
         var entry = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         _input = HubTheme.Field("HOLM-XXXXX-XXXXX");
+        _input.VerticalContentAlignment = VerticalAlignment.Center;
         _input.FontSize = 16;
         _input.TemplateApplied += (_, e) =>
         {
