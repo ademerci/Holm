@@ -9,11 +9,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  /* Graphite night, one warm signal colour: the lamp on a small island's signal station. */
+  /* White, ink text and one Holm blue: the sky over a small island. */
   :root {
-    --deep: #0f0f10; --bg: #141415; --card: #19191b; --raised: #232325; --line: rgba(237, 237, 237, .08);
-    --text: #ededed; --text2: #a1a1a6; --muted: #85858b; --step: #3a3a3e;
-    --lamp: #f2a541; --live: #4cc38a; --bad: #e5484d;
+    --deep: #fff; --bg: #fafafa; --card: #fff; --raised: #f0f1f3; --line: rgba(17, 24, 39, .1);
+    --text: #111827; --text2: #4b5565; --muted: #6b7487; --step: #c9ced6;
+    --lamp: #1a73d9; --live: #2f9e48; --bad: #dc2626; --warn: #d97706;
     --mono: "Geist Mono", ui-monospace, Consolas, monospace;
     --ease: cubic-bezier(.2, .8, .2, 1);
   }
@@ -25,7 +25,7 @@
 
   /* The notch, as Holm sits at the top of the screen; its dot is the only live thing on the page. */
   .notch-wrap { display: flex; justify-content: center; }
-  .notch { position: relative; display: flex; align-items: center; gap: 12px; min-width: 288px; justify-content: center; padding: 12px 24px; background: #000; border-radius: 0 0 24px 24px; }
+  .notch { position: relative; display: flex; align-items: center; gap: 12px; min-width: 288px; justify-content: center; padding: 12px 24px; background: #000; color: #ededed; border-radius: 0 0 24px 24px; }
   .notch::before, .notch::after { content: ""; position: absolute; top: 0; width: 12px; height: 12px; }
   .notch::before { left: -12px; background: radial-gradient(circle at 0 100%, transparent 12px, #000 12.5px); }
   .notch::after { right: -12px; background: radial-gradient(circle at 100% 100%, transparent 12px, #000 12.5px); }
@@ -84,11 +84,11 @@
   .quota { display: flex; flex-direction: column; gap: 20px; }
   .q .top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
   .q .pct { font: 13px var(--mono); color: var(--text2); }
-  .q.warn .pct { color: var(--lamp); }
+  .q.warn .pct { color: var(--warn); }
   .q.over .pct { color: var(--bad); }
   .q .meter { position: relative; height: 6px; background: var(--raised); margin-top: 8px; }
   .q .meter i { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--text2); transform-origin: left; transition: transform .6s var(--ease); }
-  .q.warn .meter i { background: var(--lamp); }
+  .q.warn .meter i { background: var(--warn); }
   .q.over .meter i { background: var(--bad); }
   .q .meter b { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
   .q .of { color: var(--muted); font: 12px var(--mono); margin-top: 8px; }
@@ -113,7 +113,7 @@
   .login form { display: flex; gap: 8px; }
   .login input { flex: 1; min-width: 0; height: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 2px; color: var(--text); font: 14px var(--mono); padding: 0 12px; }
   .login button { height: 40px; border: 0; border-radius: 2px; padding: 0 16px; font: 500 14px Geist, sans-serif; color: var(--deep); background: var(--text); cursor: pointer; transition: background-color .15s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
-  .login button:hover { background: #fff; }
+  .login button:hover { background: #000; }
   .login input:focus-visible, .login button:focus-visible, .foot a:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
   .error { color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 20px; }
   .demo { margin-left: 12px; color: var(--muted); font: 12px var(--mono); vertical-align: 4px; }
