@@ -46,7 +46,7 @@ public sealed partial class NotchWindow
             DisabledHint: "Enable clipboard recording in Settings › Calls and privacy to use this tool."),
         new(HomeLayout.Mixer, "Volume per app", (brush, size) => ToolIcon(MixerGlyph, brush, size), () => _settings.AppVolume, () => _settings.AppVolume = true),
         // Its button shows only while Claude Code or Codex has been used on this computer.
-        new(HomeLayout.Ai, "AI usage", AiUsageIcon, () => _settings.AiUsage, DisabledHint: "Enable local AI usage in Settings › General to use this tool."),
+        new(HomeLayout.Ai, "AI usage", AiUsageIcon, () => _settings.AiUsage, DisabledHint: "Turn on AI usage below to use this tool."),
         new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), () => _settings.ColorPicker, () => _settings.ColorPicker = true),
         new(HomeLayout.Beam, "Beam", (brush, size) => ToolIcon("", brush, size), () => _settings.Beam, () => SetBeam(true)),
     }, StartPageSwitches());
