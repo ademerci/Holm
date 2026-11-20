@@ -132,7 +132,7 @@ internal sealed class AccountPage : HubView
         password.PasswordChar = '•';
         var repeat = HubTheme.Field("Password again (new account only)");
         repeat.PasswordChar = '•';
-        var agree = new CheckBox { Content = "I have read what the account keeps (below) and agree", Foreground = Brushes.White };
+        var agree = new CheckBox { Content = "I have read what the account keeps (below) and agree", Foreground = Look.Ink };
         var message = Words("", dim: true);
         message.IsVisible = false;
         form.Children.Add(email);
@@ -279,6 +279,6 @@ internal sealed class AccountPage : HubView
 
     static TextBlock Words(string text, bool dim) => new()
     {
-        Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 13, Foreground = dim ? HubTheme.Dim : Brushes.White,
+        Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 13, Foreground = dim ? HubTheme.Dim : Look.Ink,
     };
 }
