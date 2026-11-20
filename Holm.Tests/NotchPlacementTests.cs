@@ -14,6 +14,13 @@ public class NotchPlacementTests
     public void Placement_stays_on_the_selected_display(int left, int right, int width, double? fraction, int expected)
         => Assert.Equal(expected, NotchPlacement.Left(left, right, width, fraction));
 
+    [Theory]
+    [InlineData(1.3, 540, 607, 605)]
+    [InlineData(1.5, 700, 400, 398)]
+    [InlineData(1.25, 540, 1920, 675)]
+    public void Scale_keeps_the_shape_inside_the_display(double scale, double shapeWidth, double displayWidth, double fittedWidth)
+        => Assert.Equal(fittedWidth, NotchPlacement.FitScale(scale, shapeWidth, displayWidth) * shapeWidth, 8);
+
     [Fact]
     public void Saved_position_survives_restart_and_disabling_dragging()
     {

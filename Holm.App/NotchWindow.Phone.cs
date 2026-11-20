@@ -35,7 +35,11 @@ public sealed partial class NotchWindow
     readonly Grid _phoneView = new() { Margin = new Thickness(16, 14, 16, 14), ColumnDefinitions = new ColumnDefinitions("Auto,*") };
     readonly Border _phoneQrHost = new() { Width = 132, Height = 132, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _phoneSubtitle = new() { FontSize = 12, Foreground = Dim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0) };
-    readonly TextBlock _phoneStatus = new() { FontSize = 12, Foreground = Dim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
+    readonly TextBlock _phoneStatus = new()
+    {
+        FontSize = 12, Foreground = Dim, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis,
+        ClipToBounds = true, Margin = new Thickness(0, 6, 0, 0),
+    };
 
     readonly StackPanel _phoneAskButtons = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0), IsVisible = false };
     StackPanel _phoneButtons = null!;
@@ -49,11 +53,13 @@ public sealed partial class NotchWindow
         // The phone may ask once more (a second tap, a preview): don't pull the link away right after the last byte.
         _phoneFinished.Tick += (_, _) => { _phoneFinished.Stop(); StopPhone(); };
         _phoneView.Children.Add(_phoneQrHost);
-        var words = new StackPanel { Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var words = new Grid { Margin = new Thickness(16, 0, 0, 0), RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         words.Children.Add(new TextBlock { Text = "Scan with your phone's camera", FontSize = 14, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
+        Grid.SetRow(_phoneSubtitle, 1);
         words.Children.Add(_phoneSubtitle);
+        Grid.SetRow(_phoneStatus, 2);
         words.Children.Add(_phoneStatus);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
         var done = NotchButton.Pill(ShareBlue);
         done.Label = "Done";
         done.Click += () => StopPhone();
@@ -67,6 +73,7 @@ public sealed partial class NotchWindow
         };
         buttons.Children.Add(done);
         buttons.Children.Add(copy);
+        Grid.SetRow(buttons, 3);
         words.Children.Add(buttons);
         _phoneButtons = buttons;
         // A phone asks to send: Accept or Decline, in place of the buttons above.
@@ -79,6 +86,7 @@ public sealed partial class NotchWindow
         decline.Click += () => _phoneAnswer?.TrySetResult(false);
         _phoneAskButtons.Children.Add(accept);
         _phoneAskButtons.Children.Add(decline);
+        Grid.SetRow(_phoneAskButtons, 3);
         words.Children.Add(_phoneAskButtons);
         Grid.SetColumn(words, 1);
         _phoneView.Children.Add(words);

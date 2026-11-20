@@ -50,7 +50,7 @@ public sealed partial class NotchWindow
             {
                 _settings.Monitor = ScreenKey(screen);
                 _settings.Save();
-                PositionWindow();
+                FitToScreen();
             };
             menu.Items.Insert(at + i, item);
         }

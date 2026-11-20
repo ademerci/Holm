@@ -55,17 +55,43 @@ public sealed partial class NotchWindow
     StackPanel _eqPanel = null!;
 
     // Volume: the level just changed
-    readonly Grid _volumeView = new() { Margin = new Thickness(16, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,40") };
-    readonly TextBlock _volPeekIcon = new() { FontFamily = IconFont, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
-    readonly MiniSlider _volPeekBar = new() { IsInteractive = false, Margin = new Thickness(12, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _volPeekText = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+    readonly VolumeIndicator _volumeView = new() { Margin = new Thickness(16, 0) };
+    readonly VolumeIndicator _expandedVolumeView = new()
+    {
+        Width = 218, Height = 34, Margin = new Thickness(0, 6, 0, 0),
+        HorizontalAlignment = HorizontalAlignment.Center, IsVisible = false, IsHitTestVisible = false,
+    };
     readonly DispatcherTimer _volumeTimer = new() { Interval = TimeSpan.FromMilliseconds(1600) };
+
+    sealed class VolumeIndicator : Grid
+    {
+        readonly TextBlock _icon = new() { FontFamily = IconFont, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
+        readonly MiniSlider _bar = new() { IsInteractive = false, Margin = new Thickness(12, 0), VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock _text = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+
+        public VolumeIndicator()
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,40");
+            SetColumn(_bar, 1);
+            SetColumn(_text, 2);
+            Children.AddRange(new Control[] { _icon, _bar, _text });
+        }
+
+        public void Update(float level, bool muted, IBrush fill)
+        {
+            _bar.Value = muted ? 0 : level;
+            _bar.Fill = fill;
+            _icon.Text = VolumeGlyph(level, muted);
+            _text.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        }
+    }
 
     // Expanded: hover
     readonly Grid _expandedView = new()
     {
         Width = 480, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
         Margin = new Thickness(0, 14, 0, 0),
+        RowDefinitions = new RowDefinitions("Auto,Auto"),
     };
     readonly StackPanel _mediaPanel = new() { IsVisible = false };
     readonly StackPanel _clockPanel = new() { Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Top };
@@ -145,9 +171,6 @@ public sealed partial class NotchWindow
         _compactView.Children.Add(_compactTimer);
         BuildTimer();
 
-        Grid.SetColumn(_volPeekBar, 1);
-        Grid.SetColumn(_volPeekText, 2);
-        _volumeView.Children.AddRange(new Control[] { _volPeekIcon, _volPeekBar, _volPeekText });
         _volumeTimer.Tick += (_, _) => { _volumeTimer.Stop(); _volumePeek = false; ApplyState(animate: true); };
         _eqTimer.Tick += (_, _) => TickEqualizer();
 
@@ -254,6 +277,8 @@ public sealed partial class NotchWindow
         _statusSection.Children.Add(bottom);
         _statusSection.Children.Add(_statusLineBelow);
         _expandedView.Children.Add(panel);
+        Grid.SetRow(_expandedVolumeView, 1);
+        _expandedView.Children.Add(_expandedVolumeView);
     }
 
     void StartClock()
@@ -387,12 +412,11 @@ public sealed partial class NotchWindow
     /// <summary>The volume changed, by a key, another app or us: the open notch follows, the closed one shows it for a moment.</summary>
     void OnVolumeChanged(float level, bool muted)
     {
-        if (_state == NotchState.Expanded) { ReadVolume(); return; }
+        if (_state == NotchState.Expanded && _volSlider.IsEffectivelyVisible) { ReadVolume(); return; }
 
-        _volPeekBar.Value = muted ? 0 : level;
-        _volPeekBar.Fill = _info?.IsPlaying == true ? _progress.Fill : Look.Ink;
-        _volPeekIcon.Text = VolumeGlyph(level, muted);
-        _volPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        var fill = _info?.IsPlaying == true ? _progress.Fill : Look.Ink;
+        _volumeView.Update(level, muted, fill);
+        _expandedVolumeView.Update(level, muted, fill);
         bool wasVolume = _state == NotchState.Volume;
         _volumePeek = true;
         _volumeTimer.Stop();

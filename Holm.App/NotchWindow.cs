@@ -67,6 +67,7 @@ public sealed partial class NotchWindow : Window
     long _motionLastTick;
     double _shapeW = 150, _shapeH = 30, _shapeR = 15, _shapeScale = 1;
     double _hitRegionWidth, _hitRegionHeight;
+    double _screenWidth = double.PositiveInfinity;
     bool _shapeAnimating, _hoverBoost;
     MediaInfo? _info;
 
@@ -167,7 +168,7 @@ public sealed partial class NotchWindow : Window
         base.OnOpened(e);
         _opened = true;
         if (TryGetPlatformHandle() is { } handle) _platform.MakeOverlay(handle.Handle);
-        PositionWindow();
+        FitToScreen();
         // A display came or went, or the notch moved to one with another scale (125 % to 100 %): the window's cut-out is
         // in device pixels, so it is worked out again, or the notch shows clipped into a stale, shifted rectangle.
         Screens.Changed += (_, _) => FitToScreen();
@@ -239,6 +240,14 @@ public sealed partial class NotchWindow : Window
     /// <summary>Places the window on its screen again and redoes its size and cut-out for that screen's scale.</summary>
     void FitToScreen()
     {
+        double width = ChosenScreen() is { } screen
+            ? Math.Max(3, Math.Floor(screen.Bounds.Width / screen.Scaling))
+            : double.PositiveInfinity;
+        if (_screenWidth != width)
+        {
+            _screenWidth = width;
+            ApplyState(animate: false);
+        }
         PositionWindow();
         if (_motionRunning)
         {
@@ -303,6 +312,8 @@ public sealed partial class NotchWindow : Window
         bool browserMini = _browserInFront && !_hiddenForFullscreen && SensorsInUse.Count == 0
                            && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
         if (browserMini) target = NotchState.Idle;
+        _expandedVolumeView.IsVisible = target == NotchState.Expanded && _state == NotchState.Expanded
+                                        && _volumePeek && !_volSlider.IsEffectivelyVisible;
         PlacePrivacyDots(target == NotchState.Badge);
         // Minimize when idle: a small pill without shoulders while nothing is going on.
         bool mini = browserMini || (target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0);
@@ -344,6 +355,7 @@ public sealed partial class NotchWindow : Window
 
         // Media apps report every few seconds; only animate when the shape really changes.
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
+        scale = NotchPlacement.FitScale(scale, w + 2 * MaxEar, _screenWidth);
         if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || mini != _mini || scale != _shapeScale)
         {
             double currentScale = _scaleSpring.Value;
@@ -393,7 +405,7 @@ public sealed partial class NotchWindow : Window
     void FitWindowWidth(double width)
     {
         double preferred = Math.Ceiling(BaseWidth * Math.Max(CollapsedScale, ExpandedScale));
-        double needed = Math.Max(preferred, Math.Ceiling(width) + 2);
+        double needed = Math.Min(_screenWidth, Math.Max(preferred, Math.Ceiling(width) + NotchPlacement.WidthPadding));
         if (Width == needed) return;
         Width = needed;
         if (_opened) PositionWindow();
@@ -555,16 +567,20 @@ public sealed partial class NotchWindow : Window
         double h = Math.Max(_shapeH < hMin ? 1 : hMin, _hSpring.Value);
         double scale = Math.Max(0.1, _scaleSpring.Value);
         double w = Math.Max(1, _wSpring.Value);
+        double skew = 0;
         if (_dragLean.Value != 0 || _dragSkew.AngleX != 0)
         {
             double leanLimit = Math.Clamp((Width / scale - w) / 2 - MaxEar, 0, 18);
             double lean = Math.Clamp(_dragLean.Value, -leanLimit, leanLimit);
+            skew = Math.Abs(lean);
             h = Math.Max(Math.Min(h, hMin), h * (1 - Math.Min(Math.Abs(_dragLean.Value) / 225, 0.08)));
             _dragSkew.AngleX = Math.Atan(lean / h) * 180 / Math.PI;
         }
+        double frameWidth = w + 2 * (MaxEar + skew);
+        scale = NotchPlacement.FitScale(scale, frameWidth, _screenWidth);
         double frameNeed = NeededWindowHeight(h, scale);
         if (frameNeed > Height) Height = frameNeed;
-        ReserveFrameWidth(w, h, scale);
+        ReserveFrameWidth(frameWidth * scale, h * scale);
         ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
@@ -577,15 +593,14 @@ public sealed partial class NotchWindow : Window
         RequestAnimationFrame(OnMotionFrame);
     }
 
-    void ReserveFrameWidth(double w, double h, double scale)
+    void ReserveFrameWidth(double shapeWidth, double shapeHeight)
     {
         // Jelly and interrupted springs can overshoot the target by more than the initial reservation.
         // Win32 clips the drawing to the hit region, so both the window and the region must fit this frame.
-        double skew = Math.Abs(Math.Tan(_dragSkew.AngleX * Math.PI / 180)) * h;
-        double width = Math.Ceiling((w + 2 * (MaxEar + skew)) * scale) + 2;
-        double height = Math.Ceiling(h * scale) + 2;
+        double width = Math.Ceiling(shapeWidth) + NotchPlacement.WidthPadding;
+        double height = Math.Ceiling(shapeHeight) + 2;
         bool resize = width > Width;
-        if (resize) FitWindowWidth(width - 2);
+        if (resize) FitWindowWidth(shapeWidth);
         if (!resize && width <= _hitRegionWidth && height <= _hitRegionHeight) return;
         _hitRegionWidth = Math.Max(_hitRegionWidth, width);
         _hitRegionHeight = Math.Max(_hitRegionHeight, height);

@@ -40,6 +40,7 @@ public sealed partial class NotchWindow
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
             CheckMediaButtonAlignment();
+            CheckPhoneActionsFit();
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
             foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
             SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
@@ -70,6 +71,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            CheckExpandedVolumeFeedback();
             await CheckWideSpringFrameAsync();
             // The Beam tool's page: send and receive.
             ShowTool(Tool.Beam);
@@ -130,7 +132,25 @@ public sealed partial class NotchWindow
         // X11 reports the new client size asynchronously after the resize request.
         await Task.Delay(200);
         UpdateLayout();
+        CheckNotchWidth();
 
+        double displayWidth = _screenWidth;
+        _screenWidth = 400;
+        ApplyState(animate: false);
+        await Task.Delay(200);
+        UpdateLayout();
+        CheckNotchWidth();
+        if (Width > _screenWidth)
+            throw new InvalidOperationException("The notch window is wider than its display.");
+
+        _screenWidth = displayWidth;
+        ApplyState(animate: false);
+        if (Width != restingWidth)
+            throw new InvalidOperationException("The notch window did not return to its resting width.");
+    }
+
+    void CheckNotchWidth()
+    {
         var left = _backdrop.TranslatePoint(new Point(0, 0), this);
         var right = _backdrop.TranslatePoint(new Point(_backdrop.Width, 0), this);
         if (left is null || right is null || left.Value.X < 0 || right.Value.X > ClientSize.Width ||
@@ -139,9 +159,38 @@ public sealed partial class NotchWindow
                 $"Notch edges at {left?.X:0.##} and {right?.X:0.##}, client width {ClientSize.Width:0.##}, " +
                 $"requested width {Width:0.##}, hit region width {_hitRegionWidth:0.##}.");
 
+    }
+
+    void CheckExpandedVolumeFeedback()
+    {
+        bool statusShown = _statusSection.IsVisible;
+        _statusSection.IsVisible = false;
+        OnVolumeChanged(0.6f, muted: false);
+        if (!_expandedVolumeView.IsVisible || _state != NotchState.Expanded)
+            throw new InvalidOperationException("The open notch did not show the volume with Status hidden.");
+        _volumeTimer.Stop();
+        _volumePeek = false;
+        _statusSection.IsVisible = statusShown;
         ApplyState(animate: false);
-        if (Width != restingWidth)
-            throw new InvalidOperationException("The notch window did not return to its resting width.");
+    }
+
+    void CheckPhoneActionsFit()
+    {
+        _phoneStatus.Text = $"Receiving {new string('a', 240)}.jpg · 20%";
+        var size = new Size(420, 160);
+        foreach (var actions in new[] { _phoneButtons, _phoneAskButtons })
+        {
+            _phoneButtons.IsVisible = actions == _phoneButtons;
+            _phoneAskButtons.IsVisible = actions == _phoneAskButtons;
+            _phoneView.Measure(size);
+            _phoneView.Arrange(new Rect(size));
+            var bottom = actions.TranslatePoint(new Point(0, actions.Bounds.Height), _phoneView);
+            if (bottom is null || actions.Bounds.Height < 26 || bottom.Value.Y > _phoneView.Bounds.Height)
+                throw new InvalidOperationException("Long phone status text pushes the action buttons outside the card.");
+        }
+        _phoneStatus.Text = "";
+        _phoneButtons.IsVisible = true;
+        _phoneAskButtons.IsVisible = false;
     }
 
     static void CheckMediaButtonAlignment()
