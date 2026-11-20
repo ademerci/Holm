@@ -9,7 +9,9 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Holm.Platform;
 using WinNotch.Account;
+using WinNotch.Notify;
 
 namespace Holm.App;
 
@@ -44,6 +46,7 @@ public sealed partial class NotchWindow
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
+            CheckNotificationRestart();
             CheckMediaButtonAlignment();
             CheckPhoneActionsFit();
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
@@ -128,6 +131,38 @@ public sealed partial class NotchWindow
             exitCode = 1;
         }
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
+    }
+
+    static void CheckNotificationRestart()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var yesterday = new SystemNotification(1, "Discord", "Discord", new[] { "Example sender", "Yesterday's message" }, now.AddDays(-1));
+        var another = yesterday with { Id = 2 };
+        var settings = new WinNotch.AppSettings();
+        string? saved = null;
+        var inbox = new Inbox(_ => true, settings.ReadToasts, () => saved = System.Text.Json.JsonSerializer.Serialize(settings));
+        inbox.StartWatching(now);
+        ChatMessage? popped = null;
+        inbox.Changed += message => popped = message;
+        inbox.Apply(new NotificationSnapshot(null, new Dictionary<string, string>(), null));
+        inbox.Apply(new NotificationSnapshot(new[] { yesterday }, null, null));
+        if (popped != null || inbox.UnreadCount != 1)
+            throw new InvalidOperationException("A late startup toast should count silently.");
+        inbox.MarkRead("discord");
+        if (saved == null || saved.Contains("Example sender") || saved.Contains("Yesterday's message"))
+            throw new InvalidOperationException("The read receipt did not save correctly.");
+
+        var restarted = new Inbox(_ => true, System.Text.Json.JsonSerializer.Deserialize<WinNotch.AppSettings>(saved)!.ReadToasts);
+        restarted.StartWatching(now.AddSeconds(1));
+        restarted.Changed += message => popped = message;
+        restarted.Apply(new NotificationSnapshot(new[] { yesterday, another }, null, null));
+        if (popped != null || restarted.UnreadCount != 1 || restarted.Messages[0].Id != another.Id)
+            throw new InvalidOperationException("Restarting should keep read Discord notifications dismissed.");
+
+        var incoming = yesterday with { Time = now.AddSeconds(2), Lines = new[] { "Example sender", "New message" } };
+        restarted.Apply(new NotificationSnapshot(new[] { incoming, another }, null, null));
+        if (popped?.Text != "New message" || restarted.UnreadCount != 2)
+            throw new InvalidOperationException("A new Discord notification should pop out when its ID is reused.");
     }
 
     static string DescribeMotionFrames(List<long> frames)
