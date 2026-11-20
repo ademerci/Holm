@@ -2375,6 +2375,7 @@ td {
 .team{padding-top:32px;padding-bottom:96px}
 .team h2{font-size:clamp(36px,5vw,64px);line-height:1.05}
 .devs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;margin-top:40px}
-.dev{border:1px solid var(--line);border-radius:20px;background:var(--surface);padding:24px}
+.dev{border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.dev>div{padding:24px}
 .dev h3{font-size:22px;margin-bottom:8px;overflow-wrap:anywhere}
 .dev p{color:var(--muted);margin-bottom:12px}
