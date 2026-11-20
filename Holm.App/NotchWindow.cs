@@ -543,15 +543,10 @@ public sealed partial class NotchWindow : Window
 
     void OnShapeSettled()
     {
-        // Resizing the native surface at the end of opening can move a notch near the
-        // display edge or briefly interrupt the final paint. Reclaim that room when closed.
-        if (!_hovered)
-        {
-            FitWindowWidth((_shapeW + 2 * MaxEar) * _shapeScale);
-            FitWindowHeight();
-        }
+        // Keep the native surface stable on the final frame in both directions.
+        // SnapShape can reclaim reserved space when laying out without animation.
         _shapeAnimating = false;
-        UpdateHitRegion(_shapeW, _shapeH, _shapeScale, onlyIfChanged: _hovered);
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale, onlyIfChanged: true);
         UpdateEqualizer();
     }
 

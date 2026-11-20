@@ -229,6 +229,20 @@ public sealed partial class NotchWindow
         if (Width != reservedWidth || Height != reservedHeight)
             throw new InvalidOperationException("The animated overlay resized at the end of opening.");
 
+        // Drive a complete close without real pointer events interrupting it.
+        _hovered = false;
+        ApplyState(animate: true);
+        var closingSurface = (Width, Height, Position);
+        for (int frame = 0; _motionRunning && frame < 240; frame++)
+            StepShape(_motionLastTick + Stopwatch.Frequency / 60);
+        if (_motionRunning || _shapeAnimating || _state == NotchState.Expanded)
+            throw new InvalidOperationException("The closing notch did not settle.");
+        if ((Width, Height, Position) != closingSurface)
+            throw new InvalidOperationException("The animated overlay resized or moved at the end of closing.");
+        if (_hitRegionHeight != _shapeH * _shapeScale * 1.15 + 2 || _hitRegionHeight >= Height)
+            throw new InvalidOperationException("The closed notch did not release its reserved input area.");
+
+        _hovered = true;
         double displayWidth = _screenWidth;
         _screenWidth = 400;
         ApplyState(animate: false);
