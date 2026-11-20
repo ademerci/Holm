@@ -211,7 +211,8 @@ public sealed partial class NotchWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _opened = false;
-        _platform.SetAnimationTiming(false);
+        _animationTiming?.Dispose();
+        _animationTiming = null;
         HideMixer();
         _eqTimer.Stop();
         _powerPlatform.Stop();
@@ -506,9 +507,9 @@ public sealed partial class NotchWindow : Window
         if (!_settings.Animations || _shapeW <= 0) return;
         double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
         if (needed > Height) Height = needed;
-        _wSpring.Kick(260, 0.30, 0.58);
-        _hSpring.Kick(-180, 0.32, 0.58);
-        _scaleSpring.Kick(0.35, 0.30, 0.58);
+        _wSpring.Kick(500, 0.30, 0.58);
+        _hSpring.Kick(-300, 0.32, 0.58);
+        _scaleSpring.Kick(0.5, 0.30, 0.58);
         UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
         _shapeAnimating = true;
         StartMotion();

@@ -48,12 +48,13 @@ public sealed partial class NotchWindow
     readonly Dictionary<(object Target, string Property), Tween> _tweens = new();
     readonly List<((object Target, string Property) Key, Tween Tween)> _finishedTweens = new();
     bool _animationFramePending;
+    IDisposable? _animationTiming;
 
     void ScheduleAnimationFrame()
     {
         if (!_opened || _animationFramePending) return;
         _animationFramePending = true;
-        _platform.SetAnimationTiming(true);
+        _animationTiming = _platform.BeginAnimationTiming();
         RequestAnimationFrame(OnAnimationFrame);
     }
 
@@ -69,7 +70,8 @@ public sealed partial class NotchWindow
             return;
         }
         _animationFramePending = false;
-        _platform.SetAnimationTiming(false);
+        _animationTiming?.Dispose();
+        _animationTiming = null;
     }
 
     /// <summary>Animates one value; a new animation of the same target and property replaces the running one.</summary>

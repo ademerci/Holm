@@ -41,8 +41,8 @@ public interface INotchWindowPlatform
     /// </summary>
     void KeepOnTop(IntPtr window) { }
 
-    /// <summary>Requests finer frame timing only while the notch is animating.</summary>
-    void SetAnimationTiming(bool active) { }
+    /// <summary>Requests finer frame timing until the returned lease is disposed.</summary>
+    IDisposable? BeginAnimationTiming() => null;
 
     /// <summary>
     /// Hands memory Holm no longer uses back to the system, as the WPF app does while it rests (Windows: the working set;

@@ -288,7 +288,7 @@ sealed partial class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
-        InitJellyMotion();
+        InitJellyMotion(platform);
         Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
         AddHandler(KeyDownEvent, RevealSecret, RoutingStrategies.Tunnel);
