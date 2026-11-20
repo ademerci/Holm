@@ -409,14 +409,15 @@ public sealed partial class NotchWindow
 
     /// <summary>Whether a message that just came in stays in the badge instead of popping out.</summary>
     bool Silenced(ChatMessage message)
-        => QuietHours.Silences(_settings.QuietHours, _settings.QuietFrom, _settings.QuietUntil, DateTime.Now, message.App, message.Title, _settings.QuietVips);
+        => _settings.MutePopOuts || QuietHours.Silences(_settings.QuietHours, _settings.QuietFrom, _settings.QuietUntil, DateTime.Now, message.App, message.Title, _settings.QuietVips);
 
     /// <summary>A line in the open notch while it is quiet, so a missing pop-out never looks like a fault.</summary>
     void ShowQuietNote()
     {
         bool quiet = QuietNow;
-        _quietNote.IsVisible = quiet;
-        if (quiet) _quietNote.Text = _settings.QuietVips.Count > 0 ? $"Quiet until {_settings.QuietUntil} · VIPs still pop out" : $"Quiet until {_settings.QuietUntil}";
+        _quietNote.IsVisible = quiet || _settings.MutePopOuts;
+        if (_settings.MutePopOuts) _quietNote.Text = "Pop-outs muted · right-click to switch back on";
+        else if (quiet) _quietNote.Text = _settings.QuietVips.Count > 0 ? $"Quiet until {_settings.QuietUntil} · VIPs still pop out" : $"Quiet until {_settings.QuietUntil}";
     }
 
     void FillQuietMenu(MenuItem menu)

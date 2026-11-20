@@ -1,6 +1,10 @@
 # Changelog
 
-## 2.1.2 – 2026-11-20
+## 2.2.0 – 2026-11-20
+
+### Added
+
+- **Mute pop-outs.** Right-click the notch and choose *Mute pop-outs*: messages and notifications no longer pop out of the notch. They still count in the closed notch, and the open notch says that pop-outs are muted. Choose it again to switch them back on.
 
 ### Changed
 

@@ -45,6 +45,8 @@ internal sealed class AppSettings
     public List<string> MutedApps { get; set; } = new();
     /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
     public bool QuietHours { get; set; }
+    /// <summary>Right-click › Mute pop-outs: no message or notification pops out until it is switched off again; they still count.</summary>
+    public bool MutePopOuts { get; set; }
     public string QuietFrom { get; set; } = "22:00";
     public string QuietUntil { get; set; } = "07:00";
     /// <summary>"app:whatsapp" lets a whole app through, "who:Lena" a person.</summary>
