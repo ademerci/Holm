@@ -69,6 +69,14 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            // The Beam tool's page: send and receive.
+            ShowTool(Tool.Beam);
+            ApplyState(animate: false);
+            await Task.Delay(800); // the page fades in
+            FreezeForPicture();
+            Snapshot(Path.Combine(folder, "beam.png"));
+            ShowTool(Tool.None);
+            ApplyState(animate: false);
             await SnapshotHubAsync(folder);
 
             // The Account page as someone signed out sees it. A self-test never signs in; its account file would sit in the folder.

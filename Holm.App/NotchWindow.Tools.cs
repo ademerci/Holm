@@ -22,7 +22,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai }
+    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai, Beam }
 
     static readonly IBrush ToolLit = Look.InkA(0x29);
 
@@ -124,6 +124,7 @@ public sealed partial class NotchWindow
             Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         };
         _toolBar.Children.Add(_chatsToolBtn);
+        _beamToolBtn = ToolButton("Beam", "", Tool.Beam, "Beam: send and receive files");
         _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
         _aiToolBtn = ToolWord("AI", AiUsageIcon(Look.Aero ? Look.Ink : Dim, 14));
@@ -217,6 +218,7 @@ public sealed partial class NotchWindow
         _toolPage.Children.Add(BuildClipboardPage());
         _toolPage.Children.Add(BuildMixerPage());
         _toolPage.Children.Add(_aiPage);
+        _toolPage.Children.Add(BuildBeamPage());
         Deactivated += (_, _) => OnDeactivated();
         RefreshToolBar();
         return _toolPage;
@@ -231,6 +233,7 @@ public sealed partial class NotchWindow
         (_clipboardPage, _clipboardToolBtn, Tool.Clipboard),
         (_mixerPage, _mixerToolBtn, Tool.Mixer),
         (_aiPage, _aiToolBtn, Tool.Ai),
+        (_beamPage, _beamToolBtn, Tool.Beam),
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
@@ -291,6 +294,7 @@ public sealed partial class NotchWindow
         _remindersToolBtn.IsVisible = _settings.Reminders && !_home.IsToolHidden(HomeLayout.Reminders);
         _calculatorToolBtn.IsVisible = _settings.Calculator && !_home.IsToolHidden(HomeLayout.Calculator);
         _chatsToolBtn.IsVisible = !_home.IsToolHidden(HomeLayout.Chats);
+        _beamToolBtn.IsVisible = _settings.Beam && !_home.IsToolHidden(HomeLayout.Beam);
         _clipboardToolBtn.IsVisible = _settings.ClipboardHistory && !_home.IsToolHidden(HomeLayout.Clipboard);
         _mixerToolBtn.IsVisible = _settings.AppVolume && !_home.IsToolHidden(HomeLayout.Mixer);
         _aiToolBtn.IsVisible = _settings.AiUsage && _aiUsage.Count > 0 && !_home.IsToolHidden(HomeLayout.Ai);
