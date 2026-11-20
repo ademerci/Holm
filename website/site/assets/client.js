@@ -39,14 +39,13 @@ matchMedia('(min-width: 761px)').addEventListener('change', (e) => {
 
 // A persistent user choice is optional; storage may be disabled by the browser.
 const themes = ['system', 'light', 'dark'];
-let theme = 'system';
+let theme = 'dark';
 try {
   const saved = localStorage.getItem('holm-theme');
   if (themes.includes(saved)) theme = saved;
 } catch {}
 function applyTheme() {
-  if (theme === 'system') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.theme = theme;
   document.querySelector('[data-theme-label]').textContent =
     theme[0].toUpperCase() + theme.slice(1);
 }
@@ -157,14 +156,15 @@ function renderDownloadCount() {
 if (document.querySelector('[data-releases]')) void updateReleases();
 async function updateReleases() {
   const status = document.querySelector('[data-release-status]');
-  const initialStatus = status.innerHTML;
-  status.textContent = 'Checking the latest release information…';
+  const initialStatus = status?.innerHTML;
+  if (status) status.textContent = 'Checking the latest release information…';
   const result = await loadReleaseFeed({
     readCache: () => JSON.parse(localStorage.getItem('holm-releases-v2')),
     writeCache: (value) => localStorage.setItem('holm-releases-v2', JSON.stringify(value)),
     snapshotAt: Number(document.querySelector('[data-releases]').dataset.snapshotAt || 0),
   });
   if (result.releases) render(result.releases);
+  if (!status) return;
   if (result.source === 'live')
     status.textContent =
       'Release information checked just now with GitHub. Prereleases are labelled separately.';
