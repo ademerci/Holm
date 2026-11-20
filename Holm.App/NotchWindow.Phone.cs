@@ -185,6 +185,7 @@ public sealed partial class NotchWindow
         _phoneSubtitle.Text = subtitle;
         _phoneStatus.Text = "Your phone has to be on the same Wi-Fi as this computer. The link isn't encrypted, so avoid public Wi-Fi.";
         if (_taskVisible) HideTask();
+        _expandDelay.Stop();
         SetExpanded(false);
         ApplyState(animate: true);
         _phoneExpire.Start();

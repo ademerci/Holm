@@ -119,7 +119,7 @@ public sealed partial class NotchWindow
             _collapseDelay.Stop();
             // An enter without the pointer having moved isn't one: see CloseFromInside.
             if (_stayClosed && Point.Distance(e.GetPosition(this), _closedAt) > 3) _stayClosed = false;
-            if (_hovered || _stayClosed) return;
+            if (_hovered || _stayClosed || PhoneShowing) return;
             _expandDelay.Start();
             if (!_taskVisible && !_sharing && !_picking) SetHoverBoost(true);
         };
@@ -142,7 +142,7 @@ public sealed partial class NotchWindow
             if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left) return;
             // Jelly: a click on the open notch where nothing answers it makes the notch jiggle.
             if (_hovered && Spring.Jelly) { Jiggle(); return; }
-            if (_hovered || _taskVisible || _sharing || _picking) return;
+            if (_hovered || _taskVisible || _sharing || _picking || PhoneShowing) return;
             _expandDelay.Stop();
             _stayClosed = false;
             SetExpanded(true);
@@ -167,7 +167,7 @@ public sealed partial class NotchWindow
 
     void SetExpanded(bool expand)
     {
-        if (_hovered == expand || _hiddenForFullscreen) return;
+        if (_hovered == expand || _hiddenForFullscreen || (expand && PhoneShowing)) return;
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");
