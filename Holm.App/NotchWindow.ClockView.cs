@@ -288,7 +288,6 @@ public sealed partial class NotchWindow
     void SetClockPlayIcon(bool playing)
     {
         _clockPlayIcon.Data = playing ? PauseGeo : PlayGeo;
-        _clockPlayIcon.Margin = new Thickness(playing ? 0 : 2, 0, 0, 0);
     }
 
     void RefreshClockControls()

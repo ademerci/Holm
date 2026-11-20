@@ -110,7 +110,8 @@ public sealed partial class NotchWindow
     static Path IconPath(Geometry data, double width, double height) => new()
     {
         Data = data, Fill = Look.Ink, Stroke = Look.Ink, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
-        Stretch = Stretch.Uniform, Width = width, Height = height,
+        // Let the path take its fitted size so the button can centre the drawn icon.
+        Stretch = Stretch.Uniform, MaxWidth = width, MaxHeight = height,
     };
 
     void BuildViews()
@@ -206,7 +207,6 @@ public sealed partial class NotchWindow
             {
                 // Feels instant; the real state follows a moment later.
                 _playIcon.Data = _info.IsPlaying ? PlayGeo : PauseGeo;
-                _playIcon.Margin = new Thickness(_info.IsPlaying ? 3 : 0, 0, 0, 0);
             }
             _media.PlayPause();
         };
@@ -342,7 +342,6 @@ public sealed partial class NotchWindow
         _repeatIcon.Text = info.Repeat == 1 ? "" : ""; // repeat one / repeat all
 
         _playIcon.Data = info.IsPlaying ? PauseGeo : PlayGeo;
-        _playIcon.Margin = new Thickness(info.IsPlaying ? 0 : 3, 0, 0, 0); // a triangle looks off-centre when centred
         _playBtn.IsEnabled = info.CanPlayPause;
         _prevBtn.IsEnabled = info.CanPrevious;
         _nextBtn.IsEnabled = info.CanNext;

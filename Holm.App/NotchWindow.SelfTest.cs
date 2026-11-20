@@ -39,6 +39,7 @@ public sealed partial class NotchWindow
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
+            CheckMediaButtonAlignment();
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
             foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
             SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
@@ -141,6 +142,23 @@ public sealed partial class NotchWindow
         ApplyState(animate: false);
         if (Width != restingWidth)
             throw new InvalidOperationException("The notch window did not return to its resting width.");
+    }
+
+    static void CheckMediaButtonAlignment()
+    {
+        foreach (var (geometry, width, height) in new[] { (PrevGeo, 21, 15), (NextGeo, 21, 15), (PlayGeo, 18, 20), (PauseGeo, 18, 20) })
+        {
+            var icon = IconPath(geometry, width, height);
+            var button = new Controls.NotchButton(icon);
+            var size = new Size(42, 42);
+            button.Measure(size);
+            button.Arrange(new Rect(size));
+            var drawn = icon.RenderedGeometry?.Bounds ?? throw new InvalidOperationException("Media icon geometry is missing.");
+            var center = icon.Bounds.Position + (Vector)drawn.Center;
+            // Layout rounding can move an edge by a fraction of a pixel.
+            if (Math.Abs(center.X - size.Width / 2) > 0.75 || Math.Abs(center.Y - size.Height / 2) > 0.75)
+                throw new InvalidOperationException($"Media icon is drawn at {center} within a {size} button.");
+        }
     }
 
     /// <summary>What differs between machines rather than systems (the time, the volume) is set alike before a picture.</summary>
