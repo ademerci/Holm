@@ -80,6 +80,9 @@ public sealed partial class NotchWindow
             // An actual pointer can enter or leave the notch while the app is posing.
             _hovered = true;
             ApplyState(animate: false);
+            // A snap can release the opening headroom. X11 reports the new client width asynchronously.
+            if (Math.Abs(ClientSize.Width - Width) * RenderScaling >= 1)
+                await Task.Delay(200);
             if (!_expandedView.IsVisible || _phoneView.IsVisible)
                 throw new InvalidOperationException("The open notch has the wrong views in layout.");
             FreezeForPicture();
