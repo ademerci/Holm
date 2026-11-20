@@ -69,7 +69,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
-            CheckWideSpringFrame();
+            await CheckWideSpringFrameAsync();
             // The Beam tool's page: send and receive.
             ShowTool(Tool.Beam);
             ApplyState(animate: false);
@@ -116,7 +116,7 @@ public sealed partial class NotchWindow
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
     }
 
-    void CheckWideSpringFrame()
+    async Task CheckWideSpringFrameAsync()
     {
         double restingWidth = Width;
         // Put the width spring past its target, as it can be when Jelly opens the notch.
@@ -125,13 +125,18 @@ public sealed partial class NotchWindow
         _motionRunning = true;
         _motionLastTick = System.Diagnostics.Stopwatch.GetTimestamp();
         OnMotionFrame(default);
+        _motionRunning = false;
+        // X11 reports the new client size asynchronously after the resize request.
+        await Task.Delay(200);
         UpdateLayout();
 
         var left = _backdrop.TranslatePoint(new Point(0, 0), this);
         var right = _backdrop.TranslatePoint(new Point(_backdrop.Width, 0), this);
         if (left is null || right is null || left.Value.X < 0 || right.Value.X > ClientSize.Width ||
             left.Value.X < (Width - _hitRegionWidth) / 2 || right.Value.X > (Width + _hitRegionWidth) / 2)
-            throw new InvalidOperationException("The animated notch extends past the window or its hit region.");
+            throw new InvalidOperationException(
+                $"Notch edges at {left?.X:0.##} and {right?.X:0.##}, client width {ClientSize.Width:0.##}, " +
+                $"requested width {Width:0.##}, hit region width {_hitRegionWidth:0.##}.");
 
         ApplyState(animate: false);
         if (Width != restingWidth)
