@@ -23,13 +23,13 @@ sealed partial class SettingsWindow
     {
         _jellyPlatform = platform;
         _surface.RenderTransform = new TransformGroup { Children = { _jellySkew, _jellyScale } };
-        AddHandler(PointerPressedEvent, (_, e) =>
+        // Start after the click is delivered so a button doesn't move away from the pressed pointer.
+        AddHandler(PointerReleasedEvent, (_, e) =>
         {
-            var point = e.GetCurrentPoint(this);
-            if (!point.Properties.IsLeftButtonPressed) return;
-            double lean = Math.Clamp(point.Position.X / Math.Max(1, ClientSize.Width) - 0.5, -0.5, 0.5);
+            if (e.InitialPressMouseButton != MouseButton.Left) return;
+            double lean = Math.Clamp(e.GetPosition(this).X / Math.Max(1, ClientSize.Width) - 0.5, -0.5, 0.5);
             WobbleSettings(lean, 1);
-        }, RoutingStrategies.Tunnel);
+        }, RoutingStrategies.Bubble, handledEventsToo: true);
         Activated += (_, _) => _jellyPosition = Position;
         PositionChanged += (_, e) =>
         {
