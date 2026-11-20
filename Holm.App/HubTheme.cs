@@ -70,7 +70,7 @@ internal static class HubTheme
         Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = fill, ClipToBounds = true,
         Child = new TextBlock
         {
-            Text = initials, FontSize = size * 0.38, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White,
+            Text = initials, FontSize = size * 0.38, FontWeight = FontWeight.SemiBold, Foreground = Look.InkOn(fill),
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
         },
     };

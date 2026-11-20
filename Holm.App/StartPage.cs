@@ -98,7 +98,11 @@ sealed class StartPage : HubView
         foreach (var setting in switches)
         {
             var toggle = new CheckBox { Content = setting.Header, IsChecked = setting.Get(), Margin = new Thickness(4, 10, 0, 0) };
-            toggle.Click += (_, _) => setting.Set(toggle.IsChecked == true);
+            toggle.Click += (_, _) =>
+            {
+                setting.Set(toggle.IsChecked == true);
+                Refresh();
+            };
             left.Children.Add(toggle);
             if (setting.Help is { } help) left.Children.Add(Note(help));
         }

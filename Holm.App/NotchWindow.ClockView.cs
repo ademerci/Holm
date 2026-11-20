@@ -22,7 +22,7 @@ public sealed partial class NotchWindow
     /// <summary>The colour choices, as the WPF app's BigClock.Colors (its WPF half).</summary>
     static readonly (string Key, string Label, Color Swatch)[] ClockColors =
     {
-        (BigClock.ColorWhite, "White", Color.FromRgb(0xFF, 0xFF, 0xFF)),
+        (BigClock.ColorWhite, "Theme", Color.FromUInt32(Look.Current.Ink)),
         (BigClock.ColorSky, "Auto", Color.FromRgb(0x5E, 0x9E, 0xFF)),
         (BigClock.ColorAmber, "Amber", Color.FromRgb(0xFF, 0x9F, 0x0A)),
         (BigClock.ColorCyan, "Cyan", Color.FromRgb(0x64, 0xD2, 0xFF)),
@@ -241,7 +241,7 @@ public sealed partial class NotchWindow
         _clockFullDate.IsVisible = _settings.ClockShowDate;
     }
 
-    /// <summary>BigClock.ResolveColor of the WPF app: "Auto" takes the cover's colour, else the sky's, else white.</summary>
+    /// <summary>Auto takes the cover colour or the sky colour, falling back to the theme ink.</summary>
     Color ResolveClockColor()
     {
         string key = BigClock.NormalizeColor(_settings.ClockColor);
@@ -249,10 +249,10 @@ public sealed partial class NotchWindow
         {
             if (_info?.Accent is { } accent && _info.Art != null) return accent;
             if (_skyShown is { } sky) return Color.FromRgb(sky.Left.R, sky.Left.G, sky.Left.B);
-            return Colors.White;
+            return Color.FromUInt32(Look.Current.Ink);
         }
         foreach (var (k, _, swatch) in ClockColors) if (k == key) return swatch;
-        return Colors.White;
+        return Color.FromUInt32(Look.Current.Ink);
     }
 
     void RefreshBigClockMedia()

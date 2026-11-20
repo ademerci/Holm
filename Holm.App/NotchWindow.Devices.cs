@@ -17,7 +17,7 @@ namespace Holm.App;
 /// The computer's battery and the Bluetooth devices: chips at the bottom left of the open notch, and a line out of
 /// the closed one when you plug in, run low or a device connects.
 ///
-/// Bluetooth is read when the app starts and each time the notch has opened; nothing watches it in between yet.
+/// Bluetooth is read when the app starts and each time the notch opens; nothing watches it in between yet.
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -60,7 +60,7 @@ public sealed partial class NotchWindow
             else if (!now.OnAc && now.Percent < before.Percent && now.Percent is 20 or 10 or 5)
                 ShowPeek(null, "Low battery", $"{now.Percent}%", RedBrush, battery: now.Percent);
         }
-        if (_state == NotchState.Expanded) RefreshDevices();
+        if (_state == NotchState.Expanded && (!known || now != before)) RefreshDevices();
     }
 
     async void ScanBluetooth()
@@ -72,6 +72,7 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Diag.Log("Bluetooth scan failed: " + ex.Message); return; }
         finally { _bluetoothScanInProgress = false; }
 
+        if (_btKnown && found.SequenceEqual(_bt)) return;
         var previous = _bt.ToDictionary(d => d.Address, StringComparer.OrdinalIgnoreCase);
         _bt = found;
 

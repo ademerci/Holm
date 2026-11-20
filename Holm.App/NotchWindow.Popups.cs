@@ -116,6 +116,7 @@ public sealed partial class NotchWindow
         _taskIcon.FontFamily = textIcon ? FontFamily.Default : IconFont;
         _taskIcon.FontWeight = textIcon ? FontWeight.SemiBold : FontWeight.Normal;
         _taskIconCircle.Background = circle;
+        _taskIcon.Foreground = Look.InkOn(circle);
         // A screenshot's picture or a chat GIF takes the icon's place; every other card has its icon.
         StopTaskGif();
         _taskGif = null;

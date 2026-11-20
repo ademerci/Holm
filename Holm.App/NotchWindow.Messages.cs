@@ -73,7 +73,8 @@ public sealed partial class NotchWindow
     void InitMessages(IPlatformServices platform)
     {
         _notifications = platform.Notifications;
-        _chat = new Inbox(app => !_settings.MutedApps.Contains(app));
+        var readToasts = _notifications.RetainsToastsAcrossRestarts ? _settings.ReadToasts ??= new() : null;
+        _chat = new Inbox(app => !_settings.MutedApps.Contains(app), readToasts, _settings.Save);
         _chat.Changed += OnMessagesChanged;
         _chat.OtherArrived += OnOtherNotification;
         _notifications.Changed += () => Dispatcher.UIThread.Post(() => _ = ReadNotificationsAsync());
@@ -144,6 +145,7 @@ public sealed partial class NotchWindow
 
     async System.Threading.Tasks.Task StartNotificationsAsync(bool ask)
     {
+        if (!_notificationsRunning) _chat.StartWatching(DateTimeOffset.UtcNow);
         _notificationsRunning = true;
         await _notifications.StartAsync(ask);
         await ReadNotificationsAsync();
@@ -281,9 +283,12 @@ public sealed partial class NotchWindow
             });
             Grid.SetColumn(textPanel, 1);
             row.Children.Add(textPanel);
-            var pill = CountPill(CountText());
-            ((TextBlock)pill.Child!).Text = appCount > 99 ? "99+" : appCount.ToString(CultureInfo.InvariantCulture);
-            pill.Background = BrandBrush(group.App);
+            var countLabel = CountText();
+            countLabel.Text = appCount > 99 ? "99+" : appCount.ToString(CultureInfo.InvariantCulture);
+            var brand = BrandBrush(group.App);
+            countLabel.Foreground = Look.InkOn(brand);
+            var pill = CountPill(countLabel);
+            pill.Background = brand;
             Grid.SetColumn(pill, 2);
             row.Children.Add(pill);
 
@@ -401,6 +406,7 @@ public sealed partial class NotchWindow
 
     // ───────────── quiet hours ─────────────
 
+    const string MutePopOutsLabel = "Mute pop-outs";
     static readonly string[] QuietStarts = { "20:00", "21:00", "22:00", "23:00", "00:00" };
     static readonly string[] QuietEnds = { "05:00", "06:00", "07:00", "08:00", "09:00" };
 
@@ -478,6 +484,13 @@ public sealed partial class NotchWindow
         _settings.Save();
         ShowQuietNote();
         if (_hovered && _state == NotchState.Expanded) ApplyState(animate: true);
+    }
+
+    void SetMutePopOuts(bool muted)
+    {
+        _settings.MutePopOuts = muted;
+        SaveQuiet();
+        _settingsWindow?.RefreshSwitch(MutePopOutsLabel);
     }
 
     // ───────────── menus and settings ─────────────

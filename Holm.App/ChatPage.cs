@@ -703,7 +703,7 @@ internal sealed class ChatPage : HubView
         var chip = new Border
         {
             Background = HubTheme.CardStrong, CornerRadius = new CornerRadius(13), Padding = new Thickness(10, 4, 10, 5), Cursor = new Cursor(StandardCursorType.Hand),
-            Child = new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeight.Bold, Foreground = Brushes.White },
+            Child = new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeight.Bold, Foreground = Look.Ink },
         };
         ToolTip.SetTip(chip, tip);
         chip.PointerEntered += (_, _) => chip.Background = HubTheme.Selected;

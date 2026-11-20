@@ -103,8 +103,8 @@ public sealed partial class NotchWindow
         hub.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
         var network = new MenuItem { Header = "Wi-Fi and speed test…" };
         network.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("network"), DispatcherPriority.Background);
-        var mute = new MenuItem { Header = "Mute pop-outs", ToggleType = MenuItemToggleType.CheckBox };
-        mute.Click += (_, _) => { _settings.MutePopOuts = !_settings.MutePopOuts; SaveQuiet(); };
+        var mute = new MenuItem { Header = MutePopOutsLabel, ToggleType = MenuItemToggleType.CheckBox };
+        mute.Click += (_, _) => SetMutePopOuts(!_settings.MutePopOuts);
         var menu = new ContextMenu();
         menu.Items.Add(_menuTimer);
         menu.Items.Add(_menuSleep);

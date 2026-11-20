@@ -41,6 +41,9 @@ public interface INotchWindowPlatform
     /// </summary>
     void KeepOnTop(IntPtr window) { }
 
+    /// <summary>Requests finer frame timing until the returned lease is disposed.</summary>
+    IDisposable? BeginAnimationTiming() => null;
+
     /// <summary>
     /// Hands memory Holm no longer uses back to the system, as the WPF app does while it rests (Windows: the working set;
     /// Linux: the allocator's free pages). Nothing where the system has no such thing.

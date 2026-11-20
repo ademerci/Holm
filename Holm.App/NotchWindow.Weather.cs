@@ -67,8 +67,8 @@ public sealed partial class NotchWindow
         Grid.SetColumn(_weatherAdd, 1);
         clockHeader.Children.Add(_weatherLine);
         clockHeader.Children.Add(_weatherAdd);
-        _weatherLine.PointerReleased += (_, _) => { ChoosePlace(); BeginTyping(_weatherBox, untouched: true); };
-        _weatherAdd.PointerReleased += (_, _) => { ChoosePlace(); BeginTyping(_weatherBox, untouched: true); };
+        _weatherLine.PointerReleased += ChoosePlaceOnClick;
+        _weatherAdd.PointerReleased += ChoosePlaceOnClick;
 
         _weatherBox.MaxLength = 80;
         _weatherBox.TextChanged += (_, _) => _weatherPlaceholder.IsVisible = string.IsNullOrEmpty(_weatherBox.Text);
@@ -201,8 +201,16 @@ public sealed partial class NotchWindow
             _rainText.Text = weather.RainNote ?? "";
             _rainText.IsVisible = weather.RainNote != null;
         }
+        RefreshHomePlayer();
         RefreshMediaWeather();
         if (_state == NotchState.Expanded) ApplyState(animate: true);
+    }
+
+    void ChoosePlaceOnClick(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left) return;
+        e.Handled = true;
+        ChoosePlace();
     }
 
     void ChoosePlace()
@@ -215,6 +223,7 @@ public sealed partial class NotchWindow
         _weatherBox.Text = "";
         _weatherHint.Text = _settings.WeatherPlace is { } place ? "Now: " + place : "Type a city and press Enter";
         ShowWeather();
+        BeginTyping(_weatherBox);
     }
 
     async Task SearchPlaceAsync()
@@ -274,7 +283,6 @@ public sealed partial class NotchWindow
         {
             SetExpanded(true);
             ChoosePlace();
-            BeginTyping(_weatherBox, untouched: true);
         };
         menu.Items.Add(place);
         if (_location.IsSupported)

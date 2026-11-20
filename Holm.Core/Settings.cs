@@ -43,6 +43,8 @@ internal sealed class AppSettings
     public bool Messages { get; set; } = true;
     /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
     public List<string> MutedApps { get; set; } = new();
+    /// <summary>Recently read system toasts, stored locally so they stay read across restarts.</summary>
+    public List<Notify.ReadToast> ReadToasts { get; set; } = new();
     /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
     public bool QuietHours { get; set; }
     /// <summary>Right-click › Mute pop-outs: no message or notification pops out until it is switched off again; they still count.</summary>

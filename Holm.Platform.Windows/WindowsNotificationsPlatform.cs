@@ -34,6 +34,7 @@ public sealed class WindowsNotificationsPlatform : INotificationsPlatform
     public event Action? Changed;
 
     public NotificationAccess Access { get; private set; } = NotificationAccess.Off;
+    public bool RetainsToastsAcrossRestarts => true;
 
     public string? AccessHint => Access switch
     {

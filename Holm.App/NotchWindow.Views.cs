@@ -324,12 +324,9 @@ public sealed partial class NotchWindow
         return _artBrush!;
     }
 
-    void RefreshMediaUi()
+    void RefreshHomePlayer()
     {
-        var info = _info;
-        bool media = _settings.MediaControls && info != null && !_choosingPlace;
-        _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
-        if (Look.Instrument) PlaceToolBar(_mediaClockHeader.IsVisible);
+        bool media = _settings.MediaControls && _info != null && !_choosingPlace;
         if (_mediaPanel.IsVisible != media)
         {
             _mediaPanel.IsVisible = media;
@@ -338,6 +335,14 @@ public sealed partial class NotchWindow
             FadeIn(media ? _mediaPanel : _clockPanel);
             if (!media && _todaySection.IsVisible) FadeIn(_todaySection);
         }
+    }
+
+    void RefreshMediaUi()
+    {
+        var info = _info;
+        _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
+        if (Look.Instrument) PlaceToolBar(_mediaClockHeader.IsVisible);
+        RefreshHomePlayer();
         _compactArt.Background = ArtBrush(info?.Art);
         RefreshBigClockMedia();
         if (_clockViewOpen) RefreshBigClockStyle();

@@ -37,6 +37,15 @@ internal static class Look
     public static readonly IBrush Ink = Brush(Current.Ink);
     public static IBrush InkA(byte alpha) => Brush(Designs.WithAlpha(Current.Ink, alpha));
 
+    /// <summary>Readable ink for text and symbols on a solid badge or avatar.</summary>
+    public static IBrush InkOn(IBrush background)
+    {
+        if (background is not ISolidColorBrush solid) return Ink;
+        uint color = solid.Color.ToUInt32();
+        return Designs.Contrast(color, 0xFFFFFFFF) >= Designs.Contrast(color, 0xFF000000)
+            ? Brushes.White : Brushes.Black;
+    }
+
     public static readonly IBrush Accent = Brush(Current.Accent);
     public static readonly IBrush OnAccent = Brush(Designs.OnColor(Current.Accent));
 

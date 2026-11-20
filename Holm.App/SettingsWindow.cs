@@ -288,7 +288,7 @@ sealed partial class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
-        InitJellyMotion();
+        InitJellyMotion(platform);
         Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
         AddHandler(KeyDownEvent, RevealSecret, RoutingStrategies.Tunnel);
@@ -381,6 +381,14 @@ sealed partial class SettingsWindow : Window
         RefreshApplyState();
     }
 
+    /// <summary>Reflects a setting changed outside this window while preserving other edits.</summary>
+    public void RefreshSwitch(string header)
+    {
+        foreach (var (setting, toggle) in _rows)
+            if (setting.Header == header) toggle.Set(setting.Get(), animate: false);
+        RefreshApplyState();
+    }
+
     void RefreshApplyState()
     {
         _apply.IsEnabled = HasChanges;
@@ -398,10 +406,11 @@ sealed partial class SettingsWindow : Window
         var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, FontSize = 13.5 };
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
-        var badgeText = new TextBlock { FontSize = 11, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var badgeFill = B(0xFFFF453A);
+        var badgeText = new TextBlock { FontSize = 11, Foreground = Look.InkOn(badgeFill), FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         var badge = new Border
         {
-            Background = B(0xFFFF453A), CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
+            Background = badgeFill, CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
             Child = badgeText, IsVisible = false, VerticalAlignment = VerticalAlignment.Center,
         };
         Grid.SetColumn(badge, 2);

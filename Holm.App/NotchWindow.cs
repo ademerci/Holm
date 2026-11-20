@@ -62,10 +62,9 @@ public sealed partial class NotchWindow : Window
 
     NotchState _state = NotchState.Idle;
     bool _motionRunning, _hovered, _opened, _volumePeek, _mini;
-    /// <summary>Work that opening needs but that doesn't change the open notch's size: done once it has landed.</summary>
-    bool _openSettling;
     long _motionLastTick;
     double _shapeW = 150, _shapeH = 30, _shapeR = 15, _shapeScale = 1;
+    (double Width, double Height, double Radius, double Ear) _drawnOutline;
     double _hitRegionWidth, _hitRegionHeight;
     double _screenWidth = double.PositiveInfinity;
     bool _shapeAnimating, _hoverBoost;
@@ -209,6 +208,9 @@ public sealed partial class NotchWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _opened = false;
+        _animationTiming?.Dispose();
+        _animationTiming = null;
         HideMixer();
         _eqTimer.Stop();
         _powerPlatform.Stop();
@@ -321,6 +323,7 @@ public sealed partial class NotchWindow : Window
         switch (target)
         {
             case NotchState.Expanded:
+                _expandedView.IsVisible = true;
                 ShowQuietNote();
                 if (_clockPanel.IsVisible) ShowToday();
                 SpaceHome();
@@ -331,6 +334,7 @@ public sealed partial class NotchWindow : Window
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(_expandedView.DesiredSize.Height) + 18, 32);
                 break;
             case NotchState.Share:
+                _shareView.IsVisible = true;
                 _shareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(_shareView.DesiredSize.Height) + 6, 28);
                 break;
@@ -360,15 +364,18 @@ public sealed partial class NotchWindow : Window
         {
             double currentScale = _scaleSpring.Value;
             bool grow = w * h * scale * scale > _wSpring.Value * _hSpring.Value * currentScale * currentScale;
+            bool resizeOpenHeight = _state == NotchState.Expanded && target == NotchState.Expanded
+                                    && w == _shapeW && r == _shapeR && scale == _shapeScale;
             (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
             double ear = mini ? 0 : MaxEar;
-            if (animate) MoveShapeTo(w, h, r, ear, scale, grow, mini);
+            if (animate) MoveShapeTo(w, h, r, ear, scale, grow, mini, resizeOpenHeight);
             else SnapShape(w, h, r, ear, scale);
         }
 
         if (target != _state || mini != _mini || !animate)
         {
-            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded) Unfold();
+            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded && _expandedView.Opacity == 0)
+                Unfold();
             SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
@@ -387,7 +394,20 @@ public sealed partial class NotchWindow : Window
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
             _mini = mini;
-            if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); RefreshOutputButtons(); _openSettling = true; _live.Start(); }
+            if (target == NotchState.Expanded)
+            {
+                _volumePeek = false;
+                _volumeTimer.Stop();
+                UpdateLive();
+                RefreshDevices();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!_opened || _state != NotchState.Expanded) return;
+                    RefreshOutputButtons();
+                    ScanBluetooth();
+                }, DispatcherPriority.Background);
+                _live.Start();
+            }
             else _live.Stop();
         }
         UpdateBackdrop();
@@ -431,7 +451,7 @@ public sealed partial class NotchWindow : Window
         UpdateHitRegion(w, h, scale);
     }
 
-    void MoveShapeTo(double w, double h, double r, double ear, double scale, bool grow, bool mini)
+    void MoveShapeTo(double w, double h, double r, double ear, double scale, bool grow, bool mini, bool resizeOpenHeight)
     {
         _hoverBoost = false;
         // Opening is slightly softer on height than width for a liquid squash-and-stretch feel;
@@ -439,7 +459,7 @@ public sealed partial class NotchWindow : Window
         double wResp = grow ? 0.34 : 0.30;
         double hResp = grow ? 0.38 : (mini ? 0.27 : 0.33);
         double wDamp = grow ? 0.63 : (mini ? 0.78 : 0.73);
-        double hDamp = grow ? 0.60 : (mini ? 1.0 : 0.75);
+        double hDamp = resizeOpenHeight || mini ? 1.0 : grow ? 0.60 : 0.75;
         double rDamp = grow ? 0.64 : (mini ? 1.0 : 0.75);
         double earDamp = grow ? 0.68 : (mini ? 1.0 : 0.85);
         double sDamp = grow ? 0.63 : (mini ? 0.82 : 0.74);
@@ -493,9 +513,9 @@ public sealed partial class NotchWindow : Window
         if (!_settings.Animations || _shapeW <= 0) return;
         double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
         if (needed > Height) Height = needed;
-        _wSpring.Kick(260, 0.30, 0.58);
-        _hSpring.Kick(-180, 0.32, 0.58);
-        _scaleSpring.Kick(0.35, 0.30, 0.58);
+        _wSpring.Kick(500, 0.30, 0.58);
+        _hSpring.Kick(-300, 0.32, 0.58);
+        _scaleSpring.Kick(0.5, 0.30, 0.58);
         UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
         _shapeAnimating = true;
         StartMotion();
@@ -525,21 +545,11 @@ public sealed partial class NotchWindow : Window
 
     void OnShapeSettled()
     {
-        FitWindowWidth((_shapeW + 2 * MaxEar) * _shapeScale);
-        FitWindowHeight();
+        // Keep the native surface stable on the final frame in both directions.
+        // SnapShape can reclaim reserved space when laying out without animation.
         _shapeAnimating = false;
-        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale, onlyIfChanged: true);
         UpdateEqualizer();
-        FinishOpening();
-    }
-
-    /// <summary>The open notch has landed: now the work that would have cost frames on the way.</summary>
-    void FinishOpening()
-    {
-        if (!_openSettling) return;
-        _openSettling = false;
-        if (_state != NotchState.Expanded) return;
-        ScanBluetooth();
     }
 
     void StartMotion()
@@ -548,13 +558,12 @@ public sealed partial class NotchWindow : Window
         _motionRunning = true;
         UpdateEqualizer(); // the bars rest while the shape moves
         _motionLastTick = Stopwatch.GetTimestamp();
-        RequestAnimationFrame(OnMotionFrame);
+        ScheduleAnimationFrame();
     }
 
-    void OnMotionFrame(TimeSpan _)
+    void StepShape(long now)
     {
-        if (!_motionRunning) return;
-        long now = Stopwatch.GetTimestamp();
+        _selfTestMotionFrames?.Add(now);
         double dt = Math.Clamp((double)(now - _motionLastTick) / Stopwatch.Frequency, 0.001, 0.05);
         _motionLastTick = now;
 
@@ -580,9 +589,7 @@ public sealed partial class NotchWindow : Window
         }
         double frameWidth = w + 2 * (MaxEar + skew);
         scale = NotchPlacement.FitScale(scale, frameWidth, _screenWidth);
-        double frameNeed = NeededWindowHeight(h, scale);
-        if (frameNeed > Height) Height = frameNeed;
-        ReserveFrameWidth(frameWidth * scale, h * scale);
+        EnsureFrameFits(frameWidth * scale, h * scale);
         ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
@@ -590,19 +597,20 @@ public sealed partial class NotchWindow : Window
             // No further frame is asked for: nothing runs while the notch rests.
             _motionRunning = false;
             OnShapeSettled();
-            return;
         }
-        RequestAnimationFrame(OnMotionFrame);
     }
 
-    void ReserveFrameWidth(double shapeWidth, double shapeHeight)
+    void EnsureFrameFits(double shapeWidth, double shapeHeight)
     {
         // Jelly and interrupted springs can overshoot the target by more than the initial reservation.
         // Win32 clips the drawing to the hit region, so both the window and the region must fit this frame.
         double width = Math.Ceiling(shapeWidth) + NotchPlacement.WidthPadding;
         double height = Math.Ceiling(shapeHeight) + 2;
+        // Only resize when the drawn frame needs it. Leave extra room for the next few
+        // frames so a large overshoot doesn't repeatedly resize the native window.
+        if (height > Height) Height = NeededWindowHeight(shapeHeight);
         bool resize = width > Width;
-        if (resize) FitWindowWidth(shapeWidth);
+        if (resize) FitWindowWidth(shapeWidth + 16);
         if (!resize && width <= _hitRegionWidth && height <= _hitRegionHeight) return;
         _hitRegionWidth = Math.Max(_hitRegionWidth, width);
         _hitRegionHeight = Math.Max(_hitRegionHeight, height);
@@ -614,6 +622,9 @@ public sealed partial class NotchWindow : Window
         _notchScale.ScaleX = _notchScale.ScaleY = scale;
         double r = Math.Clamp(radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(earSize, 0, Math.Min(MaxEar, h - r));
+        // Scale and drag skew are render transforms and don't need new paths or layout.
+        if (_drawnOutline == (w, h, r, e)) return;
+        _drawnOutline = (w, h, r, e);
         double x = (BaseWidth - w) / 2;
 
         _island.Width = w;
@@ -649,10 +660,13 @@ public sealed partial class NotchWindow : Window
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
-    void UpdateHitRegion(double w, double h, double notchScale)
+    void UpdateHitRegion(double w, double h, double notchScale, bool onlyIfChanged = false)
     {
-        _hitRegionWidth = (w + 2 * MaxEar) * 1.12 * notchScale;
-        _hitRegionHeight = h * notchScale * 1.15 + 2;
+        double width = (w + 2 * MaxEar) * 1.12 * notchScale;
+        double height = h * notchScale * 1.15 + 2;
+        if (onlyIfChanged && width == _hitRegionWidth && height == _hitRegionHeight) return;
+        _hitRegionWidth = width;
+        _hitRegionHeight = height;
         ApplyHitRegion();
     }
 

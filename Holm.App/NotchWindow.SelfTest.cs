@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +9,9 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Holm.Platform;
 using WinNotch.Account;
+using WinNotch.Notify;
 
 namespace Holm.App;
 
@@ -20,6 +24,7 @@ namespace Holm.App;
 public sealed partial class NotchWindow
 {
     static readonly string? SelfTestFolder = Environment.GetEnvironmentVariable("HOLM_SELFTEST") is { Length: > 0 } f ? f : null;
+    List<long>? _selfTestMotionFrames;
 
     void StartSelfTest()
     {
@@ -36,9 +41,12 @@ public sealed partial class NotchWindow
             await Task.Delay(2500);
             _hovered = false;
             ApplyState(animate: false);
+            if (_expandedView.IsVisible)
+                throw new InvalidOperationException("The closed notch still lays out the expanded view.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
             SnapshotNotificationBadges(folder);
+            CheckNotificationRestart();
             CheckMediaButtonAlignment();
             CheckPhoneActionsFit();
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
@@ -63,14 +71,23 @@ public sealed partial class NotchWindow
             }
             SnapshotIconStrip(moves, folder, "verity-moves.png");
 
+            var motionFrames = new List<long>();
+            _selfTestMotionFrames = motionFrames;
             _hovered = true;
             ApplyState(animate: true);
             await Task.Delay(3000);
+            _selfTestMotionFrames = null;
             // An actual pointer can enter or leave the notch while the app is posing.
             _hovered = true;
             ApplyState(animate: false);
+            // A snap can release the opening headroom. X11 reports the new client width asynchronously.
+            if (Math.Abs(ClientSize.Width - Width) * RenderScaling >= 1)
+                await Task.Delay(200);
+            if (!_expandedView.IsVisible || _phoneView.IsVisible)
+                throw new InvalidOperationException("The open notch has the wrong views in layout.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            CheckWeatherLocationWhilePlaying();
             CheckExpandedVolumeFeedback();
             await CheckWideSpringFrameAsync();
             // The Beam tool's page: send and receive.
@@ -100,6 +117,7 @@ public sealed partial class NotchWindow
                 $"system: {Environment.OSVersion} ({System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture})",
                 $"backend: {_platform.GetType().Name}",
                 $"scaling: {RenderScaling}",
+                DescribeMotionFrames(motionFrames),
                 $"volume: {(volume ? $"{level:0.00}{(muted ? " muted" : "")}" : "none")}",
                 $"meter: {(_audio.MeterWorking ? "follows the sound" : "bounces")}",
                 $"battery: {(power.HasBattery ? $"{power.Percent} %{(power.OnAc ? ", plugged in" : "")}" : "none")}",
@@ -119,6 +137,78 @@ public sealed partial class NotchWindow
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
     }
 
+    void CheckWeatherLocationWhilePlaying()
+    {
+        var info = _info;
+        bool weatherEnabled = _settings.Weather, mediaEnabled = _settings.MediaControls;
+        try
+        {
+            _info = new MediaInfo { Title = "Playing for the weather check", IsPlaying = true };
+            _settings.Weather = _settings.MediaControls = true;
+            RefreshHomePlayer();
+            ChoosePlace();
+            if (!_weatherBox.IsEffectivelyVisible || _mediaPanel.IsVisible)
+                throw new InvalidOperationException("The weather location field is hidden behind the media view.");
+            EndTyping();
+            EndChoosingPlace();
+            if (!_mediaPanel.IsVisible || _weatherSetup.IsVisible)
+                throw new InvalidOperationException("Closing the location picker did not restore the media view.");
+        }
+        finally
+        {
+            EndTyping();
+            _settings.Weather = weatherEnabled;
+            _settings.MediaControls = mediaEnabled;
+            _info = info;
+            EndChoosingPlace();
+            RefreshMediaUi();
+            ShowWeather();
+            ApplyState(animate: false);
+        }
+    }
+
+    static void CheckNotificationRestart()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var yesterday = new SystemNotification(1, "Discord", "Discord", new[] { "Example sender", "Yesterday's message" }, now.AddDays(-1));
+        var another = yesterday with { Id = 2 };
+        var settings = new WinNotch.AppSettings();
+        string? saved = null;
+        var inbox = new Inbox(_ => true, settings.ReadToasts, () => saved = System.Text.Json.JsonSerializer.Serialize(settings));
+        inbox.StartWatching(now);
+        ChatMessage? popped = null;
+        inbox.Changed += message => popped = message;
+        inbox.Apply(new NotificationSnapshot(null, new Dictionary<string, string>(), null));
+        inbox.Apply(new NotificationSnapshot(new[] { yesterday }, null, null));
+        if (popped != null || inbox.UnreadCount != 1)
+            throw new InvalidOperationException("A late startup toast should count silently.");
+        inbox.MarkRead("discord");
+        if (saved == null || saved.Contains("Example sender") || saved.Contains("Yesterday's message"))
+            throw new InvalidOperationException("The read receipt did not save correctly.");
+
+        var restarted = new Inbox(_ => true, System.Text.Json.JsonSerializer.Deserialize<WinNotch.AppSettings>(saved)!.ReadToasts);
+        restarted.StartWatching(now.AddSeconds(1));
+        restarted.Changed += message => popped = message;
+        restarted.Apply(new NotificationSnapshot(new[] { yesterday, another }, null, null));
+        if (popped != null || restarted.UnreadCount != 1 || restarted.Messages[0].Id != another.Id)
+            throw new InvalidOperationException("Restarting should keep read Discord notifications dismissed.");
+
+        var incoming = yesterday with { Time = now.AddSeconds(2), Lines = new[] { "Example sender", "New message" } };
+        restarted.Apply(new NotificationSnapshot(new[] { incoming, another }, null, null));
+        if (popped?.Text != "New message" || restarted.UnreadCount != 2)
+            throw new InvalidOperationException("A new Discord notification should pop out when its ID is reused.");
+    }
+
+    static string DescribeMotionFrames(List<long> frames)
+    {
+        if (frames.Count < 2) return "opening frame callbacks: no sample";
+        double fps = (frames.Count - 1) / Stopwatch.GetElapsedTime(frames[0], frames[^1]).TotalSeconds;
+        var intervals = frames.Zip(frames.Skip(1), (first, next) => Stopwatch.GetElapsedTime(first, next).TotalMilliseconds)
+            .OrderBy(ms => ms).ToArray();
+        double p90 = intervals[(int)Math.Ceiling(intervals.Length * 0.9) - 1];
+        return $"opening frame callbacks: {fps:0.#}/s, 90th percentile interval {p90:0.#} ms ({frames.Count} frames)";
+    }
+
     async Task CheckWideSpringFrameAsync()
     {
         double restingWidth = Width;
@@ -127,13 +217,32 @@ public sealed partial class NotchWindow
         _wSpring.Retarget(_shapeW, 0.34, 0.63);
         _motionRunning = true;
         _motionLastTick = System.Diagnostics.Stopwatch.GetTimestamp();
-        OnMotionFrame(default);
+        StepShape(Stopwatch.GetTimestamp());
         _motionRunning = false;
         // X11 reports the new client size asynchronously after the resize request.
         await Task.Delay(200);
         UpdateLayout();
         CheckNotchWidth();
 
+        double reservedWidth = Width, reservedHeight = Height;
+        OnShapeSettled();
+        if (Width != reservedWidth || Height != reservedHeight)
+            throw new InvalidOperationException("The animated overlay resized at the end of opening.");
+
+        // Drive a complete close without real pointer events interrupting it.
+        _hovered = false;
+        ApplyState(animate: true);
+        var closingSurface = (Width, Height, Position);
+        for (int frame = 0; _motionRunning && frame < 240; frame++)
+            StepShape(_motionLastTick + Stopwatch.Frequency / 60);
+        if (_motionRunning || _shapeAnimating || _state == NotchState.Expanded)
+            throw new InvalidOperationException("The closing notch did not settle.");
+        if ((Width, Height, Position) != closingSurface)
+            throw new InvalidOperationException("The animated overlay resized or moved at the end of closing.");
+        if (_hitRegionHeight != _shapeH * _shapeScale * 1.15 + 2 || _hitRegionHeight >= Height)
+            throw new InvalidOperationException("The closed notch did not release its reserved input area.");
+
+        _hovered = true;
         double displayWidth = _screenWidth;
         _screenWidth = 400;
         ApplyState(animate: false);
@@ -176,6 +285,7 @@ public sealed partial class NotchWindow
 
     void CheckPhoneActionsFit()
     {
+        _phoneView.IsVisible = true;
         _phoneStatus.Text = $"Receiving {new string('a', 240)}.jpg · 20%";
         var size = new Size(420, 160);
         foreach (var actions in new[] { _phoneButtons, _phoneAskButtons })
@@ -196,6 +306,7 @@ public sealed partial class NotchWindow
         _phoneStatus.Text = "";
         _phoneButtons.IsVisible = true;
         _phoneAskButtons.IsVisible = false;
+        _phoneView.IsVisible = false;
     }
 
     static void CheckMediaButtonAlignment()

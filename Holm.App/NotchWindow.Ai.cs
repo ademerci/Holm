@@ -58,7 +58,7 @@ public sealed partial class NotchWindow
         if (name == null) return;
         _aiIconHost.Child = (Control?)AiTile(_settings.Ai ?? "", 18) ?? new TextBlock
         {
-            Text = "", FontFamily = IconFont, FontSize = 18 * 0.85, Foreground = Brushes.White,
+            Text = "", FontFamily = IconFont, FontSize = 18 * 0.85, Foreground = Look.Ink,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
         };
         ToolTip.SetTip(_aiBtn, "Open " + name);

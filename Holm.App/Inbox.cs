@@ -16,7 +16,10 @@ namespace Holm.App;
 /// </summary>
 internal sealed class Inbox
 {
+    const int SavedReadLimit = 256;
     readonly Func<string, bool> _shown; // is this messenger switched on?
+    readonly List<ReadToast>? _savedRead;
+    readonly Action? _saveRead;
     readonly DispatcherTimer _badgePop = new() { Interval = TimeSpan.FromMilliseconds(1500) };
     readonly Dictionary<uint, ChatMessage?> _seen = new(); // null: a notification from another app
     readonly HashSet<uint> _read = new();
@@ -27,7 +30,7 @@ internal sealed class Inbox
     readonly HashSet<string> _pendingBadgePops = new();
     List<ChatMessage> _toasts = new(); // unread notifications, oldest first
     List<ChatMessage> _messages = new();
-    bool _primed;
+    DateTimeOffset _watchingSince = DateTimeOffset.MaxValue;
 
     /// <summary>Unread messages of the messengers that are switched on, oldest first.</summary>
     public IReadOnlyList<ChatMessage> Messages => _messages;
@@ -42,12 +45,16 @@ internal sealed class Inbox
     /// <summary>A notification of an app that isn't a messenger arrived (with <see cref="EveryApp"/> on): the newest of a burst.</summary>
     public event Action<ChatMessage>? OtherArrived;
 
-    public Inbox(Func<string, bool> shown)
+    public Inbox(Func<string, bool> shown, List<ReadToast>? savedRead = null, Action? saveRead = null)
     {
         _shown = shown;
+        _savedRead = savedRead;
+        _saveRead = saveRead;
         // An app's number went up: wait a moment for its notification, which says who wrote what.
         _badgePop.Tick += (_, _) => { _badgePop.Stop(); Publish(null, popBadgeCount: true); };
     }
+
+    public void StartWatching(DateTimeOffset time) => _watchingSince = time;
 
     /// <summary>The app id the system reported for a messenger's notifications or badge, for its logo and to open it.</summary>
     public string? AppIdOf(string app) => _appIds.TryGetValue(app, out var id) ? id : null;
@@ -58,7 +65,6 @@ internal sealed class Inbox
         ChatMessage? arrived = null;
         if (snapshot.Toasts is { } toasts) arrived = ReadToasts(toasts);
         if (snapshot.Badges is { } badges && Messengers.All.Any(app => _shown(app.Key))) ReadBadges(badges, arrived, snapshot.Revisions);
-        _primed = true;
         Publish(arrived);
     }
 
@@ -73,11 +79,13 @@ internal sealed class Inbox
             present.Add(id);
             string? appId = notification.AppId;
             var latest = Messengers.Parse(appId, string.IsNullOrEmpty(appId) ? notification.AppName : null, notification.Lines.ToList<string?>(), id, notification.Time);
-            if (latest == null && EveryApp && _primed && !_seen.ContainsKey(id)
+            bool live = notification.Time >= _watchingSince;
+            if (latest == null && EveryApp && live && !_seen.ContainsKey(id)
                 && Pop(appId, notification.AppName, notification.Lines, id, notification.Time) is { } any
                 && (other == null || any.Time >= other.Time))
                 other = any;
-            if (!_seen.TryGetValue(id, out var message) || latest?.App != message?.App
+            bool seen = _seen.TryGetValue(id, out var message);
+            if (!seen || latest?.App != message?.App
                 || latest?.Time != message?.Time || latest?.Title != message?.Title || latest?.Text != message?.Text)
             {
                 _seen[id] = message = latest;
@@ -85,8 +93,9 @@ internal sealed class Inbox
                 if (message != null)
                 {
                     if (appId != null && message.Site == null) _appIds[message.App] = appId; // a browser's id doesn't open the app
-                    // Whatever is already there when we start is old news: count it, but don't pop out.
-                    if (_primed && _shown(message.App) && (arrived == null || message.Time >= arrived.Time)) arrived = message;
+                    // The notification center may arrive after one or more badge-only snapshots.
+                    if (!seen && _savedRead?.Contains(ReadToast.Of(message)) == true) _read.Add(id);
+                    else if (live && _shown(message.App) && (arrived == null || message.Time >= arrived.Time)) arrived = message;
                 }
             }
             if (message != null && !_read.Contains(id)) unread.Add(message);
@@ -132,8 +141,7 @@ internal sealed class Inbox
             if (before != count) Diag.Log($"{app.Name} badge: {count}");
             if (before > 0 && count == 0)
             {
-                foreach (var message in _toasts.Where(m => m.App == app.Key)) _read.Add(message.Id);
-                _toasts.RemoveAll(m => _read.Contains(m.Id));
+                MarkToastsRead(app.Key);
                 _pendingBadgePops.Remove(app.Key);
             }
             if (arrived?.App == app.Key) _pendingBadgePops.Remove(app.Key);
@@ -149,19 +157,35 @@ internal sealed class Inbox
     /// <summary>You've seen them (the app is in front, or you clicked them): clears that app's messages, or all with null.</summary>
     public void MarkRead(string? app = null)
     {
-        bool any = false;
-        foreach (var message in _toasts.Where(m => app == null || m.App == app))
-        {
-            _read.Add(message.Id);
-            any = true;
-        }
-        _toasts.RemoveAll(m => _read.Contains(m.Id));
+        bool any = MarkToastsRead(app);
         foreach (var (key, counter) in _counts.Where(p => app == null || p.Key == app))
         {
             if (counter.Unread > 0) { counter.MarkSeen(); any = true; }
             _pendingBadgePops.Remove(key);
         }
         if (any) Publish(null);
+    }
+
+    bool MarkToastsRead(string? app)
+    {
+        bool any = false, save = false;
+        foreach (var message in _toasts.Where(m => app == null || m.App == app))
+        {
+            _read.Add(message.Id);
+            any = true;
+            if (_savedRead is not { } saved) continue;
+            var key = ReadToast.Of(message);
+            if (saved.Contains(key)) continue;
+            saved.Add(key);
+            save = true;
+        }
+        _toasts.RemoveAll(m => _read.Contains(m.Id));
+        if (save && _savedRead is { } history)
+        {
+            if (history.Count > SavedReadLimit) history.RemoveRange(0, history.Count - SavedReadLimit);
+            _saveRead?.Invoke();
+        }
+        return any;
     }
 
     /// <summary>A messenger was switched on or off.</summary>
@@ -171,7 +195,7 @@ internal sealed class Inbox
     public void Reset()
     {
         _badgePop.Stop();
-        _primed = false;
+        _watchingSince = DateTimeOffset.MaxValue;
         _seen.Clear();
         _read.Clear();
         _toasts = new();

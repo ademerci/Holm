@@ -28,6 +28,7 @@ public interface INotificationsPlatform
     event Action? Changed;
 
     NotificationAccess Access { get; }
+    bool RetainsToastsAcrossRestarts => false;
 
     /// <summary>Starts watching; <paramref name="ask"/> may show the system's consent prompt.</summary>
     Task StartAsync(bool ask);
