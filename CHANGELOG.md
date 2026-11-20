@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 – 2026-11-20
+
+### Fixed
+
+- **Notch sizing.** The sides stay visible during bouncy animations, and the notch scales down to fit narrow or high-DPI displays.
+- **Volume keys.** With *Volume and media only in the notch* on, Windows volume and mute keys show the level in Holm, even when the open view hides its volume slider.
+- **Phone QR card.** Hovering over the card keeps it open. Long transfer messages leave room for **Done**, **Copy link**, and the receive buttons.
+- **Add Friend.** The full invite code placeholder fits and sits in the middle of the field.
+- **Media controls.** Previous, Play, Pause, and Next sit in the center of their hover backgrounds.
+
 ## 2.1.0 – 2026-11-20
 
 ### Added
