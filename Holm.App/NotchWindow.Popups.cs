@@ -198,15 +198,24 @@ public sealed partial class NotchWindow
         {
             case MediaKey.VolumeMute:
                 _audio.ToggleMute();
+                ShowMediaKeyVolume();
                 break;
             case MediaKey.VolumeUp or MediaKey.VolumeDown when _audio.TryGetVolume(out float level, out bool muted):
                 if (muted) _audio.SetMute(false);
                 _audio.SetVolume(MediaKeysMath.Step(level, key == MediaKey.VolumeUp));
+                ShowMediaKeyVolume();
                 break;
             case MediaKey.PlayPause: _media.PlayPause(); break;
             case MediaKey.NextTrack: _media.Next(); break;
             case MediaKey.PreviousTrack: _media.Previous(); break;
             case MediaKey.StopMedia: _media.Pause(); break;
         }
+    }
+
+    void ShowMediaKeyVolume()
+    {
+        // The Windows audio backend filters out changes made by Holm itself.
+        if (!_hiddenForFullscreen && _audio.TryGetVolume(out float level, out bool muted))
+            OnVolumeChanged(level, muted);
     }
 }

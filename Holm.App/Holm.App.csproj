@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- The cross-platform rewrite's own version, ahead of the WPF app's (WinNotch.csproj) it is meant to follow. -->
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <ReleaseIsland>Lihou</ReleaseIsland>
     <!-- The updater installs only an exe whose product name is "Holm" (UpdateService.ValidateExecutable). -->
     <Product>Holm</Product>
