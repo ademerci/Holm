@@ -66,6 +66,7 @@ public sealed partial class NotchWindow : Window
     bool _openSettling;
     long _motionLastTick;
     double _shapeW = 150, _shapeH = 30, _shapeR = 15, _shapeScale = 1;
+    double _hitRegionWidth, _hitRegionHeight;
     bool _shapeAnimating, _hoverBoost;
     MediaInfo? _info;
 
@@ -150,7 +151,6 @@ public sealed partial class NotchWindow : Window
         _root.RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative);
         _root.RenderTransform = new TransformGroup { Children = { _dragSkew, _notchScale } };
         Content = _root;
-        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
 
         InitMotion();
         InitPositionDrag();
@@ -240,8 +240,16 @@ public sealed partial class NotchWindow : Window
     void FitToScreen()
     {
         PositionWindow();
-        if (!_motionRunning) FitWindowHeight(); // a moving shape sizes the window itself
-        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        if (_motionRunning)
+        {
+            // Keep the room reserved for the current animation when converting to the new DPI.
+            ApplyHitRegion();
+        }
+        else
+        {
+            FitWindowHeight();
+            UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        }
     }
 
     /// <summary>Top centre of the primary screen.</summary>
@@ -382,6 +390,15 @@ public sealed partial class NotchWindow : Window
     double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
     double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
 
+    void FitWindowWidth(double width)
+    {
+        double preferred = Math.Ceiling(BaseWidth * Math.Max(CollapsedScale, ExpandedScale));
+        double needed = Math.Max(preferred, Math.Ceiling(width) + 2);
+        if (Width == needed) return;
+        Width = needed;
+        if (_opened) PositionWindow();
+    }
+
     void SnapShape(double w, double h, double r, double ear, double scale)
     {
         _hoverBoost = false;
@@ -394,6 +411,7 @@ public sealed partial class NotchWindow : Window
         _scaleSpring.Snap(scale);
         _dragLean.Snap(0);
         _dragSkew.AngleX = 0;
+        FitWindowWidth((w + 2 * MaxEar) * scale);
         ApplyShape(w, h, r, ear, scale);
         FitWindowHeight();
         UpdateHitRegion(w, h, scale);
@@ -493,6 +511,7 @@ public sealed partial class NotchWindow : Window
 
     void OnShapeSettled()
     {
+        FitWindowWidth((_shapeW + 2 * MaxEar) * _shapeScale);
         FitWindowHeight();
         _shapeAnimating = false;
         UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
@@ -545,6 +564,7 @@ public sealed partial class NotchWindow : Window
         }
         double frameNeed = NeededWindowHeight(h, scale);
         if (frameNeed > Height) Height = frameNeed;
+        ReserveFrameWidth(w, h, scale);
         ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
@@ -555,6 +575,21 @@ public sealed partial class NotchWindow : Window
             return;
         }
         RequestAnimationFrame(OnMotionFrame);
+    }
+
+    void ReserveFrameWidth(double w, double h, double scale)
+    {
+        // Jelly and interrupted springs can overshoot the target by more than the initial reservation.
+        // Win32 clips the drawing to the hit region, so both the window and the region must fit this frame.
+        double skew = Math.Abs(Math.Tan(_dragSkew.AngleX * Math.PI / 180)) * h;
+        double width = Math.Ceiling((w + 2 * (MaxEar + skew)) * scale) + 2;
+        double height = Math.Ceiling(h * scale) + 2;
+        bool resize = width > Width;
+        if (resize) FitWindowWidth(width - 2);
+        if (!resize && width <= _hitRegionWidth && height <= _hitRegionHeight) return;
+        _hitRegionWidth = Math.Max(_hitRegionWidth, width);
+        _hitRegionHeight = Math.Max(_hitRegionHeight, height);
+        ApplyHitRegion();
     }
 
     void ApplyShape(double w, double h, double radius, double earSize, double scale)
@@ -599,11 +634,17 @@ public sealed partial class NotchWindow : Window
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
     void UpdateHitRegion(double w, double h, double notchScale)
     {
+        _hitRegionWidth = (w + 2 * MaxEar) * 1.12 * notchScale;
+        _hitRegionHeight = h * notchScale * 1.15 + 2;
+        ApplyHitRegion();
+    }
+
+    void ApplyHitRegion()
+    {
         if (!_opened || TryGetPlatformHandle() is not { } handle) return;
         double scale = RenderScaling;
-        double width = (w + 2 * MaxEar) * 1.12 * notchScale, height = h * notchScale * 1.15 + 2;
-        double x = (Width - width) / 2;
-        var notchRect = new HitRect((int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
-        _platform.SetHitRegion(handle.Handle, notchRect.X, notchRect.Y, notchRect.Width, notchRect.Height);
+        int left = (int)Math.Floor((Width - _hitRegionWidth) / 2 * scale);
+        int right = (int)Math.Ceiling((Width + _hitRegionWidth) / 2 * scale);
+        _platform.SetHitRegion(handle.Handle, left, 0, right - left, (int)Math.Ceiling(_hitRegionHeight * scale));
     }
 }

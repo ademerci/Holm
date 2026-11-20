@@ -313,9 +313,7 @@ public sealed partial class NotchWindow
     /// <summary>Apply a size preference immediately and keep both states centred on the screen.</summary>
     void ApplyScale()
     {
-        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
         ApplyState(animate: false);
-        PositionWindow();
     }
 
     void FillSizeMenu(MenuItem menu, bool expanded)

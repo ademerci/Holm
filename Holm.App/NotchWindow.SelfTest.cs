@@ -69,6 +69,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            CheckWideSpringFrame();
             // The Beam tool's page: send and receive.
             ShowTool(Tool.Beam);
             ApplyState(animate: false);
@@ -113,6 +114,28 @@ public sealed partial class NotchWindow
             exitCode = 1;
         }
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
+    }
+
+    void CheckWideSpringFrame()
+    {
+        double restingWidth = Width;
+        // Put the width spring past its target, as it can be when Jelly opens the notch.
+        _wSpring.Snap(_shapeW * 1.25);
+        _wSpring.Retarget(_shapeW, 0.34, 0.63);
+        _motionRunning = true;
+        _motionLastTick = System.Diagnostics.Stopwatch.GetTimestamp();
+        OnMotionFrame(default);
+        UpdateLayout();
+
+        var left = _backdrop.TranslatePoint(new Point(0, 0), this);
+        var right = _backdrop.TranslatePoint(new Point(_backdrop.Width, 0), this);
+        if (left is null || right is null || left.Value.X < 0 || right.Value.X > ClientSize.Width ||
+            left.Value.X < (Width - _hitRegionWidth) / 2 || right.Value.X > (Width + _hitRegionWidth) / 2)
+            throw new InvalidOperationException("The animated notch extends past the window or its hit region.");
+
+        ApplyState(animate: false);
+        if (Width != restingWidth)
+            throw new InvalidOperationException("The notch window did not return to its resting width.");
     }
 
     /// <summary>What differs between machines rather than systems (the time, the volume) is set alike before a picture.</summary>
