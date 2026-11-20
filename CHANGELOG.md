@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1 – 2026-11-20
+
+### Changed
+
+- **Much less memory.** Holm now draws on the processor instead of the graphics card. Its windows are small, and the graphics card's drivers and caches cost far more memory than they saved. On Windows, an idle Holm drops from about 115–340 MB to about 50 MB of private memory, and it stays near 60 MB after you open and close the notch (it was over 200 MB). Should Holm draw badly on your system, start it with the environment variable `HOLM_GPU=1` to use the graphics card again.
+
 ## 2.1.0 – 2026-11-20
 
 ### Added
