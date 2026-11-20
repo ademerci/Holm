@@ -84,6 +84,7 @@ public sealed partial class NotchWindow
                 throw new InvalidOperationException("The open notch has the wrong views in layout.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            CheckWeatherLocationWhilePlaying();
             CheckExpandedVolumeFeedback();
             await CheckWideSpringFrameAsync();
             // The Beam tool's page: send and receive.
@@ -131,6 +132,36 @@ public sealed partial class NotchWindow
             exitCode = 1;
         }
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
+    }
+
+    void CheckWeatherLocationWhilePlaying()
+    {
+        var info = _info;
+        bool weatherEnabled = _settings.Weather, mediaEnabled = _settings.MediaControls;
+        try
+        {
+            _info = new MediaInfo { Title = "Playing for the weather check", IsPlaying = true };
+            _settings.Weather = _settings.MediaControls = true;
+            RefreshHomePlayer();
+            ChoosePlace();
+            if (!_weatherBox.IsEffectivelyVisible || _mediaPanel.IsVisible)
+                throw new InvalidOperationException("The weather location field is hidden behind the media view.");
+            EndTyping();
+            EndChoosingPlace();
+            if (!_mediaPanel.IsVisible || _weatherSetup.IsVisible)
+                throw new InvalidOperationException("Closing the location picker did not restore the media view.");
+        }
+        finally
+        {
+            EndTyping();
+            _settings.Weather = weatherEnabled;
+            _settings.MediaControls = mediaEnabled;
+            _info = info;
+            EndChoosingPlace();
+            RefreshMediaUi();
+            ShowWeather();
+            ApplyState(animate: false);
+        }
     }
 
     static void CheckNotificationRestart()
