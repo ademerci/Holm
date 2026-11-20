@@ -10,6 +10,11 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+
+        // Fluent paints checkbox labels separately for each state, including inside the template.
+        foreach (string value in new[] { "Unchecked", "Checked", "Indeterminate" })
+            foreach (string state in new[] { "", "PointerOver", "Pressed", "Disabled" })
+                Resources["CheckBoxForeground" + value + state] = Look.Ink;
     }
 
     public override void OnFrameworkInitializationCompleted()
