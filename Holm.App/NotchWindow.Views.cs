@@ -111,7 +111,7 @@ public sealed partial class NotchWindow
     {
         Data = data, Fill = Look.Ink, Stroke = Look.Ink, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
         // Let the path take its fitted size so the button can centre the drawn icon.
-        Stretch = Stretch.Uniform, MaxWidth = width, MaxHeight = height,
+        Stretch = Stretch.Uniform, MaxWidth = width, MaxHeight = height, UseLayoutRounding = false,
     };
 
     void BuildViews()

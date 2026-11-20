@@ -155,8 +155,7 @@ public sealed partial class NotchWindow
             button.Arrange(new Rect(size));
             var drawn = icon.RenderedGeometry?.Bounds ?? throw new InvalidOperationException("Media icon geometry is missing.");
             var center = icon.Bounds.Position + (Vector)drawn.Center;
-            // Layout rounding can move an edge by a fraction of a pixel.
-            if (Math.Abs(center.X - size.Width / 2) > 0.75 || Math.Abs(center.Y - size.Height / 2) > 0.75)
+            if (Math.Abs(center.X - size.Width / 2) > 0.1 || Math.Abs(center.Y - size.Height / 2) > 0.1)
                 throw new InvalidOperationException($"Media icon is drawn at {center} within a {size} button.");
         }
     }
