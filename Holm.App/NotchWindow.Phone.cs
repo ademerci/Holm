@@ -38,10 +38,10 @@ public sealed partial class NotchWindow
     readonly TextBlock _phoneStatus = new()
     {
         FontSize = 12, Foreground = Dim, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis,
-        ClipToBounds = true, Margin = new Thickness(0, 6, 0, 0),
+        MaxLines = 3, ClipToBounds = true, Margin = new Thickness(0, 6, 0, 0),
     };
 
-    readonly StackPanel _phoneAskButtons = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0), IsVisible = false };
+    readonly StackPanel _phoneAskButtons = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0), IsVisible = false };
     StackPanel _phoneButtons = null!;
     TaskCompletionSource<bool>? _phoneAnswer;
 

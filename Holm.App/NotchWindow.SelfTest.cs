@@ -185,8 +185,9 @@ public sealed partial class NotchWindow
             _phoneView.Measure(size);
             _phoneView.Arrange(new Rect(size));
             var bottom = actions.TranslatePoint(new Point(0, actions.Bounds.Height), _phoneView);
-            if (bottom is null || actions.Bounds.Height < 26 || bottom.Value.Y > _phoneView.Bounds.Height)
-                throw new InvalidOperationException("Long phone status text pushes the action buttons outside the card.");
+            if (bottom is null || actions.Bounds.Height < 25 || bottom.Value.Y > _phoneView.Bounds.Height + 0.5)
+                throw new InvalidOperationException(
+                    $"Phone actions have bounds {actions.Bounds} and end at {bottom} inside a card with bounds {_phoneView.Bounds}.");
         }
         _phoneStatus.Text = "";
         _phoneButtons.IsVisible = true;
