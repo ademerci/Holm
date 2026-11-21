@@ -151,7 +151,7 @@ internal static class SettingsSync
         nameof(AppSettings.ShareActivity), nameof(AppSettings.ChatPopups), nameof(AppSettings.QuickReactions), nameof(AppSettings.Waves),
         nameof(AppSettings.SendFolders), nameof(AppSettings.BeamText), nameof(AppSettings.SendLater),
         nameof(AppSettings.HomeSections), nameof(AppSettings.HomeHidden), nameof(AppSettings.HomeSwapped), nameof(AppSettings.HomeTools),
-        nameof(AppSettings.HomeHiddenTools), nameof(AppSettings.Verity),
+        nameof(AppSettings.HomeHiddenTools), nameof(AppSettings.ShowVerity), nameof(AppSettings.VerityInClosedNotch),
     };
 
     static PropertyInfo Property(string name) => typeof(AppSettings).GetProperty(name) ?? throw new InvalidOperationException("No setting " + name);

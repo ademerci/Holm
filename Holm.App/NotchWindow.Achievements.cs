@@ -70,6 +70,7 @@ public sealed partial class NotchWindow
     {
         Diag.Log($"Achievement unlocked: {string.Join(", ", unlocked.Select(a => a.Id))}");
         _settingsWindow?.RefreshBadges();
+        VerityReact(VerityCue.Cheer);
         if (!_settings.AchievementPopups) return;
         // Unlocked in the open notch (the first note, typed there): the card would close it under your hands. It
         // waits until the notch closes. (The WPF app shows it at once and closes the notch.)
