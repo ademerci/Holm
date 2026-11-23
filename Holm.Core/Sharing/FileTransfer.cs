@@ -122,55 +122,43 @@ public static class FileTransfer
         var offer = ParseOffer(first.AsSpan(1));
         string folder = folderFor(offer);
 
+        // While the person decides, the sender may cancel: one read stays open for that. It is never cancelled
+        // (cancelling a pending socket read isn't dependable on every system, and waiting for it left both sides
+        // waiting for each other: the receiver for the read to stop, the sender for the answer). After a yes it
+        // simply becomes the first read of the transfer.
         using var decisionLifetime = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        using var waitForCancel = CancellationTokenSource.CreateLinkedTokenSource(ct);
         Task<bool> decision = decide(offer, decisionLifetime.Token);
-        Task<byte[]> cancelFrame = channel.ReceiveAsync(waitForCancel.Token);
-        bool accept;
-        if (await Task.WhenAny(decision, cancelFrame).ConfigureAwait(false) == cancelFrame)
+        Task<byte[]>? pending = channel.ReceiveAsync(ct);
+        if (await Task.WhenAny(decision, pending).ConfigureAwait(false) == pending)
         {
-            try
-            {
-                var frame = await cancelFrame.ConfigureAwait(false);
-                if (IsCancellation(frame))
-                {
-                    decisionLifetime.Cancel();
-                    try { await decision.ConfigureAwait(false); } catch { }
-                    throw new SenderCancelledException();
-                }
-                throw new InvalidDataException("Unexpected message while waiting for a file decision.");
-            }
-            catch
-            {
-                decisionLifetime.Cancel();
-                try { await decision.ConfigureAwait(false); } catch { }
-                throw;
-            }
-        }
-
-        try { accept = await decision.ConfigureAwait(false); }
-        catch
-        {
-            waitForCancel.Cancel();
-            try { await cancelFrame.ConfigureAwait(false); } catch (OperationCanceledException) when (waitForCancel.IsCancellationRequested) { }
-            throw;
-        }
-        waitForCancel.Cancel();
-        try
-        {
-            var frame = await cancelFrame.ConfigureAwait(false);
+            decisionLifetime.Cancel();
+            try { await decision.ConfigureAwait(false); } catch { }
+            var frame = await pending.ConfigureAwait(false); // a dropped connection throws here
             if (IsCancellation(frame)) throw new SenderCancelledException();
             throw new InvalidDataException("Unexpected message while waiting for a file decision.");
         }
-        catch (OperationCanceledException) when (waitForCancel.IsCancellationRequested) { }
+
+        bool accept;
+        try { accept = await decision.ConfigureAwait(false); }
+        catch { Forget(pending); throw; }
 
         if (accept && !HasRoom(folder, offer.TotalBytes))
         {
+            Forget(pending);
             await channel.SendAsync(new[] { Answer, (byte)0 }, ct).ConfigureAwait(false);
             throw new IOException("Not enough free disk space.");
         }
-        await channel.SendAsync(new[] { Answer, (byte)(accept ? 1 : 0) }, ct).ConfigureAwait(false);
-        if (!accept) return null;
+        try { await channel.SendAsync(new[] { Answer, (byte)(accept ? 1 : 0) }, ct).ConfigureAwait(false); }
+        catch { Forget(pending); throw; }
+        if (!accept) { Forget(pending); return null; }
+
+        // The open read gets the first frame after the answer; the rest are read one by one.
+        Task<byte[]> Next()
+        {
+            var next = pending ?? channel.ReceiveAsync(ct);
+            pending = null;
+            return next;
+        }
 
         Directory.CreateDirectory(folder);
         var saved = new List<string>();
@@ -187,7 +175,7 @@ public static class FileTransfer
                 {
                     while (remaining > 0)
                     {
-                        var frame = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+                        var frame = await Next().ConfigureAwait(false);
                         if (IsCancellation(frame)) throw new SenderCancelledException();
                         if (frame.Length < 2 || frame[0] != Data) throw new InvalidDataException("Expected file data.");
                         int length = frame.Length - 1;
@@ -203,7 +191,7 @@ public static class FileTransfer
                 current = null;
             }
 
-            var done = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+            var done = await Next().ConfigureAwait(false);
             if (IsCancellation(done)) throw new SenderCancelledException();
             if (done.Length != 1 || done[0] != Done) throw new InvalidDataException("Expected the end of the transfer.");
             await channel.SendAsync(new[] { Received }, ct).ConfigureAwait(false);
@@ -212,6 +200,7 @@ public static class FileTransfer
         }
         catch
         {
+            Forget(pending); // not read yet if the first file couldn't be created
             // Never leave a half-written file behind.
             if (current != null) { try { File.Delete(current); } catch { } }
             throw;
@@ -219,6 +208,9 @@ public static class FileTransfer
     }
 
     static bool IsCancellation(byte[] frame) => frame.Length == 1 && frame[0] == Cancelled;
+
+    /// <summary>A read nobody waits for any more: it ends when the connection closes, and its error is no news.</summary>
+    static void Forget(Task<byte[]>? read) => read?.ContinueWith(t => _ = t.Exception, TaskScheduler.Default);
 
     static ShareOffer ParseOffer(ReadOnlySpan<byte> json)
     {
@@ -296,14 +288,14 @@ public static class FileTransfer
     /// The "downloaded from the internet" mark, so Windows warns before opening programs or macros. Linux has none
     /// (there the stream would be a second file).
     /// </summary>
-    static void MarkFromInternet(string path)
+    internal static void MarkFromInternet(string path)
     {
         if (!OperatingSystem.IsWindows()) return;
         try { File.WriteAllText(path + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n"); }
         catch { } // not NTFS, or not allowed: the file is still fine
     }
 
-    static bool HasRoom(string folder, long bytes)
+    internal static bool HasRoom(string folder, long bytes)
     {
         try
         {

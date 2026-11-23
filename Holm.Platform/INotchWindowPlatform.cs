@@ -26,11 +26,23 @@ public interface INotchWindowPlatform
         if (rects.Length > 0) SetHitRegion(window, rects[0].X, rects[0].Y, rects[0].Width, rects[0].Height);
     }
 
+    /// <summary>Clips a borderless window and its native backdrop to rounded corners in device pixels.</summary>
+    void SetRoundedWindowRegion(IntPtr window, int radius) { }
+
     /// <summary>
     /// Lets the overlay take the keyboard (the user clicked into one of its text fields) or makes it give the
     /// keyboard up again. Called right after a click on the window, when the system allows taking the foreground.
     /// </summary>
     void SetKeyboard(IntPtr window, bool take);
+
+    /// <summary>
+    /// Puts the overlay back above everything when another window covers it (Windows: another topmost window or a
+    /// lost topmost flag). Nothing where the window manager keeps it above by itself.
+    /// </summary>
+    void KeepOnTop(IntPtr window) { }
+
+    /// <summary>Requests finer frame timing until the returned lease is disposed.</summary>
+    IDisposable? BeginAnimationTiming() => null;
 
     /// <summary>
     /// Hands memory Holm no longer uses back to the system, as the WPF app does while it rests (Windows: the working set;

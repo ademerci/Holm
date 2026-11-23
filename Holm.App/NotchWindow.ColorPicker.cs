@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -53,20 +53,7 @@ public sealed partial class NotchWindow
             ApplyState(animate: false);
             await Task.Delay(250);
 
-            var screen = ChosenScreen() ?? Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
-            if (screen == null) return;
-            var bounds = screen.Bounds;
-            var shot = await _screen.CaptureAsync(bounds.X, bounds.Y, bounds.Width, bounds.Height);
-            if (shot == null || shot.Width <= 0 || shot.Height <= 0)
-            {
-                ShowPeek(SwatchGlyph, "Can't pick colors right now", "", null);
-                return;
-            }
-            var picker = new ColorPickerWindow(shot, bounds, screen.Scaling);
-            var done = new TaskCompletionSource<(string? Hex, Color Color)>();
-            picker.Done += (hex, color) => done.TrySetResult((hex, color));
-            picker.Show();
-            var (picked, swatch) = await done.Task;
+            var (picked, swatch) = await PickFromScreenAsync();
             if (picked == null) return;
             Achieve(AchievementBook.Colors);
             bool copied = false;
@@ -79,5 +66,24 @@ public sealed partial class NotchWindow
                 glyphBrush: new SolidColorBrush(swatch).ToImmutable());
         }
         finally { _picking = false; }
+    }
+
+    /// <summary>Reads the screen once and lets you click a pixel: its hex code and colour, or null when cancelled.</summary>
+    async Task<(string? Hex, Color Color)> PickFromScreenAsync()
+    {
+        var screen = ChosenScreen() ?? Screens.Primary ?? (Screens.All.Count > 0 ? Screens.All[0] : null);
+        if (screen == null) return (null, default);
+        var bounds = screen.Bounds;
+        var shot = await _screen.CaptureAsync(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        if (shot == null || shot.Width <= 0 || shot.Height <= 0)
+        {
+            ShowPeek(SwatchGlyph, "Can't pick colors right now", "", null);
+            return (null, default);
+        }
+        var picker = new ColorPickerWindow(shot, bounds, screen.Scaling);
+        var done = new TaskCompletionSource<(string? Hex, Color Color)>();
+        picker.Done += (hex, color) => done.TrySetResult((hex, color));
+        picker.Show();
+        return await done.Task;
     }
 }

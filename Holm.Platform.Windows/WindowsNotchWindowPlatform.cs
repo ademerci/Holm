@@ -8,14 +8,42 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
 {
     const int GWL_EXSTYLE = -20, RGN_OR = 2;
     const long WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
-    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
     static readonly IntPtr HWND_TOPMOST = new(-1);
+    public IDisposable? BeginAnimationTiming()
+    {
+        // Avalonia's software render loop uses timed waits. The normal Windows timer
+        // granularity can make those waits miss an entire refresh on a 60 Hz display.
+        return timeBeginPeriod(1) == 0 ? new AnimationTiming() : null;
+    }
+
+    sealed class AnimationTiming : IDisposable
+    {
+        bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            timeEndPeriod(1);
+            _disposed = true;
+        }
+    }
+
+    [DllImport("winmm.dll")] static extern uint timeBeginPeriod(uint period);
+    [DllImport("winmm.dll")] static extern uint timeEndPeriod(uint period);
 
     public void MakeOverlay(IntPtr window)
     {
         long style = GetWindowLongPtr(window, GWL_EXSTYLE).ToInt64();
         SetWindowLongPtr(window, GWL_EXSTYLE, new IntPtr(style | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE));
         SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    // As the WPF app: only when another window really covers it, since re-ordering makes the window draw itself again.
+    public void KeepOnTop(IntPtr window)
+    {
+        if (WinNotch.Native.IsCovered(window))
+            SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
 
     public void SetHitRegion(IntPtr window, int x, int y, int width, int height)
@@ -37,6 +65,16 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
             DeleteObject(next);
         }
         if (SetWindowRgn(window, combined, true) == 0) DeleteObject(combined);
+    }
+
+    public void SetRoundedWindowRegion(IntPtr window, int radius)
+    {
+        if (!WinNotch.Native.GetWindowRect(window, out var rect)) return;
+        int width = rect.Right - rect.Left, height = rect.Bottom - rect.Top;
+        if (width <= 0 || height <= 0) return;
+        int diameter = Math.Min(radius * 2, Math.Min(width, height));
+        IntPtr region = CreateRoundRectRgn(0, 0, width, height, diameter, diameter);
+        if (region != IntPtr.Zero && SetWindowRgn(window, region, true) == 0) DeleteObject(region);
     }
 
     public void SetKeyboard(IntPtr window, bool take)
@@ -64,6 +102,9 @@ public sealed class WindowsNotchWindowPlatform : INotchWindowPlatform
 
     [DllImport("gdi32.dll")]
     static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [DllImport("gdi32.dll")]
+    static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
 
     [DllImport("gdi32.dll")]
     static extern int CombineRgn(IntPtr dest, IntPtr src1, IntPtr src2, int mode);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,7 +24,7 @@ public sealed partial class NotchWindow
 {
     const string ShelfGlyph = "", FolderGlyph = "", ErrorGlyph = "";
     const int ShelfShown = 8;
-    static readonly IBrush ShelfGray = Brush("#FF8E8E93"), ChipBrush = Brush("#1AFFFFFF");
+    static readonly IBrush ShelfGray = Brush("#FF8E8E93"), ChipBrush = Look.InkA(0x1A);
 
     readonly StackPanel _idleShelf = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, IsVisible = false, HorizontalAlignment = HorizontalAlignment.Right };
     readonly TextBlock _idleShelfCount = new() { FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Dim, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -56,8 +56,7 @@ public sealed partial class NotchWindow
         clear.Click += () => { _settings.Shelf.Clear(); _settings.Save(); ShowShelf(); };
         header.Children.Add(clear);
         _shelfRow.Children.Add(header);
-        _shelfRow.Children.Add(_shelfItems);
-        _homePanel.Children.Add(_shelfRow);
+        _shelfRow.Children.Add(_shelfItems); // into its section of home in the constructor
         _shelfTitle.PointerPressed += (_, e) => _ = DragOffShelfAsync(e, ShelfItems.ToArray());
 
         _shareView.Children.Add(_shareTitle);

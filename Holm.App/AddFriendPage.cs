@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using Avalonia;
@@ -39,7 +39,7 @@ internal sealed class AddFriendPage : HubView
         _code = new TextBlock
         {
             Text = "Making your code…", FontSize = 36, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 18, 0, 6),
-            FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"), Foreground = Brushes.White,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"), Foreground = Look.Ink,
         };
         // The code shrinks to fit the card rather than run past its edge.
         mine.Children.Add(new Viewbox { Child = _code, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Left });
@@ -70,7 +70,13 @@ internal sealed class AddFriendPage : HubView
         });
         var entry = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         _input = HubTheme.Field("HOLM-XXXXX-XXXXX");
+        _input.VerticalContentAlignment = VerticalAlignment.Center;
         _input.FontSize = 16;
+        _input.TemplateApplied += (_, e) =>
+        {
+            if (e.NameScope.Find("PART_Placeholder") is TextBlock placeholder)
+                placeholder.FontSize = 13;
+        };
         _input.KeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; _ = Add(); } };
         _input.TextChanged += (_, _) =>
         {
@@ -149,7 +155,7 @@ internal sealed class AddFriendPage : HubView
         if (_invite == null)
         {
             _code.Text = "No code yet";
-            _codeNote.Text = error != null ? error + ". Try again in a moment." : "The invite server (ntfy) couldn't be reached. Check your connection and try again.";
+            _codeNote.Text = error != null ? error + ". Try again in a moment." : "The invite server couldn't be reached. Check your connection and try again.";
             _newCode.Content = "Try again";
             _newCode.IsEnabled = true;
             return;
@@ -205,6 +211,12 @@ internal sealed class AddFriendPage : HubView
     void Refresh()
     {
         _requests.Children.Clear();
+        foreach (var card in _social.AddBackOffers())
+        {
+            var addBack = HubTheme.Action("Add back", primary: true);
+            addBack.Click += (_, _) => _social.AddBack(card);
+            _requests.Children.Add(RequestRow(card, "Added you as a friend", addBack));
+        }
         foreach (var (card, requestId) in _social.Incoming())
         {
             var accept = HubTheme.Action("Accept", primary: true);

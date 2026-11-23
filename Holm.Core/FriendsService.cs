@@ -125,13 +125,17 @@ internal sealed partial class FriendsService
     const long PendingFor = 2 * 24 * 60 * 60;
 
     bool Prune(long now)
-        => _settings.FriendInvites.RemoveAll(i => i.Expires + InviteGrace < now) + _settings.PendingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now) > 0;
+        => _settings.FriendInvites.RemoveAll(i => i.Expires + InviteGrace < now)
+         + _settings.PendingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now)
+         + _settings.IncomingFriendRequests.RemoveAll(p => p.Sent + PendingFor < now) > 0;
 
     /// <summary>Our invite codes that still work, newest last.</summary>
     public IReadOnlyList<OwnInvite> Invites => _settings.FriendInvites.Where(i => i.Expires > Now).ToList();
 
     /// <summary>Requests we sent that haven't been answered yet.</summary>
     public IReadOnlyList<PendingFriendRequest> Pending => _settings.PendingFriendRequests;
+    public IReadOnlyList<PendingFriendRequest> Incoming
+        => _settings.IncomingFriendRequests.Where(p => p.Sent + PendingFor >= Now && Find(p.Card.Key) == null).ToList();
 
     /// <summary>
     /// The invite code to give a friend: the current one while it works for at least another hour, else a new one,
@@ -217,7 +221,7 @@ internal sealed partial class FriendsService
             var key = ECDiffieHellman.Create();
             key.ImportPkcs8PrivateKey(pkcs8, out _);
             CryptographicOperations.ZeroMemory(pkcs8);
-            return new FriendIdentity(MyName, _settings.FriendsTopic, _settings.FriendsServer, key);
+            return new FriendIdentity(MyName, _settings.FriendsTopic, OwnServer, key);
         }
         catch (Exception ex)
         {
@@ -227,18 +231,22 @@ internal sealed partial class FriendsService
         }
     }
 
+    /// <summary>Where our friend code says our inbox is: the server set in the settings, else the relay once it let us in.</summary>
+    string? OwnServer => _settings.FriendsServer ?? (_settings.FriendsRelay ? FriendIdentity.RelayServer : null);
+
     /// <summary>Our identity, made on first use. Friends who had an unreadable older one must add us again.</summary>
     public FriendIdentity EnsureMe()
     {
         if (Me is { } me) return me;
-        me = FriendIdentity.Create(MyName, _settings.FriendsServer);
+        me = FriendIdentity.Create(MyName, OwnServer);
         byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
         _settings.FriendsKey = Convert.ToBase64String(ProtectKey(pkcs8, KeyEntropy));
         CryptographicOperations.ZeroMemory(pkcs8);
         _settings.FriendsTopic = me.Topic;
         // Catch up from now on: a friend may write while Holm isn't running.
-        _settings.FriendsSince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        _settings.FriendsSince = _settings.FriendsRelaySince = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         _settings.FriendsSeen.Clear();
+        _settings.IncomingFriendRequests.Clear();
         _settings.Save();
         _me = me;
         Restart();
@@ -304,6 +312,73 @@ internal sealed partial class FriendsService
         }
     }
 
+    // ───────────── Holm account (Account/AccountService.cs) ─────────────
+
+    /// <summary>Our identity for the account to keep (sealed): the inbox and the private key. Null before we have one.</summary>
+    internal Account.IdentityPayload? ExportIdentity()
+    {
+        if (Me is not { } me) return null;
+        byte[] pkcs8 = me.Key.ExportPkcs8PrivateKey();
+        try { return new Account.IdentityPayload { Topic = me.Topic, Server = _settings.FriendsServer, Key = Convert.ToBase64String(pkcs8) }; }
+        finally { CryptographicOperations.ZeroMemory(pkcs8); }
+    }
+
+    /// <summary>
+    /// Becomes the account's identity, so friends reach us here with the same friend code as on our other PCs.
+    /// The inbox is caught up on what the servers keep (ntfy 12 hours, the relay a week), as after a restart.
+    /// </summary>
+    internal void AdoptIdentity(Account.IdentityPayload identity)
+    {
+        byte[] pkcs8 = Convert.FromBase64String(identity.Key);
+        var key = ECDiffieHellman.Create();
+        try
+        {
+            key.ImportPkcs8PrivateKey(pkcs8, out _);
+            _settings.FriendsKey = Convert.ToBase64String(ProtectKey(pkcs8, KeyEntropy));
+        }
+        finally { CryptographicOperations.ZeroMemory(pkcs8); }
+        _settings.FriendsTopic = identity.Topic;
+        _settings.FriendsServer = identity.Server;
+        _settings.FriendsSince = Now - 12 * 60 * 60;
+        _settings.FriendsRelaySince = Now - 7 * 24 * 60 * 60; // what the relay keeps
+        _settings.FriendsSeen.Clear();
+        _settings.IncomingFriendRequests.Clear();
+        _me = new FriendIdentity(MyName, identity.Topic, OwnServer, key);
+        _loaded = true;
+        _settings.Save();
+        Restart();
+        Diag.Log("Friends: took the account's identity");
+    }
+
+    /// <summary>Puts the account's friends list in place of ours (already merged with ours).</summary>
+    internal void ReplaceFriends(IReadOnlyList<Friend> friends)
+    {
+        _settings.Friends.Clear();
+        _settings.Friends.AddRange(friends);
+        _settings.Save();
+        ListChanged?.Invoke();
+        SyncProfiles();
+    }
+
+    /// <summary>
+    /// After taking the account's identity: friends who only knew this PC's old one get our new friend code, and their
+    /// notch offers to add us back (as when someone adds them).
+    /// </summary>
+    internal void Reintroduce(IEnumerable<Friend> friends)
+    {
+        if (Me is not { } me) return;
+        foreach (var friend in friends.ToList())
+        {
+            var note = new FriendNote(FriendNoteKind.AddedYou, me.Name, Now, Code: me.FriendCode);
+            string text = FriendNotes.Seal(me, friend, note);
+            _ = Task.Run(async () =>
+            {
+                try { await FriendInbox.PostAsync(friend, text, CancellationToken.None); }
+                catch (IOException ex) { Diag.Log($"Friends: couldn't tell {friend.Name} our new code: {ex.Message}"); }
+            });
+        }
+    }
+
     public Friend? Find(string publicKey) => _settings.Friends.FirstOrDefault(f => f.Key == publicKey);
 
     public bool IsMe(Friend card) => Me?.PublicKey == card.Key;
@@ -349,11 +424,12 @@ internal sealed partial class FriendsService
         }
 
         var me = EnsureMe(); // starts our inbox before the request is posted
-        string requestId = Guid.NewGuid().ToString("N");
+        var previous = _settings.PendingFriendRequests.FirstOrDefault(p => p.Card.Key == friend.Key);
+        string requestId = previous?.RequestId ?? Guid.NewGuid().ToString("N");
         var answer = new TaskCompletionSource<FriendRequestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_friendRequests.TryAdd(requestId, answer)) throw new InvalidOperationException("Duplicate friend request id");
+        if (!_friendRequests.TryAdd(requestId, answer)) return FriendRequestResult.NoResponse;
         var pending = new PendingFriendRequest { RequestId = requestId, Card = friend, Sent = Now, ByInvite = invite != null };
-        _settings.PendingFriendRequests.RemoveAll(p => p.Card.Key == friend.Key); // the newest request to them counts
+        _settings.PendingFriendRequests.RemoveAll(p => p.Card.Key == friend.Key);
         _settings.PendingFriendRequests.Add(pending);
         _settings.Save();
         InvitesChanged?.Invoke();
@@ -376,7 +452,7 @@ internal sealed partial class FriendsService
         }
         catch (IOException)
         {
-            ForgetPending(requestId); // never got out
+            if (previous == null) ForgetPending(requestId);
             throw;
         }
         finally { _friendRequests.TryRemove(requestId, out _); }
@@ -414,6 +490,14 @@ internal sealed partial class FriendsService
             RequestId: requestId, Accepted: accepted);
         await FriendInbox.PostAsync(friend, FriendNotes.Seal(me, friend, note), ct);
         if (accepted && !_cancelledFriendRequests.Contains(requestId)) AddOrUpdateFriend(friend, requestId);
+        ForgetIncoming(friend.Key, requestId);
+    }
+
+    void ForgetIncoming(string sender, string requestId)
+    {
+        if (_settings.IncomingFriendRequests.RemoveAll(p => p.RequestId == requestId && p.Card.Key == sender) == 0) return;
+        _settings.Save();
+        InvitesChanged?.Invoke();
     }
 
     void AddOrUpdateFriend(Friend card, string? requestId = null)
@@ -541,12 +625,32 @@ internal sealed partial class FriendsService
         if (!_settings.Beam || Me is not { } me) return;
         var cts = new CancellationTokenSource();
         _follow = cts;
-        long? since = _settings.FriendsSince;
-        _ = Task.Run(() => FriendInbox.FollowAsync(me, since,
-            (id, age, text) => _ui(() => { if (_follow == cts) Handle(me, id, age, text); }),
+        Func<string, long, string, Task> received = (id, age, text) => _ui(() => { if (_follow == cts) Handle(id, age, text); });
+        // Our inbox on the server the settings name, or else on ntfy (where older friends write) and on the relay.
+        _ = Task.Run(() => FriendInbox.FollowAsync(_settings.FriendsServer, me.Topic, _settings.FriendsSince, received,
             time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsSince = time; _settings.Save(); } }),
             Diag.Log, cts.Token));
+        if (_settings.FriendsServer == null)
+            _ = Task.Run(() => FriendInbox.FollowRelayAsync(me.Topic, _settings.FriendsRelaySince ?? Now, received,
+                time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsRelaySince = time; _settings.Save(); } }),
+                () => _ = _ui(() => { if (_follow == cts) MoveToRelay(); }),
+                Diag.Log, cts.Token));
         SyncProfiles();
+    }
+
+    /// <summary>
+    /// The relay let us in for the first time: from now on our friend code names it, and every friend gets the new code,
+    /// which their Holm (any version) takes in silently for a friend it has. Their notes then come to the relay; a friend
+    /// that hasn't heard yet still writes to ntfy, which we keep following.
+    /// </summary>
+    internal void MoveToRelay()
+    {
+        if (_settings.FriendsRelay || _settings.FriendsServer != null || Me is not { } me) return;
+        _settings.FriendsRelay = true;
+        _settings.Save();
+        _me = new FriendIdentity(me.Name, me.Topic, FriendIdentity.RelayServer, me.Key);
+        Diag.Log("Friends: our inbox moved to the relay");
+        Reintroduce(_settings.Friends);
     }
 
     public void Stop()
@@ -586,7 +690,8 @@ internal sealed partial class FriendsService
         string text = FriendNotes.Seal(me, to, new FriendNote(kind, me.Name, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Activity: activity, Trophies: trophies));
         _ = Task.Run(async () =>
         {
-            try { await FriendInbox.PostAsync(to, text, CancellationToken.None); }
+            // "Are you there?" and its answer are stale after 30 seconds: the server passes them on without keeping them.
+            try { await FriendInbox.PostAsync(to, text, CancellationToken.None, keep: !presence); }
             catch (IOException ex) { Diag.Log($"Friends: couldn't reach {to.Name}'s inbox: {ex.Message}"); }
         });
     }
@@ -596,8 +701,9 @@ internal sealed partial class FriendsService
         if (_presence.Saw(friend.Key, DateTime.UtcNow)) FriendOnline?.Invoke(friend);
     }
 
-    void Handle(FriendIdentity me, string id, long age, string text)
+    void Handle(string id, long age, string text)
     {
+        if (_me is not { } me) return;
         // Catching up after a reconnect can repeat the last note.
         if (_settings.FriendsSeen.Contains(id)) return;
         _settings.FriendsSeen.Add(id);
@@ -638,9 +744,17 @@ internal sealed partial class FriendsService
                     UpdateFriendCard(friend, card);
                     _ = ReplyToRequestAsync(me, card, requestId, accepted: true);
                 }
-                else if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
-                    _ = AcceptInviteAsync(card, requestId); // they had our code: no need to ask
-                else FriendRequested?.Invoke(card, requestId);
+                else if (age <= PendingFor && !_cancelledFriendRequests.Contains(requestId))
+                {
+                    bool isNew = !_settings.IncomingFriendRequests.Any(p => p.RequestId == requestId && p.Card.Key == sender);
+                    if (!isNew) break;
+                    _settings.IncomingFriendRequests.Add(new PendingFriendRequest { Card = card, RequestId = requestId, Sent = Now - age });
+                    _settings.Save();
+                    InvitesChanged?.Invoke();
+                    if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
+                        _ = AcceptInviteAsync(card, requestId);
+                    else FriendRequested?.Invoke(card, requestId);
+                }
                 break;
             case FriendNoteKind.FriendResponse when note.RequestId is { } responseId && note.Accepted is { } accepted:
             {
@@ -653,11 +767,12 @@ internal sealed partial class FriendsService
                     if (accepted) AddOrUpdateFriend(pending.Card, responseId);
                     if (!waiting) LateAnswer?.Invoke(pending.Card, accepted);
                 }
-                if (waiting) answer!.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
+                if (waiting && pending != null) answer!.TrySetResult(accepted ? FriendRequestResult.Accepted : FriendRequestResult.Declined);
                 break;
             }
             case FriendNoteKind.FriendRequestCancelled when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } cancelledId:
                 _cancelledFriendRequests.Add(cancelledId);
+                ForgetIncoming(sender, cancelledId);
                 RemoveFriendAddedByRequest(cancelledId);
                 FriendRequestCancelled?.Invoke(card, cancelledId);
                 break;

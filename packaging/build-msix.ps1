@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-if ($Store -and -not $Version) { $Version = '1.13.0.0' }
+if ($Store -and -not $Version) { $Version = '2.2.3.0' }
 if (-not $Version) {
     [xml]$project = Get-Content (Join-Path $root 'Holm.App\Holm.App.csproj') -Raw
     $releaseVersion = [string]$project.SelectSingleNode('/Project/PropertyGroup/Version[1]').InnerText

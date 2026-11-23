@@ -27,6 +27,7 @@ Probably the best Dynamic Island–style notch for Windows. It sits at the top o
 
 - **Today at a glance** – idle, the notch shows the time (or the weather) and the one thing that matters most: the next reminder today, else what's on the shelf. Open without music, it's a card for today under a sky in the colours of the time of day and the weather (stars at night): a greeting, time and date, the weather, the next reminder, your note, and the tools you reach for most.
 - **Tools in the open notch** – notes, reminders, a calculator, the clipboard history, a mixer and a color picker, each a click away in the same top toolbar during idle, playback and tool pages. With media playing, a small clock and date stay at the upper left. Opening notes, reminders or the calculator puts the cursor in its field, so you can type at once; the notch takes the keyboard only then or when you click into a field, and gives it back when you move away or press Esc.
+- **Your own start page** – *Settings › Start page* arranges the open notch: drag its sections (tool bar, player and clock, reminder and note, activity, shelf, battery and volume) into the order you like, hide the tool bar, the cards or the battery and volume, swap a section's left and right side (the weather left of the clock, the volume on the left), and order the tools in the bar. A preview shows the result as you go. Unless you change it, the open notch stays as it is; *Reset to default* brings it back.
 - **Notes** – a small note that survives a restart and stays on this PC.
 - **Reminders in plain words** – "20 min laundry", "14:30 dentist", "tomorrow 9:00 call" (German works too). The notch rings on time with *+10 min*; reminders survive a restart, and one missed while the PC was off shows when it's back.
 - **Calculator** – type a sum, the result is there at once; click it to copy. "50 + 15%" works like on any calculator.
@@ -61,8 +62,8 @@ Probably the best Dynamic Island–style notch for Windows. It sits at the top o
 - **Downloads** – while your browser saves a file to Downloads, the notch shows its name, size and speed; when it's done, *Open* or *Show* it in Explorer with one click.
 - **Stays out of your way** – hides during fullscreen games and videos, never steals focus, works on any monitor.
 - **Room for your browser tabs** – *Settings › General › Hide over browser tabs* makes the resting notch step aside while a maximized browser (Chrome, Edge, Firefox, Brave, Opera, Vivaldi, …) is in front, so the tabs under it can be clicked. A Beam offer, a message, the volume, a download or a call bring it back at once, and nothing is declined meanwhile. Off by default.
-- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…** (including Updates), *Customize* (messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), pick a screen, quit.
-- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends, weather and updates. Most settings changes wait for *Apply*; the automatic update check setting takes effect immediately. Esc closes it.
+- **Right-click menu** – timer, sleep timer, beam text, receive with a copied code, friends (waves, streaming too), **Friends and chat…**, **Settings…** (including Updates), *Customize* (start page, messages with one switch per app, quiet hours, weather, AI button, collapsed and expanded size), pick a screen, quit.
+- **The Holm window** – *Settings…* and *Friends and chat…* open one window with a sidebar: your profile card on top, then **Active now**, **Chat** and **Achievements**, then the settings, one page at a time: profile, general, open notch, pop-outs, calls and privacy, Beam, friends, weather, start page, design and updates. Most settings changes wait for *Apply*; the automatic update check setting takes effect immediately. Esc closes it.
 
   ![The Holm window](docs/settings.png)
 
@@ -105,13 +106,13 @@ Received files land in your **Downloads** folder; when they're in, the notch off
 
 ### Friends
 
-1. Right-click the notch › **Friends › Copy my friend code** and send it to your friend in any chat.
+1. Open **Add a friend › Copy my long friend code** and send it to your friend in any chat.
 2. Your friend copies your code and chooses **Add**. Their Holm waits while yours asks you to *Accept* or *Decline* the request. Neither friend list changes until you accept; acceptance adds each of you to the other's list.
 3. If your friend cancels while you're deciding, their pending request closes on your Holm. From then on you show up in each other's notch (with a small star) whenever you drag files onto it. A **green dot** means their Holm is running right now, so they'll see your files at once.
 
 Both notches have to be running for a friend request or file transfer. If your friend's notch doesn't answer within 15 seconds, the files wait (*Send later*, shown in the open notch with *Don't send*) and go as soon as their Holm is back: Holm asks every 15 minutes for two hours, then hourly, and every six hours leaves a sealed "something waits" note that their Holm answers when it starts. After a week it gives up. A friend request with no answer after two minutes is cancelled on both ends and leaves both lists unchanged.
 
-**Waves.** Friends › *Wave at* pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
+**Waves.** The wave button in Chat pops up on your friend's notch with *Wave back*; only your name travels, sealed like every note, at most once per friend every 30 seconds.
 
 **Chat.** *Friends and chat…* (or *Reply* on a message that pops out of the notch) opens the conversations with your friends: bubbles, days and times, *Sending…* until the message is in their inbox and *Not sent · Click to try again* if it couldn't go. Each message is one sealed note like a file offer, so only the two of you can read it, and a friend whose Holm is closed gets it when it starts (the inbox keeps notes for about 12 hours). A long text goes as several messages. The history stays on your PC (the last 300 messages per friend, in `chats.json`).
 
@@ -125,7 +126,7 @@ Both notches have to be running for a friend request or file transfer. If your f
 
   ![Active now](docs/activity.png)
 
-**Streaming.** Friends › *Stream my screen to*, *Stream my screen* in a chat, or *Stream to* on a friend's card invites them to watch your screen. Their notch pops out *Watch* / *Not now*; *Watch* opens a window with your screen (double-click for full screen). Your notch sends up to 8 pictures a second through the same relay and encryption as Beam; a slower connection gets fewer pictures instead of falling behind. While you're live a red badge sits under the notch with who's watching and *Stop*. The notch, the badge and the Holm window stay out of the picture, so the messages it pops out and your chats don't go along.
+**Streaming.** *Stream my screen* in a chat or *Stream to* on a friend's card invites them to watch your screen. Their notch pops out *Watch* / *Not now*; *Watch* opens a window with your screen (double-click for full screen). Your notch sends up to 8 pictures a second through the same relay and encryption as Beam; a slower connection gets fewer pictures instead of falling behind. While you're live a red badge sits under the notch with who's watching and *Stop*. The notch, the badge and the Holm window stay out of the picture, so the messages it pops out and your chats don't go along.
 
   ![Watching a friend's stream](docs/stream.png)
 
@@ -133,22 +134,39 @@ Both notches have to be running for a friend request or file transfer. If your f
 
   ![Achievements](docs/achievements.png)
 
-**Profiles.** At the top of *Settings…* (or Friends › *Edit my profile…*) you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in their Friends menu (and as a tooltip on your chip). The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
+**Profiles.** At the top of the Holm window you choose a picture, a name, a status line ("🎧 in focus") and a color for your initials. Your friends then see your picture instead of your initials when they share, when you send them something or wave, and your status under your name in Chat and on Active now. The picture is cut to a square and made small (64 pixels, under 1.5 KB) so the whole profile fits in one sealed note; it goes only to your friends, again whenever you change it. Friends on a Holm older than 1.8 just keep seeing your initials.
 
   ![Friends with a picture and a color](docs/profiles.png)
 
-How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on [ntfy.sh](https://ntfy.sh), a free public notification service; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks ntfy.sh, use *Code* there.
+How it works: dropping files on a friend makes a fresh one-time code, exactly like *Code*, but instead of you pasting it into a chat, Holm leaves it in your friend's **inbox**, sealed so only they can open it. Their notch picks it up within a second and comes to the relay by itself. The inbox is a topic on Holm's own relay (`relay/`, a Cloudflare Worker), and on [ntfy.sh](https://ntfy.sh), a free public notification service, for friends on Holm before 1.18; it only ever carries these small sealed notes, never files, so there is no size limit beyond the usual one. If a network blocks both, use *Code* there.
 
 How it stays safe:
 
 - **Nothing arrives without a yes.** The receiver sees who is sending what (names and sizes) and has to accept; no answer within a minute counts as no.
-- **Only friends see that you're online.** When you drag files onto the notch, it asks your friends' notches whether they're running (a sealed note, like the others), and theirs answer the same way – at most once a minute per friend, as every note counts against ntfy.sh's daily limit. Questions from anyone who isn't your friend get no answer.
-- **Only friends can knock.** A friend's note is sealed with a key only the two of you share (from your friend codes), so nobody else can open it or send one in your friend's name; notes from people you haven't added are ignored. Your private key never leaves your PC and is stored encrypted for your Windows account. ntfy.sh sees which inbox got a note and when, the IP addresses involved and a key that stands for the sender's notch – but no names, no files and not what the note says.
+- **Only friends see that you're online.** When you drag files onto the notch, it asks your friends' notches whether they're running (a sealed note, like the others), and theirs answer the same way – at most once a minute per friend, as every note counts against the servers' daily limits. These questions and answers are passed on live and never kept. Questions from anyone who isn't your friend get no answer.
+- **Only friends can knock.** A friend's note is sealed with a key only the two of you share (from your friend codes), so nobody else can open it or send one in your friend's name; notes from people you haven't added are ignored. Your private key is stored encrypted for your Windows account and never leaves your PC – unless you sign in to a [Holm account](#holm-account), which keeps it end-to-end encrypted so friends reach you on every PC. The relay and ntfy.sh see which inbox got a note and when, the IP addresses involved and a key that stands for the sender's notch – but no names, no files and not what the note says.
 - **Encrypted.** With a code, the key comes from the code itself, so only the person you gave the code to can read the file. On the network both notches agree on a fresh key for every transfer (ECDH); that stops anyone from listening in, but the notches don't verify each other, so someone on the same network could pretend to be a notch – use *Code* on networks you don't trust. Everything is sent with AES-256-GCM, so changed or replayed data is rejected.
 - **Through the relay, only scrambled bytes.** Code transfers go through the public *transit relay* of the open-source [magic-wormhole](https://github.com/magic-wormhole/magic-wormhole) project. It only pairs the two sides and passes encrypted data along – it never sees the code, the key, file names or content. A code works once and expires after 15 minutes.
 - **Files stay where they belong.** File names are cleaned up, so nothing can be written outside Downloads and no invisible text-direction marks can disguise `holiday‮gpj.exe` as a picture; existing files are never overwritten (you get `photo (1).jpg`); a cancelled transfer leaves no half file behind.
 - **Marked as downloaded.** Received files get Windows' "from the internet" mark, so Windows warns before running a received program, just like with a browser download.
 - To be found on the network, Holm listens on UDP port 47811 and a TCP port, so Windows Firewall may ask once. Turn Beam off in the right-click menu if you don't want any of it (that also closes the friends inbox).
+
+## Holm account
+
+Optional. Holm offers it once at the first start, with what it keeps, and after that under *Settings › Account*; without one Holm works exactly as before. Sign in with an email and a password on each PC, and these stay the same everywhere:
+
+| Synced | Stays on each PC |
+| --- | --- |
+| Settings that mean the same on every PC (switches, clock style, quiet hours, quick reactions, …) | Display, notch position and size, AI app path, shelf, weather place, relay, GIF key and history |
+| Profile: name, status, color, picture | Notes and reminders |
+| Achievements (the higher count and the first unlock win) | Chats, files, files waiting to be sent |
+| Friends list (additions and removals reach every PC) and your friends key and inbox, so friends reach you on every PC with one friend code | Invite codes and open friend requests |
+
+- **End-to-end encrypted.** The password never leaves your PC. Holm turns it (with your email, PBKDF2-SHA256, 600 000 rounds) into two unrelated keys: Firebase gets one to check your sign-in, the other opens a random data key that seals every section with AES-256-GCM. The service stores your email address, when you synced and sealed data it can't read.
+- **Where.** [Google Firebase](https://firebase.google.com): Authentication for the sign-in, Cloud Firestore in Zürich (europe-west6) for the sealed data. The access rules are in `firebase/firestore.rules`: each account reads and writes only its own documents.
+- **When.** A few seconds after a change, at every start and every hour while Holm runs; *Sync now* any time.
+- **Your call.** *Sign out* stops syncing and leaves everything in place; *Delete account* removes the account and everything in it, each PC keeps its own data. A forgotten password can't be reset – the account's data is then lost, each PC keeps its own.
+- If a PC already has friends under its own friend code and the account has another one, Holm asks which to keep. Friends who only knew the other code get the new one and can add it back.
 
 ## Lightweight
 

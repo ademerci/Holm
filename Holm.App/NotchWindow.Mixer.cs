@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -29,15 +29,20 @@ public sealed partial class NotchWindow
     readonly TextBlock _mixerEmpty = new() { FontSize = 13, Foreground = Faint, Margin = new Thickness(2, 0, 2, 8), TextWrapping = TextWrapping.Wrap, IsVisible = false };
     readonly Dictionary<string, Bitmap?> _mixerIcons = new(StringComparer.OrdinalIgnoreCase);
     readonly DispatcherTimer _mixerSoon = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    readonly DispatcherTimer _mixerVolumeSoon = new() { Interval = TimeSpan.FromMilliseconds(35) };
+    readonly Dictionary<string, float> _mixerVolumes = new(StringComparer.OrdinalIgnoreCase);
     NotchButton _mixerToolBtn = null!;
     IAppVolumePlatform _appVolumes = null!;
+    Task _mixerWork = Task.CompletedTask;
     bool _mixerOpen, _mixerDragging;
+    int _mixerRevision;
 
     void InitMixer(IPlatformServices platform)
     {
         _appVolumes = platform.AppVolumes;
         _appVolumes.Changed += () => Dispatcher.UIThread.Post(MixerChanged);
         _mixerSoon.Tick += (_, _) => { _mixerSoon.Stop(); _ = ReadMixerAsync(); };
+        _mixerVolumeSoon.Tick += (_, _) => FlushMixerVolumes();
     }
 
     Control BuildMixerPage()
@@ -48,7 +53,7 @@ public sealed partial class NotchWindow
         return _mixerPage;
     }
 
-    async void ShowMixerPage()
+    void ShowMixerPage()
     {
         if (!_appVolumes.Supported)
         {
@@ -58,10 +63,9 @@ public sealed partial class NotchWindow
         if (!_mixerOpen)
         {
             _mixerOpen = true;
-            await Task.Run(_appVolumes.Start);
-            if (_tool != Tool.Mixer) { HideMixer(); return; } // closed meanwhile
+            _ = QueueMixer(_appVolumes.Start);
         }
-        await ReadMixerAsync();
+        _ = ReadMixerAsync();
     }
 
     /// <summary>The page closed: no more events from the system.</summary>
@@ -70,7 +74,37 @@ public sealed partial class NotchWindow
         _mixerSoon.Stop();
         if (!_mixerOpen) return;
         _mixerOpen = false;
-        _ = Task.Run(_appVolumes.Stop);
+        _mixerDragging = false;
+        _mixerRevision++;
+        FlushMixerVolumes();
+        _ = QueueMixer(_appVolumes.Stop);
+    }
+
+    // Called on the UI thread. Keep native operations off-thread and in the order the UI requested them.
+    Task QueueMixer(Action work)
+    {
+        Task previous = _mixerWork;
+        return _mixerWork = Task.Run(async () =>
+        {
+            await previous.ConfigureAwait(false);
+            try { work(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Diag.Log("Mixer: " + ex.GetType().Name);
+            }
+        });
+    }
+
+    void FlushMixerVolumes()
+    {
+        _mixerVolumeSoon.Stop();
+        if (_mixerVolumes.Count == 0) return;
+        var volumes = new List<KeyValuePair<string, float>>(_mixerVolumes);
+        _mixerVolumes.Clear();
+        _ = QueueMixer(() =>
+        {
+            foreach (var (key, value) in volumes) _appVolumes.SetVolume(key, value);
+        });
     }
 
     void MixerChanged()
@@ -82,17 +116,23 @@ public sealed partial class NotchWindow
 
     async Task ReadMixerAsync()
     {
-        if (!_mixerOpen) return;
-        var apps = await Task.Run(_appVolumes.Read);
-        // Icons the first time an app shows up, off the UI thread.
-        var wanted = new List<string>();
-        foreach (var app in apps) if (!_mixerIcons.ContainsKey(app.Key)) wanted.Add(app.Key);
-        if (wanted.Count > 0)
+        if (!_mixerOpen || _mixerDragging) return;
+        int revision = ++_mixerRevision;
+        var knownIcons = new HashSet<string>(_mixerIcons.Keys, _mixerIcons.Comparer);
+        List<AppVolumeEntry>? apps = null;
+        var icons = new List<(string Key, AppIcon? Icon)>();
+        await QueueMixer(() =>
         {
-            var icons = await Task.Run(() => wanted.ConvertAll(key => (key, icon: _appVolumes.IconOf(key))));
-            foreach (var (key, icon) in icons) _mixerIcons[key] = BitmapOf(icon);
+            apps = _appVolumes.Read();
+            foreach (var app in apps)
+                if (knownIcons.Add(app.Key)) icons.Add((app.Key, _appVolumes.IconOf(app.Key)));
+        });
+        if (!_mixerOpen || _mixerDragging || revision != _mixerRevision || apps == null) return;
+        foreach (var (key, icon) in icons)
+        {
+            if (!_mixerIcons.ContainsKey(key)) _mixerIcons[key] = BitmapOf(icon);
         }
-        if (_tool == Tool.Mixer) ShowMixerRows(apps, "No app is playing sound right now.");
+        ShowMixerRows(apps, "No app is playing sound right now.");
     }
 
     static Bitmap? BitmapOf(AppIcon? icon)
@@ -126,7 +166,14 @@ public sealed partial class NotchWindow
             icon.Opacity = app.Muted ? 0.35 : 1;
             var mute = new NotchButton(icon) { Width = 34, Height = 34, VerticalAlignment = VerticalAlignment.Center };
             ToolTip.SetTip(mute, app.Muted ? "Unmute" : "Mute");
-            mute.Click += () => _ = Task.Run(() => _appVolumes.SetMute(app.Key, !app.Muted)).ContinueWith(_ => Dispatcher.UIThread.Post(() => _ = ReadMixerAsync()));
+            mute.Click += () =>
+            {
+                if (!_mixerOpen) return;
+                _mixerRevision++;
+                FlushMixerVolumes();
+                _ = QueueMixer(() => _appVolumes.SetMute(app.Key, !app.Muted));
+                _ = ReadMixerAsync();
+            };
             row.Children.Add(mute);
 
             var right = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -135,15 +182,24 @@ public sealed partial class NotchWindow
             var level = new TextBlock { Text = AppVolumeList.Describe(app.Volume, app.Muted), FontSize = 11, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Right };
             header.Children.Add(level);
             right.Children.Add(header);
-            var slider = new MiniSlider { Value = app.Volume, Margin = new Thickness(0, 4, 0, 0), Fill = app.Muted ? Dim : Brushes.White };
+            var slider = new MiniSlider { Value = app.Volume, Margin = new Thickness(0, 4, 0, 0), Fill = app.Muted ? Dim : Look.Ink };
             string key = app.Key;
             slider.ValueChanging += v =>
             {
+                if (!_mixerOpen) return;
                 _mixerDragging = true;
+                _mixerRevision++;
                 level.Text = AppVolumeList.Describe((float)v, false);
-                _ = Task.Run(() => _appVolumes.SetVolume(key, (float)v));
+                _mixerVolumes[key] = (float)v;
+                if (!_mixerVolumeSoon.IsEnabled) _mixerVolumeSoon.Start();
             };
-            slider.ValueCommitted += _ => _mixerDragging = false;
+            slider.ValueCommitted += _ =>
+            {
+                if (!_mixerOpen) return;
+                _mixerDragging = false;
+                FlushMixerVolumes();
+                MixerChanged();
+            };
             right.Children.Add(slider);
             Grid.SetColumn(right, 1);
             row.Children.Add(right);

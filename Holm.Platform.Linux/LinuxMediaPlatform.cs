@@ -21,10 +21,12 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
     const string Root = "org.mpris.MediaPlayer2", Player = "org.mpris.MediaPlayer2.Player";
     /// <summary>A cover larger than this isn't one.</summary>
     const int MaxCoverBytes = 8 * 1024 * 1024;
+    static readonly TimeSpan CoverRetryDelay = TimeSpan.FromSeconds(3);
 
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(6), MaxResponseContentBufferSize = MaxCoverBytes };
 
     readonly Bus _bus;
+    readonly TimeProvider _time;
     readonly object _gate = new();
     readonly Dictionary<string, string> _identities = new();
     bool _started;
@@ -35,11 +37,13 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
     MediaTimeline? _timeline;
     string? _coverUrl;
     byte[]? _cover;
+    long _coverAttempt;
 
     public event Action<bool>? Changed;
 
     public LinuxMediaPlatform() : this(Bus.Session) { }
-    internal LinuxMediaPlatform(Bus bus) => _bus = bus;
+    internal LinuxMediaPlatform(Bus bus, TimeProvider? time = null)
+        => (_bus, _time) = (bus, time ?? TimeProvider.System);
 
     public async Task StartAsync()
     {
@@ -144,18 +148,23 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
         lock (_gate) return _timeline;
     }
 
-    public async Task<byte[]?> ReadCoverAsync()
+    public Task<byte[]?> ReadCoverAsync()
     {
         string url;
+        lock (_gate) url = _artUrl;
+        return ReadCoverAsync(url);
+    }
+
+    internal async Task<byte[]?> ReadCoverAsync(string url)
+    {
+        if (url.Length == 0) return null;
         lock (_gate)
         {
-            url = _artUrl;
-            if (url.Length == 0) return null;
-            // Asked again for the same picture (the notch asks until it has one): no second download.
-            if (url == _coverUrl) return _cover;
+            if (url == _coverUrl && (_cover != null || _time.GetElapsedTime(_coverAttempt) < CoverRetryDelay))
+                return _cover;
         }
         byte[]? bytes = await LoadCoverAsync(url).ConfigureAwait(false);
-        lock (_gate) (_coverUrl, _cover) = (url, bytes);
+        lock (_gate) (_coverUrl, _cover, _coverAttempt) = (url, bytes, _time.GetTimestamp());
         return bytes;
     }
 

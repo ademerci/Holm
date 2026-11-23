@@ -36,5 +36,5 @@ jobs:
           path: |
             artifacts/msix/Holm-Store.msix
             artifacts/msix/Holm-Store-tile-300.png
-            packaging/RELEASE-1.13.0.md
+            packaging/RELEASE-2.2.3.md
           if-no-files-found: error

@@ -43,11 +43,36 @@ public sealed partial class NotchWindow
         public double DelayMs, Ms;
         public required Func<double, double> Ease;
         public Action? Done;
-        public bool Holding; // a delayed tween waits without touching its value, as a WPF BeginTime does
     }
 
     readonly Dictionary<(object Target, string Property), Tween> _tweens = new();
-    bool _tweening;
+    readonly List<((object Target, string Property) Key, Tween Tween)> _finishedTweens = new();
+    bool _animationFramePending;
+    IDisposable? _animationTiming;
+
+    void ScheduleAnimationFrame()
+    {
+        if (!_opened || _animationFramePending) return;
+        _animationFramePending = true;
+        _animationTiming = _platform.BeginAnimationTiming();
+        RequestAnimationFrame(OnAnimationFrame);
+    }
+
+    void OnAnimationFrame(TimeSpan _)
+    {
+        if (!_opened) return;
+        long now = Stopwatch.GetTimestamp();
+        if (_motionRunning) StepShape(now);
+        if (_tweens.Count > 0) StepTweens(now);
+        if (_motionRunning || _tweens.Count > 0)
+        {
+            RequestAnimationFrame(OnAnimationFrame);
+            return;
+        }
+        _animationFramePending = false;
+        _animationTiming?.Dispose();
+        _animationTiming = null;
+    }
 
     /// <summary>Animates one value; a new animation of the same target and property replaces the running one.</summary>
     void Animate(object target, string property, Action<double> set, double from, double to, double ms, double delayMs,
@@ -56,37 +81,31 @@ public sealed partial class NotchWindow
         _tweens[(target, property)] = new Tween
         {
             Set = set, From = from, To = to, Start = Stopwatch.GetTimestamp(), DelayMs = delayMs, Ms = ms, Ease = ease, Done = done,
-            Holding = delayMs > 0,
         };
         if (delayMs <= 0) set(from);
-        if (_tweening) return;
-        _tweening = true;
-        RequestAnimationFrame(OnTweenFrame);
+        ScheduleAnimationFrame();
     }
 
     void StopTween(object target, string property) => _tweens.Remove((target, property));
 
-    void OnTweenFrame(TimeSpan _)
+    void StepTweens(long now)
     {
-        long now = Stopwatch.GetTimestamp();
-        var finished = new List<(object, string)>();
         foreach (var (key, tween) in _tweens)
         {
             double elapsed = (now - tween.Start) * 1000.0 / Stopwatch.Frequency - tween.DelayMs;
             if (elapsed < 0) continue;
-            if (tween.Holding) { tween.Holding = false; }
             double t = tween.Ms <= 0 ? 1 : Math.Min(1, elapsed / tween.Ms);
-            tween.Set(tween.From + (tween.To - tween.From) * tween.Ease(t));
-            if (t >= 1) finished.Add(key);
+            if (t < 1) tween.Set(tween.From + (tween.To - tween.From) * tween.Ease(t));
+            else _finishedTweens.Add((key, tween));
         }
-        foreach (var key in finished)
+        foreach (var (key, done) in _finishedTweens)
         {
-            if (!_tweens.Remove(key, out var done)) continue;
+            if (!_tweens.TryGetValue(key, out var current) || current != done) continue;
+            _tweens.Remove(key);
             done.Set(done.To);
             done.Done?.Invoke();
         }
-        if (_tweens.Count == 0) { _tweening = false; return; }
-        RequestAnimationFrame(OnTweenFrame);
+        _finishedTweens.Clear();
     }
 
     // ───────────── views ─────────────
@@ -119,22 +138,30 @@ public sealed partial class NotchWindow
             _collapseDelay.Stop();
             // An enter without the pointer having moved isn't one: see CloseFromInside.
             if (_stayClosed && Point.Distance(e.GetPosition(this), _closedAt) > 3) _stayClosed = false;
-            if (_hovered || _stayClosed) return;
+            if (_hovered || _stayClosed || PhoneShowing) return;
             _expandDelay.Start();
             if (!_taskVisible && !_sharing && !_picking) SetHoverBoost(true);
         };
         _island.PointerExited += (_, _) =>
         {
+            _prismRim?.ClearLight();
             if (_positionHeld) return;
             _expandDelay.Stop();
             SetHoverBoost(false);
             if (_hovered && !PinnedClockOpen) _collapseDelay.Start();
         };
-        AddHandler(PointerMovedEvent, (_, e) => _lastPointer = e.GetPosition(this), Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerMovedEvent, (_, e) =>
+        {
+            _lastPointer = e.GetPosition(this);
+            if (_prismRim != null && _island.IsPointerOver) _prismRim.AimLight(e.GetPosition(_prismRim).X);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         // A click opens at once, without waiting for the hover delay.
         _island.PointerReleased += (_, e) =>
         {
-            if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left || _hovered || _taskVisible || _sharing || _picking) return;
+            if (e.Handled || _positionHeld || e.InitialPressMouseButton != MouseButton.Left) return;
+            // Jelly: a click on the open notch where nothing answers it makes the notch jiggle.
+            if (_hovered && Spring.Jelly) { Jiggle(); return; }
+            if (_hovered || _taskVisible || _sharing || _picking || PhoneShowing) return;
             _expandDelay.Stop();
             _stayClosed = false;
             SetExpanded(true);
@@ -159,7 +186,7 @@ public sealed partial class NotchWindow
 
     void SetExpanded(bool expand)
     {
-        if (_hovered == expand || _hiddenForFullscreen) return;
+        if (_hovered == expand || _hiddenForFullscreen || (expand && PhoneShowing)) return;
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");
@@ -191,11 +218,12 @@ public sealed partial class NotchWindow
         bool shown = view.IsHitTestVisible;
         view.IsHitTestVisible = show;
         var scale = view.RenderTransform as ScaleTransform;
-        if (!animate)
+        if (!animate || (!show && view.Opacity == 0))
         {
             StopTween(view, "opacity");
             StopTween(view, "scale");
             view.Opacity = show ? 1 : 0;
+            view.IsVisible = show;
             if (scale != null) scale.ScaleX = scale.ScaleY = 1;
             return;
         }
@@ -205,14 +233,21 @@ public sealed partial class NotchWindow
         void SetScale(double v) { if (scale != null) scale.ScaleX = scale.ScaleY = v; }
         if (show)
         {
-            double begin = open ? 35 : 95;
+            view.IsVisible = true;
+            bool reversing = view.Opacity > 0;
+            double begin = reversing ? 0 : open ? 35 : 95;
             Animate(view, "opacity", v => view.Opacity = v, view.Opacity, 1, open ? 220 : 180, begin, QuadOut);
             if (scale != null)
-                Animate(view, "scale", SetScale, open ? 0.91 : 0.84, 1, open ? OpenMs : 420, open ? 0 : begin, Bouncy);
+                Animate(view, "scale", SetScale, reversing ? scale.ScaleX : open ? 0.91 : 0.84, 1, open ? OpenMs : 420, open ? 0 : begin, Bouncy);
             return;
         }
         Animate(view, "opacity", v => view.Opacity = v, view.Opacity, 0, open ? 110 : 100, 0, QuadIn,
-            () => { if (!view.IsHitTestVisible) SetScale(1); });
+            () =>
+            {
+                view.IsVisible = false;
+                StopTween(view, "scale");
+                SetScale(1);
+            });
         if (scale != null)
             Animate(view, "scale", SetScale, scale.ScaleX, open ? 0.95 : 0.9, open ? 190 : 150, 0, QuadIn);
     }
@@ -252,8 +287,14 @@ public sealed partial class NotchWindow
         foreach (var part in _expandedPanel.Children)
         {
             if (!part.IsVisible) continue;
-            if (part != _homePanel) { yield return part; continue; }
-            foreach (var row in _homePanel.Children)
+            if (part == _statusSection)
+            {
+                foreach (var inner in _statusSection.Children)
+                    if (inner.IsVisible) yield return inner;
+                continue;
+            }
+            if (part is not StackPanel section) { yield return part; continue; } // the tool bar, a tool's page
+            foreach (var row in section.Children)
             {
                 if (!row.IsVisible) continue;
                 if (row == _clockPanel)
@@ -299,9 +340,7 @@ public sealed partial class NotchWindow
     /// <summary>Apply a size preference immediately and keep both states centred on the screen.</summary>
     void ApplyScale()
     {
-        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
         ApplyState(animate: false);
-        PositionWindow();
     }
 
     void FillSizeMenu(MenuItem menu, bool expanded)

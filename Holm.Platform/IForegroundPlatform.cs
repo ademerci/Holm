@@ -1,3 +1,5 @@
+using System;
+
 namespace Holm.Platform;
 
 /// <summary>What the window in front is, as far as the notch cares.</summary>
@@ -14,6 +16,10 @@ public interface IForegroundPlatform
 {
     /// <summary>The front window on the screen with these bounds (device pixels), or default when it can't tell.</summary>
     ForegroundWindow Read(int x, int y, int width, int height);
+
+    /// <summary>Calls <paramref name="changed"/> on the calling (UI) thread whenever another app's window comes to the
+    /// front, so the notch doesn't wait for the next look. Nothing where the system can't say.</summary>
+    void WatchChanges(Action changed) { }
 }
 
 /// <summary>For systems without a backend yet.</summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -12,10 +12,10 @@ namespace Holm.App.Controls;
 /// </summary>
 public sealed class MiniSlider : Control
 {
-    static readonly IBrush Track = new SolidColorBrush(Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF)).ToImmutable();
+    static readonly IBrush Track = Look.InkA(0x38);
 
     double _value;
-    IBrush _fill = Brushes.White;
+    IBrush _fill = Look.Prism ? Look.Accent : Look.Ink;
     bool _interactive = true, _hover;
 
     /// <summary>0 to 1.</summary>
@@ -60,6 +60,14 @@ public sealed class MiniSlider : Control
         double filled = Math.Clamp(Value, 0, 1) * w;
         if (filled > 0.5)
             dc.DrawRectangle(Fill, null, new Rect(0, y, Math.Max(filled, thickness), thickness), radius, radius);
+
+        if (Look.Prism && IsInteractive && w >= 4 && h >= 4)
+        {
+            double height = Math.Min(h - 2, _hover || IsDragging ? 14 : 12);
+            double width = Math.Min(w - 2, height * 1.55);
+            double x = Math.Clamp(filled - width / 2, 1, w - width - 1);
+            PrismGlass.DrawLens(dc, new Rect(x, (h - height) / 2, width, height), new Rect(0, y, filled, thickness), Fill);
+        }
     }
 
     protected override void OnPointerEntered(PointerEventArgs e) { _hover = true; InvalidateVisual(); }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -60,7 +60,7 @@ internal sealed class UsageRing
         double inner = _radius - _stroke - 0.8;
         _activity = new Path
         {
-            Data = Arc(size / 2, inner, 22), Stroke = Brushes.White, StrokeThickness = Math.Max(1, _stroke * 0.55), StrokeLineCap = PenLineCap.Round,
+            Data = Arc(size / 2, inner, 22), Stroke = Look.Ink, StrokeThickness = Math.Max(1, _stroke * 0.55), StrokeLineCap = PenLineCap.Round,
             RenderTransform = new RotateTransform(), RenderTransformOrigin = RelativePoint.Center, Width = size, Height = size, IsVisible = false,
         };
         _mark.HorizontalAlignment = HorizontalAlignment.Center;
@@ -74,7 +74,7 @@ internal sealed class UsageRing
         if (_markFor != usage.Tool)
         {
             _markFor = usage.Tool;
-            _mark.Child = AiMarks.For(usage.Tool, Math.Round(_size * 0.46), Brushes.White);
+            _mark.Child = AiMarks.For(usage.Tool, Math.Round(_size * 0.46), Look.Ink);
         }
         _arc.Stroke = ColorOf(usage.Percent);
         _arc.Data = Arc(_size / 2, _radius, Math.Clamp(usage.Percent ?? 0, 0, 100));
@@ -105,7 +105,7 @@ internal sealed class UsageRing
     }
 
     /// <summary>The arc from twelve o'clock, clockwise.</summary>
-    static Geometry? Arc(double c, double r, double percent)
+    internal static Geometry? Arc(double c, double r, double percent)
     {
         if (percent < 0.5) return null;
         if (percent >= 99.5) return new EllipseGeometry { Center = new Point(c, c), RadiusX = r, RadiusY = r };
@@ -140,6 +140,19 @@ public sealed partial class NotchWindow
     internal (bool Left, bool Right) AiWingsShown { get; private set; }
 
     readonly StackPanel _aiPage = new() { IsVisible = false };
+    static readonly Geometry AiUsageDial = Geometry.Parse(
+        "M2.3,10.9 A5.45,5.45 0 1 1 11.7,10.9 M7.8,7.8 L9.7,5.6 " +
+        "M8.1,8.6 A1.1,1.1 0 1 1 5.9,8.6 A1.1,1.1 0 1 1 8.1,8.6 Z");
+
+    static Control AiUsageIcon(IBrush brush, double size) => new Viewbox
+    {
+        Width = size, Height = size,
+        Child = new Canvas
+        {
+            Width = 14, Height = 14,
+            Children = { new Path { Data = AiUsageDial, Stroke = brush, StrokeThickness = 1.2, StrokeLineCap = PenLineCap.Round } },
+        },
+    };
     NotchButton _aiToolBtn = null!;
 
     void StartAiUsage()
@@ -226,7 +239,7 @@ public sealed partial class NotchWindow
     {
         var claude = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.ClaudeCode);
         var codex = _aiUsage.FirstOrDefault(u => u.Tool == AiTool.Codex);
-        bool on = _settings.AiUsage && !mini && !_hiddenForFullscreen && (claude != null || codex != null)
+        bool on = _settings.AiUsage && _settings.AiRings && !mini && !_hiddenForFullscreen && (claude != null || codex != null)
                   && target is NotchState.Idle or NotchState.Media or NotchState.Badge or NotchState.Timer or NotchState.Focumon or NotchState.Call or NotchState.Dictation;
         var left = on && claude != null && codex != null ? claude : null;
         var right = on ? codex ?? claude : null;
@@ -250,7 +263,7 @@ public sealed partial class NotchWindow
         {
             wing.Ring.Update(usage, _settings.Animations);
             wing.Number.Text = usage.Percent is { } p ? p.ToString("0", CultureInfo.InvariantCulture) + "%" : "–";
-            wing.Number.Foreground = usage.IsStale ? HubTheme.Dim : Brushes.White;
+            wing.Number.Foreground = usage.IsStale ? HubTheme.Dim : Look.Ink;
             Avalonia.Automation.AutomationProperties.SetName(wing.Panel, $"{UsageRing.NameOf(usage.Tool)} usage {wing.Number.Text}");
         }
         else wing.Ring.Update(new AiUsageSnapshot(AiTool.ClaudeCode, 0, "", null, 0, Array.Empty<AiSession>()), false); // stops the spin
@@ -346,7 +359,7 @@ public sealed partial class NotchWindow
         var section = new StackPanel();
         var ring = new UsageRing(34);
         ring.Update(usage, false);
-        var number = new TextBlock { FontSize = 22, FontWeight = FontWeight.Light, Foreground = usage.IsStale ? HubTheme.Dim : Brushes.White };
+        var number = new TextBlock { FontSize = 22, FontWeight = FontWeight.Light, Foreground = usage.IsStale ? HubTheme.Dim : Look.Ink };
         number.Text = usage.Percent is { } p ? p.ToString("0", CultureInfo.InvariantCulture) + "%" : "–";
         var words = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = UsageRing.NameOf(usage.Tool), FontSize = 12, FontWeight = FontWeight.SemiBold });

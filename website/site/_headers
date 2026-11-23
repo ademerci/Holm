@@ -1,0 +1,7 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://api.github.com https://stats.holmnotch.ch; base-uri 'none'; frame-ancestors 'none'; form-action 'none'
+/assets/*
+  Cache-Control: public, max-age=3600

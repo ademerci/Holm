@@ -99,6 +99,7 @@ jobs:
           $info = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path "out/win-x64/Holm-$version-test-build.${{ github.run_number }}.exe").Path)
           $file = '{0}.{1}.{2}.{3}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart
           if ($file -ne "$version.0") { throw "The exe's file version is $file, not $version.0: the 1.12 updater would refuse it." }
+          if ($info.ProductName -ne "Holm") { throw "The exe's product name is '$($info.ProductName)', not 'Holm': every updater would refuse it." }
           Write-Host "File version $file, as the 1.12 updater expects"
 
       - name: Upload (Windows)

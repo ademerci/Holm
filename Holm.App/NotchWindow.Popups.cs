@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -15,7 +15,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly IBrush TimerOrange = Brush("#FFFF9F0A"), ShareBlue = Brush("#FF0A84FF");
+    static readonly IBrush TimerOrange = Brush("#FFFF9F0A"), ShareBlue = Look.Accent;
 
     // Peek: one line, for a few seconds
     readonly Grid _peekView = new() { Margin = new Thickness(16, 0) };
@@ -85,12 +85,12 @@ public sealed partial class NotchWindow
 
         _updateNotification = false;
         _peekIcon.Text = glyph ?? "";
-        _peekIcon.Foreground = glyphBrush ?? Brushes.White;
+        _peekIcon.Foreground = glyphBrush ?? Look.Ink;
         _peekIcon.IsVisible = glyph != null;
         _peekText.Text = text;
         _peekText.MaxWidth = value.Length == 0 && battery == null ? 260 : 170; // a sentence on its own may use the whole width
         _peekValue.Text = value;
-        _peekValue.Foreground = valueBrush ?? Brushes.White;
+        _peekValue.Foreground = valueBrush ?? Look.Ink;
         _peekBattery.IsVisible = battery != null;
         _peekBattery.Level = battery ?? 0;
         _peekBattery.Charging = charging;
@@ -116,6 +116,7 @@ public sealed partial class NotchWindow
         _taskIcon.FontFamily = textIcon ? FontFamily.Default : IconFont;
         _taskIcon.FontWeight = textIcon ? FontWeight.SemiBold : FontWeight.Normal;
         _taskIconCircle.Background = circle;
+        _taskIcon.Foreground = Look.InkOn(circle);
         // A screenshot's picture or a chat GIF takes the icon's place; every other card has its icon.
         StopTaskGif();
         _taskGif = null;
@@ -198,15 +199,24 @@ public sealed partial class NotchWindow
         {
             case MediaKey.VolumeMute:
                 _audio.ToggleMute();
+                ShowMediaKeyVolume();
                 break;
             case MediaKey.VolumeUp or MediaKey.VolumeDown when _audio.TryGetVolume(out float level, out bool muted):
                 if (muted) _audio.SetMute(false);
                 _audio.SetVolume(MediaKeysMath.Step(level, key == MediaKey.VolumeUp));
+                ShowMediaKeyVolume();
                 break;
             case MediaKey.PlayPause: _media.PlayPause(); break;
             case MediaKey.NextTrack: _media.Next(); break;
             case MediaKey.PreviousTrack: _media.Previous(); break;
             case MediaKey.StopMedia: _media.Pause(); break;
         }
+    }
+
+    void ShowMediaKeyVolume()
+    {
+        // The Windows audio backend filters out changes made by Holm itself.
+        if (!_hiddenForFullscreen && _audio.TryGetVolume(out float level, out bool muted))
+            OnVolumeChanged(level, muted);
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
@@ -7,13 +7,24 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Holm.App.Controls;
+using Holm.Platform;
 
 namespace Holm.App;
 
 /// <summary>One switch in the settings: its words, an icon, and how to read and apply it.</summary>
-sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null);
+sealed record SettingsSwitch(string Header, string Glyph, string? Help, Func<bool> Get, Action<bool> Set, bool Default, string? ActionLabel = null, Action? RunAction = null)
+{
+    public Func<IBrush, double, Control>? Icon { get; init; }
+    /// <summary>A switch nobody sees until this word is typed on its page (the General page only).</summary>
+    public string? Secret { get; init; }
+    /// <summary>Runs when <see cref="Secret"/> was typed and the switch shows.</summary>
+    public Action? Revealed { get; init; }
+}
 
 /// <summary>A page of switches.</summary>
 sealed record SettingsGroup(string Key, string Title, string Glyph, Color Color, string Subtitle, IReadOnlyList<SettingsSwitch> Switches);
@@ -35,7 +46,7 @@ abstract class HubView : Border
 /// <param name="Badge">A count to show beside the entry (unread messages), or 0.</param>
 sealed record HubPage(string Key, string Glyph, string Title, string Subtitle, Func<HubView> Build, Func<int>? Badge = null);
 
-sealed class SettingsWindow : Window
+sealed partial class SettingsWindow : Window
 {
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
     // The Holm window's palette is HubTheme's (the instrument look), so the settings and the friends pages match.
@@ -50,10 +61,13 @@ sealed class SettingsWindow : Window
     Control _footer = null!;
     readonly Dictionary<string, Control> _pages = new();
     readonly Dictionary<string, (string Title, string Subtitle)> _titles = new();
-    readonly TextBlock _pageTitle = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
+    readonly TextBlock _pageTitle = new DotTextBlock { FontSize = 24, FontWeight = FontWeight.SemiBold };
     // The instrument look drops the subtitle under the page title: the rows say what the page holds.
     readonly TextBlock _pageSubtitle = new() { Foreground = Dim, FontSize = 13, Margin = new Thickness(0, 2, 0, 0), IsVisible = !Look.Instrument };
-    readonly Border _pageHost = new();
+    readonly Border _pageHost = new() { Focusable = true };
+    const string SecretPage = "general";
+    readonly List<(string Code, Control Row, SettingsSwitch Setting)> _secretRows = new();
+    string _typed = "";
     readonly Button _apply;
     readonly Border _surface, _dialog;
     readonly Func<bool> _animations;
@@ -68,9 +82,9 @@ sealed class SettingsWindow : Window
 
     bool HasChanges => _rows.Any(r => r.Setting.Get() != r.Toggle.IsOn) || _profile?.HasChanges == true;
 
-    public SettingsWindow(IReadOnlyList<SettingsGroup> groups, string version, Func<bool> animations,
+    public SettingsWindow(INotchWindowPlatform platform, IReadOnlyList<SettingsGroup> groups, string versionLabel, Func<bool> animations,
                           IReadOnlyList<HubPage>? social = null, string? start = null, ProfileEditor? profile = null, Func<Control>? me = null,
-                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null)
+                          IReadOnlyList<HubPage>? extra = null, IReadOnlyList<HubPage>? tools = null, Func<HubView>? belowProfile = null)
     {
         _tools = tools ?? Array.Empty<HubPage>();
         _extra = extra ?? Array.Empty<HubPage>();
@@ -80,30 +94,36 @@ sealed class SettingsWindow : Window
         _social = social ?? Array.Empty<HubPage>();
         Title = "Holm";
         WindowDecorations = WindowDecorations.None;
-        TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+        // Glass designs blur what's behind where the system can (Windows); elsewhere the panel is see-through.
+        var design = Look.Current;
+        TransparencyLevelHint = Look.Prism
+            ? new[] { WindowTransparencyLevel.Blur, WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent }
+            : design.Glass
+                ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
+                : new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent;
         CanResize = false;
         Width = 980;
         Height = 740;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        FontFamily = Fonts.Text;
+        FontFamily = Look.Font;
         FontSize = 13;
-        Foreground = Brushes.White;
+        Foreground = Look.Ink;
         Fonts.ApplyRendering(this);
 
         // ── sidebar ──
         var nav = new StackPanel();
-        var sidebar = new DockPanel();
+        var sidebar = new DockPanel { Margin = new Thickness(14, 16, 10, 16) };
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4, 0, 18), Background = Brushes.Transparent };
         brand.Children.Add(new Border
         {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Brushes.Black,
+            Width = 30, Height = 30, CornerRadius = new CornerRadius(HubTheme.Round(8)), Background = Look.NotchFill(),
             BorderBrush = Edge, BorderThickness = new Thickness(1),
-            Child = new Border { Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Brushes.White, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) },
+            Child = new Border { Width = 16, Height = 6, CornerRadius = new CornerRadius(3), Background = Look.Ink, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) },
         });
         var brandText = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         brandText.Children.Add(new TextBlock { Text = "Holm", FontSize = 16, FontWeight = FontWeight.SemiBold });
-        brandText.Children.Add(new TextBlock { Text = "Version " + version, FontSize = 11, Foreground = Dim });
+        brandText.Children.Add(new TextBlock { Text = versionLabel, FontSize = 11, Foreground = Dim });
         brand.Children.Add(brandText);
         brand.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
         DockPanel.SetDock(brand, Dock.Top);
@@ -112,7 +132,7 @@ sealed class SettingsWindow : Window
         {
             var card = new Border
             {
-                Background = Card, CornerRadius = new CornerRadius(10), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 14),
+                Background = Card, CornerRadius = new CornerRadius(HubTheme.Round(10)), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 14),
                 Cursor = new Cursor(StandardCursorType.Hand), Child = me(),
             };
             _meCard = card;
@@ -151,6 +171,15 @@ sealed class SettingsWindow : Window
             profile.Changed += RefreshApplyState;
             profile.Submit += () => { if (HasChanges) ApplyChanges(); };
             _pages[ProfileKey] = profile;
+            // The Holm account lives on the profile page, under the profile.
+            if (belowProfile?.Invoke() is { } below)
+            {
+                var stack = new StackPanel { Spacing = 14 };
+                stack.Children.Add(profile);
+                stack.Children.Add(below);
+                Closed += (_, _) => below.Detach();
+                _pages[ProfileKey] = HubTheme.Scroller(stack);
+            }
         }
         foreach (var group in groups)
         {
@@ -164,9 +193,34 @@ sealed class SettingsWindow : Window
             _titles[page.Key] = (page.Title, page.Subtitle);
             nav.Children.Add(NavItem(page.Key, page.Glyph, page.Title));
         }
+        const double prismSidebarInset = 12;
+        double corners = Look.Prism ? design.Corners + prismSidebarInset : design.Glass ? 0 : design.Corners;
+        if (Look.Prism)
+        {
+            // The native blur fills the window, so clip it as well as the painted surface.
+            void RoundWindow()
+            {
+                if (TryGetPlatformHandle() is { } handle)
+                    platform.SetRoundedWindowRegion(handle.Handle, (int)Math.Round(corners * RenderScaling));
+            }
+            Opened += (_, _) => RoundWindow();
+            SizeChanged += (_, _) => RoundWindow();
+            // On Windows the DPI notification arrives before the native window is resized.
+            ScalingChanged += (_, _) => Dispatcher.UIThread.Post(RoundWindow);
+        }
+        var sideContent = new Grid();
+        if (Look.Aero) sideContent.Children.Add(new AeroScenery(sidebar: true));
+        DesignDetail.AddTo(sideContent, design);
+        if (DotTextBlock.Enabled) sideContent.Children.Add(new Avalonia.Controls.Shapes.Rectangle { Fill = DotMatrix.Grid(design.Ink, 0x14), IsHitTestVisible = false });
+        sideContent.Children.Add(sidebar);
+        if (Look.Prism) sideContent.Children.Add(new PrismGlass(design.Corners) { IsHitTestVisible = false });
         var sideBorder = new Border
         {
-            Background = Sidebar, CornerRadius = new CornerRadius(14, 0, 0, 14), Padding = new Thickness(14, 16, 10, 16), Child = sidebar,
+            Background = Look.Prism ? PrismGlass.FloatingSurface(design.Sidebar, design.Ink) : Sidebar,
+            CornerRadius = Look.Prism ? new CornerRadius(design.Corners) : new CornerRadius(corners, 0, 0, corners),
+            Margin = Look.Prism ? new Thickness(prismSidebarInset, prismSidebarInset, 0, prismSidebarInset) : default,
+            BoxShadow = Look.Prism ? new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 15, Color = Color.FromArgb(0x55, 0, 0, 0) }) : default,
+            ClipToBounds = Look.Aero, Child = sideContent,
         };
 
         // ── content ──
@@ -212,15 +266,21 @@ sealed class SettingsWindow : Window
         Grid.SetColumn(content, 1);
         columns.Children.Add(content);
 
+        Control surfaceContent = Look.Prism
+            ? new Grid { Children = { columns, new PrismGlass(corners) { IsHitTestVisible = false } } }
+            : columns;
         _surface = new Border
         {
-            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
-            Margin = new Thickness(16), Child = columns,
-            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
+            Background = Panel, BorderBrush = Edge, BorderThickness = new Thickness(Look.Prism ? 0 : design.Edge != 0 ? design.EdgeWidth : 1),
+            CornerRadius = new CornerRadius(corners), Margin = new Thickness(design.Glass ? 0 : 16), Child = surfaceContent,
+            // A hard shadow in the designs that have one (Brutalist, Pocket), else a soft one.
+            BoxShadow = Look.Prism ? default : new BoxShadows(design.Shadow != 0
+                ? new BoxShadow { OffsetX = 7, OffsetY = 7, Color = Color.FromUInt32(design.Shadow) }
+                : new BoxShadow { OffsetY = 4, Blur = 28, Color = Color.FromArgb(0x80, 0, 0, 0) }),
         };
         _dialog = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)), CornerRadius = new CornerRadius(14), Margin = new Thickness(16),
+            Background = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)), CornerRadius = new CornerRadius(corners), Margin = new Thickness(design.Glass ? 0 : 16),
             IsVisible = false,
         };
         var layers = new Grid();
@@ -228,8 +288,10 @@ sealed class SettingsWindow : Window
         layers.Children.Add(_dialog);
         Content = layers;
 
+        InitJellyMotion(platform);
         Navigate(start != null && _titles.ContainsKey(start) ? start : _social.Count > 0 ? _social[0].Key : groups[0].Key);
         RefreshApplyState();
+        AddHandler(KeyDownEvent, RevealSecret, RoutingStrategies.Tunnel);
         KeyDown += (_, e) =>
         {
             if (e.Key != Key.Escape) return;
@@ -238,9 +300,11 @@ sealed class SettingsWindow : Window
         };
         Activated += (_, _) =>
         {
+            if (Page == SecretPage && FocusManager?.GetFocusedElement() == null) _pageHost.Focus();
             if (!HasChanges && !_dialog.IsVisible) Refresh();
             (_shownView as ChatPage)?.Seen();
         };
+        Deactivated += (_, _) => _typed = "";
         Closing += (_, e) =>
         {
             if (_allowClose || !HasChanges && !_dialog.IsVisible) return;
@@ -257,13 +321,15 @@ sealed class SettingsWindow : Window
     public void Navigate(string key)
     {
         if (!_titles.ContainsKey(key)) return;
+        _typed = "";
         _shownView?.Detach();
         _shownView = null;
         bool settings = _pages.TryGetValue(key, out var page);
         if (!settings && _social.Concat(_tools).Concat(_extra).FirstOrDefault(p => p.Key == key) is { } social) page = _shownView = social.Build();
         Page = key;
         _pageHost.Child = page;
-        (_pageTitle.Text, _pageSubtitle.Text) = _titles[key];
+        if (key == SecretPage && IsActive) _pageHost.Focus();
+        (_pageTitle.Text, _pageSubtitle.Text) = (Look.Heading(_titles[key].Title), _titles[key].Subtitle);
         _footer.IsVisible = settings;
         foreach (var (k, item) in _navItems)
         {
@@ -272,6 +338,23 @@ sealed class SettingsWindow : Window
             item.Glyph.Foreground = on ? Accent : Dim;
         }
         RefreshBadges();
+        WobbleSettings(0, 0.60);
+    }
+
+    /// <summary>Letters typed on the General page, not into a box: a secret word shows its switch.</summary>
+    void RevealSecret(object? sender, KeyEventArgs e)
+    {
+        if (Page != SecretPage || _dialog.IsVisible || !_secretRows.Any(s => !s.Row.IsVisible)) return;
+        bool plain = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Meta)) == 0;
+        _typed = plain && e.Key is >= Key.A and <= Key.Z ? (_typed + (char)('a' + (e.Key - Key.A)))[^Math.Min(_typed.Length + 1, 16)..] : "";
+        foreach (var (code, row, setting) in _secretRows)
+        {
+            if (row.IsVisible || !_typed.EndsWith(code, StringComparison.Ordinal)) continue;
+            _typed = "";
+            row.IsVisible = true;
+            e.Handled = true;
+            setting.Revealed?.Invoke();
+        }
     }
 
     /// <summary>Updates the counts beside the friends pages (unread messages).</summary>
@@ -298,11 +381,19 @@ sealed class SettingsWindow : Window
         RefreshApplyState();
     }
 
+    /// <summary>Reflects a setting changed outside this window while preserving other edits.</summary>
+    public void RefreshSwitch(string header)
+    {
+        foreach (var (setting, toggle) in _rows)
+            if (setting.Header == header) toggle.Set(setting.Get(), animate: false);
+        RefreshApplyState();
+    }
+
     void RefreshApplyState()
     {
         _apply.IsEnabled = HasChanges;
-        _apply.Background = HasChanges ? Accent : Card;
-        if (!Look.Instrument) return;
+        _apply.Background = HasChanges ? HubTheme.ActionFill : HubTheme.ActionSurface;
+        if (!Look.Instrument && !Look.Aero && Look.Current.IsDark) return;
         _apply.Foreground = HasChanges ? OnAccent : Dim;
         foreach (string state in new[] { "PointerOver", "Pressed", "Disabled" }) _apply.Resources["ButtonForeground" + state] = _apply.Foreground;
     }
@@ -311,22 +402,22 @@ sealed class SettingsWindow : Window
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*,Auto") };
         var icon = Glyph(glyph, 15, Dim);
-        icon.HorizontalAlignment = HorizontalAlignment.Left;
         grid.Children.Add(icon);
         var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, FontSize = 13.5 };
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
-        var badgeText = new TextBlock { FontSize = 11, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var badgeFill = B(0xFFFF453A);
+        var badgeText = new TextBlock { FontSize = 11, Foreground = Look.InkOn(badgeFill), FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         var badge = new Border
         {
-            Background = B(0xFFFF453A), CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
+            Background = badgeFill, CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(5, 0, 5, 0),
             Child = badgeText, IsVisible = false, VerticalAlignment = VerticalAlignment.Center,
         };
         Grid.SetColumn(badge, 2);
         grid.Children.Add(badge);
         var item = new Border
         {
-            CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
+            CornerRadius = new CornerRadius(Look.Prism ? 18 : HubTheme.Round(8)), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 0, 0, 2),
             Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = grid,
         };
         item.PointerEntered += (_, _) => { if (Page != key) item.Background = Hover; };
@@ -341,14 +432,23 @@ sealed class SettingsWindow : Window
         var rows = new StackPanel();
         for (int i = 0; i < group.Switches.Count; i++)
         {
-            if (Look.Instrument) rows.Children.Add(new Border { Height = 1, Background = Line });
-            else if (i > 0) rows.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
-            rows.Children.Add(Row(group.Switches[i], group.Color, first: i == 0, last: i == group.Switches.Count - 1));
+            var setting = group.Switches[i];
+            var target = rows;
+            if (setting.Secret is { } secret)
+            {
+                target = new StackPanel { IsVisible = false };
+                _secretRows.Add((secret, target, setting));
+                rows.Children.Add(target);
+            }
+            if (Look.Instrument) target.Children.Add(new Border { Height = 1, Background = Line });
+            else if (i > 0) target.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(58, 0, 0, 0) });
+            target.Children.Add(Row(setting, group.Color, first: i == 0, last: i == group.Switches.Count - 1));
         }
         // The instrument look: a plain list between hairlines, no card behind it.
         var card = Look.Instrument
             ? new Border { Child = rows, VerticalAlignment = VerticalAlignment.Top }
-            : new Border { Background = Card, CornerRadius = new CornerRadius(12), Child = rows, VerticalAlignment = VerticalAlignment.Top };
+            : new Border { Background = Card, BorderBrush = Look.Aero ? Line : null, BorderThickness = new Thickness(Look.Aero ? 1 : 0),
+                CornerRadius = new CornerRadius(HubTheme.Round(12)), Child = rows, VerticalAlignment = VerticalAlignment.Top };
         return Scroller(card);
     }
 
@@ -359,16 +459,15 @@ sealed class SettingsWindow : Window
         _rows.Add((setting, toggle));
 
         var row = new Grid { Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), MinHeight = 56 };
-        var hover = Look.Instrument ? new Border() : new Border { CornerRadius = new CornerRadius(first ? 12 : 0, first ? 12 : 0, last ? 12 : 0, last ? 12 : 0) };
+        double round = HubTheme.Round(12);
+        var hover = Look.Instrument ? new Border() : new Border { CornerRadius = new CornerRadius(first ? round : 0, first ? round : 0, last ? round : 0, last ? round : 0) };
         row.Children.Add(hover);
         var content = new Grid { Margin = Look.Pick(new Thickness(2, 11, 4, 11), new Thickness(14, 10, 16, 10)), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         if (!Look.Instrument) // the instrument look has no icon in front of each row
         {
-            var tile = new Border
-            {
-                Width = 30, Height = 30, CornerRadius = new CornerRadius(30 * 0.27), Background = new SolidColorBrush(color).ToImmutable(),
-                Child = Glyph(setting.Glyph, 30 * 0.47), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center,
-            };
+            var tile = HubTheme.IconTile(setting.Glyph, color, icon: setting.Icon);
+            tile.Margin = new Thickness(0, 0, 14, 0);
+            tile.VerticalAlignment = VerticalAlignment.Center;
             content.Children.Add(tile);
         }
         var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -413,6 +512,7 @@ sealed class SettingsWindow : Window
         }
         _profile?.Apply();
         Refresh();
+        WobbleSettings(0, 0.8);
     }
 
     void ResetDefaults()
@@ -422,8 +522,9 @@ sealed class SettingsWindow : Window
     }
 
     /// <summary>A question over the window; each choice closes it and runs.</summary>
-    void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
+    internal void ShowDialog(string title, string message, params (string Label, Action Run)[] choices)
     {
+        _typed = "";
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeight.SemiBold });
         content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Dim, Margin = new Thickness(0, 10, 0, 20) });
@@ -439,8 +540,8 @@ sealed class SettingsWindow : Window
         content.Children.Add(actions);
         _dialog.Child = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(32, 32, 34)), BorderBrush = Edge, BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(12), Padding = new Thickness(22), Width = 460,
+            Background = HubTheme.Raised, BorderBrush = Edge, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(HubTheme.Round(12)), Padding = new Thickness(22), Width = 460,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 24, Color = Color.FromArgb(0x73, 0, 0, 0) }), Child = content,
         };
@@ -459,7 +560,7 @@ sealed class SettingsWindow : Window
 
     static TextBlock Glyph(string glyph, double size, IBrush? foreground = null) => new()
     {
-        Text = glyph, FontFamily = Fonts.Icons, FontSize = size, Foreground = foreground ?? Brushes.White,
+        Text = glyph, FontFamily = Fonts.Icons, FontSize = size, Foreground = foreground ?? Look.Ink,
         HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
     };
 
@@ -486,8 +587,12 @@ sealed class ToggleSwitch : Control
 {
     public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ToggleSwitch, double>(nameof(Position));
 
-    static readonly Color Off = Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
-        On = Look.Pick(Color.FromRgb(0xF2, 0xF2, 0xF2), Color.FromRgb(0x30, 0xD1, 0x58));
+    static readonly Color Off = Look.Aero ? Color.FromUInt32(0xFF5584A0)
+        : Look.Pick(Color.FromRgb(0x5C, 0x5E, 0x63), Color.FromUInt32(WinNotch.Designs.WithAlpha(Look.Current.Ink, 0x40))),
+        On = Color.FromUInt32(Look.Current.ToggleColor);
+    static readonly IBrush AeroSheen = Look.VerticalGradient((0x9EFFFFFF, 0), (0x36FFFFFF, 1));
+    static readonly IBrush AeroKnob = Look.VerticalGradient((0xFFFFFFFF, 0), (0xFFE5FAFF, 0.55), (0xFFA8DBF0, 1));
+    static readonly IPen AeroRim = new Pen(Look.Brush(0xB02B5E7B), 1);
 
     static ToggleSwitch() => AffectsRender<ToggleSwitch>(PositionProperty);
 
@@ -520,7 +625,22 @@ sealed class ToggleSwitch : Control
         var track = new SolidColorBrush(Color.FromArgb(
             (byte)(Off.A + (On.A - Off.A) * t), (byte)(Off.R + (On.R - Off.R) * t),
             (byte)(Off.G + (On.G - Off.G) * t), (byte)(Off.B + (On.B - Off.B) * t)));
+        var center = new Point(12 + 16 * Position, 12);
+        if (Look.Prism)
+        {
+            var rail = new Rect(3, 6.5, 34, 11);
+            dc.DrawRectangle(track, null, rail, 5.5, 5.5);
+            PrismGlass.DrawLens(dc, new Rect(1.5 + 14 * t, 1.5, 23, 21), rail, track);
+            return;
+        }
+        if (Look.Aero)
+        {
+            dc.DrawRectangle(track, AeroRim, new RoundedRect(new Rect(0.5, 0.5, 39, 23), 11.5));
+            dc.DrawRectangle(AeroSheen, null, new RoundedRect(new Rect(3, 2, 34, 9), 4.5));
+            dc.DrawEllipse(AeroKnob, AeroRim, center, 9.5, 9.5);
+            return;
+        }
         dc.DrawRectangle(track, null, new RoundedRect(new Rect(0, 0, 40, 24), 12));
-        dc.DrawEllipse(Brushes.White, null, new Point(12 + 16 * Position, 12), 10, 10);
+        dc.DrawEllipse(Brushes.White, null, center, 10, 10);
     }
 }

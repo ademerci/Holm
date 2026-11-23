@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -23,7 +23,7 @@ namespace Holm.App;
 internal static class ChatExtras
 {
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
-    static readonly IBrush PopupBack = B(0xFF2C2C2E), PopupEdge = B(0x30FFFFFF);
+    static readonly IBrush PopupBack = HubTheme.Raised, PopupEdge = Look.InkA(0x30);
 
     static Flyout MakeFlyout(Control content, double cornerRadius = 22)
     {
@@ -100,7 +100,7 @@ internal static class ChatExtras
         {
             Width = 36, Height = 36, CornerRadius = new CornerRadius(18), Cursor = new Cursor(StandardCursorType.Hand),
             Background = HubTheme.Card, Margin = new Thickness(4, 0, 0, 0),
-            Child = HubTheme.Glyph("\uE710", 14, Brushes.White),
+            Child = HubTheme.Glyph("\uE710", 14),
         };
         ToolTip.SetTip(more, "More emoji");
         more.PointerEntered += (_, _) => more.Background = HubTheme.CardStrong;

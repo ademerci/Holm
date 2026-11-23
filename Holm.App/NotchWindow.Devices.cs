@@ -17,7 +17,7 @@ namespace Holm.App;
 /// The computer's battery and the Bluetooth devices: chips at the bottom left of the open notch, and a line out of
 /// the closed one when you plug in, run low or a device connects.
 ///
-/// Bluetooth is read when the app starts and each time the notch has opened; nothing watches it in between yet.
+/// Bluetooth is read when the app starts and each time the notch opens; nothing watches it in between yet.
 /// </summary>
 public sealed partial class NotchWindow
 {
@@ -60,7 +60,7 @@ public sealed partial class NotchWindow
             else if (!now.OnAc && now.Percent < before.Percent && now.Percent is 20 or 10 or 5)
                 ShowPeek(null, "Low battery", $"{now.Percent}%", RedBrush, battery: now.Percent);
         }
-        if (_state == NotchState.Expanded) RefreshDevices();
+        if (_state == NotchState.Expanded && (!known || now != before)) RefreshDevices();
     }
 
     async void ScanBluetooth()
@@ -72,6 +72,7 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Diag.Log("Bluetooth scan failed: " + ex.Message); return; }
         finally { _bluetoothScanInProgress = false; }
 
+        if (_btKnown && found.SequenceEqual(_bt)) return;
         var previous = _bt.ToDictionary(d => d.Address, StringComparer.OrdinalIgnoreCase);
         _bt = found;
 
@@ -104,6 +105,10 @@ public sealed partial class NotchWindow
             _devicesPanel.Children.Add(DeviceChip("", null, _power.Percent, _power.OnAc));
         foreach (var d in _bt.Where(d => d.IsConnected))
             _devicesPanel.Children.Add(DeviceChip(d.Glyph, d.Name, d.Battery, false));
+        // On the right of the line (Settings › Start page) the gap between the chips goes on their left.
+        if (_devicesSwapped)
+            foreach (var chip in _devicesPanel.Children)
+                chip.Margin = new Thickness(chip.Margin.Right, chip.Margin.Top, chip.Margin.Left, chip.Margin.Bottom);
         // Chips may wrap onto another line: the open notch gets taller or shorter.
         if (_devicesPanel.Children.Count != before && _state == NotchState.Expanded) ApplyState(animate: true);
     }

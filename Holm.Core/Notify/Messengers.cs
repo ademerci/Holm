@@ -32,6 +32,12 @@ public sealed class ChatMessage
     public string? Site;
 }
 
+/// <summary>Identifies a dismissed system toast without keeping the sender or message text.</summary>
+internal readonly record struct ReadToast(uint Id, string App, long UtcTicks)
+{
+    internal static ReadToast Of(ChatMessage message) => new(message.Id, message.App, message.Time.UtcTicks);
+}
+
 public static class Messengers
 {
     const string Chat = "", Mail = "";

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -15,7 +16,8 @@ namespace WinNotch.Sharing;
 
 // Friends: people you beam to by name, anywhere, without passing a code around each time.
 //
-// Everyone has a key pair and an inbox (a topic on an ntfy server, https://ntfy.sh unless set otherwise).
+// Everyone has a key pair and an inbox: a topic on Holm's own relay (relay/, since 1.18), on ntfy.sh before that,
+// or on an ntfy server set in the settings.
 // A friend code carries your name, inbox and public key. To send files to a friend, Holm makes a fresh
 // share secret, exactly like a Beam code, and leaves it in the friend's inbox as a sealed note; both notches
 // then meet on the transit relay with it, as if the code had been copied. The inbox only ever carries these
@@ -110,7 +112,13 @@ public sealed record FriendProfile(string Name, string? Status, string? Color, b
 /// <summary>Who we are to our friends: a name, an inbox and a key pair.</summary>
 public sealed class FriendIdentity : IDisposable
 {
-    public const string DefaultServer = "https://ntfy.sh";
+    /// <summary>The inbox server a card without one means: ntfy.sh, for every Holm before the relay (settable for tests).</summary>
+    public static string DefaultServer { get; internal set; } = "https://ntfy.sh";
+    /// <summary>
+    /// Holm's own inbox server (relay/: a Cloudflare Worker). It takes ntfy's POST, so any Holm can leave notes there;
+    /// Holm 1.18+ follows its inbox there and on <see cref="DefaultServer"/>, where older friends still write.
+    /// </summary>
+    public static string RelayServer { get; internal set; } = "https://relay.holmnotch.ch";
     const string CodePrefix = "WNF1.";
     static readonly Regex CodeInText = new(@"WNF1\.[A-Za-z0-9_-]{40,2000}");
 
@@ -454,7 +462,10 @@ public static class FriendNotes
     }
 }
 
-/// <summary>A friend's inbox on the ntfy server: leaving notes there, and following our own.</summary>
+/// <summary>
+/// A friend's inbox on its server (Holm's relay, or ntfy): leaving notes there, and following our own. Both speak ntfy's
+/// POST and polling; our inbox is followed on the relay with a WebSocket and on ntfy with its JSON stream.
+/// </summary>
 public static class FriendInbox
 {
     static readonly HttpClient Http = new(new SocketsHttpHandler
@@ -472,44 +483,90 @@ public static class FriendInbox
     static string Host(string? server)
         => Uri.TryCreate(FriendIdentity.NormalizeServer(server), UriKind.Absolute, out var uri) ? uri.Host : "the server";
 
+    static bool IsRelay(string? server) => FriendIdentity.NormalizeServer(server) == FriendIdentity.RelayServer;
+
+    /// <summary>
+    /// Leaves a note in a friend's inbox. A note for the relay that it doesn't take (down, over its daily limit) goes to
+    /// ntfy instead: a Holm that follows the relay follows ntfy as well. <paramref name="keep"/> false is for presence
+    /// notes, worth nothing later: the server passes them on live and doesn't keep them ("Cache: no", as ntfy has it).
+    /// </summary>
     /// <exception cref="IOException">The server couldn't be reached or refused the note; the message says which.</exception>
-    public static async Task PostAsync(Friend to, string note, CancellationToken ct)
+    public static async Task PostAsync(Friend to, string note, CancellationToken ct, bool keep = true)
+    {
+        try { await PostToAsync(to.Server, to.Topic, note, keep, ct).ConfigureAwait(false); }
+        catch (IOException) when (IsRelay(to.Server) && !ct.IsCancellationRequested)
+        {
+            await PostToAsync(FriendIdentity.DefaultServer, to.Topic, note, keep, ct).ConfigureAwait(false);
+        }
+    }
+
+    static async Task PostToAsync(string? server, string topic, string note, bool keep, CancellationToken ct)
     {
         HttpResponseMessage response;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(20));
-            response = await Http.PostAsync(InboxUrl(to.Server, to.Topic), new StringContent(note, Encoding.UTF8, "text/plain"), timeout.Token).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Post, InboxUrl(server, topic)) { Content = new StringContent(note, Encoding.UTF8, "text/plain") };
+            if (!keep) request.Headers.Add("Cache", "no");
+            response = await Http.SendAsync(request, timeout.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
         {
-            throw new IOException("Couldn't reach " + Host(to.Server), ex);
+            throw new IOException("Couldn't reach " + Host(server), ex);
         }
         using (response)
         {
             if (!response.IsSuccessStatusCode)
-                throw new IOException($"{Host(to.Server)} refused the note ({(int)response.StatusCode})");
+                throw new IOException($"{Host(server)} refused the note ({(int)response.StatusCode})");
         }
     }
 
-    /// <summary>Leaves a sealed invite card at an invite code's inbox on the default server, where it waits 12 hours.</summary>
-    /// <exception cref="IOException">The server couldn't be reached or refused it.</exception>
-    public static Task PublishInviteAsync(string topic, string card, CancellationToken ct)
-        => PostAsync(new Friend { Topic = topic, Server = null }, card, ct);
+    /// <summary>
+    /// Leaves a sealed invite card at an invite code's inbox, where it waits 12 hours: on the relay, and on ntfy for
+    /// friends whose Holm is older than the relay. Either one is enough.
+    /// </summary>
+    /// <exception cref="IOException">Neither server took it.</exception>
+    public static async Task PublishInviteAsync(string topic, string card, CancellationToken ct)
+    {
+        var relay = PostToAsync(FriendIdentity.RelayServer, topic, card, true, ct);
+        var legacy = PostToAsync(FriendIdentity.DefaultServer, topic, card, true, ct);
+        await EitherAsync(relay, legacy).ConfigureAwait(false);
+    }
 
-    /// <summary>The invite cards waiting at an invite code's inbox, newest first.</summary>
-    /// <exception cref="IOException">The server couldn't be reached.</exception>
+    /// <summary>The invite cards waiting at an invite code's inbox on the relay and on ntfy, newest first.</summary>
+    /// <exception cref="IOException">Neither server could be reached.</exception>
     public static async Task<List<string>> FetchInviteAsync(string topic, CancellationToken ct)
+    {
+        var relay = FetchInviteFromAsync(FriendIdentity.RelayServer, topic, ct);
+        var legacy = FetchInviteFromAsync(FriendIdentity.DefaultServer, topic, ct);
+        await EitherAsync(relay, legacy).ConfigureAwait(false);
+        var cards = new List<string>();
+        if (legacy.IsCompletedSuccessfully) cards.AddRange(legacy.Result);
+        if (relay.IsCompletedSuccessfully) cards.AddRange(relay.Result);
+        cards.Reverse();
+        return cards;
+    }
+
+    /// <summary>Waits for both; fine if one of them worked, else the relay's error.</summary>
+    static async Task EitherAsync(Task relay, Task legacy)
+    {
+        try { await Task.WhenAll(relay, legacy).ConfigureAwait(false); }
+        catch (IOException) when (relay.IsCompletedSuccessfully || legacy.IsCompletedSuccessfully) { }
+        catch (IOException) when (relay.Exception?.InnerException is IOException why) { throw why; }
+    }
+
+    /// <summary>The invite cards at one server, oldest first.</summary>
+    static async Task<List<string>> FetchInviteFromAsync(string server, string topic, CancellationToken ct)
     {
         var cards = new List<string>();
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(20));
-            string url = InboxUrl(null, topic) + "/json?poll=1&since=12h";
+            string url = InboxUrl(server, topic) + "/json?poll=1&since=12h";
             using var response = await Http.GetAsync(url, timeout.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) throw new IOException($"{Host(null)} answered {(int)response.StatusCode}");
+            if (!response.IsSuccessStatusCode) throw new IOException($"{Host(server)} answered {(int)response.StatusCode}");
             string body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
             foreach (string line in body.Split('\n'))
                 if (TryParse(line, out bool isMessage, out _, out _, out string? text) && isMessage && text != null
@@ -518,21 +575,20 @@ public static class FriendInbox
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
         {
-            throw new IOException("Couldn't reach " + Host(null), ex);
+            throw new IOException("Couldn't reach " + Host(server), ex);
         }
-        cards.Reverse();
         return cards;
     }
 
     /// <summary>
-    /// Follows our inbox until <paramref name="ct"/> fires, reconnecting as needed. <paramref name="received"/> gets each
-    /// note's id, its age in seconds by the server's clock (so a PC clock that is off doesn't matter) and its text.
+    /// Follows our inbox on an ntfy server until <paramref name="ct"/> fires, reconnecting as needed. <paramref name="received"/>
+    /// gets each note's id, its age in seconds by the server's clock (so a PC clock that is off doesn't matter) and its text.
     /// <paramref name="since"/> is a Unix time to catch up from (null: only new notes); <paramref name="handled"/> reports
     /// the time of each message, so a restart can pick up what came meanwhile (ntfy keeps messages for 12 hours).
     /// Catching up by time can repeat the last message, so the caller skips ids it has already seen. (By id it would be
     /// exact, but for an id that has expired ntfy replays everything it still has.)
     /// </summary>
-    public static async Task FollowAsync(FriendIdentity me, long? since, Func<string, long, string, Task> received, Action<long> handled,
+    public static async Task FollowAsync(string? server, string topic, long? since, Func<string, long, string, Task> received, Action<long> handled,
                                          Action<string>? log, CancellationToken ct)
     {
         var delay = TimeSpan.FromSeconds(2);
@@ -540,13 +596,13 @@ public static class FriendInbox
         {
             try
             {
-                string url = InboxUrl(me.Server, me.Topic) + "/json" + (since != null ? "?since=" + since : "");
+                string url = InboxUrl(server, topic) + "/json" + (since != null ? "?since=" + since : "");
                 using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
                 using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false));
-                log?.Invoke("Friends inbox connected");
+                log?.Invoke("Friends inbox connected: " + Host(server));
                 delay = TimeSpan.FromSeconds(2);
-                long serverNow = 0; // the stream opens with the server's current time, before any catching up
+                var events = new InboxEvents(received, handled);
                 while (true)
                 {
                     // ntfy sends a keepalive every 45 s; silence means the connection died (sleep, a new Wi-Fi).
@@ -554,20 +610,86 @@ public static class FriendInbox
                     idle.CancelAfter(TimeSpan.FromSeconds(100));
                     string? line = await reader.ReadLineAsync(idle.Token).ConfigureAwait(false);
                     if (line == null) break;
-                    if (line.Length == 0 || !TryParse(line, out bool isMessage, out long time, out string? id, out string? text)) continue;
-                    if (time > 0) since = time; // keepalives move the catch-up point on too
-                    serverNow = Math.Max(serverNow, time);
-                    if (!isMessage || id == null) continue;
-                    if (text != null && text.StartsWith(FriendNotes.Prefix, StringComparison.Ordinal))
-                        await received(id, Math.Max(0, serverNow - time), text).ConfigureAwait(false);
-                    handled(time);
+                    if (await events.LineAsync(line).ConfigureAwait(false) is > 0 and long time) since = time; // keepalives move the catch-up point on too
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
-            catch (Exception ex) { log?.Invoke("Friends inbox: " + ex.Message); }
+            catch (Exception ex) { log?.Invoke($"Friends inbox ({Host(server)}): {ex.Message}"); }
 
             try { await Task.Delay(delay, ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
             delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, TimeSpan.FromMinutes(2).Ticks));
+        }
+    }
+
+    /// <summary>
+    /// Follows our inbox on the relay with a WebSocket, like <see cref="FollowAsync"/>: the relay sends an "open" event,
+    /// the notes kept since <paramref name="since"/> (it keeps a week's), then each new one. Between notes the line is
+    /// quiet and costs the relay nothing; WebSocket pings, which the relay answers without waking up, notice a dead
+    /// connection. <paramref name="connected"/> runs each time the relay let us in.
+    /// </summary>
+    public static async Task FollowRelayAsync(string topic, long? since, Func<string, long, string, Task> received, Action<long> handled,
+                                              Action? connected, Action<string>? log, CancellationToken ct)
+    {
+        var delay = TimeSpan.FromSeconds(2);
+        var buffer = new byte[8192];
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                using var ws = new ClientWebSocket();
+                ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                ws.Options.KeepAliveTimeout = TimeSpan.FromSeconds(30); // a ping without a pong ends the connection
+                ws.Options.SetRequestHeader("User-Agent", "Holm-Friends/1");
+                string url = Regex.Replace(InboxUrl(FriendIdentity.RelayServer, topic), "^http", "ws") + "/ws" + (since != null ? "?since=" + since : "");
+                using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
+                {
+                    timeout.CancelAfter(TimeSpan.FromSeconds(20));
+                    await ws.ConnectAsync(new Uri(url), timeout.Token).ConfigureAwait(false);
+                }
+                log?.Invoke("Friends inbox connected: " + Host(FriendIdentity.RelayServer));
+                delay = TimeSpan.FromSeconds(2);
+                connected?.Invoke();
+                var events = new InboxEvents(received, handled);
+                using var message = new MemoryStream();
+                while (true)
+                {
+                    var part = await ws.ReceiveAsync(buffer.AsMemory(), ct).ConfigureAwait(false);
+                    if (part.MessageType == WebSocketMessageType.Close) break;
+                    message.Write(buffer, 0, part.Count);
+                    if (message.Length > 64 * 1024) throw new IOException("A message too large for a note");
+                    if (!part.EndOfMessage) continue;
+                    string line = Encoding.UTF8.GetString(message.GetBuffer(), 0, (int)message.Length);
+                    message.SetLength(0);
+                    // The relay sends no keepalives: notes move the catch-up point, the open event only when there was none.
+                    if (await events.LineAsync(line).ConfigureAwait(false) is > 0 and long time && (events.LastWasMessage || since == null)) since = time;
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+            catch (Exception ex) { log?.Invoke($"Friends inbox ({Host(FriendIdentity.RelayServer)}): {ex.Message}"); }
+
+            try { await Task.Delay(delay, ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
+            delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, TimeSpan.FromMinutes(2).Ticks));
+        }
+    }
+
+    /// <summary>The events of one connection to our inbox, ntfy's or the relay's: both come as the same JSON lines.</summary>
+    sealed class InboxEvents(Func<string, long, string, Task> received, Action<long> handled)
+    {
+        long _serverNow; // a connection opens with the server's current time, before any catching up
+        public bool LastWasMessage { get; private set; }
+
+        /// <summary>Handles one line; its time, or null for a line that isn't an event.</summary>
+        public async Task<long?> LineAsync(string line)
+        {
+            LastWasMessage = false;
+            if (line.Length == 0 || !TryParse(line, out bool isMessage, out long time, out string? id, out string? text)) return null;
+            _serverNow = Math.Max(_serverNow, time);
+            if (!isMessage || id == null) return time;
+            LastWasMessage = true;
+            if (text != null && text.StartsWith(FriendNotes.Prefix, StringComparison.Ordinal))
+                await received(id, Math.Max(0, _serverNow - time), text).ConfigureAwait(false);
+            handled(time);
+            return time;
         }
     }
 

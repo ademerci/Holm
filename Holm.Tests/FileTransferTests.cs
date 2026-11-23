@@ -232,3 +232,95 @@ public class TextBeamTests
         Assert.True(old.BeamText);
     }
 }
+
+public class FileTransferAcceptLaterTests
+{
+    /// <summary>
+    /// As in the notch: the person takes a moment to press Accept. Meanwhile the receiver listens for the sender's
+    /// "cancelled" and stops listening on Accept; the files must still all arrive.
+    /// </summary>
+    [Theory]
+    [InlineData(300)]
+    [InlineData(1500)]
+    public async Task Files_arrive_when_the_receiver_accepts_after_a_while(int thinkMs)
+    {
+        using var source = new TempFolder();
+        using var target = new TempFolder();
+        var big = RandomNumberGenerator.GetBytes(1_000_000);
+        var (sender, receiver) = await Net.ChannelPairAsync();
+
+        var receive = FileTransfer.ReceiveAsync(receiver, async (_, _) => { await Task.Delay(thinkMs); return true; }, target.Path, null, Net.Timeout(20));
+        bool accepted = await FileTransfer.SendAsync(sender, "Lena", new[] { source.File("video.mp4", big) }, null, Net.Timeout(20));
+        var saved = await receive;
+
+        Assert.True(accepted);
+        Assert.NotNull(saved);
+        Assert.Equal(big, File.ReadAllBytes(Path.Combine(target.Path, "video.mp4")));
+    }
+}
+
+public class FileTransferUncancellableReadTests
+{
+    /// <summary>A connection whose reads can't be cancelled once started, as a socket read may not be on Windows.</summary>
+    sealed class StubbornStream(Stream inner) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => inner.Flush();
+        public override Task FlushAsync(CancellationToken ct) => inner.FlushAsync(ct);
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default) => inner.ReadAsync(buffer, CancellationToken.None);
+        public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default) => inner.WriteAsync(buffer, ct);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing) { if (disposing) inner.Dispose(); base.Dispose(disposing); }
+    }
+
+    /// <summary>
+    /// The chat bug: the receiver pressed Accept and the transfer stood still. It waited for its "did the sender
+    /// cancel?" read to stop before answering, and that read never stopped; the sender waited for the answer.
+    /// </summary>
+    [Fact]
+    public async Task Accepting_works_even_when_a_started_read_cannot_be_cancelled()
+    {
+        using var source = new TempFolder();
+        using var target = new TempFolder();
+        var big = RandomNumberGenerator.GetBytes(500_000);
+        var (a, b) = await Net.LoopbackPairAsync();
+        var key = RandomNumberGenerator.GetBytes(32);
+        await using var sender = new SecureChannel(new StubbornStream(a), key, initiator: true);
+        await using var receiver = new SecureChannel(new StubbornStream(b), key, initiator: false);
+
+        var receive = FileTransfer.ReceiveAsync(receiver, async (_, _) => { await Task.Delay(300); return true; }, target.Path, null, Net.Timeout(10));
+        var send = FileTransfer.SendAsync(sender, "Lena", new[] { source.File("photo.jpg", big) }, null, Net.Timeout(10));
+
+        Assert.True(await send);
+        Assert.NotNull(await receive);
+        Assert.Equal(big, File.ReadAllBytes(Path.Combine(target.Path, "photo.jpg")));
+    }
+
+    [Fact]
+    public async Task A_sender_who_cancels_while_the_receiver_decides_is_still_noticed()
+    {
+        using var source = new TempFolder();
+        using var target = new TempFolder();
+        var (a, b) = await Net.LoopbackPairAsync();
+        var key = RandomNumberGenerator.GetBytes(32);
+        await using var sender = new SecureChannel(a, key, initiator: true); // the sender's own Cancel must work
+        await using var receiver = new SecureChannel(new StubbornStream(b), key, initiator: false);
+        using var stop = new CancellationTokenSource();
+
+        var receive = FileTransfer.ReceiveAsync(receiver, async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); return true; }, target.Path, null, Net.Timeout(10));
+        var send = FileTransfer.SendAsync(sender, "Lena", new[] { source.File("a.txt", new byte[] { 1 }) }, null, stop.Token);
+        await Task.Delay(300);
+        stop.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => send);
+        await Assert.ThrowsAsync<FileTransfer.SenderCancelledException>(() => receive);
+        Assert.Empty(Directory.GetFiles(target.Path));
+    }
+}

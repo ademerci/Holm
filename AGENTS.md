@@ -16,12 +16,13 @@ Holm.slnx
 │   ├── ChatExtras.cs          # Reaction bar, full emoji picker (+ customization), GIPHY picker
 │   ├── Gifs.cs                # GifInspector, GifDecoder (SKCodec), GifCache, GifPlayer, GifSearch
 │   ├── SettingsWindow.cs      # Hub shell + settings switches + ToggleSwitch
+│   ├── StartPage.cs           # Settings › Start page: arrange the open notch's sections and tools (NotchWindow.Home.cs applies it)
 │   └── ...                    # ActivityPage, AchievementsPage, AddFriendPage, NetworkPage, ProfileEditor, ColorPickerWindow, StreamWindows
 ├── Holm.Core/                 # Pure net10.0 domain logic, state, math & networking (0 UI/OS deps)
 │   ├── Notify/                # DownloadWatcher, Messengers, NotificationBadges
 │   ├── Sharing/               # Beam P2P: Friends, FriendInvite, Chat, FileTransfer, RelayLink, SecureChannel, ShareCode, NearbyService, PhoneShare, ScreenStream
 │   ├── Updates/               # UpdateService, UpdateInstaller
-│   └── *.cs                   # Settings (AppSettings), Spring, CoverMath, LevelEnvelope, NotchPlacement, Sky, BigClock, Calculator, Notepad, Reminders, Countdown, SleepTimer, ClipboardHistory, ColorPick, Weather, Focumon, SpeedTest, NetworkInfo, AiUsage, Achievements, Today, Shelf, DiskSpace, UsbDrives, VpnNames, Outage
+│   └── *.cs                   # Settings (AppSettings), Spring, CoverMath, LevelEnvelope, NotchPlacement, HomeLayout, Sky, BigClock, Calculator, Notepad, Reminders, Countdown, SleepTimer, ClipboardHistory, ColorPick, Weather, Focumon, SpeedTest, NetworkInfo, AiUsage, Achievements, Today, Shelf, DiskSpace, UsbDrives, VpnNames, Outage
 ├── Holm.Platform/             # net10.0 platform abstraction interfaces & No* fallbacks
 │   ├── IPlatformServices.cs   # Root service container injected into NotchWindow
 │   └── I*Platform.cs          # 22 domain interfaces (Window, Media, Audio, Power, Bluetooth, Autostart, Clipboard, Screen, AppVolume, Shell, Connectivity, CapsLock, HotKey, Drives, ClickAway, Foreground, Sensors, Notifications, Identity, Dictation, MediaKeys, Location)
@@ -103,6 +104,7 @@ dotnet run --project Holm.App -c Release
 # Writes closed.png, open.png, report.txt; compare across OSes with:
 # python3 tools/selftest/compare.py <folder-with-selftest-Windows-and-selftest-Linux> <out>
 ```
+Holm draws with Skia on the CPU (`Program.cs`): the GPU path held ~290 MB more private memory when idle. `$env:HOLM_GPU = "1"` switches the graphics card back on (any build).
 In debug builds, `$env:HOLM_DEV_TOP = "300"` offsets the notch downward and `$env:HOLM_DATA = "<dir>"` isolates settings/data from the default user directory.
 
 ### Publishing
@@ -135,13 +137,52 @@ dotnet publish Holm.App/Holm.App.csproj -c Release -r linux-x64 --self-contained
 | `backup/*` | Snapshots before a risky merge (`backup/main-1.12.11`: the last WPF `main`; `backup/store-1.12.7`). | Never change them. |
 
 - Store-only code (`PackageIdentity`, the startup task, `packaging/`, `store/`, `store.yml`) stays on the Store branch.
-- Two looks: the classic one is the default; *Settings › General › Instrument look* switches to the instrument look at the next start (`Look.Instrument`). A visual change must keep both.
+- Designs: Classic is the default; *Settings › Design* picks one of 24 built-in designs (`Holm.Core/Design.cs`) or an imported JSON design, and an accent colour, applied at the next start (`Look.Current`). Each design uses the classic or the instrument layout (`Look.Instrument`). Colours in `Holm.App` come from `Look` and `HubTheme`, never a fixed white or black, so light designs stay readable; `DesignTests` checks the contrast of every design. A visual change must work in both layouts.
+
+### Naming (for AI agents and people)
+
+Several people each work with their own AI agent (Claude, Codex, …) on this repo. Use these names so everyone can tell from the branch list and `git log` what a change is and who made it.
+
+**Branches:** `<type>/<topic>`, lowercase ASCII, words joined with `-`, at most about 5 words.
+
+| Type | For | Example |
+| --- | --- | --- |
+| `feature/` | Something new in the app | `feature/clipboard-history` |
+| `fix/` | A bug fix | `fix/notch-flicker-on-wake` |
+| `website/` | Only `website/` | `website/legal-pages` |
+| `docs/` | README, AGENTS.md, CHANGELOG, docs | `docs/agent-naming` |
+| `ci/` | `.github/workflows`, build and release scripts | `ci/linux-selftest` |
+| `release/` | Preparing one release | `release/1.13.1` |
+
+- One branch per change, cut from a fresh `origin/main` (or `dev` for dev work). Merge only when the person who asked for it says so.
+- Agents: rename a generated branch (`claude/<random>`, `codex/<random>`) to this pattern before pushing. `codex/microsoft-store-msix` and `backup/*` keep their names.
+- No names, umlauts or spaces in branch names (`Maëls-sippi` breaks some tools).
+
+**Commits**
+
+- Subject: one plain English line, at most 72 characters, saying what changes for the user, no full stop. Optional area prefix: `Website:`, `CI:`, `Self-test:`, `Release:`, `Docs:`. A version goes in parentheses at the end: `… (1.13.1)`.
+  - Good: `Closed notch shows only the red count for notifications`, `Website: contact form, Impressum and privacy policy`.
+  - Not: `feat(ui): update stuff`, `fix bug`, `WIP`.
+- Body (when it isn't obvious): why, and what a reviewer should check. Wrap at 72.
+- Keep your own Git author. An agent adds itself as the last line: `Co-Authored-By: <Agent and model> <its noreply address>`, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Merges: `Merge branch '<branch>': <what it brings>`, or `Merge origin/main (Holm <version>) into <branch>`.
+
+**Pull requests:** title like a commit subject; the description says what changed, how it was tested (tests, self-test, test build) and which agent helped.
+
+**Tags and files:** releases `v<x.y.z>`, dev prereleases `dev-v<x.y.z.n>`, release notes `publish/release-<version>-release-notes.md`, test builds as in *Versions*.
 
 ### Versions
 
 - The one version number is `<Version>` in `Holm.App/Holm.App.csproj` (`x.y.z`). The build turns it into the exe's file version `x.y.z.0`.
 - Raise it in the first commit after a release that changes the app (`1.13.0` → `1.13.1` for fixes, `1.14.0` for features), never reuse a released number: the release workflow refuses an existing tag.
 - Test builds: always both, `Holm-<version>-test-build.<n>.exe` and `Holm-<version>-test-build.<n>-linux-x64`, `<n>` incrementing (CI uses its run number). `Holm.exe` / `Holm` only in official releases.
+
+### Island names
+
+- Give each new minor series (`1.X.0`) a new name from a real island. Choose a short, single-word name such as Fiji. Prefer a small island or islet when possible, since a holm is a small island.
+- Set `<ReleaseIsland>` in `Holm.App/Holm.App.csproj` when choosing the new series name. The Holm sidebar shows it beside the version number.
+- Keep that island name on every patch and hotfix in the series. The convention starts with **Holm 1.15.0 — Skokholm**. Use Skokholm for subsequent `1.15.x` releases, then choose a new island for `1.16.0`. [Skokholm, Pembrokeshire Coast National Park](https://www.pembrokeshirecoast.wales/things-to-do/pembrokeshires-islands/skokholm/)
+- Use `Holm <version> — <island>` as the GitHub release title and mention the island in release notes, including Store notes for the same version. Keep tags and filenames in their existing version-based formats.
 
 ### GitHub release (portable Windows and Linux)
 
@@ -151,7 +192,7 @@ Every running Holm finds it within two hours: the updater asks `releases/latest`
    - `CHANGELOG.md`: the top entry is `## <version> – <YYYY-MM-DD>` (the release day, not "unreleased"), with `### Added` / `### Changed` / `### Fixed` as needed.
    - `publish/release-<version>-release-notes.md`: the release page text (copy the last one: download table, requirements, then the CHANGELOG entry). `publish/` is in `.gitignore`, add the file with `git add -f`.
 2. Push and wait for the *Cross-platform* workflow on `main` to pass (tests on both systems, self-test pictures compared, the exe's file version checked).
-3. Start *Actions › Release › Run workflow* on `main` with the version (`1.13.0`, no `v`). With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>"}`). It checks the version, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files, for both systems (it stops if one is missing):
+3. Start *Actions › Release › Run workflow* on `main` with the version (without `v`) and the series' island name. With the GitHub tools: `actions_run_trigger` (`run_workflow`, workflow `release.yml`, ref `main`, inputs `{"version": "<version>", "island": "<island>"}`). It checks the inputs, the notes and that the tag is new, runs the tests, builds with the `GIPHY_API_KEY` secret and publishes `v<version>` as the latest release with exactly these files, for both systems (it stops if one is missing):
    - `Holm.exe` (the Windows app),
    - `Holm-<version>-win-x64.zip` (only `Holm.exe`, `LICENSE`, `README.txt`: the updater refuses anything else, and an exe whose file version isn't `<version>.0`),
    - `Holm-<version>-linux-x64.tar.gz` (`Holm`, `LICENSE`, `README.txt`).

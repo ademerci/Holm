@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -36,7 +36,7 @@ public sealed partial class NotchWindow
         _sleepTick.Tick += (_, _) => { _sleepTick.Stop(); OnSleepTick(); };
         _mediaWeather.Children.Add(_mediaWeatherIcon);
         _mediaWeather.Children.Add(_mediaWeatherTemp);
-        _mediaWeather.PointerReleased += (_, _) => { ChoosePlace(); BeginTyping(_weatherBox, untouched: true); };
+        _mediaWeather.PointerReleased += ChoosePlaceOnClick;
         _sleepBtn = new NotchButton(_sleepIcon) { Width = 30, Height = 30 };
         ToolTip.SetTip(_sleepBtn, "Sleep timer");
         var menu = new ContextMenu();
@@ -164,10 +164,11 @@ public sealed partial class NotchWindow
     void RefreshMediaWeather()
     {
         var weather = _settings.Weather ? _weather : null;
-        _mediaWeather.IsVisible = weather != null && _settings.MediaControls && _info != null;
+        _mediaWeather.IsVisible = weather != null && _settings.MediaControls && _info != null && !_choosingPlace;
         if (weather == null) return;
-        _mediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, Brushes.White);
+        _mediaWeatherIcon.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 16, Look.Ink);
         _mediaWeatherTemp.Text = weather.Degrees;
-        ToolTip.SetTip(_mediaWeather, $"{weather.Summary} · {_settings.WeatherPlace}" + (weather.RainNote != null ? $"\n{weather.RainNote}" : ""));
+        ToolTip.SetTip(_mediaWeather, $"{weather.Summary} · {_settings.WeatherPlace}" +
+            (weather.RainNote != null ? $"\n{weather.RainNote}" : "") + "\nClick to change location");
     }
 }

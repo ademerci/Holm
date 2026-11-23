@@ -49,20 +49,28 @@ sealed class ColorPickerWindow : Window
         Position = bounds.Position;
         Width = bounds.Width / scaling;
         Height = bounds.Height / scaling;
-        if (OperatingSystem.IsLinux()) WindowState = WindowState.FullScreen;
+        // Full screen on every system, so the window covers the whole display even if the system resizes it on the way.
+        WindowState = WindowState.FullScreen;
         Background = Brushes.Black;
         Cursor = new Cursor(StandardCursorType.Cross);
         FontFamily = Fonts.Text;
         Fonts.ApplyRendering(this);
 
-        var full = new WriteableBitmap(new PixelSize(shot.Width, shot.Height), new Vector(96 * scaling, 96 * scaling), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        // 96 DPI on purpose: at the display's DPI the bitmap's size in DIPs is smaller than its pixels, and Image then
+        // drew only the top-left part of the screen (a quarter at 200 %), so the whole screen looked zoomed in.
+        var full = new WriteableBitmap(new PixelSize(shot.Width, shot.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
         using (var buffer = full.Lock())
         {
             int rowBytes = shot.Width * 4;
             for (int y = 0; y < shot.Height; y++)
                 Marshal.Copy(shot.Bgra, y * rowBytes, buffer.Address + y * buffer.RowBytes, rowBytes);
         }
-        var screen = new Image { Source = full, Width = Width, Height = Height, Stretch = Stretch.Fill };
+        // Fills whatever size the window ends up with, so the picture always matches the screen pixel for pixel.
+        var screen = new Image
+        {
+            Source = full, Stretch = Stretch.Fill,
+            HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
+        };
         RenderOptions.SetBitmapInterpolationMode(screen, Avalonia.Media.Imaging.BitmapInterpolationMode.None);
 
         _zoomImage = new Image { Source = _zoomed, Width = ColorPick.Span * Zoom, Height = ColorPick.Span * Zoom };
@@ -86,9 +94,12 @@ sealed class ColorPickerWindow : Window
             Background = new SolidColorBrush(Color.FromArgb(0xF0, 0x10, 0x10, 0x12)), CornerRadius = new CornerRadius(16),
             Padding = new Thickness(8), Child = stack, IsHitTestVisible = false,
         };
-        _canvas.Children.Add(screen);
         _canvas.Children.Add(_loupe);
-        Content = _canvas;
+        var layers = new Grid();
+        layers.Children.Add(screen);
+        layers.Children.Add(_canvas);
+        Content = layers;
+        SizeChanged += (_, _) => Redraw();
 
         PointerMoved += (_, e) => MoveTo(e.GetPosition(this));
         PointerPressed += (_, e) =>

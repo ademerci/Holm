@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -24,8 +24,8 @@ internal sealed class ChatPage : HubView
     static IBrush B(uint argb) => new SolidColorBrush(Color.FromUInt32(argb)).ToImmutable();
 
     // The page's own shades: the list a little lighter than the conversation, bubbles that stand out from both.
-    static readonly IBrush ListBack = B(0x0EFFFFFF), ConversationBack = B(0x40000000), TheirBubble = B(0xFF2E2E31),
-        Composer = B(0xFF2A2A2D), ComposerEdge = B(0x1CFFFFFF), DotEdge = B(0xFF222224);
+    static readonly IBrush ListBack = Look.InkA(0x0E), ConversationBack = B(0x40000000), TheirBubble = HubTheme.CardStrong,
+        Composer = HubTheme.CardStrong, ComposerEdge = Look.InkA(0x1C), DotEdge = HubTheme.Panel;
     static readonly IBrush MyBubble = new LinearGradientBrush
     {
         StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
@@ -43,6 +43,7 @@ internal sealed class ChatPage : HubView
     readonly StackPanel _list = new(), _messages = new();
     readonly ScrollViewer _scroll = null!;
     readonly Border _header = new();
+    readonly Border _conversationView;
     readonly TextBox _input = null!, _search = null!;
     readonly TextBlock _counter = null!;
     readonly Border _send = null!;
@@ -55,22 +56,16 @@ internal sealed class ChatPage : HubView
     public ChatPage(SocialContext social, Friend? with)
     {
         _social = social;
-        var friends = social.Friends();
-        if (friends.Count == 0)
-        {
-            Child = AddFriendPage.EmptyWithAdd(social, "", "No friends yet", "Send a friend your invite code, or type in theirs. Then chat here.");
-            return;
-        }
-
         // One card, split in two: the conversations and the one you're in.
         var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("272,1,*") };
 
         // ── Left: search and conversations ──
         var left = new Grid { Background = ListBack, RowDefinitions = new RowDefinitions("Auto,*") };
-        var searchHost = new Grid { Margin = new Thickness(12, 12, 52, 8) };
+        var searchRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(12, 12, 12, 8) };
+        var searchHost = new Grid { VerticalAlignment = VerticalAlignment.Center };
         _search = HubTheme.Field("Search");
         _search.Padding = new Thickness(30, 6, 6, 6);
-        _search.Background = B(0x14FFFFFF);
+        _search.Background = Look.InkA(0x14);
         _search.BorderBrush = Brushes.Transparent;
         searchHost.Children.Add(_search);
         var magnifier = HubTheme.Glyph("", 12, HubTheme.Faint);
@@ -79,13 +74,14 @@ internal sealed class ChatPage : HubView
         magnifier.IsHitTestVisible = false;
         searchHost.Children.Add(magnifier);
         _search.TextChanged += (_, _) => ShowList();
-        left.Children.Add(searchHost);
+        searchRow.Children.Add(searchHost);
         var addFriend = RoundButton(HubTheme.Glyph("", 14), "Add a friend", 34, HubTheme.Card, HubTheme.Selected);
-        addFriend.HorizontalAlignment = HorizontalAlignment.Right;
-        addFriend.VerticalAlignment = VerticalAlignment.Top;
-        addFriend.Margin = new Thickness(0, 14, 12, 0);
+        addFriend.VerticalAlignment = VerticalAlignment.Center;
+        addFriend.Margin = new Thickness(6, 0, 0, 0);
         addFriend.PointerReleased += (_, e) => { e.Handled = true; social.Open?.Invoke("add", null); };
-        left.Children.Add(addFriend);
+        Grid.SetColumn(addFriend, 1);
+        searchRow.Children.Add(addFriend);
+        left.Children.Add(searchRow);
         _list.Margin = new Thickness(8, 0, 2, 8);
         var listScroll = HubTheme.Scroller(_list);
         Grid.SetRow(listScroll, 1);
@@ -140,6 +136,7 @@ internal sealed class ChatPage : HubView
         foreach (string state in new[] { "PointerOver", "Focused" }) _input.Resources["TextControlBackground" + state] = Brushes.Transparent;
         _input.Resources["TextControlBorderThemeThicknessFocused"] = new Thickness(0);
         _input.Padding = new Thickness(4, 9, 4, 9);
+        _input.VerticalContentAlignment = VerticalAlignment.Center;
         _input.FontSize = 13.5;
         _input.MaxHeight = 120;
         _input.AcceptsReturn = false;
@@ -180,11 +177,11 @@ internal sealed class ChatPage : HubView
         Grid.SetColumn(conversation, 2);
         layout.Children.Add(conversation);
 
-        Child = new Border { CornerRadius = new CornerRadius(14), ClipToBounds = true, BorderBrush = HubTheme.Line, BorderThickness = new Thickness(1), Child = layout };
+        _conversationView = new Border { CornerRadius = new CornerRadius(14), ClipToBounds = true, BorderBrush = HubTheme.Line, BorderThickness = new Thickness(1), Child = layout };
 
         RefreshComposer();
-        // Unread first, then whoever wrote last.
-        Select(with ?? friends.OrderByDescending(f => social.Chats.Unread(f.Key)).ThenByDescending(f => social.Chats.Last(f.Key)?.Sent ?? 0).First());
+        _friend = with;
+        RefreshFriends();
         social.Chats.Changed += OnChanged;
         social.Changed += OnFriendsChanged;
         AttachedToVisualTree += (_, _) => _input.Focus();
@@ -205,8 +202,57 @@ internal sealed class ChatPage : HubView
         if (_friend != null && TopLevel.GetTopLevel(this) is Window { IsActive: true }) _social.Chats.MarkRead(_friend.Key);
     }
 
-    /// <summary>Someone came online or changed their picture or status.</summary>
-    void OnFriendsChanged() => Dispatcher.UIThread.Post(() => { ShowHeader(); ShowList(); });
+    void OnFriendsChanged() => Dispatcher.UIThread.Post(() => { if (Parent != null) RefreshFriends(); });
+
+    void RefreshFriends()
+    {
+        var friends = _social.Friends();
+        if (_friend is { } current && friends.FirstOrDefault(f => f.Key == current.Key) is { } updated && Child == _conversationView)
+        {
+            _friend = updated;
+            ShowHeader();
+            ShowList();
+            return;
+        }
+
+        var next = friends.FirstOrDefault(f => f.Key == _friend?.Key)
+            ?? friends.OrderByDescending(f => _social.Chats.Unread(f.Key)).ThenByDescending(f => _social.Chats.Last(f.Key)?.Sent ?? 0).FirstOrDefault();
+        if (next != null)
+        {
+            _input.Text = "";
+            Child = _conversationView;
+            Select(next);
+        }
+        else if (_friend != null || Child == null)
+        {
+            _friend = null;
+            _header.Child = null;
+            _messages.Children.Clear();
+            _list.Children.Clear();
+            _bubbles.Clear();
+            _shown = ShownAtFirst;
+            _input.Text = "";
+            Child = AddFriendPage.EmptyWithAdd(_social, "", "No friends yet", "Send a friend your invite code, or type in theirs. Then chat here.");
+        }
+    }
+
+    ContextMenu FriendMenu(Friend friend)
+    {
+        var remove = new MenuItem { Header = "Remove friend…" };
+        remove.Click += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (TopLevel.GetTopLevel(this) is SettingsWindow window)
+                window.ShowDialog($"Remove {friend.Name}?", "This removes the friend and deletes your local conversation history.",
+                    ("Cancel", () => { }), ("Remove friend", () => _ = RemoveFriendAsync(friend, window)));
+        }, DispatcherPriority.Background);
+        return new ContextMenu { Items = { remove } };
+    }
+
+    async System.Threading.Tasks.Task RemoveFriendAsync(Friend friend, SettingsWindow window)
+    {
+        if (!await _social.Remove(friend) && TopLevel.GetTopLevel(this) == window)
+            window.ShowDialog($"Couldn't notify {friend.Name}", "They may still have you as a friend.", ("OK", () => { }));
+    }
 
     /// <summary>A conversation changed: the page catches up once, after input and drawing.</summary>
     void OnChanged(string key)
@@ -306,7 +352,7 @@ internal sealed class ChatPage : HubView
             words.Children.Add(when);
         }
         Control preview;
-        IBrush previewColor = unread > 0 ? Brushes.White : HubTheme.Dim;
+        IBrush previewColor = unread > 0 ? Look.Ink : HubTheme.Dim;
         if (last?.Gif is { } gif)
         {
             var line = new StackPanel { Orientation = Orientation.Horizontal };
@@ -350,7 +396,8 @@ internal sealed class ChatPage : HubView
         };
         item.PointerEntered += (_, _) => { if (!selected) item.Background = HubTheme.Hover; };
         item.PointerExited += (_, _) => { if (!selected) item.Background = Brushes.Transparent; };
-        item.PointerReleased += (_, _) => Select(friend);
+        item.ContextMenu = FriendMenu(friend);
+        item.PointerReleased += (_, e) => { if (e.InitialPressMouseButton == MouseButton.Left) Select(friend); };
         return item;
     }
 
@@ -367,6 +414,7 @@ internal sealed class ChatPage : HubView
         if (_friend == null) return;
         var friend = _friend;
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        row.ContextMenu = FriendMenu(friend);
         row.Children.Add(FaceWithDot(friend, 38));
         var words = new StackPanel { Margin = new Thickness(11, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         words.Children.Add(new TextBlock { Text = friend.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -547,7 +595,7 @@ internal sealed class ChatPage : HubView
         Control content = gif
             ? GifPlayer.View(message.Gif!, 220, 160, 0, _social.Animate(), maxSide: 320, fitHeight: true)
             : big ? new TextBlock { Text = message.Text.Trim(), FontSize = 40 }
-            : new SelectableTextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Brushes.White };
+            : new SelectableTextBlock { Text = message.Text, TextWrapping = TextWrapping.Wrap, FontSize = 13.5, Foreground = Look.Ink };
 
         // Bubbles of one group run together: the corners where they meet are small, like in every messenger.
         const double round = 18, joined = 5;
@@ -586,22 +634,24 @@ internal sealed class ChatPage : HubView
         var pill = Reactions(message);
         if (pill != null) withReactions.Children.Add(pill);
 
-        var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left, Background = Brushes.Transparent };
-        if (message.Mine)
+        // Dock the accessories first so the bubble wraps within the remaining conversation width.
+        var line = new DockPanel
         {
-            line.Children.Add(smiley);
-            line.Children.Add(withReactions);
-        }
-        else
+            HorizontalAlignment = message.Mine ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            Background = Brushes.Transparent,
+        };
+        if (!message.Mine)
         {
             // Their face sits beside the last bubble of their group; the others keep its room.
             Control face = joinsNext || _friend == null ? new Border { Width = 28 } : SmallFace(_friend, 28);
             face.VerticalAlignment = VerticalAlignment.Bottom;
             face.Margin = new Thickness(0, 0, 8, pill != null ? 14 : 0);
+            DockPanel.SetDock(face, Dock.Left);
             line.Children.Add(face);
-            line.Children.Add(withReactions);
-            line.Children.Add(smiley);
         }
+        DockPanel.SetDock(smiley, message.Mine ? Dock.Left : Dock.Right);
+        line.Children.Add(smiley);
+        line.Children.Add(withReactions);
         line.PointerEntered += (_, _) => smiley.Opacity = 1;
         line.PointerExited += (_, _) => smiley.Opacity = 0;
 
@@ -653,7 +703,7 @@ internal sealed class ChatPage : HubView
         var chip = new Border
         {
             Background = HubTheme.CardStrong, CornerRadius = new CornerRadius(13), Padding = new Thickness(10, 4, 10, 5), Cursor = new Cursor(StandardCursorType.Hand),
-            Child = new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeight.Bold, Foreground = Brushes.White },
+            Child = new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeight.Bold, Foreground = Look.Ink },
         };
         ToolTip.SetTip(chip, tip);
         chip.PointerEntered += (_, _) => chip.Background = HubTheme.Selected;

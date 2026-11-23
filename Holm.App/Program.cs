@@ -16,8 +16,23 @@ class Program
         // taken and quits. The lock goes with the process, also when it crashes.
         // As in the WPF app: Holm --diag writes what it does to diag.log next to the settings.
         WinNotch.Diag.Enabled = Array.IndexOf(args, "--diag") >= 0;
-        using var instance = SingleInstance();
+        // Restarting (a new design): the old Holm is still letting go of the lock, so wait for it a few seconds.
+        bool restart = Array.IndexOf(args, "--restart") >= 0;
+        var instance = SingleInstance();
+        for (int i = 0; instance == null && restart && i < 50; i++)
+        {
+            System.Threading.Thread.Sleep(200);
+            instance = SingleInstance();
+        }
+        using var _ = instance;
         if (instance == null) return;
+#if HOLM_WINDOWS
+        if (WinNotch.Diag.DevFolder == null && Holm.Platform.Windows.WindowsStoreInstance.IsRunning())
+        {
+            WinNotch.Diag.Log("The Microsoft Store copy of Holm is already running.");
+            return;
+        }
+#endif
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -41,5 +56,15 @@ class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
+            .With(Gpu ? new Win32PlatformOptions() : new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
+            .With(Gpu ? new X11PlatformOptions() : new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software } })
             .LogToTrace();
+
+    /// <summary>
+    /// Holm draws on the CPU (Skia's raster backend), not the graphics card. Its windows are small and mostly still, and
+    /// the GPU path costs far more than it saves: ANGLE/Direct3D, the graphics driver and Skia's GPU caches held about
+    /// 290 MB of private memory in an idle Holm on Windows (340 MB with them, 51 MB without, tools/Measure-Footprint.ps1).
+    /// HOLM_GPU=1 brings the graphics card back, should a system draw badly without it.
+    /// </summary>
+    static bool Gpu => Environment.GetEnvironmentVariable("HOLM_GPU") == "1";
 }

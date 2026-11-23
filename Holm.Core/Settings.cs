@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -15,6 +15,10 @@ internal sealed class AppSettings
     public bool Bounce { get; set; } = true;
     /// <summary>How far the bounce swings: 1 is normal, 0.5 subtle, up to 1.5 lively.</summary>
     public double BounceLevel { get; set; } = 1;
+    /// <summary>Just for fun: everything wobbles like jelly, far too much (<see cref="Spring.Jelly"/>).</summary>
+    public bool Jelly { get; set; }
+    /// <summary>Verity shows in the notch, once she has been found (<see cref="WinNotch.Verity"/>).</summary>
+    public bool Verity { get; set; } = true;
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
@@ -39,8 +43,12 @@ internal sealed class AppSettings
     public bool Messages { get; set; } = true;
     /// <summary>Messengers switched off (<see cref="Notify.Messenger.Key"/>); new ones are on by default.</summary>
     public List<string> MutedApps { get; set; } = new();
+    /// <summary>Recently read system toasts, stored locally so they stay read across restarts.</summary>
+    public List<Notify.ReadToast> ReadToasts { get; set; } = new();
     /// <summary>From <see cref="QuietFrom"/> to <see cref="QuietUntil"/> messages don't pop out, except from <see cref="QuietVips"/>.</summary>
     public bool QuietHours { get; set; }
+    /// <summary>Right-click › Mute pop-outs: no message or notification pops out until it is switched off again; they still count.</summary>
+    public bool MutePopOuts { get; set; }
     public string QuietFrom { get; set; } = "22:00";
     public string QuietUntil { get; set; } = "07:00";
     /// <summary>"app:whatsapp" lets a whole app through, "who:Lena" a person.</summary>
@@ -83,6 +91,16 @@ internal sealed class AppSettings
     public bool ColorPicker { get; set; } = true;
     /// <summary>Your Focumon and its timer in the open notch's top bar, fed by the Focumon browser extension.</summary>
     public bool Focumon { get; set; } = true;
+    /// <summary>The open notch's start page from top to bottom (<see cref="HomeLayout"/>); empty for Holm's usual order.</summary>
+    public List<string> HomeSections { get; set; } = new();
+    /// <summary>Sections of the start page you hid: the tool bar, the two cards, or the battery and volume.</summary>
+    public List<string> HomeHidden { get; set; } = new();
+    /// <summary>Sections of the start page with their two sides swapped (the volume on the left, say).</summary>
+    public List<string> HomeSwapped { get; set; } = new();
+    /// <summary>The tools in the open notch's bar from left to right; empty for Holm's usual order.</summary>
+    public List<string> HomeTools { get; set; } = new();
+    /// <summary>Tools hidden from the open notch's bar, independent of their feature switches.</summary>
+    public List<string> HomeHiddenTools { get; set; } = new();
     /// <summary>The notch says so when Caps Lock goes on or off.</summary>
     public bool CapsLock { get; set; } = true;
     /// <summary>Every app's notification pops out at the top in the notch, not only messengers'. Off by default.</summary>
@@ -107,8 +125,14 @@ internal sealed class AppSettings
     public bool SkyColors { get; set; } = true;
     /// <summary>The instrument look (black, white ink, small corners, tool words) in place of the classic one. Applies at the next start.</summary>
     public bool InstrumentLook { get; set; }
+    /// <summary>The design's id (<see cref="Designs"/>); empty means Classic, or Instrument when <see cref="InstrumentLook"/> is on. Applies at the next start.</summary>
+    public string Design { get; set; } = "";
+    /// <summary>The accent colour as "#RRGGBB", or empty for the design's own. Applies at the next start.</summary>
+    public string AccentColor { get; set; } = "";
     /// <summary>A small ring beside the notch with Claude Code's and Codex's usage, read from their logs on this PC.</summary>
     public bool AiUsage { get; set; } = true;
+    /// <summary>With <see cref="AiUsage"/> on: the rings at the ends of the closed notch. Off, the usage shows only on the AI page.</summary>
+    public bool AiRings { get; set; } = true;
     /// <summary>Large clock view: show seconds next to the time.</summary>
     public bool ClockShowSeconds { get; set; } = true;
     /// <summary>Large clock view: show the date under the time.</summary>
@@ -190,21 +214,35 @@ internal sealed class AppSettings
     public string? FriendsTopic { get; set; }
     /// <summary>Our private key, encrypted for this Windows account (DPAPI).</summary>
     public string? FriendsKey { get; set; }
-    /// <summary>ntfy server for our inbox; null means ntfy.sh. Set it before copying your friend code.</summary>
+    /// <summary>ntfy server for our inbox; null means Holm's relay (and ntfy.sh for older friends). Set it before copying your friend code.</summary>
     public string? FriendsServer { get; set; }
     /// <summary>Server time of the last note in our inbox, to catch up from after a restart.</summary>
     public long? FriendsSince { get; set; }
+    /// <summary>Our inbox moved to Holm's relay: our friend code names it and friends were told (FriendsService.MoveToRelay).</summary>
+    public bool FriendsRelay { get; set; }
+    /// <summary>Server time of the last note in our inbox on the relay, to catch up from after a restart.</summary>
+    public long? FriendsRelaySince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
     /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
     public List<OwnInvite> FriendInvites { get; set; } = new();
     /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
     public List<PendingFriendRequest> PendingFriendRequests { get; set; } = new();
+    public List<PendingFriendRequest> IncomingFriendRequests { get; set; } = new();
+
+    /// <summary>The Holm account was offered once, at the first start after it came (Settings › Account any time after).</summary>
+    public bool AccountOffered { get; set; }
+    /// <summary>The sign-in card on the profile page was closed with its cross: only a small "Sign in" row is left.</summary>
+    public bool AccountHidden { get; set; }
 
     static string FilePath => Path.Combine(Diag.Folder, "settings.json");
+    static readonly object SaveGate = new();
 
     /// <summary>Set while posing for screenshots, which change settings that must never reach your settings file.</summary>
     internal static bool ReadOnly;
+
+    /// <summary>The settings file was written: the Holm account syncs the change a little later.</summary>
+    public static event Action? Saved;
 
     public static AppSettings Load()
     {
@@ -215,12 +253,23 @@ internal sealed class AppSettings
     public void Save()
     {
         if (ReadOnly) return;
-        try
+        lock (SaveGate)
         {
-            Directory.CreateDirectory(Diag.Folder);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+            string path = FilePath;
+            string temp = path + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(Diag.Folder);
+                File.WriteAllText(temp, JsonSerializer.Serialize(this));
+                File.Move(temp, path, overwrite: true);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Diag.Log("Settings save: " + ex.GetType().Name);
+                return;
+            }
         }
-        catch { }
+        Saved?.Invoke();
     }
 }
 

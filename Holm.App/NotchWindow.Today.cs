@@ -38,7 +38,8 @@ public sealed partial class NotchWindow
         _todayNote.Click += () => ToggleTool(Tool.Notes);
         _todayCards.Children.Add(_todayReminder);
         _todayCards.Children.Add(_todayNote);
-        _clockPanel.Children.Insert(_clockPanel.Children.IndexOf(_weatherSetup) + 1, _todayCards);
+        // A section of their own, so they can move (Settings › Start page); they still show only with the clock.
+        _todaySection.Children.Add(_todayCards);
 
         _mediaClockHeader.Children.Add(_mediaClock);
         _mediaClockHeader.Children.Add(_mediaDate);
@@ -47,13 +48,19 @@ public sealed partial class NotchWindow
     static NotchButton Card(string glyph, IBrush color, TextBlock title, TextBlock more)
     {
         var content = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-        content.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = color, VerticalAlignment = VerticalAlignment.Center });
+        content.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, Foreground = Look.Aero ? Look.Accent : color, VerticalAlignment = VerticalAlignment.Center });
         var words = new StackPanel { Margin = new Thickness(10, 0, 0, 0) };
         words.Children.Add(title);
         words.Children.Add(more);
         Grid.SetColumn(words, 1);
         content.Children.Add(words);
         var card = NotchButton.Row(content);
+        if (Look.Aero)
+        {
+            card.Rest = HubTheme.ActionSurface;
+            card.BorderBrush = HubTheme.Edge;
+            card.BorderThickness = new Thickness(1);
+        }
         content.HorizontalAlignment = HorizontalAlignment.Stretch;
         return card;
     }
@@ -69,10 +76,12 @@ public sealed partial class NotchWindow
         _todayNoteMore.Text = more;
         _todayReminder.IsVisible = _settings.Reminders;
         _todayNote.IsVisible = _settings.Notes;
-        // One card alone takes the whole row.
-        Grid.SetColumnSpan(_todayReminder, _settings.Notes ? 1 : 3);
-        Grid.SetColumn(_todayNote, _settings.Reminders ? 2 : 0);
-        Grid.SetColumnSpan(_todayNote, _settings.Reminders ? 1 : 3);
+        // The reminder on the left unless you swapped them; one card alone takes the whole row.
+        var (first, second) = _home.IsSwapped(HomeLayout.Today) ? (_todayNote, _todayReminder) : (_todayReminder, _todayNote);
+        Grid.SetColumn(first, 0);
+        Grid.SetColumnSpan(first, second.IsVisible ? 1 : 3);
+        Grid.SetColumn(second, first.IsVisible ? 2 : 0);
+        Grid.SetColumnSpan(second, first.IsVisible ? 1 : 3);
         _todayCards.IsVisible = _settings.Reminders || _settings.Notes;
     }
 

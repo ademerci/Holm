@@ -47,7 +47,6 @@ public sealed partial class NotchWindow
     NearbyService? _nearby;
     FriendsService _friends = null!;
     readonly List<Friend> _addBack = new(); // people who added us while the notch was busy
-    readonly List<(Friend Card, string RequestId)> _friendRequests = new();
     string? _shownFriendRequestId;
     readonly DispatcherTimer _shareWatch = new() { Interval = TimeSpan.FromMilliseconds(200) };
     readonly DispatcherTimer _pickClose = new() { Interval = TimeSpan.FromMilliseconds(900) };
@@ -101,7 +100,11 @@ public sealed partial class NotchWindow
         _pickClose.Tick += (_, _) => { _pickClose.Stop(); EndShare(); };
         // Picking with clicks: leaving means "never mind".
         _island.PointerExited += (_, _) => { if (_pickFiles != null) _pickClose.Start(); };
-        _island.PointerEntered += (_, _) => _pickClose.Stop();
+        _island.PointerEntered += (_, _) =>
+        {
+            _pickClose.Stop();
+            _pickClose.Interval = TimeSpan.FromMilliseconds(900); // in once, leaving again means "never mind"
+        };
 
         DragDrop.SetAllowDrop(_island, true);
         _island.AddHandler(DragDrop.DragEnterEvent, OnDrag);
@@ -170,6 +173,7 @@ public sealed partial class NotchWindow
         _settings.Save();
         if (on) StartSharing();
         else StopSharing();
+        RefreshToolBar();
     }
 
     // ───────────── dragging files onto the notch ─────────────
@@ -222,8 +226,11 @@ public sealed partial class NotchWindow
         ApplyState(animate: true);
     }
 
-    /// <summary>The share view, to click where the files go instead of dropping them; it closes when the mouse leaves.</summary>
-    void PickTarget(string[] files)
+    /// <summary>
+    /// The share view, to click where the files go instead of dropping them; it closes when the mouse leaves. After a
+    /// file picker (<paramref name="patient"/>) the mouse is still over where the picker was: it waits a while for it.
+    /// </summary>
+    void PickTarget(string[] files, bool patient = false)
     {
         HideTask();
         _pickFiles = files;
@@ -232,6 +239,7 @@ public sealed partial class NotchWindow
         SetExpanded(false);
         RefreshShareTargets();
         ApplyState(animate: true);
+        _pickClose.Interval = TimeSpan.FromMilliseconds(patient ? 12000 : 900);
         if (!_island.IsPointerOver) _pickClose.Start();
         _ = RefreshPeersAsync();
         if (_settings.Beam) _friends.PingAll();
@@ -343,7 +351,7 @@ public sealed partial class NotchWindow
         _shareTitle.Text = beam ? "Send " + what : what;
         var peers = beam ? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _friends.Friends : Array.Empty<Friend>();
-        int online = friends.Take(8).Count(_friends.IsOnline);
+        int online = friends.Count(_friends.IsOnline);
         _shareHint.Text = _pickFiles != null ? (beam ? "Click where it should go." : "Click Shelf to keep it here.")
             : !beam ? "Drop it on Shelf to keep it here and drag it out later."
             : friends.Count > 0
@@ -353,7 +361,7 @@ public sealed partial class NotchWindow
                 : "Drop it on a person, or on Code to send it anywhere.";
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
-        string shown = beam + "|" + string.Join("|", friends.Take(8).Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}")
+        string shown = beam + "|" + string.Join("|", friends.Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}")
                                                      .Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && _shareTargets.Children.Count > 0)
         {
@@ -363,7 +371,7 @@ public sealed partial class NotchWindow
         _shownPeers = shown;
         _shareTargets.Children.Clear();
         _onlineDots.Clear();
-        foreach (var friend in friends.Take(8))
+        foreach (var friend in friends)
         {
             var chip = PersonChip(friend.Name, new ShareTarget(null, friend), isFriend: true);
             if (friend.Status != null) ToolTip.SetTip(chip, friend.Status);
@@ -439,7 +447,7 @@ public sealed partial class NotchWindow
         Child = new TextBlock
         {
             Text = text, FontSize = icon ? 14 : 12, FontWeight = FontWeight.SemiBold,
-            FontFamily = icon ? IconFont : FontFamily.Default, Foreground = Brushes.White,
+            FontFamily = icon ? IconFont : FontFamily.Default, Foreground = Look.InkOn(background),
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
         },
     };
@@ -635,19 +643,20 @@ public sealed partial class NotchWindow
         catch (Exception ex) { Diag.Log("Couldn't decline: " + ex.Message); }
     }
 
-    /// <summary>Someone added us as a friend: offer to add them back (or keep it for the menu while busy).</summary>
+    /// <summary>Someone added us as a friend: keep the offer on Add a friend and pop it out when possible.</summary>
     void OnFriendAddedUs(Friend card)
     {
         if (_friends.Find(card.Key) != null) return;
         _addBack.RemoveAll(f => f.Key == card.Key);
+        _addBack.Add(card);
+        _social?.Raise();
         if (_busy || _taskVisible || _hiddenForFullscreen)
         {
-            _addBack.Add(card);
             ShowPeek("", $"{card.Name} added you", "", null);
             return;
         }
         ShowTask(FaceText(card.Name), FaceBrush(card.Name), $"{card.Name} added you as a friend", "Add them back to send each other files",
-                 null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", () => { _addBack.Add(card); HideTask(); }), textIcon: true);
+                 null, ("Add back", () => { HideTask(); _ = AddFriendAsync(card, tellThem: false); }), ("Not now", HideTask), textIcon: true);
         _taskHide.Interval = TimeSpan.FromSeconds(30);
         _taskHide.Start();
     }
@@ -655,8 +664,6 @@ public sealed partial class NotchWindow
     void OnFriendRequested(Friend card, string requestId)
     {
         if (_friends.Find(card.Key) != null) return;
-        if (_friendRequests.Any(request => request.RequestId == requestId)) return;
-        _friendRequests.Add((card, requestId));
         if (_busy || _taskVisible || _hiddenForFullscreen)
         {
             ShowPeek("", $"{card.Name} wants to be your friend", "", null, seconds: 4);
@@ -677,7 +684,6 @@ public sealed partial class NotchWindow
 
     void OnFriendRequestCancelled(Friend card, string requestId)
     {
-        _friendRequests.RemoveAll(request => request.RequestId == requestId);
         if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); }
         if (_shownFriendRequestId == requestId)
         {
@@ -685,26 +691,24 @@ public sealed partial class NotchWindow
             HideTask();
         }
         ShowPeek("", $"{card.Name} cancelled the friend request", "", null, seconds: 4);
-        if (_friendRequests.Count > 0 && !_taskVisible && !_busy)
-            ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
+        ShowNextFriendRequest();
     }
 
     void OnFriendRemovedUs(Friend friend)
     {
-        _addBack.RemoveAll(f => f.Key == friend.Key);
+        if (_addBack.RemoveAll(f => f.Key == friend.Key) > 0) _social?.Raise();
         if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); }
         ShowPeek("", $"{friend.Name} removed you", "", null, seconds: 4);
     }
 
     async Task AddFriendAsync(Friend card, bool tellThem)
     {
+        if (_addBack.RemoveAll(f => f.Key == card.Key) > 0) _social?.Raise();
         if (_friends.Find(card.Key) != null)
         {
-            _addBack.RemoveAll(f => f.Key == card.Key);
             ShowPeek("", $"{card.Name} is already your friend", "", null, seconds: 4);
             return;
         }
-        _addBack.RemoveAll(f => f.Key == card.Key);
         if (!tellThem)
         {
             await _friends.AddAsync(card, tellThem: false);
@@ -739,7 +743,6 @@ public sealed partial class NotchWindow
         try
         {
             await _friends.RespondToFriendRequestAsync(card, requestId, accepted);
-            _friendRequests.RemoveAll(request => request.RequestId == requestId);
             if (accepted && _friends.Find(card.Key) != null)
             {
                 ShowPeek("", $"You and {card.Name} are now friends", "", null, seconds: 4);
@@ -752,7 +755,13 @@ public sealed partial class NotchWindow
             Diag.Log($"Couldn't answer {card.Name}'s friend request: {ex.Message}");
             ShowPeek("", "Couldn't answer friend request", ex.Message, RedBrush, seconds: 5);
         }
-        if (_friendRequests.Count > 0 && !_taskVisible && !_busy) ShowFriendRequest(_friendRequests[0].Card, _friendRequests[0].RequestId);
+        ShowNextFriendRequest();
+    }
+
+    void ShowNextFriendRequest()
+    {
+        if (!_taskVisible && !_busy && _friends.Incoming.FirstOrDefault() is { } request)
+            ShowFriendRequest(request.Card, request.RequestId);
     }
 
     /// <summary>Someone on the network connected (worker thread). We answer on the UI thread; busy means no.</summary>
@@ -943,92 +952,6 @@ public sealed partial class NotchWindow
         }
         _lastOfferedCode = code;
         _ = ReceiveWithCodeAsync(secret);
-    }
-
-    /// <summary>Friends › Add a friend…, Chat…, Add back…, requests, Remove friend ›</summary>
-    void FillFriendsMenu(MenuItem menu)
-    {
-        menu.Items.Clear();
-        menu.IsEnabled = _settings.Beam;
-        var add = new MenuItem { Header = "Add a friend…" };
-        add.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("add"), DispatcherPriority.Background);
-        menu.Items.Add(add);
-        var chat = new MenuItem { Header = "Chat…" };
-        chat.Click += (_, _) => Dispatcher.UIThread.Post(() => OpenChat(null), DispatcherPriority.Background);
-        menu.Items.Add(chat);
-        var profile = new MenuItem { Header = "Edit my profile…" };
-        profile.Click += (_, _) => Dispatcher.UIThread.Post(() => ShowHub("profile"), DispatcherPriority.Background);
-        menu.Items.Add(profile);
-        foreach (var card in _addBack.ToList())
-        {
-            var back = new MenuItem { Header = $"Add back {card.Name.Replace("_", "__")}" };
-            back.Click += (_, _) => _ = AddFriendAsync(card, tellThem: false);
-            menu.Items.Add(back);
-        }
-        foreach (var request in _friendRequests.ToList())
-        {
-            var answer = new MenuItem { Header = $"Friend request from {request.Card.Name.Replace("_", "__")}" };
-            var accept = new MenuItem { Header = "Accept" };
-            accept.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: true);
-            var decline = new MenuItem { Header = "Decline" };
-            decline.Click += (_, _) => _ = AnswerFriendRequestAsync(request.Card, request.RequestId, accepted: false);
-            answer.Items.Add(accept);
-            answer.Items.Add(decline);
-            menu.Items.Add(answer);
-        }
-        if (_friends.Friends.Count == 0) return;
-        menu.Items.Add(new Separator());
-        AddFriendProfiles(menu);
-        menu.Items.Add(new Separator());
-        FillStreamMenu(menu);
-        // Friends › Wave at › (each friend), and the switch for waves coming in.
-        if (_settings.Waves)
-        {
-            var wave = new MenuItem { Header = "Wave at" };
-            foreach (var friend in _friends.Friends.ToList())
-            {
-                var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
-                item.Click += (_, _) => WaveAt(friend);
-                wave.Items.Add(item);
-            }
-            menu.Items.Add(wave);
-        }
-        var allow = new MenuItem { Header = "Waves from friends", ToggleType = MenuItemToggleType.CheckBox, IsChecked = _settings.Waves };
-        allow.Click += (_, _) => { _settings.Waves = !_settings.Waves; _settings.Save(); };
-        menu.Items.Add(allow);
-        var remove = new MenuItem { Header = "Remove friend" };
-        foreach (var friend in _friends.Friends.ToList())
-        {
-            var item = new MenuItem { Header = friend.Name.Replace("_", "__") };
-            item.Click += async (_, _) =>
-            {
-                bool notified = await _friends.RemoveAsync(friend);
-                _chats.Forget(friend.Key);
-                ShowPeek("", $"{friend.Name} removed", "", null);
-                if (!notified) ShowPeek("", $"Couldn't notify {friend.Name}", "They may still have you as a friend", RedBrush, seconds: 5);
-            };
-            remove.Items.Add(item);
-        }
-        menu.Items.Add(remove);
-    }
-
-    /// <summary>Friends › each friend with their picture and status (the WPF app's AddFriendProfiles).</summary>
-    void AddFriendProfiles(MenuItem menu)
-    {
-        foreach (var friend in _friends.Friends.Take(12).ToList())
-        {
-            var row = new StackPanel { Orientation = Orientation.Horizontal };
-            row.Children.Add(Avatar(FaceText(friend.Name), FaceBrush(friend.Name)));
-            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
-            words.Children.Add(new TextBlock { Text = friend.Name });
-            if (friend.Status != null)
-                words.Children.Add(new TextBlock { Text = friend.Status, FontSize = 11, Opacity = 0.6, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis });
-            if (_friends.IsOnline(friend))
-                words.Children.Add(new TextBlock { Text = "Online", FontSize = 11, Foreground = GreenBrush });
-            row.Children.Add(words);
-            // Shown, not chosen: clicking one keeps the menu open.
-            menu.Items.Add(new MenuItem { Header = row, StaysOpenOnClick = true });
-        }
     }
 
     // ───────────── helpers ─────────────

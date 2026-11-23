@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -39,7 +39,7 @@ public sealed partial class NotchWindow
 
     readonly StackPanel _weatherLine = new() { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 2, 0, 0), Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), IsVisible = false };
     readonly Border _weatherIconHost = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _weatherTemp = new() { FontFamily = DisplayFont, FontSize = 26, FontWeight = FontWeight.Light, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _weatherTemp = new Holm.App.Controls.DotTextBlock { FontFamily = DisplayFont, FontSize = 26, FontWeight = FontWeight.Light, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _weatherText = new() { FontSize = 11, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 230, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
     readonly TextBlock _rainText = new() { FontSize = 11, Foreground = Look.Pick(Dim, Brush("#FF64D2FF")), HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 230, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
     readonly TextBlock _weatherAdd = new() { Text = "+ Weather", FontSize = 11, Foreground = Faint, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12, 6, 0, 0), Cursor = new Cursor(StandardCursorType.Hand), IsVisible = false };
@@ -67,8 +67,8 @@ public sealed partial class NotchWindow
         Grid.SetColumn(_weatherAdd, 1);
         clockHeader.Children.Add(_weatherLine);
         clockHeader.Children.Add(_weatherAdd);
-        _weatherLine.PointerReleased += (_, _) => { ChoosePlace(); BeginTyping(_weatherBox, untouched: true); };
-        _weatherAdd.PointerReleased += (_, _) => { ChoosePlace(); BeginTyping(_weatherBox, untouched: true); };
+        _weatherLine.PointerReleased += ChoosePlaceOnClick;
+        _weatherAdd.PointerReleased += ChoosePlaceOnClick;
 
         _weatherBox.MaxLength = 80;
         _weatherBox.TextChanged += (_, _) => _weatherPlaceholder.IsVisible = string.IsNullOrEmpty(_weatherBox.Text);
@@ -195,14 +195,22 @@ public sealed partial class NotchWindow
             var kind = weather.RainNote != null ? WeatherKind.Rain : weather.Kind;
             _idleWeatherIcon.Child = WeatherIcons.Make(kind, weather.IsDay, 12, Dim);
             _idleWeatherText.Text = weather.Degrees;
-            _weatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 24, Brushes.White);
+            _weatherIconHost.Child = WeatherIcons.Make(weather.Kind, weather.IsDay, 24, Look.Ink);
             _weatherTemp.Text = weather.Degrees;
             _weatherText.Text = $"{weather.Summary} · {(_settings.WeatherPlace ?? "").Split(',')[0]}"; // the city is enough here
             _rainText.Text = weather.RainNote ?? "";
             _rainText.IsVisible = weather.RainNote != null;
         }
+        RefreshHomePlayer();
         RefreshMediaWeather();
         if (_state == NotchState.Expanded) ApplyState(animate: true);
+    }
+
+    void ChoosePlaceOnClick(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left) return;
+        e.Handled = true;
+        ChoosePlace();
     }
 
     void ChoosePlace()
@@ -215,6 +223,7 @@ public sealed partial class NotchWindow
         _weatherBox.Text = "";
         _weatherHint.Text = _settings.WeatherPlace is { } place ? "Now: " + place : "Type a city and press Enter";
         ShowWeather();
+        BeginTyping(_weatherBox);
     }
 
     async Task SearchPlaceAsync()
@@ -274,7 +283,6 @@ public sealed partial class NotchWindow
         {
             SetExpanded(true);
             ChoosePlace();
-            BeginTyping(_weatherBox, untouched: true);
         };
         menu.Items.Add(place);
         if (_location.IsSupported)

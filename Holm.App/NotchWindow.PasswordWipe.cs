@@ -30,13 +30,15 @@ public sealed partial class NotchWindow
         if (!_settings.ClearPasswords || Clipboard is not { } clipboard) return;
         try
         {
-            if (await PrivacyOfClipboardAsync(clipboard) == ClipPrivacy.Private)
+            var privacy = await PrivacyOfClipboardAsync(clipboard);
+            if (!_settings.ClearPasswords || sequence != _clipSequence) return;
+            if (privacy == ClipPrivacy.Private)
             {
                 _wipe.Arm(sequence);
                 _wipeTimer.Stop();
                 _wipeTimer.Start();
             }
-            else if (sequence == _clipSequence)
+            else
             {
                 _wipe.Disarm(); // something else was copied since
                 _wipeTimer.Stop();
@@ -48,10 +50,12 @@ public sealed partial class NotchWindow
     async void WipePassword()
     {
         _wipeTimer.Stop();
-        if (!_settings.ClearPasswords || !_wipe.TakeDue(_clipSequence) || Clipboard is not { } clipboard) return;
+        uint sequence = _clipSequence;
+        if (!_settings.ClearPasswords || !_wipe.TakeDue(sequence) || Clipboard is not { } clipboard) return;
         bool done = false;
         for (int attempt = 0; attempt < 3 && !done; attempt++)
         {
+            if (!_settings.ClearPasswords || sequence != _clipSequence) return;
             try { await clipboard.ClearAsync(); done = true; }
             catch (Exception ex) when (ex is not OutOfMemoryException) { await Task.Delay(30); } // another app has it open
         }

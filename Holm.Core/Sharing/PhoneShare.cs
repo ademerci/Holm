@@ -16,14 +16,22 @@ namespace WinNotch.Sharing;
 public sealed record PhoneFile(string Path, string Name, long Length);
 
 /// <summary>
+/// What a phone asks to send: the first file's name, how many files and how many bytes in all, and what kind of
+/// device asks ("iPhone", "Android phone (SM-S911B)"), as far as its browser tells.
+/// </summary>
+public sealed record PhoneRequest(string FirstName, int Count, long Bytes, string Device = "A phone");
+
+/// <summary>
 /// Files to a phone without an app: a small web server on this network, for the files you dropped and nothing else.
 /// Its address carries 128 random bits, so only someone who scans the code (or gets the link) finds it; it serves
 /// one page and the files, read-only, and stops when you're done. A phone on the same Wi-Fi opens it in its browser.
+/// The other way round (<see cref="StartReceiving"/>) the page lets the phone pick photos and files, and each arrives
+/// whole in the folder given, or not at all.
 /// </summary>
 public sealed class PhoneShare : IDisposable
 {
     const int MaxHeader = 16 * 1024, MaxClients = 16;
-    static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(15);
+    static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(15), BodyTimeout = TimeSpan.FromSeconds(60);
 
     static readonly Dictionary<string, string> Viewable = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -38,11 +46,34 @@ public sealed class PhoneShare : IDisposable
     readonly CancellationTokenSource _cts = new();
     readonly SemaphoreSlim _slots = new(MaxClients);
     readonly bool[] _delivered;
+    readonly string? _inbox;
+    readonly List<string> _received = new();
 
     /// <summary>What the QR code says: http://192.168.1.23:52345/&lt;token&gt;/</summary>
     public string Url { get; }
     public IReadOnlyList<PhoneFile> Files { get; }
     public bool AllDelivered { get { lock (_delivered) return _delivered.All(d => d); } }
+
+    /// <summary>The phone sends here (<see cref="StartReceiving"/>) rather than takes files.</summary>
+    public bool IsReceiving => _inbox != null;
+
+    /// <summary>The files that arrived whole, in order.</summary>
+    public IReadOnlyList<string> ReceivedFiles { get { lock (_received) return _received.ToArray(); } }
+
+    /// <summary>A file's name, bytes so far and size while it arrives, every 256 KB. Raised on a worker thread.</summary>
+    public event Action<string, long, long>? Receiving;
+    /// <summary>A file arrived whole and is saved at this path. Raised on a worker thread.</summary>
+    public event Action<string>? Received;
+
+    /// <summary>
+    /// A phone wants to send: true lets it. Asked once per phone before anything is saved; without an answer to give,
+    /// nothing is accepted. Called on a worker thread.
+    /// </summary>
+    public Func<PhoneRequest, Task<bool>>? Ask { get; set; }
+
+    const int MaxSessions = 32; // phones asked about in one link: more is someone pressing on
+    readonly Dictionary<string, Task<bool>> _sessions = new(StringComparer.Ordinal);
+    readonly SemaphoreSlim _asking = new(1);
 
     /// <summary>The phone opened the page. Raised on a worker thread.</summary>
     public event Action? Visited;
@@ -51,11 +82,12 @@ public sealed class PhoneShare : IDisposable
     /// <summary>A file reached the phone whole. Raised on a worker thread.</summary>
     public event Action<int>? Delivered;
 
-    PhoneShare(TcpListener listener, IPAddress address, IReadOnlyList<PhoneFile> files)
+    PhoneShare(TcpListener listener, IPAddress address, IReadOnlyList<PhoneFile> files, string? inbox)
     {
         _listener = listener;
         _token = Base64Url(RandomNumberGenerator.GetBytes(16));
         Files = files;
+        _inbox = inbox;
         _delivered = new bool[files.Count];
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         string host = address.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{address}]" : address.ToString();
@@ -69,9 +101,18 @@ public sealed class PhoneShare : IDisposable
     {
         if (paths.Count == 0) throw new ArgumentException("Nothing to offer.", nameof(paths));
         var files = paths.Select(p => new FileInfo(p)).Select(f => new PhoneFile(f.FullName, f.Name, f.Length)).ToList();
-        var listener = new TcpListener(address, 0);
+        return Open(address, files, null);
+    }
+
+    /// <summary>A page where the phone picks photos and files to send into <paramref name="folder"/>.</summary>
+    /// <exception cref="SocketException">No port could be opened.</exception>
+    public static PhoneShare StartReceiving(IPAddress address, string folder) => Open(address, Array.Empty<PhoneFile>(), folder);
+
+    static PhoneShare Open(IPAddress address, IReadOnlyList<PhoneFile> files, string? inbox)
+    {
+        var listener = new TcpListener(address, 0); // a free port the system picks; the firewall may ask once
         listener.Start(MaxClients);
-        var share = new PhoneShare(listener, address, files);
+        var share = new PhoneShare(listener, address, files, inbox);
         _ = Task.Run(share.AcceptAsync);
         return share;
     }
@@ -105,7 +146,7 @@ public sealed class PhoneShare : IDisposable
     {
         client.NoDelay = true;
         var stream = client.GetStream();
-        string? head;
+        (string Text, byte[] Body)? head;
         using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
             timeout.CancelAfter(HeaderTimeout);
@@ -113,7 +154,7 @@ public sealed class PhoneShare : IDisposable
         }
         if (head == null) return;
 
-        var lines = head.Split("\r\n");
+        var lines = head.Value.Text.Split("\r\n");
         var parts = lines[0].Split(' ');
         if (parts.Length != 3 || !parts[2].StartsWith("HTTP/1.", StringComparison.Ordinal))
         {
@@ -122,18 +163,39 @@ public sealed class PhoneShare : IDisposable
         }
         string method = parts[0];
         bool headOnly = method == "HEAD";
+        var route = Route(parts[1], _token, Files.Count, IsReceiving);
+        if (method == "POST" && route.Kind == RouteKind.Ask)
+        {
+            bool yes = await AskAsync(lines).ConfigureAwait(false);
+            await WriteAsync(stream, yes ? 200 : 403, yes ? "OK" : "Forbidden", "text/plain; charset=utf-8",
+                yes ? "Accepted"u8.ToArray() : "Declined on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
+            return;
+        }
+        if (method == "POST" && route.Kind == RouteKind.Upload)
+        {
+            if (!Accepted(Header(lines, "X-Session")))
+            {
+                await WriteAsync(stream, 403, "Forbidden", "text/plain; charset=utf-8", "Not accepted on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
+                return;
+            }
+            await ReceiveFileAsync(stream, lines, head.Value.Body, ct).ConfigureAwait(false);
+            return;
+        }
         if (method != "GET" && !headOnly)
         {
             await WriteAsync(stream, 405, "Method Not Allowed", "text/plain; charset=utf-8", "Not allowed"u8.ToArray(), false, ct).ConfigureAwait(false);
             return;
         }
 
-        var route = Route(parts[1], _token, Files.Count);
         switch (route.Kind)
         {
             case RouteKind.Page:
                 Visited?.Invoke();
-                await WriteAsync(stream, 200, "OK", "text/html; charset=utf-8", Encoding.UTF8.GetBytes(Page(Files, _token)), headOnly, ct).ConfigureAwait(false);
+                string page = IsReceiving ? ReceivePage(_token) : Page(Files, _token);
+                await WriteAsync(stream, 200, "OK", "text/html; charset=utf-8", Encoding.UTF8.GetBytes(page), headOnly, ct).ConfigureAwait(false);
+                break;
+            case RouteKind.Script:
+                await WriteAsync(stream, 200, "OK", "text/javascript; charset=utf-8", Encoding.UTF8.GetBytes(SendScript), headOnly, ct).ConfigureAwait(false);
                 break;
             case RouteKind.Download:
             case RouteKind.View:
@@ -146,8 +208,11 @@ public sealed class PhoneShare : IDisposable
         }
     }
 
-    /// <summary>The request line and headers, up to the empty line. Null if the client sent too much or went quiet.</summary>
-    static async Task<string?> ReadHeadAsync(NetworkStream stream, CancellationToken ct)
+    /// <summary>
+    /// The request line and headers, up to the empty line, and the bytes of the body that came with them. Null if
+    /// the client sent too much or went quiet.
+    /// </summary>
+    static async Task<(string Text, byte[] Body)?> ReadHeadAsync(Stream stream, CancellationToken ct)
     {
         var buffer = new byte[MaxHeader];
         int filled = 0;
@@ -160,11 +225,154 @@ public sealed class PhoneShare : IDisposable
                 int searchFrom = Math.Max(0, filled - 3);
                 filled += read;
                 int end = buffer.AsSpan(searchFrom, filled - searchFrom).IndexOf("\r\n\r\n"u8);
-                if (end >= 0) return Encoding.Latin1.GetString(buffer, 0, searchFrom + end);
+                if (end >= 0) return (Encoding.Latin1.GetString(buffer, 0, searchFrom + end), buffer[(searchFrom + end + 4)..filled]);
             }
         }
         catch (OperationCanceledException) { }
         return null;
+    }
+
+    static string? Header(string[] lines, string name)
+        => lines.Skip(1).FirstOrDefault(l => l.StartsWith(name + ":", StringComparison.OrdinalIgnoreCase))?[(name.Length + 1)..].Trim();
+
+    /// <summary>
+    /// What kind of device a browser says it is. Its own name ("Noel's iPhone") no browser gives away, and the model
+    /// only some Android browsers do (Chrome says "K" instead): "iPhone", "Android phone (SM-S911B)", "A phone".
+    /// </summary>
+    internal static string DeviceName(string? userAgent)
+    {
+        string ua = userAgent ?? "";
+        if (ua.Contains("iPhone", StringComparison.Ordinal)) return "iPhone";
+        if (ua.Contains("iPad", StringComparison.Ordinal)) return "iPad";
+        int android = ua.IndexOf("Android", StringComparison.Ordinal);
+        if (android >= 0)
+        {
+            // "(Linux; Android 14; SM-S911B) …": the part after the version, up to ")" or ";".
+            int close = ua.IndexOf(')', android);
+            var parts = ua[android..(close > android ? close : ua.Length)].Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            string model = parts.Length > 1 ? parts[1] : "";
+            if (model.StartsWith("Mobile", StringComparison.Ordinal) || model.StartsWith("wv", StringComparison.Ordinal)) model = "";
+            model = new string(model.Where(c => char.IsAsciiLetterOrDigit(c) || c is ' ' or '-' or '_' or '.').ToArray()).Trim();
+            if (model.Length > 24) model = model[..24];
+            bool tablet = !ua.Contains("Mobile", StringComparison.Ordinal);
+            string kind = tablet ? "Android tablet" : "Android phone";
+            return model.Length > 1 ? $"{kind} ({model})" : kind;
+        }
+        if (ua.Contains("Macintosh", StringComparison.Ordinal)) return "A Mac";
+        if (ua.Contains("Windows", StringComparison.Ordinal)) return "A Windows PC";
+        if (ua.Contains("Linux", StringComparison.Ordinal) || ua.Contains("CrOS", StringComparison.Ordinal)) return "A computer";
+        return "A phone";
+    }
+
+    /// <summary>A phone's page names itself with a random id; 16 to 64 letters, digits, - or _.</summary>
+    static bool IsSession(string? id) => id is { Length: >= 16 and <= 64 } && id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+
+    bool Accepted(string? session)
+    {
+        if (!IsSession(session)) return false;
+        lock (_sessions) return _sessions.TryGetValue(session!, out var answer) && answer.IsCompletedSuccessfully && answer.Result;
+    }
+
+    /// <summary>
+    /// Before anything is sent, the phone asks: how many files, how big, the first one's name. Whoever sits at the
+    /// computer says yes or no (<see cref="Ask"/>); the answer holds for that phone's page as long as the link is
+    /// open, and anyone else who scans the code is asked about again. One question at a time; none answered is no.
+    /// </summary>
+    async Task<bool> AskAsync(string[] lines)
+    {
+        string? session = Header(lines, "X-Session");
+        if (!IsSession(session) || Ask is not { } ask) return false;
+        Task<bool> answer;
+        lock (_sessions)
+        {
+            if (!_sessions.TryGetValue(session!, out answer!))
+            {
+                if (_sessions.Count >= MaxSessions) return false;
+                string raw = Header(lines, "X-Name") ?? "";
+                try { raw = Uri.UnescapeDataString(raw); } catch (UriFormatException) { }
+                var culture = System.Globalization.CultureInfo.InvariantCulture;
+                int.TryParse(Header(lines, "X-Count"), System.Globalization.NumberStyles.None, culture, out int count);
+                long.TryParse(Header(lines, "X-Size"), System.Globalization.NumberStyles.None, culture, out long bytes);
+                var request = new PhoneRequest(FileTransfer.SafeFileName(raw), Math.Max(1, count), bytes, DeviceName(Header(lines, "User-Agent")));
+                answer = OneAtATimeAsync(() => ask(request));
+                _sessions[session!] = answer;
+            }
+        }
+        try { return await answer.ConfigureAwait(false); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return false; }
+    }
+
+    async Task<bool> OneAtATimeAsync(Func<Task<bool>> ask)
+    {
+        await _asking.WaitAsync(_cts.Token).ConfigureAwait(false);
+        try { return await ask().ConfigureAwait(false); }
+        finally { _asking.Release(); }
+    }
+
+    /// <summary>
+    /// One file from the phone: its name in X-Name, its bytes as the body, with their length known up front. It is
+    /// written under a name of its own in the inbox and kept only once every byte is there.
+    /// </summary>
+    async Task ReceiveFileAsync(NetworkStream stream, string[] lines, byte[] rest, CancellationToken ct)
+    {
+        if (Header(lines, "Transfer-Encoding") != null
+            || !long.TryParse(Header(lines, "Content-Length"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long length)
+            || rest.Length > length)
+        {
+            await WriteAsync(stream, 411, "Length Required", "text/plain; charset=utf-8", "The size of the file is missing"u8.ToArray(), false, ct).ConfigureAwait(false);
+            return;
+        }
+        string folder = _inbox!;
+        if (!FileTransfer.HasRoom(folder, length))
+        {
+            await WriteAsync(stream, 507, "Insufficient Storage", "text/plain; charset=utf-8", "Not enough space on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
+            return;
+        }
+        string raw = Header(lines, "X-Name") ?? "";
+        try { raw = Uri.UnescapeDataString(raw); } catch (UriFormatException) { }
+        string name = FileTransfer.SafeFileName(raw);
+
+        string path;
+        FileStream output;
+        lock (_received) // two files of the same name at once mustn't pick the same path
+        {
+            Directory.CreateDirectory(folder);
+            path = FileTransfer.UniquePath(folder, name);
+            output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, true);
+        }
+        bool whole = false;
+        try
+        {
+            await using (output)
+            {
+                await output.WriteAsync(rest, ct).ConfigureAwait(false);
+                long got = rest.Length, reported = 0;
+                var buffer = new byte[64 * 1024];
+                using var idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                while (got < length)
+                {
+                    idle.CancelAfter(BodyTimeout); // a phone that stops sending (locked, out of range) lets go after a minute
+                    int read = await stream.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, length - got)), idle.Token).ConfigureAwait(false);
+                    if (read == 0) return;
+                    await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                    got += read;
+                    if (got - reported >= 256 * 1024)
+                    {
+                        reported = got;
+                        Receiving?.Invoke(name, got, length);
+                    }
+                }
+            }
+            whole = true;
+        }
+        finally
+        {
+            if (!whole) try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        FileTransfer.MarkFromInternet(path);
+        lock (_received) _received.Add(path);
+        Received?.Invoke(path);
+        await WriteAsync(stream, 200, "OK", "text/plain; charset=utf-8", "Saved"u8.ToArray(), false, ct).ConfigureAwait(false);
     }
 
     async Task SendFileAsync(NetworkStream stream, int index, bool inline, string? range, bool headOnly, CancellationToken ct)
@@ -240,7 +448,7 @@ public sealed class PhoneShare : IDisposable
         {
             ("Content-Type", type),
             ("Content-Length", body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"),
+            ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'"),
             ("Referrer-Policy", "no-referrer"),
         };
         return WriteThenBodyAsync(stream, status, reason, headers, headOnly ? Array.Empty<byte>() : body, ct);
@@ -260,11 +468,11 @@ public sealed class PhoneShare : IDisposable
         await stream.WriteAsync(Encoding.Latin1.GetBytes(text.ToString()), ct).ConfigureAwait(false);
     }
 
-    public enum RouteKind { NotFound, Page, Download, View }
+    public enum RouteKind { NotFound, Page, Download, View, Script, Upload, Ask }
     public readonly record struct RouteResult(RouteKind Kind, int File = -1);
 
     /// <summary>"/token/" is the page, "/token/f/2" downloads the third file, "/token/v/2" shows it. Anything else: not found.</summary>
-    internal static RouteResult Route(string target, string token, int fileCount)
+    internal static RouteResult Route(string target, string token, int fileCount, bool receiving = false)
     {
         int query = target.IndexOfAny(new[] { '?', '#' });
         if (query >= 0) target = target[..query];
@@ -272,6 +480,8 @@ public sealed class PhoneShare : IDisposable
         // "/token" → ["", "token"]; "/token/" → ["", "token", ""]; "/token/f/2" → ["", "token", "f", "2"]
         if (segments.Length < 2 || segments[0].Length != 0 || !SameToken(segments[1], token)) return new(RouteKind.NotFound);
         if (segments.Length == 2 || segments.Length == 3 && segments[2].Length == 0) return new(RouteKind.Page);
+        if (receiving && segments.Length == 3 && segments[2] is "app.js" or "u" or "ask")
+            return new(segments[2] switch { "u" => RouteKind.Upload, "ask" => RouteKind.Ask, _ => RouteKind.Script });
         if (segments.Length == 4 && segments[2] is "f" or "v"
             && int.TryParse(segments[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int index)
             && index < fileCount)
@@ -344,6 +554,73 @@ public sealed class PhoneShare : IDisposable
         html.Append("</ul><p class=\"note\">This page only works on the same Wi-Fi as the PC, and only until you're done there.</p></body></html>");
         return html.ToString();
     }
+
+    /// <summary>The page the phone sees to send: one button that opens its photos and files, and a row per file sent.</summary>
+    internal static string ReceivePage(string token) => new StringBuilder()
+        .Append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
+        .Append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex\">")
+        .Append("<title>Holm</title><style>")
+        .Append(":root{color-scheme:dark}body{margin:0;padding:28px 16px;background:#000;color:#fff;")
+        .Append("font:16px -apple-system,system-ui,'Segoe UI',Roboto,sans-serif}h1{font-size:24px;margin:0 0 4px}")
+        .Append("p{color:#a6a6a6;margin:0 0 22px}ul{list-style:none;margin:22px 0 0;padding:0}")
+        .Append("li{background:#1c1c1e;border-radius:16px;padding:14px 16px;margin-bottom:10px;overflow-wrap:anywhere}")
+        .Append(".s{display:block;color:#a6a6a6;font-size:13px;margin-top:2px}")
+        .Append("label{display:block;text-align:center;background:#0a84ff;color:#fff;border-radius:22px;padding:14px;font-weight:600;font-size:17px}")
+        .Append("input{position:absolute;opacity:0;width:1px;height:1px}.note{margin:22px 0 0;font-size:13px}")
+        .Append("</style></head><body><h1>Send to your computer</h1><p>Photos, videos and files go to its Downloads folder.</p>")
+        .Append("<label>Choose photos or files<input id=\"f\" type=\"file\" multiple></label><ul id=\"l\"></ul>")
+        .Append("<p class=\"note\">This page only works on the same Wi-Fi as the computer, and only until you're done there.</p>")
+        .Append("<script src=\"/").Append(token).Append("/app.js\"></script></body></html>")
+        .ToString();
+
+    /// <summary>
+    /// Asks the computer first (once for this page), then sends the chosen files one after another, each with its
+    /// progress in its row.
+    /// </summary>
+    const string SendScript = """
+        const input = document.getElementById('f'), list = document.getElementById('l');
+        const base = location.pathname.replace(/\/?$/, '/');
+        const session = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+        let queue = Promise.resolve();
+        input.addEventListener('change', () => {
+          const files = Array.from(input.files), rows = [];
+          for (const file of files) {
+            const row = document.createElement('li'), state = document.createElement('span');
+            row.textContent = file.name;
+            state.className = 's';
+            state.textContent = 'Waiting for OK on the computer';
+            row.appendChild(state);
+            list.appendChild(row);
+            rows.push(state);
+          }
+          input.value = '';
+          if (files.length === 0) return;
+          queue = queue.then(async () => {
+            if (!await ask(files)) { for (const state of rows) state.textContent = 'Declined on the computer'; return; }
+            for (let i = 0; i < files.length; i++) await send(files[i], rows[i]);
+          });
+        });
+        async function ask(files) {
+          try {
+            const answer = await fetch(base + 'ask', { method: 'POST', headers: {
+              'X-Session': session, 'X-Name': encodeURIComponent(files[0].name),
+              'X-Count': String(files.length), 'X-Size': String(files.reduce((sum, f) => sum + f.size, 0)) } });
+            return answer.status === 200;
+          } catch { return false; }
+        }
+        function send(file, state) {
+          return new Promise(done => {
+            const request = new XMLHttpRequest();
+            request.open('POST', base + 'u');
+            request.setRequestHeader('X-Session', session);
+            request.setRequestHeader('X-Name', encodeURIComponent(file.name));
+            request.upload.onprogress = e => { if (e.lengthComputable) state.textContent = Math.floor(e.loaded * 100 / e.total) + ' %'; };
+            request.onload = () => { state.textContent = request.status === 200 ? 'On the computer ✓' : (request.responseText || 'Not sent'); done(); };
+            request.onerror = () => { state.textContent = 'Not sent. Still on the same Wi-Fi?'; done(); };
+            request.send(file);
+          });
+        }
+        """;
 
     internal static string Size(long bytes) => bytes switch
     {

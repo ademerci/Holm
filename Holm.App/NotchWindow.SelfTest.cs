@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,6 +9,9 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Holm.Platform;
+using WinNotch.Account;
+using WinNotch.Notify;
 
 namespace Holm.App;
 
@@ -19,6 +24,7 @@ namespace Holm.App;
 public sealed partial class NotchWindow
 {
     static readonly string? SelfTestFolder = Environment.GetEnvironmentVariable("HOLM_SELFTEST") is { Length: > 0 } f ? f : null;
+    List<long>? _selfTestMotionFrames;
 
     void StartSelfTest()
     {
@@ -33,14 +39,77 @@ public sealed partial class NotchWindow
         {
             Directory.CreateDirectory(folder);
             await Task.Delay(2500);
+            _hovered = false;
+            ApplyState(animate: false);
+            if (_expandedView.IsVisible)
+                throw new InvalidOperationException("The closed notch still lays out the expanded view.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "closed.png"));
+            SnapshotNotificationBadges(folder);
+            CheckNotificationRestart();
+            CheckMediaButtonAlignment();
+            CheckPhoneActionsFit();
+            var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
+            foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
+            SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
+            // Verity at her sizes in the notch and big, awake and asleep, on the notch's black.
+            var verity = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8, Background = Avalonia.Media.Brushes.Black };
+            foreach (var (size, mood) in new[] { (16.0, WinNotch.VerityMood.Awake), (30.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Asleep) })
+                verity.Children.Add(new Holm.App.Controls.VerityFace { Width = size, Height = size, Mood = mood, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom });
+            SnapshotIconStrip(verity, folder, "verity.png");
+            // And moving: a leap with its somersault and the hops after it, one pose every tenth of a second.
+            var roam = new WinNotch.VerityRoam(480, 30, new Random(4));
+            roam.Jump();
+            var moves = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Background = Avalonia.Media.Brushes.Black };
+            for (int frame = 0; frame < 36; frame++)
+            {
+                for (int i = 0; i < 3; i++) roam.Step(1 / 30.0, WinNotch.VerityMood.Awake);
+                if (frame % 2 == 1) continue;
+                var face = new Holm.App.Controls.VerityFace { Width = 30, Height = 30, Margin = new Thickness(2, 34 - roam.Lift, 2, roam.Lift) };
+                face.Pose(roam.Squash, roam.Angle, roam.Moving ? roam.Facing : 0);
+                moves.Children.Add(face);
+            }
+            SnapshotIconStrip(moves, folder, "verity-moves.png");
 
+            var motionFrames = new List<long>();
+            _selfTestMotionFrames = motionFrames;
             _hovered = true;
             ApplyState(animate: true);
             await Task.Delay(3000);
+            _selfTestMotionFrames = null;
+            // An actual pointer can enter or leave the notch while the app is posing.
+            _hovered = true;
+            ApplyState(animate: false);
+            // A snap can release the opening headroom. X11 reports the new client width asynchronously.
+            if (Math.Abs(ClientSize.Width - Width) * RenderScaling >= 1)
+                await Task.Delay(200);
+            if (!_expandedView.IsVisible || _phoneView.IsVisible)
+                throw new InvalidOperationException("The open notch has the wrong views in layout.");
             FreezeForPicture();
             Snapshot(Path.Combine(folder, "open.png"));
+            CheckWeatherLocationWhilePlaying();
+            CheckExpandedVolumeFeedback();
+            await CheckWideSpringFrameAsync();
+            // The Beam tool's page: send and receive.
+            ShowTool(Tool.Beam);
+            ApplyState(animate: false);
+            await Task.Delay(800); // the page fades in
+            FreezeForPicture();
+            Snapshot(Path.Combine(folder, "beam.png"));
+            ShowTool(Tool.None);
+            ApplyState(animate: false);
+            await SnapshotHubAsync(folder);
+
+            // The Account page as someone signed out sees it. A self-test never signs in; its account file would sit in the folder.
+            _account ??= new AccountService(_settings, _achievements, _friends, action => Dispatcher.UIThread.InvokeAsync(action).GetTask(), folder);
+            ShowHub(AccountPage.Key);
+            await Task.Delay(1500);
+            if (_settingsWindow is { } hub)
+            {
+                using var picture = new RenderTargetBitmap(new PixelSize((int)hub.Bounds.Width, (int)hub.Bounds.Height));
+                picture.Render(hub);
+                picture.Save(Path.Combine(folder, "account.png"), new PngBitmapEncoderOptions());
+            }
 
             bool volume = _audio.TryGetVolume(out float level, out bool muted);
             var power = _powerPlatform.Read();
@@ -48,6 +117,7 @@ public sealed partial class NotchWindow
                 $"system: {Environment.OSVersion} ({System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture})",
                 $"backend: {_platform.GetType().Name}",
                 $"scaling: {RenderScaling}",
+                DescribeMotionFrames(motionFrames),
                 $"volume: {(volume ? $"{level:0.00}{(muted ? " muted" : "")}" : "none")}",
                 $"meter: {(_audio.MeterWorking ? "follows the sound" : "bounces")}",
                 $"battery: {(power.HasBattery ? $"{power.Percent} %{(power.OnAc ? ", plugged in" : "")}" : "none")}",
@@ -65,6 +135,194 @@ public sealed partial class NotchWindow
             exitCode = 1;
         }
         Dispatcher.UIThread.Post(() => { Close(); Environment.Exit(exitCode); });
+    }
+
+    void CheckWeatherLocationWhilePlaying()
+    {
+        var info = _info;
+        bool weatherEnabled = _settings.Weather, mediaEnabled = _settings.MediaControls;
+        try
+        {
+            _info = new MediaInfo { Title = "Playing for the weather check", IsPlaying = true };
+            _settings.Weather = _settings.MediaControls = true;
+            RefreshHomePlayer();
+            ChoosePlace();
+            if (!_weatherBox.IsEffectivelyVisible || _mediaPanel.IsVisible)
+                throw new InvalidOperationException("The weather location field is hidden behind the media view.");
+            EndTyping();
+            EndChoosingPlace();
+            if (!_mediaPanel.IsVisible || _weatherSetup.IsVisible)
+                throw new InvalidOperationException("Closing the location picker did not restore the media view.");
+        }
+        finally
+        {
+            EndTyping();
+            _settings.Weather = weatherEnabled;
+            _settings.MediaControls = mediaEnabled;
+            _info = info;
+            EndChoosingPlace();
+            RefreshMediaUi();
+            ShowWeather();
+            ApplyState(animate: false);
+        }
+    }
+
+    static void CheckNotificationRestart()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var yesterday = new SystemNotification(1, "Discord", "Discord", new[] { "Example sender", "Yesterday's message" }, now.AddDays(-1));
+        var another = yesterday with { Id = 2 };
+        var settings = new WinNotch.AppSettings();
+        string? saved = null;
+        var inbox = new Inbox(_ => true, settings.ReadToasts, () => saved = System.Text.Json.JsonSerializer.Serialize(settings));
+        inbox.StartWatching(now);
+        ChatMessage? popped = null;
+        inbox.Changed += message => popped = message;
+        inbox.Apply(new NotificationSnapshot(null, new Dictionary<string, string>(), null));
+        inbox.Apply(new NotificationSnapshot(new[] { yesterday }, null, null));
+        if (popped != null || inbox.UnreadCount != 1)
+            throw new InvalidOperationException("A late startup toast should count silently.");
+        inbox.MarkRead("discord");
+        if (saved == null || saved.Contains("Example sender") || saved.Contains("Yesterday's message"))
+            throw new InvalidOperationException("The read receipt did not save correctly.");
+
+        var restarted = new Inbox(_ => true, System.Text.Json.JsonSerializer.Deserialize<WinNotch.AppSettings>(saved)!.ReadToasts);
+        restarted.StartWatching(now.AddSeconds(1));
+        restarted.Changed += message => popped = message;
+        restarted.Apply(new NotificationSnapshot(new[] { yesterday, another }, null, null));
+        if (popped != null || restarted.UnreadCount != 1 || restarted.Messages[0].Id != another.Id)
+            throw new InvalidOperationException("Restarting should keep read Discord notifications dismissed.");
+
+        var incoming = yesterday with { Time = now.AddSeconds(2), Lines = new[] { "Example sender", "New message" } };
+        restarted.Apply(new NotificationSnapshot(new[] { incoming, another }, null, null));
+        if (popped?.Text != "New message" || restarted.UnreadCount != 2)
+            throw new InvalidOperationException("A new Discord notification should pop out when its ID is reused.");
+    }
+
+    static string DescribeMotionFrames(List<long> frames)
+    {
+        if (frames.Count < 2) return "opening frame callbacks: no sample";
+        double fps = (frames.Count - 1) / Stopwatch.GetElapsedTime(frames[0], frames[^1]).TotalSeconds;
+        var intervals = frames.Zip(frames.Skip(1), (first, next) => Stopwatch.GetElapsedTime(first, next).TotalMilliseconds)
+            .OrderBy(ms => ms).ToArray();
+        double p90 = intervals[(int)Math.Ceiling(intervals.Length * 0.9) - 1];
+        return $"opening frame callbacks: {fps:0.#}/s, 90th percentile interval {p90:0.#} ms ({frames.Count} frames)";
+    }
+
+    async Task CheckWideSpringFrameAsync()
+    {
+        double restingWidth = Width;
+        // Put the width spring past its target, as it can be when Jelly opens the notch.
+        _wSpring.Snap(_shapeW * 1.25);
+        _wSpring.Retarget(_shapeW, 0.34, 0.63);
+        _motionRunning = true;
+        _motionLastTick = System.Diagnostics.Stopwatch.GetTimestamp();
+        StepShape(Stopwatch.GetTimestamp());
+        _motionRunning = false;
+        // X11 reports the new client size asynchronously after the resize request.
+        await Task.Delay(200);
+        UpdateLayout();
+        CheckNotchWidth();
+
+        double reservedWidth = Width, reservedHeight = Height;
+        OnShapeSettled();
+        if (Width != reservedWidth || Height != reservedHeight)
+            throw new InvalidOperationException("The animated overlay resized at the end of opening.");
+
+        // Drive a complete close without real pointer events interrupting it.
+        _hovered = false;
+        ApplyState(animate: true);
+        var closingSurface = (Width, Height, Position);
+        for (int frame = 0; _motionRunning && frame < 240; frame++)
+            StepShape(_motionLastTick + Stopwatch.Frequency / 60);
+        if (_motionRunning || _shapeAnimating || _state == NotchState.Expanded)
+            throw new InvalidOperationException("The closing notch did not settle.");
+        if ((Width, Height, Position) != closingSurface)
+            throw new InvalidOperationException("The animated overlay resized or moved at the end of closing.");
+        if (_hitRegionHeight != _shapeH * _shapeScale * 1.15 + 2 || _hitRegionHeight >= Height)
+            throw new InvalidOperationException("The closed notch did not release its reserved input area.");
+
+        _hovered = true;
+        double displayWidth = _screenWidth;
+        _screenWidth = 400;
+        ApplyState(animate: false);
+        await Task.Delay(200);
+        UpdateLayout();
+        CheckNotchWidth();
+        if (Width > _screenWidth)
+            throw new InvalidOperationException("The notch window is wider than its display.");
+
+        _screenWidth = displayWidth;
+        ApplyState(animate: false);
+        if (Width != restingWidth)
+            throw new InvalidOperationException("The notch window did not return to its resting width.");
+    }
+
+    void CheckNotchWidth()
+    {
+        var left = _backdrop.TranslatePoint(new Point(0, 0), this);
+        var right = _backdrop.TranslatePoint(new Point(_backdrop.Width, 0), this);
+        if (left is null || right is null || left.Value.X < 0 || right.Value.X > ClientSize.Width ||
+            left.Value.X < (Width - _hitRegionWidth) / 2 || right.Value.X > (Width + _hitRegionWidth) / 2)
+            throw new InvalidOperationException(
+                $"Notch edges at {left?.X:0.##} and {right?.X:0.##}, client width {ClientSize.Width:0.##}, " +
+                $"requested width {Width:0.##}, hit region width {_hitRegionWidth:0.##}.");
+
+    }
+
+    void CheckExpandedVolumeFeedback()
+    {
+        bool statusShown = _statusSection.IsVisible;
+        _statusSection.IsVisible = false;
+        OnVolumeChanged(0.6f, muted: false);
+        if (!_expandedVolumeView.IsVisible || _state != NotchState.Expanded)
+            throw new InvalidOperationException("The open notch did not show the volume with Status hidden.");
+        _volumeTimer.Stop();
+        _volumePeek = false;
+        _statusSection.IsVisible = statusShown;
+        ApplyState(animate: false);
+    }
+
+    void CheckPhoneActionsFit()
+    {
+        _phoneView.IsVisible = true;
+        _phoneStatus.Text = $"Receiving {new string('a', 240)}.jpg · 20%";
+        var size = new Size(420, 160);
+        foreach (var actions in new[] { _phoneButtons, _phoneAskButtons })
+        {
+            _phoneButtons.IsVisible = actions == _phoneButtons;
+            _phoneAskButtons.IsVisible = actions == _phoneAskButtons;
+            // Measure the new set of visible buttons immediately, before the normal layout pass.
+            (actions.GetVisualParent() as Grid)?.InvalidateMeasure();
+            _phoneView.InvalidateMeasure();
+            _phoneView.Measure(size);
+            _phoneView.Arrange(new Rect(size));
+            var bottom = actions.TranslatePoint(new Point(0, actions.Bounds.Height), _phoneView);
+            if (bottom is null || actions.Bounds.Height < 25 || bottom.Value.Y > _phoneView.Bounds.Height + 0.5)
+                throw new InvalidOperationException(
+                    $"Phone {(actions == _phoneButtons ? "Done/Copy link" : "Accept/Decline")} actions have bounds {actions.Bounds} " +
+                    $"and end at {bottom} inside a card with bounds {_phoneView.Bounds}.");
+        }
+        _phoneStatus.Text = "";
+        _phoneButtons.IsVisible = true;
+        _phoneAskButtons.IsVisible = false;
+        _phoneView.IsVisible = false;
+    }
+
+    static void CheckMediaButtonAlignment()
+    {
+        foreach (var (geometry, width, height) in new[] { (PrevGeo, 21, 15), (NextGeo, 21, 15), (PlayGeo, 18, 20), (PauseGeo, 18, 20) })
+        {
+            var icon = IconPath(geometry, width, height);
+            var button = new Controls.NotchButton(icon);
+            var size = new Size(42, 42);
+            button.Measure(size);
+            button.Arrange(new Rect(size));
+            var drawn = icon.RenderedGeometry?.Bounds ?? throw new InvalidOperationException("Media icon geometry is missing.");
+            var center = icon.Bounds.Position + (Vector)drawn.Center;
+            if (Math.Abs(center.X - size.Width / 2) > 0.1 || Math.Abs(center.Y - size.Height / 2) > 0.1)
+                throw new InvalidOperationException($"Media icon is drawn at {center} within a {size} button.");
+        }
     }
 
     /// <summary>What differs between machines rather than systems (the time, the volume) is set alike before a picture.</summary>
@@ -90,10 +348,39 @@ public sealed partial class NotchWindow
         catch (Exception ex) { return ex.GetType().Name; }
     }
 
+    void SnapshotNotificationBadges(string folder)
+    {
+        var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
+        foreach (var app in WinNotch.Notify.Messengers.All)
+            strip.Children.Add(AppLogo(app.Key, BadgeLogoSize));
+        strip.Children.Add(UpdateNotificationIcon(BadgeLogoSize));
+        foreach (int percent in new[] { 0, 50, 100 })
+        {
+            var badge = UpdateNotificationIcon(BadgeLogoSize);
+            badge.SetProgress(percent);
+            strip.Children.Add(badge);
+        }
+        SnapshotIconStrip(strip, folder, "notification-badges.png");
+    }
+
+    static void SnapshotIconStrip(StackPanel strip, string folder, string file)
+    {
+        strip.Measure(Avalonia.Size.Infinity);
+        strip.Arrange(new Rect(strip.DesiredSize));
+        using var bitmap = new RenderTargetBitmap(new PixelSize((int)strip.Bounds.Width * 3, (int)strip.Bounds.Height * 3), new Vector(288, 288));
+        bitmap.Render(strip);
+        bitmap.Save(Path.Combine(folder, file), new PngBitmapEncoderOptions());
+    }
+
     void FreezeForPicture()
     {
         _minute.Stop();
         _idleClock.Text = _clockBig.Text = "09:41";
+        // A minute that turned over just before would leave the big clock mid-roll (faded, shifted) in the picture.
+        StopTween(_clockBig, "roll");
+        StopTween(_clockBig, "roll-fade");
+        _clockBig.RenderTransform = null;
+        _clockBig.Opacity = 1;
         _dateText.Text = "Monday, November 16";
         _volSlider.Value = 0.5;
         _volSlider.Opacity = 1;
@@ -122,5 +409,17 @@ public sealed partial class NotchWindow
         bitmap.Render(this);
         if (fallback != null) fallback.IsVisible = shown;
         bitmap.Save(file, new PngBitmapEncoderOptions());
+    }
+
+    /// <summary>With HOLM_SELFTEST_HUB=page also a picture of the Holm window on that page (hub.png), to see a design.</summary>
+    async Task SnapshotHubAsync(string folder)
+    {
+        if (Environment.GetEnvironmentVariable("HOLM_SELFTEST_HUB") is not { Length: > 0 } page) return;
+        ShowHub(page);
+        await Task.Delay(1500);
+        if (_settingsWindow is not { } hub) return;
+        using var bitmap = new RenderTargetBitmap(new PixelSize((int)hub.Bounds.Width, (int)hub.Bounds.Height));
+        bitmap.Render(hub);
+        bitmap.Save(Path.Combine(folder, "hub.png"), new PngBitmapEncoderOptions());
     }
 }

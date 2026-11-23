@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Animation;
@@ -16,7 +16,8 @@ namespace Holm.App;
 // each view is named after its counterpart there.
 public sealed partial class NotchWindow
 {
-    static readonly IBrush Dim = Brush("#A6FFFFFF"), Faint = Brush("#66FFFFFF"), ArtFallback = Brush("#FF262628");
+    static readonly IBrush Dim = Look.Prism ? Look.Brush(Look.Current.DimColor) : Look.InkA(0xA6),
+        Faint = Look.Prism ? Look.Brush(Look.Current.FaintColor) : Look.InkA(0x66), ArtFallback = Brush("#FF262628");
     static readonly FontFamily IconFont = Fonts.Icons;
     static readonly FontFamily DisplayFont = Fonts.Display;
     static readonly Geometry PlayGeo = Geometry.Parse("M3,1 L16,9 L3,17 Z"),
@@ -26,7 +27,7 @@ public sealed partial class NotchWindow
 
     static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color)).ToImmutable();
 
-    static readonly IBrush Ink = Brush("#FFF2F2F2");
+    static readonly IBrush Ink = Look.Ink;
 
     // Backdrop
     // Two layers for the cover's colours: a new cover fades in on top of the old one.
@@ -37,7 +38,7 @@ public sealed partial class NotchWindow
 
     // Idle
     readonly Grid _idleView = new() { Margin = new Thickness(14, 0, 14, 0) };
-    readonly TextBlock _idleClock = new()
+    readonly TextBlock _idleClock = new DotTextBlock()
     {
         FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Dim,
         HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
@@ -54,17 +55,43 @@ public sealed partial class NotchWindow
     StackPanel _eqPanel = null!;
 
     // Volume: the level just changed
-    readonly Grid _volumeView = new() { Margin = new Thickness(16, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,40") };
-    readonly TextBlock _volPeekIcon = new() { FontFamily = IconFont, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
-    readonly MiniSlider _volPeekBar = new() { IsInteractive = false, Margin = new Thickness(12, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _volPeekText = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+    readonly VolumeIndicator _volumeView = new() { Margin = new Thickness(16, 0) };
+    readonly VolumeIndicator _expandedVolumeView = new()
+    {
+        Width = 218, Height = 34, Margin = new Thickness(0, 6, 0, 0),
+        HorizontalAlignment = HorizontalAlignment.Center, IsVisible = false, IsHitTestVisible = false,
+    };
     readonly DispatcherTimer _volumeTimer = new() { Interval = TimeSpan.FromMilliseconds(1600) };
+
+    sealed class VolumeIndicator : Grid
+    {
+        readonly TextBlock _icon = new() { FontFamily = IconFont, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
+        readonly MiniSlider _bar = new() { IsInteractive = false, Margin = new Thickness(12, 0), VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock _text = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+
+        public VolumeIndicator()
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,40");
+            SetColumn(_bar, 1);
+            SetColumn(_text, 2);
+            Children.AddRange(new Control[] { _icon, _bar, _text });
+        }
+
+        public void Update(float level, bool muted, IBrush fill)
+        {
+            _bar.Value = muted ? 0 : level;
+            _bar.Fill = fill;
+            _icon.Text = VolumeGlyph(level, muted);
+            _text.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        }
+    }
 
     // Expanded: hover
     readonly Grid _expandedView = new()
     {
         Width = 480, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
         Margin = new Thickness(0, 14, 0, 0),
+        RowDefinitions = new RowDefinitions("Auto,Auto"),
     };
     readonly StackPanel _mediaPanel = new() { IsVisible = false };
     readonly StackPanel _clockPanel = new() { Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Top };
@@ -85,7 +112,7 @@ public sealed partial class NotchWindow
     readonly TextBlock _shuffleIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     readonly TextBlock _repeatIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     NotchButton _playBtn = null!, _prevBtn = null!, _nextBtn = null!, _shuffleBtn = null!, _repeatBtn = null!;
-    readonly TextBlock _clockBig = new() { FontFamily = DisplayFont, FontSize = 40, FontWeight = FontWeight.Light, Margin = new Thickness(0, -5, 0, 0) };
+    readonly TextBlock _clockBig = new DotTextBlock { FontFamily = DisplayFont, FontSize = 40, FontWeight = FontWeight.Light, Margin = new Thickness(0, -5, 0, 0) };
     readonly TextBlock _volIcon = new() { Text = "\uE995", FontFamily = IconFont, FontSize = 14, Foreground = Dim };
     readonly MiniSlider _volSlider = new() { Width = 84, Margin = new Thickness(2, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _dateText = new() { FontSize = 13, Foreground = Dim, Margin = new Thickness(1, 0, 0, 0) };
@@ -108,17 +135,23 @@ public sealed partial class NotchWindow
 
     static Path IconPath(Geometry data, double width, double height) => new()
     {
-        Data = data, Fill = Brushes.White, Stroke = Brushes.White, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
-        Stretch = Stretch.Uniform, Width = width, Height = height,
+        Data = data, Fill = Look.Ink, Stroke = Look.Ink, StrokeThickness = 1.6, StrokeJoin = PenLineJoin.Round,
+        // Let the path take its fitted size so the button can centre the drawn icon.
+        Stretch = Stretch.Uniform, MaxWidth = width, MaxHeight = height, UseLayoutRounding = false,
     };
 
     void BuildViews()
     {
         // One backdrop for the notch and its concave "shoulders", so the cover colours flow into both.
         (_artFront, _artBack) = (_artLayerA, _artLayerB);
-        _backdrop.Children.Add(new Rectangle { Fill = Brushes.Black });
+        _backdrop.Children.Add(new Rectangle { Fill = Look.NotchFill() });
+        if (Look.Aero) _backdrop.Children.Add(new AeroScenery());
+        DesignDetail.AddTo(_backdrop, Look.Current);
+        if (DotTextBlock.Enabled) _backdrop.Children.Add(new Rectangle { Fill = DotMatrix.Grid(Look.Current.Ink), IsHitTestVisible = false });
         _backdrop.Children.Add(_artLayerA);
         _backdrop.Children.Add(_artLayerB);
+        _backdrop.Children.Add(_edge);
+        if (_prismRim != null) _backdrop.Children.Add(_prismRim);
 
         _idleView.Children.Add(_idleClock);
 
@@ -127,7 +160,7 @@ public sealed partial class NotchWindow
         {
             _bars[i] = new Rectangle
             {
-                Width = 3, Height = 14, RadiusX = 1.5, RadiusY = 1.5, Fill = Brushes.White, Margin = new Thickness(1, 0),
+                Width = 3, Height = 14, RadiusX = 1.5, RadiusY = 1.5, Fill = Look.Ink, Margin = new Thickness(1, 0),
                 RenderTransformOrigin = RelativePoint.Center, RenderTransform = _barScales[i] = new ScaleTransform(1, BarRest[i]),
             };
             eq.Children.Add(_bars[i]);
@@ -138,9 +171,6 @@ public sealed partial class NotchWindow
         _compactView.Children.Add(_compactTimer);
         BuildTimer();
 
-        Grid.SetColumn(_volPeekBar, 1);
-        Grid.SetColumn(_volPeekText, 2);
-        _volumeView.Children.AddRange(new Control[] { _volPeekIcon, _volPeekBar, _volPeekText });
         _volumeTimer.Tick += (_, _) => { _volumeTimer.Stop(); _volumePeek = false; ApplyState(animate: true); };
         _eqTimer.Tick += (_, _) => TickEqualizer();
 
@@ -155,19 +185,19 @@ public sealed partial class NotchWindow
         }
 
         _live.Tick += (_, _) => { UpdateLive(); UpdateBigClock(); };
-        _minute.Tick += (_, _) => { UpdateClock(); ShowIdleStatus(); ScheduleMinute(); };
+        _minute.Tick += (_, _) => { UpdateClock(); ShowIdleStatus(); ShowVerity(); ScheduleMinute(); };
     }
 
     void BuildExpanded()
     {
         var panel = _expandedPanel;
         // Tools: each opens its page in place of home; click again to go back
-        panel.Children.Add(BuildToolRow());
+        _toolRow = BuildToolRow();
 
         // Home: the player (or the clock)
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         _bigArt.Child = _artPlaceholder;
-        var texts = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var texts = _playerTexts = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         texts.Children.Add(_titleText);
         texts.Children.Add(_artistText);
         texts.Children.Add(_appText);
@@ -200,7 +230,6 @@ public sealed partial class NotchWindow
             {
                 // Feels instant; the real state follows a moment later.
                 _playIcon.Data = _info.IsPlaying ? PlayGeo : PauseGeo;
-                _playIcon.Margin = new Thickness(_info.IsPlaying ? 3 : 0, 0, 0, 0);
             }
             _media.PlayPause();
         };
@@ -215,8 +244,8 @@ public sealed partial class NotchWindow
         _mediaPanel.Children.Add(controls);
 
         // No music: time and date stay at the top of home.
-        var clockHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var clockStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+        var clockHeader = _clockHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var clockStack = _clockStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
         clockStack.Children.Add(_clockBig);
         clockStack.Children.Add(_dateText);
         clockHeader.Children.Add(clockStack);
@@ -225,29 +254,31 @@ public sealed partial class NotchWindow
         BuildSky(clockStack);
         BuildClockView(clockStack);
 
-        _homePanel.Children.Add(_mediaPanel);
-        _homePanel.Children.Add(_clockPanel);
-        _homePanel.Children.Add(_downloadRow);
-        panel.Children.Add(_homePanel);
-        panel.Children.Add(BuildToolPages());
-
-        panel.Children.Add(new Border { Height = 1, Background = Brush("#1AFFFFFF"), Margin = new Thickness(0, 12, 0, 8) });
+        // The sections of home; the rows of the others join them later (the constructor), and ApplyHomeLayout puts
+        // them into the open notch in your order.
+        _mainSection.Children.Add(_mediaPanel);
+        _mainSection.Children.Add(_clockPanel);
+        BuildToolPages();
 
         // Below the line: the battery and connected devices on the left, the volume on the right.
         var muteBtn = new NotchButton(_volIcon) { Width = 30, Height = 30 };
         muteBtn.Click += () => { _audio.ToggleMute(); ReadVolume(); };
         _volSlider.ValueChanging += v => { _audio.SetVolume((float)v); UpdateVolumeIcon(v, false); };
-        var sound = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var sound = _soundPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         sound.Children.Add(muteBtn);
         sound.Children.Add(_volSlider);
         BuildAiButton(sound);
         BuildOutputButtons(sound);
-        var bottom = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var bottom = _statusRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(sound, 1);
         bottom.Children.Add(_devicesPanel);
         bottom.Children.Add(sound);
-        panel.Children.Add(bottom);
+        _statusSection.Children.Add(_statusLineAbove);
+        _statusSection.Children.Add(bottom);
+        _statusSection.Children.Add(_statusLineBelow);
         _expandedView.Children.Add(panel);
+        Grid.SetRow(_expandedVolumeView, 1);
+        _expandedView.Children.Add(_expandedVolumeView);
     }
 
     void StartClock()
@@ -293,29 +324,36 @@ public sealed partial class NotchWindow
         return _artBrush!;
     }
 
-    void RefreshMediaUi()
+    void RefreshHomePlayer()
     {
-        var info = _info;
-        bool media = _settings.MediaControls && info != null && !_choosingPlace;
-        _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
-        if (Look.Instrument) PlaceToolBar(_mediaClockHeader.IsVisible);
+        bool media = _settings.MediaControls && _info != null && !_choosingPlace;
         if (_mediaPanel.IsVisible != media)
         {
             _mediaPanel.IsVisible = media;
             _clockPanel.IsVisible = !media;
+            ShowHomeSections(); // the cards come and go with the clock
             FadeIn(media ? _mediaPanel : _clockPanel);
+            if (!media && _todaySection.IsVisible) FadeIn(_todaySection);
         }
+    }
+
+    void RefreshMediaUi()
+    {
+        var info = _info;
+        _mediaClockHeader.IsVisible = _settings.MediaControls && info != null;
+        if (Look.Instrument) PlaceToolBar(_mediaClockHeader.IsVisible);
+        RefreshHomePlayer();
         _compactArt.Background = ArtBrush(info?.Art);
         RefreshBigClockMedia();
         if (_clockViewOpen) RefreshBigClockStyle();
         RefreshMediaWeather();
         if (info == null) { UpdateClock(); return; }
 
-        // The instrument look: one ink for the progress, the volume and the equalizer; the classic one the cover's colour.
-        var accent = Look.Instrument ? Ink : new SolidColorBrush(info.Accent).ToImmutable();
+        // Designs with the cover's colours take the cover's colour for the progress, the volume and the equalizer; the others their accent.
+        var accent = Look.Current.Wash ? new SolidColorBrush(info.Accent).ToImmutable() : Look.Accent;
         foreach (var bar in _bars) bar.Fill = accent;
         _progress.Fill = accent;
-        if (Look.Instrument) _volSlider.Fill = accent;
+        if (!Look.Current.Wash) _volSlider.Fill = accent;
 
         _titleText.Text = info.Title;
         _artistText.Text = info.Artist;
@@ -334,7 +372,6 @@ public sealed partial class NotchWindow
         _repeatIcon.Text = info.Repeat == 1 ? "" : ""; // repeat one / repeat all
 
         _playIcon.Data = info.IsPlaying ? PauseGeo : PlayGeo;
-        _playIcon.Margin = new Thickness(info.IsPlaying ? 0 : 3, 0, 0, 0); // a triangle looks off-centre when centred
         _playBtn.IsEnabled = info.CanPlayPause;
         _prevBtn.IsEnabled = info.CanPrevious;
         _nextBtn.IsEnabled = info.CanNext;
@@ -380,12 +417,11 @@ public sealed partial class NotchWindow
     /// <summary>The volume changed, by a key, another app or us: the open notch follows, the closed one shows it for a moment.</summary>
     void OnVolumeChanged(float level, bool muted)
     {
-        if (_state == NotchState.Expanded) { ReadVolume(); return; }
+        if (_state == NotchState.Expanded && _volSlider.IsEffectivelyVisible) { ReadVolume(); return; }
 
-        _volPeekBar.Value = muted ? 0 : level;
-        _volPeekBar.Fill = _info?.IsPlaying == true ? _progress.Fill : Brushes.White;
-        _volPeekIcon.Text = VolumeGlyph(level, muted);
-        _volPeekText.Text = muted ? "Muted" : $"{Math.Round(level * 100)}%";
+        var fill = _info?.IsPlaying == true ? _progress.Fill : Look.Ink;
+        _volumeView.Update(level, muted, fill);
+        _expandedVolumeView.Update(level, muted, fill);
         bool wasVolume = _state == NotchState.Volume;
         _volumePeek = true;
         _volumeTimer.Stop();
@@ -460,7 +496,7 @@ public sealed partial class NotchWindow
     void UpdateBackdrop()
     {
         // The instrument look keeps the notch black: the cover shows in its own square, never washed over the notch.
-        var wanted = !Look.Instrument && _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
+        var wanted = Look.Current.Wash && _info is { Backdrop: { } art } info && (info.IsPlaying || _state == NotchState.Expanded) ? art : null;
         if (ReferenceEquals(wanted, _shownBackdrop)) return;
         _shownBackdrop = wanted;
         if (!_settings.Animations)
@@ -472,7 +508,7 @@ public sealed partial class NotchWindow
             if (wanted != null && _info != null)
             {
                 _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
-                ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+                ((Border)_artFront.Child!).Opacity = _info.BackdropShade * Look.Current.Shade;
             }
             return;
         }
@@ -484,7 +520,7 @@ public sealed partial class NotchWindow
         }
         (_artFront, _artBack) = (_artBack, _artFront);
         _artFront.Background = new ImageBrush(wanted) { Stretch = Stretch.UniformToFill };
-        ((Border)_artFront.Child!).Opacity = _info.BackdropShade;
+        ((Border)_artFront.Child!).Opacity = _info.BackdropShade * Look.Current.Shade;
         _artFront.ZIndex = 2;
         _artBack.ZIndex = 1;
         var back = _artBack;

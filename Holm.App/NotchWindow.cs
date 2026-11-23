@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Holm.App.Controls;
 using Holm.Platform;
 using WinNotch;
 
@@ -37,6 +38,14 @@ public sealed partial class NotchWindow : Window
     readonly Canvas _root = new();
     /// <summary>The black surface (and the cover's colours on it), as wide as the notch plus a shoulder on each side.</summary>
     readonly Panel _backdrop = new();
+    readonly PrismGlass? _prismRim = Look.Prism ? new() { IsHitTestVisible = false } : null;
+    // The design's line around the notch (Neon, Terminal, Brutalist …), drawn inside it: the clip keeps the outer half off.
+    readonly Avalonia.Controls.Shapes.Path _edge = new()
+    {
+        IsHitTestVisible = false, IsVisible = Look.Current.Edge != 0, Stroke = Look.Brush(Look.Current.Edge),
+        StrokeThickness = Look.Current.EdgeWidth * 2,
+        Effect = Look.Current.Glow ? new DropShadowEffect { BlurRadius = 10, OffsetX = 0, OffsetY = 0, Color = Color.FromUInt32(Look.Current.Edge) } : null,
+    };
     /// <summary>The notch itself: what is in it, and what the mouse opens.</summary>
     readonly Border _island = new() { Background = Brushes.Transparent };
     readonly Grid _islandContent = new();
@@ -46,15 +55,18 @@ public sealed partial class NotchWindow : Window
     SpringValue _rSpring = new(15, 0.15, 2.0);
     SpringValue _earSpring = new(MaxEar, 0.1, 1.5);
     SpringValue _scaleSpring = new(1, 0.0008, 0.015);
+    SpringValue _dragLean = new(0, 0.08, 0.5);
+    readonly SkewTransform _dragSkew = new();
     /// <summary>The notch's size preference (Customize › Collapsed / Expanded size), applied to everything in it.</summary>
     readonly ScaleTransform _notchScale = new(1, 1);
 
     NotchState _state = NotchState.Idle;
     bool _motionRunning, _hovered, _opened, _volumePeek, _mini;
-    /// <summary>Work that opening needs but that doesn't change the open notch's size: done once it has landed.</summary>
-    bool _openSettling;
     long _motionLastTick;
     double _shapeW = 150, _shapeH = 30, _shapeR = 15, _shapeScale = 1;
+    (double Width, double Height, double Radius, double Ear) _drawnOutline;
+    double _hitRegionWidth, _hitRegionHeight;
+    double _screenWidth = double.PositiveInfinity;
     bool _shapeAnimating, _hoverBoost;
     MediaInfo? _info;
 
@@ -82,6 +94,7 @@ public sealed partial class NotchWindow : Window
         // saves, on every system (it was read-only on Windows while the port ran next to the WPF app).
         AppSettings.ReadOnly = SelfTestFolder != null;
         Spring.Bounce = _settings.Bounce ? _settings.BounceLevel : 0;
+        Spring.Jelly = _settings.Jelly;
 
         Title = "Holm";
         Width = BaseWidth;
@@ -100,7 +113,8 @@ public sealed partial class NotchWindow : Window
         X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dock);
         FontFamily = Fonts.Text;
         Fonts.ApplyRendering(this);
-        Foreground = Brushes.White;
+        Foreground = Look.Ink;
+        FontFamily = Look.Font;
 
         BuildViews();
         BuildShelf();
@@ -112,6 +126,8 @@ public sealed partial class NotchWindow : Window
         InitBeam(platform);
         InitHub();
         InitAchievements();
+        InitVerity();
+        InitAccount();
         InitActivity();
         InitStreaming();
         InitSendLater();
@@ -120,10 +136,11 @@ public sealed partial class NotchWindow : Window
         InitDictation(platform);
         InitPhone();
         BuildToday();
-        // The rows of home in the WPF app's order (MainWindow.xaml), whichever feature added them first.
-        foreach (var row in new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow })
-            _homePanel.Children.Remove(row);
-        _homePanel.Children.AddRange(new Control[] { _mediaPanel, _clockPanel, _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow, _shelfRow });
+        // The rows of home in the WPF app's order (MainWindow.xaml), each in its section; the sections go where you put
+        // them (Settings › Start page), in that order unless you moved them.
+        _liveSection.Children.AddRange(new Control[] { _quietNote, _clearNotificationsBtn, _messageRows, _downloadRow, _laterRows, _usbRows, _callRow, _privacyRows, _timerRow });
+        _shelfSection.Children.Add(_shelfRow);
+        ApplyHomeLayout();
         _island.Child = _islandContent;
         _root.Children.Add(_backdrop);
         _root.Children.Add(_island);
@@ -132,9 +149,8 @@ public sealed partial class NotchWindow : Window
         _root.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
         _root.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
         _root.RenderTransformOrigin = new RelativePoint(0.5, 0, RelativeUnit.Relative);
-        _root.RenderTransform = _notchScale;
+        _root.RenderTransform = new TransformGroup { Children = { _dragSkew, _notchScale } };
         Content = _root;
-        Width = BaseWidth * Math.Max(CollapsedScale, ExpandedScale);
 
         InitMotion();
         InitPositionDrag();
@@ -151,8 +167,11 @@ public sealed partial class NotchWindow : Window
         base.OnOpened(e);
         _opened = true;
         if (TryGetPlatformHandle() is { } handle) _platform.MakeOverlay(handle.Handle);
-        PositionWindow();
-        Screens.Changed += (_, _) => PositionWindow(); // a display came or went
+        FitToScreen();
+        // A display came or went, or the notch moved to one with another scale (125 % to 100 %): the window's cut-out is
+        // in device pixels, so it is worked out again, or the notch shows clipped into a stale, shifted rectangle.
+        Screens.Changed += (_, _) => FitToScreen();
+        ScalingChanged += (_, _) => FitToScreen();
         UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
         StartClock();
         ShowIdleStatus();
@@ -170,10 +189,12 @@ public sealed partial class NotchWindow : Window
         StartScreenshots();
         StartUsb();
         StartVpn();
-        StartFullscreen();
+        // Keep the notch on screen for the visual self-test, even behind a fullscreen foreground app.
+        if (SelfTestFolder == null) StartFullscreen();
         StartPrivacy();
         StartMessages();
         StartSharing();
+        StartAccount();
         StartSendLater();
         StartUpdates();
         StartFocumon();
@@ -187,6 +208,10 @@ public sealed partial class NotchWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _opened = false;
+        _animationTiming?.Dispose();
+        _animationTiming = null;
+        HideMixer();
         _eqTimer.Stop();
         _powerPlatform.Stop();
         _audio.Stop();
@@ -209,8 +234,33 @@ public sealed partial class NotchWindow : Window
         StopDictation();
         StopPhone();
         StopAiUsage();
+        StopAccount();
         ForgetClipFiles();
         base.OnClosed(e);
+    }
+
+    /// <summary>Places the window on its screen again and redoes its size and cut-out for that screen's scale.</summary>
+    void FitToScreen()
+    {
+        double width = ChosenScreen() is { } screen
+            ? Math.Max(3, Math.Floor(screen.Bounds.Width / screen.Scaling))
+            : double.PositiveInfinity;
+        if (_screenWidth != width)
+        {
+            _screenWidth = width;
+            ApplyState(animate: false);
+        }
+        PositionWindow();
+        if (_motionRunning)
+        {
+            // Keep the room reserved for the current animation when converting to the new DPI.
+            ApplyHitRegion();
+        }
+        else
+        {
+            FitWindowHeight();
+            UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        }
     }
 
     /// <summary>Top centre of the primary screen.</summary>
@@ -264,6 +314,8 @@ public sealed partial class NotchWindow : Window
         bool browserMini = _browserInFront && !_hiddenForFullscreen && SensorsInUse.Count == 0
                            && target is NotchState.Idle or NotchState.Badge or NotchState.Media or NotchState.Timer or NotchState.Focumon;
         if (browserMini) target = NotchState.Idle;
+        _expandedVolumeView.IsVisible = target == NotchState.Expanded && _state == NotchState.Expanded
+                                        && _volumePeek && !_volSlider.IsEffectivelyVisible;
         PlacePrivacyDots(target == NotchState.Badge);
         // Minimize when idle: a small pill without shoulders while nothing is going on.
         bool mini = browserMini || (target == NotchState.Idle && _settings.MiniIdle && SensorsInUse.Count == 0);
@@ -271,8 +323,10 @@ public sealed partial class NotchWindow : Window
         switch (target)
         {
             case NotchState.Expanded:
+                _expandedView.IsVisible = true;
                 ShowQuietNote();
                 if (_clockPanel.IsVisible) ShowToday();
+                SpaceHome();
                 // A page that just changed (rows added, a longer note) is still waiting for layout, and measuring
                 // only the top would hand back its old size: lay out first.
                 UpdateLayout();
@@ -280,6 +334,7 @@ public sealed partial class NotchWindow : Window
                 (w, h, r) = (ExpandedWidth, Math.Ceiling(_expandedView.DesiredSize.Height) + 18, 32);
                 break;
             case NotchState.Share:
+                _shareView.IsVisible = true;
                 _shareView.Measure(new Size(ExpandedWidth, double.PositiveInfinity));
                 (w, h, r) = (400, Math.Ceiling(_shareView.DesiredSize.Height) + 6, 28);
                 break;
@@ -290,7 +345,9 @@ public sealed partial class NotchWindow : Window
             case NotchState.Message: (w, h, r) = (350, 54, 24); break;
             case NotchState.Badge: (w, h, r) = (Look.Pick(110, 170), 30, 15); break;
             case NotchState.Download: (w, h, r) = (330, 34, 17); break;
-            case NotchState.Media: (w, h, r) = (220, 32, 16); break;
+            case NotchState.Media:
+                (w, h, r) = (220 + Math.Max(0, _mediaBadgeLogos.Children.Count - 2) * (MediaBadgeLogoSize + BadgeLogoSpacing), 32, 16);
+                break;
             case NotchState.Call: (w, h, r) = (190, 32, 16); break;
             case NotchState.Dictation: (w, h, r) = (190, 32, 16); break;
             case NotchState.Timer: (w, h, r) = (170, 30, 15); break;
@@ -298,22 +355,27 @@ public sealed partial class NotchWindow : Window
             default: (w, h, r) = mini ? (96, 6, 3) : (150, 30, 15); break;
         }
         w += PlaceAiWings(target, mini); // Codenotch's rings at the ends of the closed notch
+        w += VerityRoom(target, mini);
 
         // Media apps report every few seconds; only animate when the shape really changes.
         double scale = target == NotchState.Expanded ? ExpandedScale : CollapsedScale;
+        scale = NotchPlacement.FitScale(scale, w + 2 * MaxEar, _screenWidth);
         if (!animate || w != _shapeW || h != _shapeH || r != _shapeR || mini != _mini || scale != _shapeScale)
         {
             double currentScale = _scaleSpring.Value;
             bool grow = w * h * scale * scale > _wSpring.Value * _hSpring.Value * currentScale * currentScale;
+            bool resizeOpenHeight = _state == NotchState.Expanded && target == NotchState.Expanded
+                                    && w == _shapeW && r == _shapeR && scale == _shapeScale;
             (_shapeW, _shapeH, _shapeR, _shapeScale) = (w, h, r, scale);
             double ear = mini ? 0 : MaxEar;
-            if (animate) MoveShapeTo(w, h, r, ear, scale, grow, mini);
+            if (animate) MoveShapeTo(w, h, r, ear, scale, grow, mini, resizeOpenHeight);
             else SnapShape(w, h, r, ear, scale);
         }
 
         if (target != _state || mini != _mini || !animate)
         {
-            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded) Unfold();
+            if (animate && target == NotchState.Expanded && _state != NotchState.Expanded && _expandedView.Opacity == 0)
+                Unfold();
             SetView(_idleView, target == NotchState.Idle && !mini, animate);
             SetView(_compactView, target == NotchState.Media, animate);
             SetView(_timerView, target == NotchState.Timer, animate);
@@ -332,12 +394,26 @@ public sealed partial class NotchWindow : Window
             if (_state == NotchState.Expanded && target != NotchState.Expanded) { EndTyping(); SaveNotes(); EndChoosingPlace(); }
             _state = target;
             _mini = mini;
-            if (target == NotchState.Expanded) { _volumePeek = false; _volumeTimer.Stop(); UpdateLive(); RefreshDevices(); RefreshOutputButtons(); _openSettling = true; _live.Start(); }
+            if (target == NotchState.Expanded)
+            {
+                _volumePeek = false;
+                _volumeTimer.Stop();
+                UpdateLive();
+                RefreshDevices();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!_opened || _state != NotchState.Expanded) return;
+                    RefreshOutputButtons();
+                    ScanBluetooth();
+                }, DispatcherPriority.Background);
+                _live.Start();
+            }
             else _live.Stop();
         }
         UpdateBackdrop();
         UpdateEqualizer();
         ShowSky();
+        ShowVerity();
     }
 
     /// <summary>Room for a shape this high at this scale, including the spring's overshoot.</summary>
@@ -345,6 +421,17 @@ public sealed partial class NotchWindow : Window
 
     double CollapsedScale => Math.Clamp(_settings.CollapsedScale, 0.7, 1.5);
     double ExpandedScale => Math.Clamp(_settings.ExpandedScale, 0.7, 1.5);
+
+    void FitWindowWidth(double width)
+    {
+        // Room for the opening spring's overshoot (the same 12 % as the hit region): growing the window frame by frame
+        // moved it on the screen by a pixel each time, and the opening notch shook.
+        double preferred = Math.Ceiling(Math.Max(BaseWidth, (ExpandedWidth + 2 * MaxEar) * 1.12) * Math.Max(CollapsedScale, ExpandedScale));
+        double needed = Math.Min(_screenWidth, Math.Max(preferred, Math.Ceiling(width) + NotchPlacement.WidthPadding));
+        if (Width == needed) return;
+        Width = needed;
+        if (_opened) PositionWindow();
+    }
 
     void SnapShape(double w, double h, double r, double ear, double scale)
     {
@@ -356,12 +443,15 @@ public sealed partial class NotchWindow : Window
         _rSpring.Snap(r);
         _earSpring.Snap(ear);
         _scaleSpring.Snap(scale);
+        _dragLean.Snap(0);
+        _dragSkew.AngleX = 0;
+        FitWindowWidth((w + 2 * MaxEar) * scale);
         ApplyShape(w, h, r, ear, scale);
         FitWindowHeight();
         UpdateHitRegion(w, h, scale);
     }
 
-    void MoveShapeTo(double w, double h, double r, double ear, double scale, bool grow, bool mini)
+    void MoveShapeTo(double w, double h, double r, double ear, double scale, bool grow, bool mini, bool resizeOpenHeight)
     {
         _hoverBoost = false;
         // Opening is slightly softer on height than width for a liquid squash-and-stretch feel;
@@ -369,7 +459,7 @@ public sealed partial class NotchWindow : Window
         double wResp = grow ? 0.34 : 0.30;
         double hResp = grow ? 0.38 : (mini ? 0.27 : 0.33);
         double wDamp = grow ? 0.63 : (mini ? 0.78 : 0.73);
-        double hDamp = grow ? 0.60 : (mini ? 1.0 : 0.75);
+        double hDamp = resizeOpenHeight || mini ? 1.0 : grow ? 0.60 : 0.75;
         double rDamp = grow ? 0.64 : (mini ? 1.0 : 0.75);
         double earDamp = grow ? 0.68 : (mini ? 1.0 : 0.85);
         double sDamp = grow ? 0.63 : (mini ? 0.82 : 0.74);
@@ -385,7 +475,7 @@ public sealed partial class NotchWindow : Window
         // While it moves, the mouse region covers both where the shape is and where it is going.
         UpdateHitRegion(Math.Max(w, _wSpring.Value), Math.Max(h, _hSpring.Value), Math.Max(scale, _scaleSpring.Value));
 
-        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled && _scaleSpring.IsSettled)
+        if (_wSpring.IsSettled && _hSpring.IsSettled && _rSpring.IsSettled && _earSpring.IsSettled && _scaleSpring.IsSettled && _dragLean.IsSettled)
         {
             _motionRunning = false;
             ApplyShape(w, h, r, ear, scale);
@@ -417,6 +507,26 @@ public sealed partial class NotchWindow : Window
         StartMotion();
     }
 
+    /// <summary>Jelly's poke: the notch squashes wide and flat and wobbles back (springs pick up jelly's damping).</summary>
+    void Jiggle()
+    {
+        if (!_settings.Animations || _shapeW <= 0) return;
+        double needed = NeededWindowHeight(_shapeH * 1.35, _shapeScale * 1.15);
+        if (needed > Height) Height = needed;
+        _wSpring.Kick(500, 0.30, 0.58);
+        _hSpring.Kick(-300, 0.32, 0.58);
+        _scaleSpring.Kick(0.5, 0.30, 0.58);
+        UpdateHitRegion(_shapeW * 1.3, _shapeH * 1.35, _shapeScale * 1.15);
+        _shapeAnimating = true;
+        StartMotion();
+    }
+
+    void LeanWhileDragging(double offset)
+    {
+        _dragLean.Retarget(offset, 0.18, 0.65);
+        StartMotion();
+    }
+
     /// <summary>Adds a small physical bounce when a live pill updates in place (volume step, back-to-back peek).</summary>
     void PulseNotch(double widthVelocity = 28, double heightVelocity = 16, double scaleVelocity = 0.08)
     {
@@ -435,20 +545,11 @@ public sealed partial class NotchWindow : Window
 
     void OnShapeSettled()
     {
-        FitWindowHeight();
+        // Keep the native surface stable on the final frame in both directions.
+        // SnapShape can reclaim reserved space when laying out without animation.
         _shapeAnimating = false;
-        UpdateHitRegion(_shapeW, _shapeH, _shapeScale);
+        UpdateHitRegion(_shapeW, _shapeH, _shapeScale, onlyIfChanged: true);
         UpdateEqualizer();
-        FinishOpening();
-    }
-
-    /// <summary>The open notch has landed: now the work that would have cost frames on the way.</summary>
-    void FinishOpening()
-    {
-        if (!_openSettling) return;
-        _openSettling = false;
-        if (_state != NotchState.Expanded) return;
-        ScanBluetooth();
     }
 
     void StartMotion()
@@ -457,13 +558,12 @@ public sealed partial class NotchWindow : Window
         _motionRunning = true;
         UpdateEqualizer(); // the bars rest while the shape moves
         _motionLastTick = Stopwatch.GetTimestamp();
-        RequestAnimationFrame(OnMotionFrame);
+        ScheduleAnimationFrame();
     }
 
-    void OnMotionFrame(TimeSpan _)
+    void StepShape(long now)
     {
-        if (!_motionRunning) return;
-        long now = Stopwatch.GetTimestamp();
+        _selfTestMotionFrames?.Add(now);
         double dt = Math.Clamp((double)(now - _motionLastTick) / Stopwatch.Frequency, 0.001, 0.05);
         _motionLastTick = now;
 
@@ -471,23 +571,50 @@ public sealed partial class NotchWindow : Window
                      & _hSpring.Step(dt)
                      & _rSpring.Step(dt)
                      & _earSpring.Step(dt)
-                     & _scaleSpring.Step(dt);
+                     & _scaleSpring.Step(dt)
+                     & _dragLean.Step(dt);
 
         double hMin = _mini && !_hoverBoost ? 1 : 12;
         double h = Math.Max(_shapeH < hMin ? 1 : hMin, _hSpring.Value);
         double scale = Math.Max(0.1, _scaleSpring.Value);
-        double frameNeed = NeededWindowHeight(h, scale);
-        if (frameNeed > Height) Height = frameNeed;
-        ApplyShape(Math.Max(1, _wSpring.Value), h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
+        double w = Math.Max(1, _wSpring.Value);
+        double skew = 0;
+        if (_dragLean.Value != 0 || _dragSkew.AngleX != 0)
+        {
+            double leanLimit = Math.Clamp((Width / scale - w) / 2 - MaxEar, 0, 18);
+            double lean = Math.Clamp(_dragLean.Value, -leanLimit, leanLimit);
+            skew = Math.Abs(lean);
+            h = Math.Max(Math.Min(h, hMin), h * (1 - Math.Min(Math.Abs(_dragLean.Value) / 225, 0.08)));
+            _dragSkew.AngleX = Math.Atan(lean / h) * 180 / Math.PI;
+        }
+        double frameWidth = w + 2 * (MaxEar + skew);
+        scale = NotchPlacement.FitScale(scale, frameWidth, _screenWidth);
+        EnsureFrameFits(frameWidth * scale, h * scale);
+        ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
         {
             // No further frame is asked for: nothing runs while the notch rests.
             _motionRunning = false;
             OnShapeSettled();
-            return;
         }
-        RequestAnimationFrame(OnMotionFrame);
+    }
+
+    void EnsureFrameFits(double shapeWidth, double shapeHeight)
+    {
+        // Jelly and interrupted springs can overshoot the target by more than the initial reservation.
+        // Win32 clips the drawing to the hit region, so both the window and the region must fit this frame.
+        double width = Math.Ceiling(shapeWidth) + NotchPlacement.WidthPadding;
+        double height = Math.Ceiling(shapeHeight) + 2;
+        // Only resize when the drawn frame needs it. Leave extra room for the next few
+        // frames so a large overshoot doesn't repeatedly resize the native window.
+        if (height > Height) Height = NeededWindowHeight(shapeHeight);
+        bool resize = width > Width;
+        if (resize) FitWindowWidth(shapeWidth + 16);
+        if (!resize && width <= _hitRegionWidth && height <= _hitRegionHeight) return;
+        _hitRegionWidth = Math.Max(_hitRegionWidth, width);
+        _hitRegionHeight = Math.Max(_hitRegionHeight, height);
+        ApplyHitRegion();
     }
 
     void ApplyShape(double w, double h, double radius, double earSize, double scale)
@@ -495,6 +622,9 @@ public sealed partial class NotchWindow : Window
         _notchScale.ScaleX = _notchScale.ScaleY = scale;
         double r = Math.Clamp(radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(earSize, 0, Math.Min(MaxEar, h - r));
+        // Scale and drag skew are render transforms and don't need new paths or layout.
+        if (_drawnOutline == (w, h, r, e)) return;
+        _drawnOutline = (w, h, r, e);
         double x = (BaseWidth - w) / 2;
 
         _island.Width = w;
@@ -525,16 +655,27 @@ public sealed partial class NotchWindow : Window
             c.EndFigure(true);
         }
         _backdrop.Clip = outline;
+        if (_edge.IsVisible) _edge.Data = outline;
+        _prismRim?.ApplyOutline(outline, h);
     }
 
     /// <summary>Clicks land on the notch (with room for the spring's overshoot) and pass through beside it.</summary>
-    void UpdateHitRegion(double w, double h, double notchScale)
+    void UpdateHitRegion(double w, double h, double notchScale, bool onlyIfChanged = false)
+    {
+        double width = (w + 2 * MaxEar) * 1.12 * notchScale;
+        double height = h * notchScale * 1.15 + 2;
+        if (onlyIfChanged && width == _hitRegionWidth && height == _hitRegionHeight) return;
+        _hitRegionWidth = width;
+        _hitRegionHeight = height;
+        ApplyHitRegion();
+    }
+
+    void ApplyHitRegion()
     {
         if (!_opened || TryGetPlatformHandle() is not { } handle) return;
         double scale = RenderScaling;
-        double width = (w + 2 * MaxEar) * 1.12 * notchScale, height = h * notchScale * 1.15 + 2;
-        double x = (Width - width) / 2;
-        var notchRect = new HitRect((int)Math.Floor(x * scale), 0, (int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale));
-        _platform.SetHitRegion(handle.Handle, notchRect.X, notchRect.Y, notchRect.Width, notchRect.Height);
+        int left = (int)Math.Floor((Width - _hitRegionWidth) / 2 * scale);
+        int right = (int)Math.Ceiling((Width + _hitRegionWidth) / 2 * scale);
+        _platform.SetHitRegion(handle.Handle, left, 0, right - left, (int)Math.Ceiling(_hitRegionHeight * scale));
     }
 }

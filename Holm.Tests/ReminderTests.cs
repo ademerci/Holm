@@ -52,6 +52,9 @@ public class ReminderParserTests
     [InlineData("0 min nothing")]
     [InlineData("30 days holiday")]
     [InlineData("200 h too far")]          // more than a week
+    [InlineData("99999999999999999 hours laundry")]
+    [InlineData("100 h 100 h too far in total")]
+    [InlineData("١٤:٣٠ dentist")]
     public void What_isnt_a_time_is_refused(string input)
         => Assert.False(ReminderParser.TryParse(input, Now, out _, out _));
 

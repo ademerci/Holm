@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -17,12 +17,12 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly IBrush PillOn = Brush("#D90A84FF"), PillOff = Brush("#2EFFFFFF");
+    static readonly IBrush PillOn = Look.Accent, PillOff = Look.InkA(0x2E);
 
     /// <summary>The colour choices, as the WPF app's BigClock.Colors (its WPF half).</summary>
     static readonly (string Key, string Label, Color Swatch)[] ClockColors =
     {
-        (BigClock.ColorWhite, "White", Color.FromRgb(0xFF, 0xFF, 0xFF)),
+        (BigClock.ColorWhite, "Theme", Color.FromUInt32(Look.Current.Ink)),
         (BigClock.ColorSky, "Auto", Color.FromRgb(0x5E, 0x9E, 0xFF)),
         (BigClock.ColorAmber, "Amber", Color.FromRgb(0xFF, 0x9F, 0x0A)),
         (BigClock.ColorCyan, "Cyan", Color.FromRgb(0x64, 0xD2, 0xFF)),
@@ -31,8 +31,8 @@ public sealed partial class NotchWindow
     };
 
     readonly StackPanel _clockFullView = new() { IsVisible = false };
-    readonly TextBlock _clockFullTime = new() { FontFamily = DisplayFont, FontSize = 86, FontWeight = FontWeight.Light, VerticalAlignment = VerticalAlignment.Bottom };
-    readonly TextBlock _clockFullSeconds = new() { FontFamily = DisplayFont, FontSize = 28, FontWeight = FontWeight.Light, Opacity = 0.72, Margin = new Thickness(6, 0, 0, 15), VerticalAlignment = VerticalAlignment.Bottom };
+    readonly TextBlock _clockFullTime = new DotTextBlock { FontFamily = DisplayFont, FontSize = 86, FontWeight = FontWeight.Light, VerticalAlignment = VerticalAlignment.Bottom };
+    readonly TextBlock _clockFullSeconds = new DotTextBlock { FontFamily = DisplayFont, FontSize = 28, FontWeight = FontWeight.Light, Opacity = 0.72, Margin = new Thickness(6, 0, 0, 15), VerticalAlignment = VerticalAlignment.Bottom };
     readonly TextBlock _clockFullDate = new() { FontSize = 14, Foreground = Dim, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, -8, 0, 2) };
     readonly StackPanel _clockCustomizePanel = new() { IsVisible = false, Margin = new Thickness(0, 4, 0, 6) };
     readonly StackPanel _clockColorRow = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
@@ -126,7 +126,7 @@ public sealed partial class NotchWindow
         _clockFullView.Children.Add(_clockCustomizePanel);
 
         // The compact music bar.
-        _clockMediaBar.Children.Add(new Border { Height = 1, Background = Brush("#1AFFFFFF"), Margin = new Thickness(0, 0, 0, 10) });
+        _clockMediaBar.Children.Add(new Border { Height = 1, Background = Look.InkA(0x1A), Margin = new Thickness(0, 0, 0, 10) });
         var bar = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         _clockMediaArt.Child = _clockMediaArtPlaceholder;
         bar.Children.Add(_clockMediaArt);
@@ -241,7 +241,7 @@ public sealed partial class NotchWindow
         _clockFullDate.IsVisible = _settings.ClockShowDate;
     }
 
-    /// <summary>BigClock.ResolveColor of the WPF app: "Auto" takes the cover's colour, else the sky's, else white.</summary>
+    /// <summary>Auto takes the cover colour or the sky colour, falling back to the theme ink.</summary>
     Color ResolveClockColor()
     {
         string key = BigClock.NormalizeColor(_settings.ClockColor);
@@ -249,10 +249,10 @@ public sealed partial class NotchWindow
         {
             if (_info?.Accent is { } accent && _info.Art != null) return accent;
             if (_skyShown is { } sky) return Color.FromRgb(sky.Left.R, sky.Left.G, sky.Left.B);
-            return Colors.White;
+            return Color.FromUInt32(Look.Current.Ink);
         }
         foreach (var (k, _, swatch) in ClockColors) if (k == key) return swatch;
-        return Colors.White;
+        return Color.FromUInt32(Look.Current.Ink);
     }
 
     void RefreshBigClockMedia()
@@ -288,16 +288,15 @@ public sealed partial class NotchWindow
     void SetClockPlayIcon(bool playing)
     {
         _clockPlayIcon.Data = playing ? PauseGeo : PlayGeo;
-        _clockPlayIcon.Margin = new Thickness(playing ? 0 : 2, 0, 0, 0);
     }
 
     void RefreshClockControls()
     {
         _clockPinBtn.Rest = _clockPinned ? ToolLit : Brushes.Transparent;
-        _clockPinIcon.Foreground = _clockPinned ? Brushes.White : Dim;
+        _clockPinIcon.Foreground = _clockPinned ? Look.Ink : Dim;
         ToolTip.SetTip(_clockPinBtn, _clockPinned ? "Unpin clock" : "Pin clock open");
         _clockCustomizeBtn.Rest = _clockCustomizing ? ToolLit : Brushes.Transparent;
-        _clockCustomizeIcon.Foreground = _clockCustomizing ? Brushes.White : Dim;
+        _clockCustomizeIcon.Foreground = _clockCustomizing ? Look.Ink : Dim;
         _clockCustomizePanel.IsVisible = _clockCustomizing;
         _clockSecToggle.Rest = _settings.ClockShowSeconds ? PillOn : PillOff;
         _clockDateToggle.Rest = _settings.ClockShowDate ? PillOn : PillOff;
@@ -306,6 +305,6 @@ public sealed partial class NotchWindow
         string active = BigClock.NormalizeColor(_settings.ClockColor);
         foreach (var child in _clockColorRow.Children)
             if (child is NotchButton { Tag: string key, Child: Border ring })
-                ring.BorderBrush = key == active ? Brushes.White : Brushes.Transparent;
+                ring.BorderBrush = key == active ? Look.Ink : Brushes.Transparent;
     }
 }

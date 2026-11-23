@@ -24,7 +24,7 @@ internal static class Native
     const int DWMWA_CLOAKED = 14;
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hwnd, uint command);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
-    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+    [DllImport("user32.dll")] internal static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
 
     /// <summary>
@@ -87,8 +87,26 @@ internal static class Native
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
     [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint processId);
     [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    static extern int GetPackageFamilyName(IntPtr process, ref uint length, [Out] char[] name);
     [DllImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", CharSet = CharSet.Unicode)]
     static extern bool QueryFullProcessImageName(IntPtr process, int flags, char[] name, ref int size);
+
+    /// <summary>Checks the package Windows assigned to a process, including the publisher.</summary>
+    internal static bool ProcessHasPackageFamily(int processId, string family)
+    {
+        IntPtr process = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, (uint)processId);
+        if (process == IntPtr.Zero) return false; // the process may already have exited
+        try
+        {
+            var name = new char[family.Length + 1];
+            uint length = (uint)name.Length;
+            return GetPackageFamilyName(process, ref length, name) == 0
+                && length == name.Length
+                && name.AsSpan(0, family.Length).Equals(family.AsSpan(), StringComparison.OrdinalIgnoreCase);
+        }
+        finally { CloseHandle(process); }
+    }
 
     /// <summary>Full path of a process's program, or "" when it can't be asked (gone, or protected).</summary>
     public static string ProcessPath(int processId)
