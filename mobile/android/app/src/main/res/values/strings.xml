@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notch_service_summary">Live activities in a notch around the camera</string>
+    <string name="notch_service_description">Holm draws the Dynamic Notch over the status bar around the camera: music, timers, downloads, charging, connections, Holm on your PC and new notifications. Holm uses this service only to show that overlay. It does not read what is on your screen or act for you.</string>
+</resources>

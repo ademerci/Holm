@@ -34,6 +34,10 @@ Holm.slnx
 │   └── Linux*Platform.cs      # IPlatformServices adapter implementations + LinuxScreenGrabber
 ├── Holm.Tests/                # net10.0 xUnit suite (runs on Windows and Linux)
 │   └── Linux/                 # Pure-logic tests for the Linux backend
+├── mobile/                    # Holm for Android (Flutter): Beam, clipboard, chat, notes, the Dynamic Notch; see mobile/README.md
+│   ├── lib/                   # Dart: net/ (Holm's protocols), notch/ (the notch's engine and views), ui/, update.dart
+│   ├── android/app/src/main/  # NotchService (accessibility overlay), NotchListener, NotchBridge, Updates, ShizukuGrant
+│   └── tool/                  # sign-release.ps1, publish-update.ps1 (the app's own update server)
 ├── extension/focumon/         # Browser extension feeding Focumon status to FocumonLink
 ├── tools/
 │   ├── icon-font/             # Fluent System Icons builder mapped to Segoe codepoints (HolmIcons.ttf)
