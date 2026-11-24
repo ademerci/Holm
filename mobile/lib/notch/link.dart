@@ -122,6 +122,10 @@ class NotchLink {
   /// The player plays, pauses or skips (asked from a PC).
   static void mediaControl(String action) => _bridge.invokeMethod('media', action).catchError((_) {});
 
+  /// Copies a received file into Downloads/Holm (Android's MediaStore), where the Files app finds it.
+  static Future<bool> saveToDownloads(String path) async =>
+      await _bridge.invokeMethod<bool>('saveToDownloads', path).catchError((_) => false) ?? false;
+
   /// Clears one of the phone's notifications (closed on a PC).
   static void dismissNotification(String key) => _bridge.invokeMethod('dismissNotification', key).catchError((_) {});
 

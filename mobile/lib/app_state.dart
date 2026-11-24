@@ -473,7 +473,13 @@ class AppState extends ChangeNotifier {
   }
 
   Timer? _clearStatus;
+  DateTime _lastProgress = DateTime(0);
   void _status(TransferStatus s) {
+    if (s.progress != null && !s.done && s.progress! < 1) {
+      final now = DateTime.now();
+      if (now.difference(_lastProgress) < const Duration(milliseconds: 125) && transfer?.title == s.title) return;
+      _lastProgress = now;
+    }
     transfer = s;
     if (!foreground) _toNotch(s);
     _clearStatus?.cancel();
@@ -536,6 +542,7 @@ class AppState extends ChangeNotifier {
       }
       for (final path in got.paths) {
         received.insert(0, ReceivedFile(path, sender, DateTime.now()));
+        unawaited(NotchLink.saveToDownloads(path));
       }
       _status(TransferStatus(
           got.paths.length == 1 ? 'Saved ${p.basename(got.paths.first)}' : 'Saved ${got.paths.length} files',
