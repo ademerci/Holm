@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Holm's dark background (lib/ui/theme.dart), so the app doesn't flash white while it starts -->
+    <color name="holm_background">#111113</color>
+</resources>

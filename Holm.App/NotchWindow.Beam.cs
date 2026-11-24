@@ -32,10 +32,10 @@ public sealed partial class NotchWindow
 {
     /// <summary>What a chip in the share view stands for: a friend, a person nearby, or "send with a code" (neither).</summary>
     /// <param name="Place">For the chips that aren't people: <see cref="ShelfPlace"/> (or "send with a code" when null).</param>
-    sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null, string? Place = null)
+    sealed record ShareTarget(NearbyPeer? Peer, Friend? Friend = null, string? Place = null, OwnDevice? Device = null)
     {
         public const string ShelfPlace = "shelf", PhonePlace = "phone";
-        public string Name => Friend?.Name ?? Peer?.Name ?? Place switch { ShelfPlace => "Shelf", PhonePlace => "Phone", _ => "Code" };
+        public string Name => Device?.Name ?? Friend?.Name ?? Peer?.Name ?? Place switch { ShelfPlace => "Shelf", PhonePlace => "Phone", _ => "Code" };
     }
 
     static readonly Color[] AvatarColors =
@@ -88,6 +88,8 @@ public sealed partial class NotchWindow
         _friends.RemovedUs += OnFriendRemovedUs;
         _friends.ProfileReceived += _ => { _pictures.Clear(); if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); } };
         _friends.FriendOnline += _ => { if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); } };
+        _friends.OwnDevicesChanged += () => { if (_sharing) { RefreshShareTargets(); ApplyState(animate: true); } };
+        _friends.PhoneStatusReceived += OnPhoneStatus;
 
         // A drag is over once it left the notch (DragLeave without a new DragEnter), or, should that never arrive,
         // once it has been still for a while.
@@ -285,6 +287,7 @@ public sealed partial class NotchWindow
     Task SendFilesAsync(ShareTarget target, List<string> paths, bool text = false)
     {
         if (target.Place == ShareTarget.PhonePlace) { BeamToPhone(paths); return Task.CompletedTask; }
+        if (target.Device != null) return SendToFriendAsync(_friends.CardOf(target.Device), paths, text, device: target.Device);
         if (target.Friend != null) return SendToFriendAsync(target.Friend, paths, text);
         if (target.Peer != null) return SendNearbyAsync(target.Peer, paths, text);
         return SendWithCodeAsync(paths, text);
@@ -351,6 +354,8 @@ public sealed partial class NotchWindow
         _shareTitle.Text = beam ? "Send " + what : what;
         var peers = beam ? _nearby?.Peers ?? Array.Empty<NearbyPeer>() : Array.Empty<NearbyPeer>();
         var friends = beam ? _friends.Friends : Array.Empty<Friend>();
+        // The account's other devices (the phone app, other PCs), wherever they are.
+        var devices = beam ? _friends.OwnDevicesNow : Array.Empty<OwnDevice>();
         int online = friends.Count(_friends.IsOnline);
         _shareHint.Text = _pickFiles != null ? (beam ? "Click where it should go." : "Click Shelf to keep it here.")
             : !beam ? "Drop it on Shelf to keep it here and drag it out later."
@@ -362,6 +367,7 @@ public sealed partial class NotchWindow
 
         // Same people as shown: keep the chips, so the one under a still mouse stays highlighted.
         string shown = beam + "|" + string.Join("|", friends.Select(f => $"{f.Key} {f.Name} {f.Color} {f.Picture?.GetHashCode()}")
+                                                     .Concat(devices.Select(d => $"{d.Id} {d.Name}"))
                                                      .Concat(peers.Take(6).Select(p => $"{p.Id} {p.Name} {p.Endpoint}")));
         if (shown == _shownPeers && _shareTargets.Children.Count > 0)
         {
@@ -375,6 +381,12 @@ public sealed partial class NotchWindow
         {
             var chip = PersonChip(friend.Name, new ShareTarget(null, friend), isFriend: true);
             if (friend.Status != null) ToolTip.SetTip(chip, friend.Status);
+            _shareTargets.Children.Add(chip);
+        }
+        foreach (var device in devices)
+        {
+            var chip = PersonChip(device.Name, new ShareTarget(null, Device: device));
+            ToolTip.SetTip(chip, "Your device, signed in to your Holm account");
             _shareTargets.Children.Add(chip);
         }
         foreach (var peer in peers.Take(6)) _shareTargets.Children.Add(PersonChip(peer.Name, new ShareTarget(peer)));
@@ -555,14 +567,16 @@ public sealed partial class NotchWindow
     /// Like sending with a code, except that nobody has to pass the code on: it goes into the friend's inbox,
     /// sealed for them, and their notch comes to the relay by itself and asks them.
     /// </summary>
-    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null)
+    /// <remarks>With <paramref name="device"/>, to another device of our account: the card is our own inbox with its name.</remarks>
+    async Task SendToFriendAsync(Friend friend, List<string> paths, bool text = false, QueuedSend? queued = null, OwnDevice? device = null)
     {
         var cts = BeginTask();
         ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Asking {friend.Name}…", Summary(paths), null, null, ("Cancel", CancelTask), textIcon: true);
         try
         {
             byte[] secret = ShareCode.NewSecret();
-            await _friends.InviteAsync(friend, secret, cts.Token);
+            if (device != null) await _friends.InviteDeviceAsync(device, secret, cts.Token);
+            else await _friends.InviteAsync(friend, secret, cts.Token);
             ShowTask(FaceText(friend.Name), FaceBrush(friend.Name), $"Checking if {friend.Name} is available…", "Waiting for their notch to answer", null, null, ("Cancel", CancelTask), textIcon: true);
             var (host, port) = RelayEndpoint();
             await using var stream = await RelayLink.ConnectWithRetryAsync(host, port, ShareCode.RelayToken(secret), FriendsService.SendPatience, cts.Token);
@@ -582,6 +596,11 @@ public sealed partial class NotchWindow
                 _busy = false;
                 _friends.MarkOffline(friend);
                 HideTask();
+            }
+            else if (device != null)
+            {
+                _friends.ForgetDevice(device);
+                EndTask("", RedBrush, $"{friend.Name} isn't available", "Holm isn't open there right now");
             }
             else if (_settings.SendLater)
             {

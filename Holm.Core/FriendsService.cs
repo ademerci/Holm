@@ -73,6 +73,10 @@ internal sealed partial class FriendsService
     public Func<int?>? MyTrophies { get; set; }
     /// <summary>A friend was added or removed (UI thread).</summary>
     public event Action? ListChanged;
+    /// <summary>Another device of this account came, left or got a new name (UI thread).</summary>
+    public event Action? OwnDevicesChanged;
+    /// <summary>Our phone says what's happening on it (device name, status), for the notch. On the UI thread.</summary>
+    public event Action<string, PhoneStatus>? PhoneStatusReceived;
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
@@ -103,6 +107,10 @@ internal sealed partial class FriendsService
     internal static Func<byte[], byte[], byte[]> ProtectKey = (_, _) => throw new PlatformNotSupportedException();
     internal static Func<byte[], byte[], byte[]> UnprotectKey = (_, _) => throw new PlatformNotSupportedException();
     internal static Func<string> AccountName = () => Environment.UserName;
+    /// <summary>What the account's other devices call this one: the computer's name.</summary>
+    internal static Func<string> DeviceName = () => Environment.MachineName;
+
+    readonly OwnDevices _devices = new();
 
     public FriendsService(AppSettings settings, Func<Action, Task> ui)
     {
@@ -381,6 +389,89 @@ internal sealed partial class FriendsService
 
     public Friend? Find(string publicKey) => _settings.Friends.FirstOrDefault(f => f.Key == publicKey);
 
+    // ───────────── the account's other devices ─────────────
+
+    /// <summary>This device's id among the account's devices, made on first use.</summary>
+    public string DeviceId
+    {
+        get
+        {
+            if (!OwnDevice.IsId(_settings.DeviceId))
+            {
+                _settings.DeviceId = OwnDevice.NewId();
+                _settings.Save();
+            }
+            return _settings.DeviceId!;
+        }
+    }
+
+    /// <summary>The account's other devices that spoke lately (they share our identity: Sharing/OwnDevices.cs).</summary>
+    public IReadOnlyList<OwnDevice> OwnDevicesNow => _follow == null ? Array.Empty<OwnDevice>() : _devices.Recent(DateTime.UtcNow);
+
+    /// <summary>Our own inbox as a friend card: what notes to another device of ours are sealed for and posted to.</summary>
+    Friend OwnCard(FriendIdentity me, string name) => new() { Name = name, Topic = me.Topic, Key = me.PublicKey, Server = me.Server };
+
+    /// <summary>The device as a card to show and send to (the name is the device's; the inbox is our own).</summary>
+    public Friend CardOf(OwnDevice device) => OwnCard(EnsureMe(), device.Name);
+
+    /// <summary>Like <see cref="InviteAsync"/>, for one of our own devices: only that one comes to the relay.</summary>
+    /// <exception cref="IOException">The note couldn't be delivered.</exception>
+    public Task InviteDeviceAsync(OwnDevice device, byte[] secret, CancellationToken ct)
+    {
+        var me = EnsureMe();
+        var note = new FriendNote(FriendNoteKind.Files, DeviceName(), Now, Secret: secret, Device: DeviceId, ForDevice: device.Id);
+        return FriendInbox.PostAsync(OwnCard(me, device.Name), FriendNotes.Seal(me, OwnCard(me, device.Name), note), ct);
+    }
+
+    /// <summary>Sending to it just failed: it's gone.</summary>
+    public void ForgetDevice(OwnDevice device)
+    {
+        _devices.Forget(device.Id);
+        OwnDevicesChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Says in our inbox that this device runs, for the account's other devices; with <paramref name="query"/> it asks
+    /// them to say so too. Live only: the server passes it on and doesn't keep it.
+    /// </summary>
+    void AnnounceDevice(bool query)
+    {
+        if (_follow == null || Me is not { } me) return;
+        string text = FriendNotes.Seal(me, OwnCard(me, ""), new FriendNote(FriendNoteKind.Device, DeviceName(), Now, Device: DeviceId, Query: query ? true : null));
+        _ = Task.Run(async () =>
+        {
+            try { await FriendInbox.PostAsync(OwnCard(me, ""), text, CancellationToken.None, keep: false); }
+            catch (IOException ex) { Diag.Log("Friends: couldn't reach our own inbox: " + ex.Message); }
+        });
+    }
+
+    /// <summary>A note sealed by our own identity: from another device of this account, or our own coming back.</summary>
+    void HandleOwn(FriendIdentity me, FriendNote note, long age)
+    {
+        if (note.Device is not { } id || id == DeviceId) return;
+        switch (note.Kind)
+        {
+            case FriendNoteKind.Device when age <= FreshSeconds:
+                if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
+                if (note.Query == true) AnnounceDevice(query: false);
+                break;
+            case FriendNoteKind.Phone when age <= 60 && note.Phone is { } status:
+                // News only while it's news: a call from minutes ago, read when Holm starts, isn't.
+                if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
+                PhoneStatusReceived?.Invoke(_devices.Find(id)?.Name ?? note.From, status);
+                break;
+            case FriendNoteKind.Files when note.ForDevice != DeviceId:
+                break; // for another of our devices
+            case FriendNoteKind.Files when age > Patience.TotalSeconds:
+                Diag.Log("Friends: another device of ours wanted to send files while Holm wasn't running");
+                break;
+            case FriendNoteKind.Files:
+                if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
+                FilesOffered?.Invoke(OwnCard(me, _devices.Find(id)?.Name ?? note.From), note.Secret!);
+                break;
+        }
+    }
+
     public bool IsMe(Friend card) => Me?.PublicKey == card.Key;
 
     /// <summary>
@@ -636,6 +727,7 @@ internal sealed partial class FriendsService
                 () => _ = _ui(() => { if (_follow == cts) MoveToRelay(); }),
                 Diag.Log, cts.Token));
         SyncProfiles();
+        AnnounceDevice(query: true);
     }
 
     /// <summary>
@@ -679,6 +771,8 @@ internal sealed partial class FriendsService
         if (_follow == null || Me is not { } me) return; // their answers come to our inbox, which we only follow while Beam is on
         foreach (var friend in _settings.Friends.Take(max))
             if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
+        // The account's other devices too (the phone app, other PCs), at most once a minute.
+        if (_presence.ShouldAsk(me.PublicKey, DateTime.UtcNow)) AnnounceDevice(query: true);
     }
 
     void Tell(FriendIdentity me, Friend to, FriendNoteKind kind)
@@ -712,6 +806,11 @@ internal sealed partial class FriendsService
         if (FriendNotes.Open(me, text, out string sender) is not { } note)
         {
             Diag.Log("Friends: a note that isn't for us");
+            return;
+        }
+        if (sender == me.PublicKey)
+        {
+            HandleOwn(me, note, age);
             return;
         }
         var friend = Find(sender);

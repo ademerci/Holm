@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Holm for Android.** A new app in `mobile/`: Beam files and text to your PC, keep the clipboard in sync, chat with friends and keep a note. Sign in with your Holm account and your PCs reach the phone on any network.
+- **Dynamic Notch on Android.** The phone app draws a notch around the camera with up to two live activities: music with controls, notifications, timers, downloads, Holm transfers and offers, chat, charging, Wi-Fi, Bluetooth, VPN, Quick Share, Live Updates and reminders. Fit its size, position and corners to your phone with a live preview; open, it can use a Nothing look.
+- **The phone app updates itself.** It finds new versions on Holm's update server, says so with a notification and an *Update* button, and installs them after Android's confirmation. In the notch, each open corner can have its own radius, notifications swipe away, single apps and Android's own notices (battery saver) can be kept out, and Shizuku unlocks hiding Android's pop-ups without a computer.
+- **Your phone in the notch.** With the phone app signed in to the same Holm account, the notch pops out the phone's notifications and calls, the song that starts there, its timers, and when it is fully charged.
+- **Holm for Android 1.2.** Reply to messages in the notch, answer and end calls, see the volume, navigation, camera and microphone in use, headphone batteries, send a fresh screenshot to the PC, a clipboard notice from the PC, quiet hours, gestures, an overview with a tap on the camera, app colours and Holm's 24 designs. Updates can be checked by hand and test versions chosen; the app is now signed with its own release key.
+- **Your devices, anywhere.** PCs and phones signed in to the same Holm account show up in the share view as your devices, even on another network. Files and copied text go to them over the relay, encrypted as for friends.
+
 ## 2.2.3 – 2026-11-20
 
 ### Added
