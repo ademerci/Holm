@@ -475,6 +475,61 @@ class _NotchPageState extends State<NotchPage> with WidgetsBindingObserver {
                 value: n.toPc,
                 onChanged: (v) => _set(n.copyWith(toPc: v)),
               ),
+              Builder(builder: (context) {
+                final de = Localizations.localeOf(context).languageCode == 'de';
+                const colors = {
+                  'porcelain': Color(0xFFE9E6DF),
+                  'hazel': Color(0xFF5B5E58),
+                  'wintergreen': Color(0xFFB9D3B4),
+                  'peony': Color(0xFFE5677F),
+                };
+                return ListTile(
+                  dense: true,
+                  title: Text(de ? 'Farbe deiner Pixel Buds' : 'Your Pixel Buds’ colour', style: const TextStyle(fontSize: 15)),
+                  subtitle: Text(
+                    de ? 'Für ihr 3D-Bild in der Notch' : 'For their 3D picture in the notch',
+                    style: const TextStyle(color: HolmColors.dim, fontSize: 12.5),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final e in colors.entries)
+                        GestureDetector(
+                          onTap: () => _set(n.copyWith(budsColor: e.key)),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              color: e.value,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: n.budsColor == e.key ? Colors.white : Colors.white24, width: n.budsColor == e.key ? 2.5 : 1),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              Builder(builder: (context) {
+                final de = Localizations.localeOf(context).languageCode == 'de';
+                return SwitchListTile(
+                  dense: true,
+                  title: Text(de ? 'Kompakte Benachrichtigungen' : 'Compact notifications', style: const TextStyle(fontSize: 15)),
+                  subtitle: Text(
+                    de
+                        ? 'Nur so hoch wie die geschlossene Notch: Absender links der Kamera, Nachricht rechts'
+                        : 'Only as tall as the closed notch: who wrote left of the camera, the message right of it',
+                    style: const TextStyle(color: HolmColors.dim, fontSize: 12.5),
+                  ),
+                  value: n.compactBanners,
+                  onChanged: (v) {
+                    _set(n.copyWith(compactBanners: v));
+                    _preview.handle({...{'type': 'notification', 'key': 'preview-compact', 'package': 'com.whatsapp', 'app': 'WhatsApp'},
+                        'title': 'Lena', 'text': de ? 'Kommst du heute Abend?' : 'Coming tonight?', 'importance': 3});
+                  },
+                );
+              }),
               SwitchListTile(
                 dense: true,
                 title: const Text('Android’s own notices', style: TextStyle(fontSize: 15)),

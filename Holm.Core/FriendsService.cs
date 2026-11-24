@@ -75,8 +75,8 @@ internal sealed partial class FriendsService
     public event Action? ListChanged;
     /// <summary>Another device of this account came, left or got a new name (UI thread).</summary>
     public event Action? OwnDevicesChanged;
-    /// <summary>Our phone says what's happening on it (device name, status), for the notch. On the UI thread.</summary>
-    public event Action<string, PhoneStatus>? PhoneStatusReceived;
+    /// <summary>Our phone says what's happening on it, for the notch. On the UI thread.</summary>
+    public event Action<OwnDevice, PhoneStatus>? PhoneStatusReceived;
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
@@ -112,10 +112,26 @@ internal sealed partial class FriendsService
 
     readonly OwnDevices _devices = new();
 
+    /// <summary>Tests run inboxes on this computer; Holm itself never has its inbox there.</summary>
+    internal static bool AllowLoopbackServers;
+
+    /// <summary>An inbox on this computer (localhost, 127.x, ::1): a test's, never a real one other devices can reach.</summary>
+    internal static bool IsLoopbackServer(string? url)
+        => url != null && Uri.TryCreate(url, UriKind.Absolute, out var uri)
+           && (uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
+
     public FriendsService(AppSettings settings, Func<Action, Task> ui)
     {
         _settings = settings;
         _ui = ui;
+        // An inbox on this computer came from a test, not from you: nothing else reaches it. Holm's relay instead.
+        if (!AllowLoopbackServers && IsLoopbackServer(_settings.FriendsServer))
+        {
+            _settings.FriendsServer = null;
+            _settings.FriendsRelay = true;
+            _settings.Save();
+            Diag.Log("Friends: the inbox server was on this computer; back to Holm's relay");
+        }
         int removed = RemoveDuplicateFriendCards(_settings.Friends);
         if (removed > 0)
         {
@@ -123,6 +139,11 @@ internal sealed partial class FriendsService
             Diag.Log($"Friends: removed {removed} duplicate or invalid saved entries");
         }
         if (Prune(Now)) _settings.Save();
+        if (_settings.FriendsKey != null && Me is { } me && _settings.Friends.RemoveAll(f => f.Key == me.PublicKey) > 0)
+        {
+            _settings.Save();
+            Diag.Log("Friends: our own card was among the friends; removed");
+        }
     }
 
     static long Now => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -346,7 +367,12 @@ internal sealed partial class FriendsService
         }
         finally { CryptographicOperations.ZeroMemory(pkcs8); }
         _settings.FriendsTopic = identity.Topic;
-        _settings.FriendsServer = identity.Server;
+        if (!AllowLoopbackServers && IsLoopbackServer(identity.Server))
+        {
+            _settings.FriendsServer = null;
+            _settings.FriendsRelay = true;
+        }
+        else _settings.FriendsServer = identity.Server;
         _settings.FriendsSince = Now - 12 * 60 * 60;
         _settings.FriendsRelaySince = Now - 7 * 24 * 60 * 60; // what the relay keeps
         _settings.FriendsSeen.Clear();
@@ -434,6 +460,36 @@ internal sealed partial class FriendsService
     /// Says in our inbox that this device runs, for the account's other devices; with <paramref name="query"/> it asks
     /// them to say so too. Live only: the server passes it on and doesn't keep it.
     /// </summary>
+    /// <summary>Clears a notification on our phone (closed in the phone tool): a note for that phone only.</summary>
+    public void DismissOnPhone(OwnDevice phone, string key)
+    {
+        if (PhoneStatus.CleanKey(key) is not { } clean) return;
+        TellPhone(phone, new PhoneStatus(PhoneStatus.Dismiss, "dismiss", null, 0, true, Key: clean));
+    }
+
+    /// <summary>The phone's player plays, pauses, skips (<see cref="PhoneStatus.MusicControls"/>), from the phone tool.</summary>
+    public void ControlPhoneMusic(OwnDevice phone, string what)
+    {
+        if (Array.IndexOf(PhoneStatus.MusicControls, what) < 0) return;
+        TellPhone(phone, new PhoneStatus(PhoneStatus.Control, what, null, 0, true));
+    }
+
+    /// <summary>A note for that phone only, in the account's own inbox.</summary>
+    void TellPhone(OwnDevice phone, PhoneStatus status)
+    {
+        if (_follow == null || Me is not { } me) return;
+        string text = FriendNotes.Seal(me, OwnCard(me, phone.Name),
+            new FriendNote(FriendNoteKind.Phone, DeviceName(), Now, Device: DeviceId, ForDevice: phone.Id, Phone: status));
+        _ = Task.Run(async () =>
+        {
+            try { await FriendInbox.PostAsync(OwnCard(me, phone.Name), text, CancellationToken.None, keep: false); }
+            catch (IOException ex) { Diag.Log("Friends: couldn't reach our own inbox: " + ex.Message); }
+        });
+    }
+
+    /// <summary>Asks the account's other devices to say they are there (the phone tool, opened without a phone).</summary>
+    public void AskForDevices() => AnnounceDevice(query: true);
+
     void AnnounceDevice(bool query)
     {
         if (_follow == null || Me is not { } me) return;
@@ -458,7 +514,7 @@ internal sealed partial class FriendsService
             case FriendNoteKind.Phone when age <= 60 && note.Phone is { } status:
                 // News only while it's news: a call from minutes ago, read when Holm starts, isn't.
                 if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
-                PhoneStatusReceived?.Invoke(_devices.Find(id)?.Name ?? note.From, status);
+                PhoneStatusReceived?.Invoke(_devices.Find(id) ?? new OwnDevice(id, note.From, DateTime.UtcNow), status);
                 break;
             case FriendNoteKind.Files when note.ForDevice != DeviceId:
                 break; // for another of our devices

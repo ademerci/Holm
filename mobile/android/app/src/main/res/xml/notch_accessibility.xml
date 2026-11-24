@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The Dynamic Notch draws an overlay. It reads no screen content: only which app is in front (to name the one using
-     the camera) and the volume keys (to show the volume in the notch, if that is on). -->
+     the camera), the volume keys (to show the volume in the notch, if that is on) and where the system's windows are
+     (to step aside while Android's notification shade and quick settings are pulled down). -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/notch_service_description"
     android:summary="@string/notch_service_summary"
-    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault|flagRequestFilterKeyEvents"
+    android:accessibilityFlags="flagDefault|flagRequestFilterKeyEvents|flagRetrieveInteractiveWindows"
     android:canRequestFilterKeyEvents="true"
-    android:canRetrieveWindowContent="false"
-    android:notificationTimeout="1000" />
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="0" />

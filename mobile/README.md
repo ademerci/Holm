@@ -56,6 +56,18 @@ Open, each corner of the notch can have its own radius (*Each corner on its own*
 - **App colours** and Holm's **24 designs** for the open notch (`lib/notch/designs.dart`, from `Holm.Core/Design.cs`).
 - **Also on your PC.** Signed in to your Holm account, the phone tells the account's PCs about notifications, calls, new songs and timers (a `phone` note in the account's own inbox, end-to-end encrypted); their notch pops it out. Off with *Also on your PC*.
 
+### New since 1.2.2
+
+- **Share menu.** Holm is in Android's share menu: text, links and files go to one of your devices.
+- **Compact notifications** (*Kompakte Benachrichtigungen*): only as tall as the closed notch, the sender left of the camera, the message right of it.
+- **Long text** rests for 1.5 s, then slides back and forth to show all of it (`lib/notch/marquee.dart`).
+- **Volume with a finger.** Drag along the volume pill; hold a volume key and it keeps going; open, the notch has sliders for media, ringtone, notifications, alarm and calls.
+- **Earbuds** (*Earbuds*): while connected, small in a bubble beside the camera (alone, in the notch itself; with two other activities, not at all). Tap it and they come out of their case. Pixel Buds Pro 2 (pick their colour on the Notch page), AirPods 4 and Nothing's earbuds have a 3D picture: frames rendered from their models, side by side in one picture (`assets/buds/*_out.webp`), and the buds alone for the bubble (`*_buds.webp`). Each bud's and the case's battery come from Google Play services' Fast Pair card, whose text the listener reads from its view (`NotchListener.sendBudsBattery`); that card no longer pops up.
+- **Overview** has a settings button; an open notification has a **snooze** (the app stays out for 5 minutes) beside the bell.
+- **Swipe the open notch** sideways to close it (a notification goes with it). The notch **steps aside** while the notification shade or quick settings are pulled down (it watches the system's windows: `typeWindowsChanged`, `canRetrieveWindowContent`).
+- **From your PC:** the PC's phone tab can close a notification here (a `phone` note with `Y` = `dismiss` and the notification's key) and play, pause or skip the music (`Y` = `control`).
+- Covers given only as a link (Spotify) are fetched; the song bar takes taps and drags; a screen recording shows as a recording, not a stopwatch.
+
 ## Updates
 
 Holm for Android updates itself from Holm's update server (`https://62.83.85.236:8473`, nginx, self-signed certificate pinned in `lib/update.dart`). It checks at start and every six hours; a newer `versionCode` in `latest.json` shows a notification and a banner with **Update**, which downloads the APK, checks its SHA-256 and installs it with Android's PackageInstaller (Android asks once to allow Holm to install apps, then to confirm each update).

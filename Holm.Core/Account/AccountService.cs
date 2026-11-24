@@ -76,6 +76,8 @@ internal sealed class AccountService : IDisposable
 
     public bool SignedIn => _file.Uid != null;
     public string? Email => _file.Email;
+    /// <summary>The account and this PC have different friend codes and the person hasn't said which to use yet.</summary>
+    public bool IdentityPending => _identityAsked;
     public bool Syncing { get; private set; }
     public DateTimeOffset? LastSync => _file.LastSync is long t and > 0 ? DateTimeOffset.FromUnixTimeSeconds(t) : null;
     /// <summary>Why the last sync failed, in words for the person; null when it worked.</summary>
@@ -326,6 +328,10 @@ internal sealed class AccountService : IDisposable
             var mine = _friends.ExportIdentity();
             string? myPrint = mine?.Fingerprint(), theirPrint = remote.Identity?.Fingerprint();
             var step = IdentitySync.Decide(myPrint, _friends.Friends.Count, theirPrint, state, _identityChoice);
+            // The same identity, but the account says its inbox is on a computer (a test's): send it back corrected.
+            if (step == IdentityStep.Nothing && myPrint != null && myPrint == theirPrint
+                && FriendsService.IsLoopbackServer(remote.Identity?.Server) && !FriendsService.IsLoopbackServer(mine?.Server))
+                step = IdentityStep.Upload;
             switch (step)
             {
                 case IdentityStep.Ask:

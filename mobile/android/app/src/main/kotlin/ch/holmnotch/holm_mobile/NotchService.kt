@@ -135,31 +135,126 @@ class NotchService : AccessibilityService() {
             val pkg = event.packageName?.toString() ?: return
             if (pkg != packageName && pkg != "com.android.systemui") foreground = pkg
         }
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            followShade()
+        }
+    }
+
+    /** Android's notification shade or quick settings is pulled down: the notch steps aside, it doesn't cover them. */
+    private var shadeOpen = false
+    private var lastWindow = Triple(0.0, 0.0, false)
+
+    private fun followShade() {
+        val open = shadeShown()
+        if (open == shadeOpen) return
+        shadeOpen = open
+        // Hidden, not faded: the notch draws on a surface of its own, which a parent's alpha doesn't reach.
+        root?.visibility = if (open) View.INVISIBLE else View.VISIBLE
+        android.util.Log.d("HolmNotch", "shade " + (if (open) "open: notch hidden" else "closed: notch back"))
+        if (open) NotchBridge.toNotch(mapOf("type" to "outside")) // an open notch closes
+        val (w, h, t) = lastWindow
+        setWindow(w, h, t) // and takes no touches meanwhile
+    }
+
+    /**
+     * The shade is a system window across the screen and at least a third of its height (the status bar alone is a
+     * strip, the volume panel narrow). On the lock screen the same window is the lock screen itself: there the notch
+     * stays.
+     */
+    private fun shadeShown(): Boolean {
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        if (keyguard?.isKeyguardLocked == true) return false
+        val screen = wm.currentWindowMetrics.bounds
+        val list = runCatching { windows }.getOrNull() ?: return false
+        val bounds = Rect()
+        return list.any { win ->
+            if (win.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_SYSTEM) return@any false
+            win.getBoundsInScreen(bounds)
+            bounds.width() >= screen.width() * 0.8 && bounds.height() >= screen.height() / 3
+        }
     }
 
     /**
      * The volume keys, while "Volume" is on in the notch's settings: the notch shows the level, not Android's slider.
      * In a call they set the call's volume, otherwise the media's.
      */
+    /** Holding a volume key: Android doesn't repeat a key the service keeps for itself, so the notch does. */
+    private var volumeRepeat: Runnable? = null
+
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode != KeyEvent.KEYCODE_VOLUME_UP && event.keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) return false
         if (!volumeInNotch()) return false
-        if (event.action != KeyEvent.ACTION_DOWN) return true
-        val am = getSystemService(AudioManager::class.java)
-        val call = am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION
-        val stream = if (call) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
         val up = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (event.repeatCount > 0) return true // ours repeats instead
+                stepVolume(up)
+                volumeRepeat?.let { NotchBridge.handler.removeCallbacks(it) }
+                val repeat = object : Runnable {
+                    override fun run() {
+                        stepVolume(up)
+                        NotchBridge.handler.postDelayed(this, 90)
+                    }
+                }
+                volumeRepeat = repeat
+                NotchBridge.handler.postDelayed(repeat, 400)
+            }
+            KeyEvent.ACTION_UP -> {
+                volumeRepeat?.let { NotchBridge.handler.removeCallbacks(it) }
+                volumeRepeat = null
+            }
+        }
+        return true
+    }
+
+    /** The stream the keys set: the call's while talking, else the media's. */
+    private fun keyStream(am: AudioManager): Int {
+        val call = am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION
+        return if (call) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC
+    }
+
+    private fun stepVolume(up: Boolean) {
+        val am = getSystemService(AudioManager::class.java)
+        val stream = keyStream(am)
         runCatching { am.adjustStreamVolume(stream, if (up) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER, 0) }
+        sendVolume(am, stream)
+    }
+
+    private fun sendVolume(am: AudioManager, stream: Int) {
+        NotchBridge.toNotch(
+            mapOf("type" to "volume", "level" to level(am, stream), "call" to (stream == AudioManager.STREAM_VOICE_CALL))
+        )
+    }
+
+    private fun level(am: AudioManager, stream: Int): Double {
         val max = am.getStreamMaxVolume(stream)
         val min = am.getStreamMinVolume(stream)
-        NotchBridge.toNotch(
-            mapOf(
-                "type" to "volume",
-                "level" to (am.getStreamVolume(stream) - min).toDouble() / (max - min).coerceAtLeast(1),
-                "call" to call,
-            )
-        )
-        return true
+        return (am.getStreamVolume(stream) - min).toDouble() / (max - min).coerceAtLeast(1)
+    }
+
+    private val streams = mapOf(
+        "media" to AudioManager.STREAM_MUSIC,
+        "ring" to AudioManager.STREAM_RING,
+        "notification" to AudioManager.STREAM_NOTIFICATION,
+        "alarm" to AudioManager.STREAM_ALARM,
+        "call" to AudioManager.STREAM_VOICE_CALL,
+    )
+
+    /** Every stream's level (0..1), for the open volume notch. */
+    private fun volumes(): Map<String, Double> {
+        val am = getSystemService(AudioManager::class.java)
+        return streams.mapValues { (_, stream) -> level(am, stream) }
+    }
+
+    /** Sets a stream ("media", "ring", …, or "keys" for the one the keys set) to [value] (0..1). */
+    private fun setVolume(which: String?, value: Double) {
+        val am = getSystemService(AudioManager::class.java)
+        val stream = if (which == "keys") keyStream(am) else streams[which] ?: return
+        val min = am.getStreamMinVolume(stream)
+        val max = am.getStreamMaxVolume(stream)
+        // Ringtone and notifications can't be set while Do Not Disturb holds them (Android refuses): left as they are.
+        runCatching { am.setStreamVolume(stream, min + Math.round(value.coerceIn(0.0, 1.0) * (max - min)).toInt(), 0) }
+        if (which == "keys") sendVolume(am, stream)
     }
 
     private fun volumeInNotch(): Boolean {
@@ -281,6 +376,11 @@ class NotchService : AccessibilityService() {
                 result.success(null)
             }
             "overview" -> result.success(overview())
+            "volumes" -> result.success(volumes())
+            "setVolume" -> {
+                setVolume(call.argument<String>("stream"), call.argument<Double>("level") ?: 0.0)
+                result.success(volumes())
+            }
             "offerAnswer" -> {
                 NotchBridge.toMain("offerAnswer", call.arguments)
                 result.success(null)
@@ -346,6 +446,7 @@ class NotchService : AccessibilityService() {
     }
 
     private fun setWindow(w: Double, h: Double, touchable: Boolean) {
+        lastWindow = Triple(w, h, touchable)
         val frame = root ?: return
         val width = if (w <= 0) 1 else (w * density).toInt()
         val height = if (h <= 0) 1 else (h * density).toInt()
@@ -356,7 +457,7 @@ class NotchService : AccessibilityService() {
         }
         // Without a rect (an older notch engine), the touch window covers the drawing window.
         val area = if (touchRect.isEmpty) Rect(0, 0, width, height) else touchRect
-        val on = touchable && w > 0 && !area.isEmpty
+        val on = touchable && !shadeOpen && w > 0 && !area.isEmpty
         val t = touch ?: return
         var flags = touchParams.flags
         flags = if (on) flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() else flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
@@ -454,8 +555,12 @@ class NotchService : AccessibilityService() {
             val device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
             val name = if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
                 runCatching { device?.alias ?: device?.name }.getOrNull() else null
+            // Headphones (audio), not a watch or a car's phone link: they get the earbuds activity.
+            val audio = runCatching {
+                device?.bluetoothClass?.majorDeviceClass == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO
+            }.getOrDefault(false)
             NotchBridge.toNotch(
-                mapOf("type" to "bluetooth", "connected" to (intent.action == BluetoothDevice.ACTION_ACL_CONNECTED), "name" to name)
+                mapOf("type" to "bluetooth", "connected" to (intent.action == BluetoothDevice.ACTION_ACL_CONNECTED), "name" to name, "audio" to audio)
             )
         }
         // Headphones say how full they are a moment after connecting (and when it changes).

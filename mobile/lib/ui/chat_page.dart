@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../app_state.dart';
 import '../net/friends.dart';
+import 'account_page.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -194,8 +195,32 @@ Future<void> showMyCode(BuildContext context, AppState state) => showModalBottom
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Your friend code', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          const Text('In Holm on your laptop: Friends › Add friend, and paste this code. You see the request here.',
+          const Text('For friends: they paste it in their Holm (Friends › Add friend), and you see their request here.',
               style: TextStyle(color: HolmColors.dim)),
+          const SizedBox(height: 12),
+          // Your own PC doesn't need it: the account links them.
+          HolmCard(
+            margin: EdgeInsets.zero,
+            onTap: state.account == null
+                ? () {
+                    Navigator.pop(context);
+                    showAccount(context, state);
+                  }
+                : null,
+            child: Row(children: [
+              const Icon(Icons.laptop_rounded, color: HolmColors.accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  state.account == null
+                      ? 'Your own PC needs no code: sign in to your Holm account here and in Holm on the PC, and they link by themselves.'
+                      : 'Your own PCs need no code: signed in to ${state.account!.email}, they link by themselves.',
+                  style: const TextStyle(fontSize: 13.5),
+                ),
+              ),
+              if (state.account == null) const Icon(Icons.chevron_right_rounded, color: HolmColors.faint),
+            ]),
+          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(14),

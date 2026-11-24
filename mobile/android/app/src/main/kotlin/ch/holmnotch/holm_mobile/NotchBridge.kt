@@ -39,6 +39,8 @@ object NotchBridge {
     var main: MethodChannel? = null
     var service: NotchService? = null
     var listener: NotchListener? = null
+    /** Shared from Android's share menu, until the app takes it ("takeShared"). */
+    var shared: Map<String, Any?>? = null
     private val pending = ArrayDeque<Map<String, Any?>>()
 
     fun group(context: Context): FlutterEngineGroup =
@@ -103,6 +105,18 @@ object NotchBridge {
                     "camera" to camera(context),
                 )
             )
+            "media" -> {
+                (args as? String)?.let { listener?.mediaAction(it, null) }
+                result.success(null)
+            }
+            "dismissNotification" -> {
+                (args as? String)?.let { listener?.clear(it) }
+                result.success(null)
+            }
+            "takeShared" -> {
+                result.success(shared)
+                shared = null
+            }
             "copyUri" -> Thread {
                 val path = runCatching {
                     val uri = android.net.Uri.parse(args as String)

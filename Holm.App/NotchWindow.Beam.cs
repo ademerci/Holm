@@ -356,6 +356,8 @@ public sealed partial class NotchWindow
         var friends = beam ? _friends.Friends : Array.Empty<Friend>();
         // The account's other devices (the phone app, other PCs), wherever they are.
         var devices = beam ? _friends.OwnDevicesNow : Array.Empty<OwnDevice>();
+        // On this Wi-Fi too: once, as the nearby one (faster, no relay).
+        devices = devices.Where(d => !peers.Any(p => string.Equals(p.Name, d.Name, StringComparison.OrdinalIgnoreCase))).ToList();
         int online = friends.Count(_friends.IsOnline);
         _shareHint.Text = _pickFiles != null ? (beam ? "Click where it should go." : "Click Shelf to keep it here.")
             : !beam ? "Drop it on Shelf to keep it here and drag it out later."

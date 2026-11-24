@@ -54,6 +54,7 @@ enum ActivityKind {
   charging('Charging', 'Plugged in and unplugged, with the battery level'),
   wifi('Wi-Fi', 'Connected and disconnected'),
   bluetooth('Bluetooth', 'Headphones connecting, with their battery'),
+  buds('Earbuds', 'While connected: your earbuds in 3D with their battery, small beside everything else'),
   vpn('VPN', 'On and off, with Mullvad’s mole'),
   privacy('Camera and microphone', 'A dot while an app uses them'),
   quickShare('Quick Share', 'Files coming and going'),
@@ -114,6 +115,10 @@ class NotchSettings {
   final bool betaUpdates;
   /// The PCs signed in to the same Holm account show the phone's notifications, calls, songs and timers.
   final bool toPc;
+  /// Notifications only as tall as the closed notch: the sender left of the camera, the message right of it.
+  final bool compactBanners;
+  /// The colour of your Pixel Buds Pro 2 for their 3D picture: porcelain, hazel, wintergreen or peony.
+  final String budsColor;
 
   const NotchSettings({
     this.maxActivities = 2,
@@ -132,6 +137,8 @@ class NotchSettings {
     this.longPress = NotchGesture.open,
     this.betaUpdates = false,
     this.toPc = true,
+    this.compactBanners = false,
+    this.budsColor = 'porcelain',
   });
 
   bool shows(ActivityKind kind) => !off.contains(kind);
@@ -162,6 +169,8 @@ class NotchSettings {
     NotchGesture? longPress,
     bool? betaUpdates,
     bool? toPc,
+    bool? compactBanners,
+    String? budsColor,
   }) =>
       NotchSettings(
         maxActivities: maxActivities ?? this.maxActivities,
@@ -180,6 +189,8 @@ class NotchSettings {
         longPress: longPress ?? this.longPress,
         betaUpdates: betaUpdates ?? this.betaUpdates,
         toPc: toPc ?? this.toPc,
+        compactBanners: compactBanners ?? this.compactBanners,
+        budsColor: budsColor ?? this.budsColor,
       );
 
   String toJsonString() => jsonEncode({
@@ -199,6 +210,8 @@ class NotchSettings {
         'longPress': longPress.name,
         'beta': betaUpdates,
         'toPc': toPc,
+        'compact': compactBanners,
+        'budsColor': budsColor,
       });
 
   static NotchSettings fromJsonString(String? text) {
@@ -227,6 +240,8 @@ class NotchSettings {
         longPress: NotchGesture.values.asNameMap()[j['longPress']] ?? d.longPress,
         betaUpdates: j['beta'] == true,
         toPc: j['toPc'] != false,
+        compactBanners: j['compact'] == true,
+        budsColor: const {'porcelain', 'hazel', 'wintergreen', 'peony'}.contains(j['budsColor']) ? j['budsColor'] as String : 'porcelain',
       );
     } catch (_) {
       return d;

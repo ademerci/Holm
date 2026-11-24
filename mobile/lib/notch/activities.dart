@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -49,6 +50,8 @@ class NotchActivity {
   String? uri;
   double? progress; // 0..1; null with [busy] means indeterminate
   bool busy = false, done = false, failed = false, on = true, mullvad = false, preview = false;
+  /// A screen recording (Android's own, counting up): a red dot and its time, not a stopwatch.
+  bool recording = false;
   int? level; // battery %
   DateTime? countdownEnd, countUpStart;
 
@@ -104,12 +107,18 @@ class NotchController extends ChangeNotifier {
 
   /// Do Not Disturb is on (for the quiet mode that follows it).
   bool dnd = false;
+  /// Connections, for the PC's phone tab.
+  bool wifiOn = false, vpnOn = false;
+  String? bluetoothName;
   /// A reply is being typed in the open notch.
   bool typing = false;
   /// Holm's devices that are there now (from the app), for the overview.
   List<String> devices = const [];
   /// The last level of each pair of headphones (name → %).
   final Map<String, int> headphones = {};
+  /// The open volume notch: each stream's level (media, ring, notification, alarm, call), 0..1.
+  Map<String, double> volumes = const {};
+
   /// From the overview: the next alarm and the next event.
   DateTime? nextAlarm;
   ({String title, DateTime begin})? nextEvent;
@@ -126,11 +135,51 @@ class NotchController extends ChangeNotifier {
     super.dispose();
   }
 
+  /// The earbuds' 3D picture (assets/buds) for a device name, or null for headphones Holm has no picture of.
+  static String? budsModel(String? name, String color) {
+    final n = (name ?? '').toLowerCase();
+    if (n.contains('airpods')) return 'airpods';
+    if (n.contains('pixel buds')) return 'pixel_$color';
+    // Nothing's earbuds: "Nothing Ear (2)", "Ear (a)", and CMF's "CMF Buds 2 Pro".
+    if (n.contains('nothing') || n.startsWith('ear (') || n.contains('cmf buds')) return 'nothing';
+    return null;
+  }
+
+  /// Headphones by name, as they connect: something to show the earbuds activity for.
+  static bool looksLikeEarbuds(String? name) =>
+      RegExp(r'airpods|pixel buds|buds|earbuds|headphones|wf-|wh-|jabra|bose|beats|sennheiser|nothing ear|^ear \(|freebuds',
+              caseSensitive: false)
+          .hasMatch(name ?? '');
+
+  /// The connected earbuds (null when none): the earbuds activity follows them.
+  String? _budsName;
+
+  /// Each earbud's and the case's battery, from Google Play services' card (Fast Pair earbuds), else null.
+  int? budsLeft, budsRight, budsCase;
+
+  void _updateBuds() {
+    final name = _budsName;
+    if (name == null) {
+      _persistent.remove('buds');
+      return;
+    }
+    final a = _persistent['buds'] ?? NotchActivity('buds', ActivityKind.buds, persistent: true, priority: -50);
+    final both = [budsLeft, budsRight].whereType<int>();
+    a
+      ..title = name
+      // The emptier bud says how long they last; else what Android knows of the pair.
+      ..level = both.isNotEmpty ? both.reduce(math.min) : headphones[name]
+      ..label = 'Earbuds';
+    _persistent['buds'] = a;
+  }
+
   /// The activities to show, the first one in the notch, the second (if two are allowed) in the bubble beside it.
+  /// The earbuds always take the bubble when something else shows (small, beside everything else).
   List<NotchActivity> get visible {
     if (landscape) return const [];
     final now = DateTime.now();
-    bool wanted(NotchActivity a) => settings.shows(a.kind) && !settings.muted.containsKey(a.package) && !_hidden.contains(a.id);
+    bool wanted(NotchActivity a) =>
+        settings.shows(a.kind) && !settings.muted.containsKey(a.package) && !snoozed(a.package) && !_hidden.contains(a.id);
     // The newest first; of two from the same moment, the one that came later (later in the list).
     final order = {for (var i = 0; i < _alerts.length; i++) _alerts[i]: i};
     final alerts = _alerts.where((a) => (a.until == null || a.until!.isAfter(now) || expanded) && wanted(a)).toList()
@@ -145,7 +194,34 @@ class NotchController extends ChangeNotifier {
         return b.priority.compareTo(a.priority);
       });
     final all = [...alerts.take(1), ...persistent, ...alerts.skip(1)];
-    return all.take(settings.maxActivities).toList();
+    final buds = all.where((a) => a.kind == ActivityKind.buds).firstOrNull;
+    // The earbuds are the small one beside anything else: in the bubble ([budsBubble]), in the notch only opened from
+    // there. Alone, they're the notch's own activity, as big as any.
+    final others = all.where((a) => a.kind != ActivityKind.buds).toList();
+    _othersShowing = others.length;
+    final rest = others.take(settings.maxActivities).toList();
+    if (buds != null && (rest.isEmpty || (expanded && _focus == buds.id))) return [buds];
+    return rest;
+  }
+
+  /// How many other activities there are (all of them, also those beyond the ones shown), as of [visible].
+  int _othersShowing = 0;
+
+  /// The earbuds in the bubble beside the camera (beside whatever else shows), while they're connected.
+  NotchActivity? get budsBubble {
+    if (landscape || primary?.kind == ActivityKind.buds) return null; // alone (or opened), they're in the notch
+    if (_othersShowing >= 2) return null; // two others already: the earbuds step back until one is gone
+    final a = _persistent.values.where((a) => a.kind == ActivityKind.buds).firstOrNull;
+    return a != null && settings.shows(ActivityKind.buds) && !_hidden.contains(a.id) ? a : null;
+  }
+
+  /// A tap on the earbuds' bubble: their card opens (the buds come out of the case).
+  void openBuds() {
+    final a = budsBubble;
+    if (a == null) return;
+    _focus = a.id;
+    expanded = true;
+    notifyListeners();
   }
 
   NotchActivity? get primary {
@@ -161,12 +237,35 @@ class NotchController extends ChangeNotifier {
   void expand() {
     if (primary == null || expanded) return;
     expanded = true;
+    if (primary!.kind == ActivityKind.volume) _readVolumes();
+    notifyListeners();
+  }
+
+  Future<void> _readVolumes() async {
+    final r = await action?.call('volumes', null);
+    if (r is Map) {
+      volumes = {for (final e in r.entries) '${e.key}': (e.value as num).toDouble()};
+      notifyListeners();
+    }
+  }
+
+  /// A finger on a volume: [stream] is "media", "ring", … or "keys" (the one the volume keys set, in the pill).
+  void setVolume(String stream, double level) {
+    level = level.clamp(0.0, 1.0);
+    if (stream != 'keys') volumes = {...volumes, stream: level};
+    final a = _alerts.where((a) => a.id == 'volume').firstOrNull;
+    if (a != null) {
+      if (stream == 'keys' || stream == 'media') a.progress = level;
+      a.until = DateTime.now().add(const Duration(seconds: 3)); // stays while you set it
+    }
+    action?.call('setVolume', {'stream': stream, 'level': level});
     notifyListeners();
   }
 
   void collapse() {
     if (!expanded) return;
     expanded = false;
+    if (_persistent[_focus]?.kind == ActivityKind.buds) _focus = null; // back into the bubble
     _endTyping();
     _persistent.remove('home');
     notifyListeners();
@@ -297,6 +396,27 @@ class NotchController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Apps quiet for a while (the snooze button of an open notification), until when.
+  final Map<String, DateTime> _snooze = {};
+
+  bool snoozed(String? pkg) {
+    final until = pkg == null ? null : _snooze[pkg];
+    if (until == null) return false;
+    if (until.isAfter(DateTime.now())) return true;
+    _snooze.remove(pkg);
+    return false;
+  }
+
+  /// [a]'s app stays out of the notch for [time] (5 minutes); then it shows again by itself.
+  void snooze(NotchActivity a, [Duration time = const Duration(minutes: 5)]) {
+    final pkg = a.package;
+    if (pkg == null) return;
+    _snooze[pkg] = DateTime.now().add(time);
+    _alerts.removeWhere((x) => x.package == pkg);
+    if (visible.isEmpty) expanded = false;
+    notifyListeners();
+  }
+
   /// Whether the notch can stop showing [a]'s app (notifications from an app, not the notch's own activities).
   bool canMute(NotchActivity a) =>
       a.package != null && const {ActivityKind.notification, ActivityKind.reminder}.contains(a.kind);
@@ -315,6 +435,7 @@ class NotchController extends ChangeNotifier {
 
   void _expire() {
     final now = DateTime.now();
+    _tellPcState();
     var changed = false;
     _alerts.removeWhere((a) {
       final gone = a.until != null && a.until!.isBefore(now) && !(expanded && identical(a, primary));
@@ -346,16 +467,62 @@ class NotchController extends ChangeNotifier {
 
   String? _toldSong;
   DateTime? _toldTimerEnd;
+  DateTime _toldState = DateTime.fromMillisecondsSinceEpoch(0);
+  String _toldStateKey = '';
+
+  /// Battery and song for the PC's phone tab: when it changes noticeably, else every five minutes (which also keeps
+  /// the phone among the PC's devices that are there).
+  void _tellPcState({bool force = false}) {
+    final level = batteryLevel;
+    if (level == null) return;
+    final song = media?.playing == true && media?.title != null ? [media!.title, media!.artist].whereType<String>().join(' · ') : '';
+    final buds = bluetoothName == null ? null : [bluetoothName, if (headphones[bluetoothName] != null) '${headphones[bluetoothName]}%'].join(' ');
+    final key = '${level ~/ 10}|$plugged|$song|$wifiOn|$vpnOn|$dnd|$buds';
+    final now = DateTime.now();
+    if (!force && key == _toldStateKey && now.difference(_toldState) < const Duration(minutes: 5)) return;
+    _toldStateKey = key;
+    _toldState = now;
+    _tellPc('status', '$level%', detail: song.isEmpty ? null : song, on: plugged, extra: {
+      'net': wifiOn ? 'wifi' : 'cell',
+      if (vpnOn) 'vpn': true,
+      if (dnd) 'dnd': true,
+      'bt': ?buds,
+    });
+  }
 
   /// Tells the account's PCs (through the app): a notification, a call, a song or a timer (Holm.Core PhoneStatus).
-  void _tellPc(String kind, String? title, {String? detail, int since = 0, bool on = true}) {
+  void _tellPc(String kind, String? title,
+      {String? detail, int since = 0, bool on = true, Map<String, Object?>? extra, String? key}) {
     if (!settings.toPc || title == null || title.trim().isEmpty) return;
-    action?.call('phoneStatus', {'kind': kind, 'title': title, 'detail': detail, 'since': since, 'on': on});
+    action?.call('phoneStatus', {'kind': kind, 'title': title, 'detail': detail, 'since': since, 'on': on, 'extra': extra, 'key': key});
   }
 
   // ───────────── events ─────────────
 
   void handle(Map<String, Object?> e) {
+    // The phone's connections, whether they make news or not.
+    switch (e['type']) {
+      case 'wifi':
+        wifiOn = e['connected'] == true;
+        _tellPcState();
+      case 'vpn':
+        vpnOn = e['active'] == true;
+        _tellPcState();
+      case 'bluetooth':
+        bluetoothName = e['connected'] == true ? (e['name'] as String? ?? 'Bluetooth') : null;
+        final btName = e['name'] as String?;
+        if (e['connected'] == true && btName != null && (e['audio'] == true || looksLikeEarbuds(btName))) {
+          _budsName = btName;
+        } else if (e['connected'] != true && btName == _budsName) {
+          _budsName = null;
+          budsLeft = budsRight = budsCase = null;
+        }
+        _updateBuds();
+        _tellPcState();
+      case 'dnd':
+        dnd = e['on'] == true;
+        _tellPcState();
+    }
     switch (e['type']) {
       case 'settings':
         setSettings(NotchSettings.fromJsonString(e['json'] as String?));
@@ -388,11 +555,22 @@ class NotchController extends ChangeNotifier {
         dnd = e['on'] == true;
       case 'volume':
         _volume(e);
+      case 'budsBattery':
+        budsLeft = e['left'] as int?;
+        budsRight = e['right'] as int?;
+        budsCase = e['case'] as int?;
+        _budsName ??= e['name'] as String? ?? 'Earbuds';
+        _updateBuds();
+        notifyListeners();
       case 'bluetoothBattery':
         final name = e['name'] as String? ?? 'Headphones';
         final level = e['level'] as int;
         final known = headphones.containsKey(name);
         headphones[name] = level;
+        // Already connected when the notch started: their battery says they're there.
+        if (_budsName == null && looksLikeEarbuds(name)) _budsName = name;
+        _updateBuds();
+        notifyListeners();
         final bt = _alerts.where((a) => a.id == 'bt').firstOrNull;
         if (bt != null && bt.on) {
           bt.level = level;
@@ -414,6 +592,7 @@ class NotchController extends ChangeNotifier {
           ..text = devices.isEmpty ? 'Send it to your PC' : 'Send it to ${devices.first}'
           ..label = 'Holm');
       case 'holm.clipboard':
+        _persistent.remove('holm'); // "… is sending you something" is over
         _alert(NotchActivity('clip', ActivityKind.clipboard, show: const Duration(seconds: 5))
           ..title = 'Copied from ${e['from'] ?? 'your PC'}'
           ..text = e['text'] as String?
@@ -494,7 +673,7 @@ class NotchController extends ChangeNotifier {
     final initial = e['initial'] == true;
     if (e['summary'] == true || e['media'] == true) return;
     if (pkg == 'net.mullvad.mullvadvpn') return; // shown as the VPN activity
-    if (settings.muted.containsKey(pkg)) return;
+    if (settings.muted.containsKey(pkg) || snoozed(pkg)) return;
     // Empty when Android hides a notification's content from listeners (Android 15: "sensitive").
     final title = (e['title'] as String?)?.trim().isEmpty ?? true ? null : e['title'] as String?;
     final text = e['text'] as String?;
@@ -589,6 +768,7 @@ class NotchController extends ChangeNotifier {
         expanded = true;
       }
       a.title = title ?? (channel.contains('stopwatch') ? 'Stopwatch' : 'Timer');
+      a.recording = isScreenRecording(pkg, channel, title);
       final when = DateTime.fromMillisecondsSinceEpoch((e['when'] as int?) ?? 0);
       final posted = DateTime.fromMillisecondsSinceEpoch((e['posted'] as int?) ?? DateTime.now().millisecondsSinceEpoch);
       if (up && (!wasUp || another) && !initial) _tellPc('timer', a.title == "Time's up" ? 'Timer' : a.title);
@@ -635,6 +815,11 @@ class NotchController extends ChangeNotifier {
         ..progress = 1);
       return;
     }
+    // The same notification, no longer ongoing (a screen recording now "saved", a call ended): what it showed goes.
+    if (!ongoing && _persistent.remove('n:$key') != null) {
+      _byKey.remove(key);
+      notifyListeners();
+    }
     if (ongoing || initial) return;
     if (((e['importance'] as int?) ?? 3) < 3) return; // silent ones stay in the shade
     if (!settings.systemNotices && isSystemNotice(pkg, category)) return; // battery saver and the like
@@ -657,7 +842,9 @@ class NotchController extends ChangeNotifier {
     }
     if (typing && _alerts.any((x) => x.id == a.id)) return;
     _alert(a);
-    if (!settings.muted.containsKey(pkg)) _tellPc('notification', a.title, detail: text == null ? a.label : '${a.label} · $text');
+    if (!settings.muted.containsKey(pkg)) {
+      _tellPc('notification', a.title, detail: text == null ? a.label : '${a.label} · $text', key: key);
+    }
   }
 
   static String _fmt(Duration d) {
@@ -677,6 +864,13 @@ class NotchController extends ChangeNotifier {
       if (a is List && a.length > 2 && a[2] == true && a[0] is int) return a[0] as int;
     }
     return null;
+  }
+
+  /// Android's screen recorder (System UI, or the Screen recorder app) while it records.
+  static bool isScreenRecording(String pkg, String channel, String? title) {
+    final t = (title ?? '').toLowerCase();
+    return (pkg == 'com.android.systemui' || pkg.contains('screenrecord')) &&
+        (channel.contains('screen_record') || channel.contains('screenrecord') || t.contains('record') || t.contains('aufnahme') || t.contains('aufzeichn'));
   }
 
   /// Android's own notices: battery saver, USB, "running in the background", system updates.
@@ -702,6 +896,7 @@ class NotchController extends ChangeNotifier {
     if (e['active'] != true) {
       media = null;
       _persistent.remove('music');
+      _hidden.remove('music');
       notifyListeners();
       return;
     }
@@ -717,6 +912,13 @@ class NotchController extends ChangeNotifier {
       speed: (e['speed'] as num?)?.toDouble() ?? 1,
       canSeek: e['canSeek'] == true,
     );
+    // Swiped away, the music stays hidden only for that song: the next one, or playing again after a pause, shows it.
+    final before = media;
+    if (_hidden.contains('music') &&
+        before != null &&
+        ((m.playing && !before.playing) || m.title != before.title || m.package != before.package)) {
+      _hidden.remove('music');
+    }
     media = m;
     mediaReceived = DateTime.now();
     final art = e['art'] as Uint8List?;
@@ -736,6 +938,7 @@ class NotchController extends ChangeNotifier {
       }
     }
     _pausedAt = m.playing ? null : (_pausedAt ?? DateTime.now());
+    final songBefore = _toldSong;
     if (m.playing && m.title != null && m.title != _toldSong) {
       _toldSong = m.title;
       _tellPc('music', m.title, detail: m.artist);
@@ -743,6 +946,7 @@ class NotchController extends ChangeNotifier {
       _toldSong = null;
       _tellPc('music', m.title ?? 'Music', on: false);
     }
+    if (_toldSong != songBefore) _tellPcState(force: true);
     if (m.playing || _persistent.containsKey('music')) {
       _persistent['music'] = (_persistent['music'] ?? NotchActivity('music', ActivityKind.music, persistent: true, priority: 50))
         ..package = m.package
@@ -799,6 +1003,7 @@ class NotchController extends ChangeNotifier {
     plugged = e['plugged'] == true;
     _full = plugged && (e['full'] == true || (batteryLevel ?? 0) >= 100);
     _batteryKnown = true;
+    _tellPcState(force: wasPlugged != plugged);
     // Fully charged while plugged in: here, and on the PC (it says so in its notch).
     if (known && _full && !wasFull && wasPlugged == plugged) {
       _alert(NotchActivity('battery', ActivityKind.charging, show: const Duration(milliseconds: 3500))
@@ -823,6 +1028,10 @@ class NotchController extends ChangeNotifier {
   }
 
   void _holmTransfer(Map<String, Object?> e) {
+    if (e['clear'] == true) {
+      if (_persistent.remove('holm') != null) notifyListeners();
+      return;
+    }
     final done = e['done'] == true;
     final a = NotchActivity('holm', ActivityKind.holm, persistent: !done, priority: 90, show: done ? const Duration(seconds: 4) : null)
       ..title = e['title'] as String?
@@ -852,6 +1061,11 @@ class NotchController extends ChangeNotifier {
         ..title = media?.title ?? 'Preview'
         ..text = media?.artist ?? 'Holm'
         ..label = 'Music';
+      // The earbuds beside it, as they look in your colour (the setting on that page).
+      _persistent['preview-buds'] = NotchActivity('preview-buds', ActivityKind.buds, persistent: true, priority: -50)
+        ..preview = true
+        ..title = 'Pixel Buds Pro 2'
+        ..level = 80;
       _persistent['preview-timer'] = NotchActivity('preview-timer', ActivityKind.timer, persistent: true, priority: 48)
         ..preview = true
         ..title = 'Timer'
@@ -866,6 +1080,11 @@ class NotchController extends ChangeNotifier {
     if (a.kind == ActivityKind.music && cover != null) return cover!.accent;
     final brand = Brand.of(a.package);
     if (brand != null) return brand.color;
+    if (a.recording) return const Color(0xFFFF453A);
+    if (a.kind == ActivityKind.buds) {
+      final l = a.level ?? 100;
+      return l <= 15 ? const Color(0xFFFF453A) : l <= 30 ? const Color(0xFFFF9F0A) : const Color(0xFF30D158);
+    }
     return switch (a.kind) {
       ActivityKind.timer => const Color(0xFFFF9F0A),
       ActivityKind.charging => const Color(0xFF30D158),

@@ -18,6 +18,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         updateFrom(intent)
+        shareFrom(intent)
         // For the "new version" notification; asked once.
         val prefs = getSharedPreferences("holm_updates", MODE_PRIVATE)
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
@@ -93,6 +94,23 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         updateFrom(intent)
+        shareFrom(intent)
+    }
+
+    /**
+     * Shared from another app (Android's share menu): text or files for the app to send to a PC. Kept in the bridge
+     * until the app takes it, as the app may only be starting.
+     */
+    private fun shareFrom(intent: Intent?) {
+        val action = intent?.action
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
+        val uris = if (action == Intent.ACTION_SEND) listOfNotNull(intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java))
+        else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java) ?: emptyList()
+        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        if (uris.isEmpty() && text.isNullOrBlank()) return
+        NotchBridge.shared = mapOf("text" to if (uris.isEmpty()) text else null, "uris" to uris.map { it.toString() })
+        intent.action = Intent.ACTION_MAIN // taken once, not again when the activity comes back
+        NotchBridge.toMain("shared", null)
     }
 
     /** "Update" in the update notification: the app installs it. */

@@ -9,6 +9,7 @@ import 'activities.dart';
 import 'brands.dart';
 import 'cover.dart';
 import 'designs.dart';
+import 'marquee.dart';
 import 'dots.dart';
 import 'mole.dart';
 import 'settings.dart';
@@ -30,10 +31,12 @@ double openHeight(NotchSettings s, NotchActivity a, NotchActivity? second, [Notc
     ActivityKind.timer => 66.0 + actions,
     ActivityKind.charging => 64.0,
     ActivityKind.vpn => a.mullvad ? 70.0 : 56.0,
-    ActivityKind.wifi || ActivityKind.bluetooth || ActivityKind.privacy || ActivityKind.volume => 56.0,
+    ActivityKind.wifi || ActivityKind.bluetooth || ActivityKind.privacy => 56.0,
+    ActivityKind.volume => 5 * 32.0,
     ActivityKind.call => 112.0,
     ActivityKind.navigation => 72.0,
     ActivityKind.home => 132.0,
+    ActivityKind.buds => 120.0,
     ActivityKind.screenshot => 118.0,
     ActivityKind.clipboard => 26 + lines(a.text, 3) + 54,
     _ when a.isOffer => 108.0,
@@ -122,7 +125,7 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
       return (s.open.copyWith(height: openHeight(s, p, v.length > 1 ? v[1] : null, c)), 1);
     }
     if (p.wide) return (_wideShape(s), 1);
-    if (p.banner) return (_bannerShape(s), 1);
+    if (p.banner) return (s.compactBanners ? _compactShape(s) : _bannerShape(s), 1);
     return (closed, 1);
   }
 
@@ -131,6 +134,11 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
     final h = s.closed.height + 4;
     return s.closed.copyWith(width: math.min(s.open.width, s.closed.width + 150), height: h, radius: h / 2);
   }
+
+  /// A compact notification: as tall as the closed notch, a little wider than the pill for short news (the message
+  /// needs a few more words than "Connected").
+  static NotchGeometry _compactShape(NotchSettings s) =>
+      s.closed.copyWith(width: math.min(s.open.width - 28, s.closed.width + 120), radius: s.closed.height / 2);
 
   /// A notification: a banner as wide as the open notch, the camera's band on top, the message under it.
   static NotchGeometry _bannerShape(NotchSettings s) {
@@ -146,8 +154,9 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
     _target = g;
     if (c.expanded) _openHeight = g.height;
     _shape.moveTo(g.width, g.height, g.radius, g.x, g.y, alpha, grow: grow);
-    // The bubble only beside the closed notch: a banner or widened pill would push it off the screen.
-    final two = c.visible.length > 1 && !c.expanded && !(c.primary?.peeks ?? false);
+    // The bubble only beside the closed notch: a banner or widened pill would push it off the screen. The earbuds
+    // have it whenever they're connected, also beside the bare camera.
+    final two = (c.budsBubble != null || c.visible.length > 1) && !c.expanded && !(c.primary?.peeks ?? false);
     _bubble.retarget(two ? c.settings.closed.height : 0, 0.34, 0.66);
     _bubbleAlpha.retarget(two ? 1 : 0, 0.24, 1);
     _reportWindow();
@@ -186,7 +195,7 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
       half(s.closed.x, s.closed.width) + 8 + s.closed.height,
       half(s.closed.x, s.open.width - 28),
     ].reduce(math.max);
-    final visible = c.primary != null;
+    final visible = c.primary != null || c.budsBubble != null;
     // Nothing shows: the notch is invisible, but the camera still takes a tap (the overview) or a double tap.
     final idleTouch = !visible && !c.landscape && (s.shows(ActivityKind.home) || s.doubleTap != NotchGesture.none);
     final width = 2 * halfW + 16;
@@ -279,13 +288,22 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
                   if (v < -150) c.collapse();
                   if (v > 150) c.expand();
                 },
-                // A swipe sideways sends it away, as with Android's own pop-ups (closed or peeking; open, the player's
-                // slider and the buttons need the touches).
-                onHorizontalDragEnd: open || p == null
+                // A swipe sideways sends it away, as with Android's own pop-ups. Open, it closes the notch, and a
+                // notification goes with it (the song bar and the sliders take their own drags first).
+                onHorizontalDragUpdate: !open && p?.kind == ActivityKind.volume
+                    ? (d) => c.setVolume('keys', (p!.progress ?? 0) + d.delta.dx / math.max(w * 0.6, 1))
+                    : null,
+                onHorizontalDragEnd: c.typing || (!open && (p == null || p.kind == ActivityKind.volume))
                     ? null
                     : (d) {
                         final v = d.primaryVelocity ?? 0;
-                        if (v.abs() > 200) c.swipeAway(p, clear: v > 0);
+                        if (v.abs() <= 200) return;
+                        if (!open) {
+                          c.swipeAway(p!, clear: v > 0);
+                        } else {
+                          if (p != null && p.isAlert) c.swipeAway(p, clear: v > 0);
+                          c.collapse();
+                        }
                       },
                 child: ClipRRect(
                   borderRadius: _corners(w, h),
@@ -321,6 +339,8 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
                                           openHeight(c.settings, p, second, c),
                                           NotchPalette.forDesign(_design(c), child: _Open(c, p, second, _target)),
                                         )
+                                      : p.banner && c.settings.compactBanners
+                                      ? _CompactBanner(c, p, c.settings.closed.height, _target.width)
                                       : p.banner
                                       ? _Banner(c, p, c.settings.closed.height, _bannerInset(_bannerRadius(c.settings)))
                                       : p.wide
@@ -343,19 +363,21 @@ class _NotchStageState extends State<NotchStage> with SingleTickerProviderStateM
               height: _bubble.value,
               child: Opacity(
                 opacity: _bubbleAlpha.value.clamp(0.0, 1.0),
-                child: GestureDetector(
-                  onTap: second == null
-                      ? null
-                      : () {
-                          c.focus(second);
-                          c.expand();
-                        },
-                  child: Container(
-                    decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                    alignment: Alignment.center,
-                    child: second == null ? null : _Glyph(c, second, size: _bubble.value * 0.55),
-                  ),
-                ),
+                child: c.budsBubble != null
+                    ? GestureDetector(onTap: c.openBuds, child: _BudsBubble(c, c.budsBubble!, _bubble.value))
+                    : GestureDetector(
+                        onTap: second == null
+                            ? null
+                            : () {
+                                c.focus(second);
+                                c.expand();
+                              },
+                        child: Container(
+                          decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                          alignment: Alignment.center,
+                          child: second == null ? null : _Glyph(c, second, size: _bubble.value * 0.55),
+                        ),
+                      ),
               ),
             ),
         ],
@@ -424,6 +446,19 @@ class _Backdrop extends StatelessWidget {
           ? ColoredBox(key: ValueKey('design:${design.id}'), color: design.background)
           : wash
           ? _CoverGlow(cover: cover, settings: c.settings)
+          : open && design == null && p?.kind == ActivityKind.buds
+          // The earbuds' card: a hint of their own colour from below (white buds white, pink ones pink).
+          ? DecoratedBox(
+              key: ValueKey('buds:${NotchController.budsModel(p!.title, c.settings.budsColor)}'),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black, Colors.black, Color.alphaBlend(_budsTint(c, p!).withValues(alpha: 0.16), Colors.black)],
+                  stops: const [0, 0.4, 1],
+                ),
+              ),
+            )
           : open && c.settings.look == NotchLook.holm && p != null && Brand.of(p!.package) != null
           ? DecoratedBox(
               key: ValueKey('brand:${p!.package}'),
@@ -521,6 +556,10 @@ class _ClosedTrailing extends StatelessWidget {
         return _Dot(color: accent, size: size * 0.42);
       case ActivityKind.wifi || ActivityKind.vpn || ActivityKind.bluetooth:
         return Icon(a.on ? Icons.check_rounded : Icons.close_rounded, color: accent, size: size * 0.8);
+      case ActivityKind.buds:
+        return a.level == null
+            ? Icon(Icons.headphones_rounded, color: Colors.white, size: size * 0.8)
+            : Text('${a.level}%', style: style);
       default:
         if (a.isOffer) return Icon(Icons.download_rounded, color: accent, size: size * 0.8);
         if (a.done) {
@@ -534,12 +573,7 @@ class _ClosedTrailing extends StatelessWidget {
         if (a.text != null) {
           return ConstrainedBox(
             constraints: BoxConstraints(maxWidth: size * 3),
-            child: Text(
-              a.text!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style.copyWith(fontSize: size * 0.5),
-            ),
+            child: Marquee(a.text!, style: style.copyWith(fontSize: size * 0.5)),
           );
         }
         return const SizedBox.shrink();
@@ -587,12 +621,7 @@ class _Wide extends StatelessWidget {
             const SizedBox(width: 9),
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: math.max(0, side)),
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: style.copyWith(color: Colors.white),
-              ),
+              child: Marquee(name, style: style.copyWith(color: Colors.white)),
             ),
             const Spacer(),
             if (a.kind == ActivityKind.volume)
@@ -603,12 +632,45 @@ class _Wide extends StatelessWidget {
             else
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: math.max(0, side + icon + 9)),
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: style.copyWith(color: c.accentFor(a)),
-              ),
+              child: Marquee(value, style: style.copyWith(color: c.accentFor(a))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact notification: the closed notch's height. Left of the camera the picture and who wrote, right of it the
+/// message; tapping opens it as usual.
+class _CompactBanner extends StatelessWidget {
+  final NotchController c;
+  final NotchActivity a;
+  final double h, width;
+  const _CompactBanner(this.c, this.a, this.h, this.width);
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = h * 0.7;
+    // Each side of the camera (about as wide as the notch is tall) gets half of the rest.
+    final side = (width - h * 1.2) / 2 - icon - 12;
+    final text = a.text != null && a.text != a.title ? a.text! : (a.label ?? '');
+    return SizedBox(
+      height: h,
+      child: Padding(
+        padding: EdgeInsets.only(left: (h - icon) / 2, right: h * 0.5),
+        child: Row(
+          children: [
+            SizedBox(width: icon, height: icon, child: _Glyph(c, a, size: icon)),
+            const SizedBox(width: 9),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: math.max(0, side)),
+              child: Marquee(a.title ?? a.label ?? '', style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
+            ),
+            const Spacer(),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: math.max(0, side + icon + 9)),
+              child: Marquee(text, style: const TextStyle(color: _dim, fontSize: 13)),
             ),
           ],
         ),
@@ -657,24 +719,14 @@ class _Banner extends StatelessWidget {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Expanded(
-                            child: Text(
-                              a.title ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.2),
-                            ),
+                            child: Marquee(a.title ?? '', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.2)),
                           ),
                           const SizedBox(width: 12),
                           Text(source, maxLines: 1, style: const TextStyle(color: _faint, fontSize: 12)),
                         ],
                       ),
                       if (text != null)
-                        Text(
-                          text,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _dim, fontSize: 13, height: 1.25),
-                        ),
+                        Marquee(text, style: const TextStyle(color: _dim, fontSize: 13, height: 1.25)),
                     ],
                   ),
                 ),
@@ -716,17 +768,11 @@ class _Open extends StatelessWidget {
                 // The name fills the line, so the time sits at its right end (a Flexible beside a Spacer left it mid-way).
                 Expanded(
                   child: nothing
-                      ? Text(
+                      ? Marquee(
                           (a.label ?? a.kind.label).toUpperCase(),
-                          maxLines: 1,
                           style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 11, fontFamily: 'monospace', letterSpacing: 1.5),
                         )
-                      : Text(
-                          a.label ?? a.kind.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 12.5),
-                        ),
+                      : Marquee(a.label ?? a.kind.label, style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 12.5)),
                 ),
                 const SizedBox(width: 12),
                 if (nothing) const _RedDot() else _OpenCorner(c, a),
@@ -743,12 +789,7 @@ class _Open extends StatelessWidget {
                   SizedBox(width: 22, height: 22, child: _Glyph(c, second!, size: 22)),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      _summary(second!),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 13, fontFamily: nothing ? 'monospace' : null),
-                    ),
+                    child: Marquee(_summary(second!), style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 13, fontFamily: nothing ? 'monospace' : null)),
                   ),
                   Icon(Icons.unfold_more_rounded, size: 16, color: NotchPalette.of(context).faint),
                 ],
@@ -775,6 +816,19 @@ class _OpenCorner extends StatelessWidget {
       children: [
         Text(_ago(a.created), style: TextStyle(color: NotchPalette.of(context).faint, fontSize: 12)),
         const SizedBox(width: 6),
+        // Quiet for 5 minutes.
+        Semantics(
+          button: true,
+          label: 'Mute for 5 minutes',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => c.snooze(a),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 4, 6),
+              child: Icon(Icons.snooze_rounded, size: 16, color: NotchPalette.of(context).faint),
+            ),
+          ),
+        ),
         // Don't show this app again (it can be switched back on in Holm's notch settings).
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -816,12 +870,7 @@ class _OpenBody extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: DotText(text, dot: size / 7.5, maxChars: 18),
           )
-        : Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: NotchPalette.of(context).ink, fontSize: size, fontWeight: FontWeight.w600),
-          );
+        : Marquee(text, style: TextStyle(color: NotchPalette.of(context).ink, fontSize: size, fontWeight: FontWeight.w600));
     Widget body(String? text, {int lines = 2}) => text == null
         ? const SizedBox.shrink()
         : Text(
@@ -834,6 +883,46 @@ class _OpenBody extends StatelessWidget {
     switch (a.kind) {
       case ActivityKind.music:
         return _Player(c, nothing);
+      case ActivityKind.buds:
+        final de = ui.PlatformDispatcher.instance.locale.languageCode == 'de';
+        // Each bud and the case, when Google Play services told them; else the pair's one level.
+        final parts = [
+          if (c.budsLeft != null) ('L', c.budsLeft!),
+          if (c.budsCase != null) (de ? 'Etui' : 'Case', c.budsCase!),
+          if (c.budsRight != null) ('R', c.budsRight!),
+        ];
+        return Row(
+          children: [
+            SizedBox(width: 112, height: 112, child: _BudsOut(c, a)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  headline(title, size: 17),
+                  const SizedBox(height: 10),
+                  if (parts.isNotEmpty)
+                    Row(
+                      children: [
+                        for (final (name, level) in parts) ...[
+                          _BudLevel(name, level, nothing: nothing),
+                          const SizedBox(width: 12),
+                        ],
+                      ],
+                    )
+                  else ...[
+                    body(a.level == null ? (de ? 'Verbunden' : 'Connected') : (de ? 'Akku ${a.level}%' : 'Battery ${a.level}%'), lines: 1),
+                    if (a.level != null) ...[
+                      const SizedBox(height: 10),
+                      _Bar(progress: a.level! / 100, color: accent, nothing: nothing),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
       case ActivityKind.home:
         return _Home(c, nothing);
       case ActivityKind.call:
@@ -949,11 +1038,37 @@ class _OpenBody extends StatelessWidget {
           ],
         );
       case ActivityKind.volume:
-        return Row(
+        // Every volume, one under the other, each set with a finger.
+        const rows = [
+          ('media', 'Media', Icons.music_note_rounded),
+          ('ring', 'Ringtone', Icons.ring_volume_rounded),
+          ('notification', 'Notifications', Icons.notifications_rounded),
+          ('alarm', 'Alarm', Icons.alarm_rounded),
+          ('call', 'Calls', Icons.call_rounded),
+        ];
+        return Column(
           children: [
-            Icon(a.on ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: NotchPalette.of(context).ink, size: 30),
-            const SizedBox(width: 14),
-            Expanded(child: _Bar(progress: a.progress ?? 0, color: NotchPalette.of(context).ink, nothing: nothing)),
+            for (final (stream, label, icon) in rows)
+              SizedBox(
+                height: 32,
+                child: Row(
+                  children: [
+                    Icon(icon, size: 17, color: NotchPalette.of(context).dim),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 112,
+                      child: Marquee(label, style: TextStyle(color: NotchPalette.of(context).ink, fontSize: nothing ? 12 : 13.5, fontFamily: nothing ? 'monospace' : null)),
+                    ),
+                    Expanded(
+                      child: _VolumeSlider(
+                        value: c.volumes[stream] ?? (stream == 'media' ? a.progress ?? 0 : 0),
+                        color: nothing ? _nothingRed : NotchPalette.of(context).accent,
+                        onChanged: (v) => c.setVolume(stream, v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         );
       case ActivityKind.timer:
@@ -964,7 +1079,7 @@ class _OpenBody extends StatelessWidget {
                 onTap: _open,
                 child: Row(
                   children: [
-                    Icon(Icons.timer_outlined, color: accent, size: 30),
+                    Icon(a.recording ? Icons.fiber_manual_record_rounded : Icons.timer_outlined, color: accent, size: 30),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -1128,6 +1243,42 @@ class _OpenBody extends StatelessWidget {
   }
 }
 
+/// A volume to set with a finger: tap or drag anywhere along it.
+class _VolumeSlider extends StatelessWidget {
+  final double value;
+  final Color color;
+  final ValueChanged<double> onChanged;
+  const _VolumeSlider({required this.value, required this.color, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      void at(Offset p) => onChanged((p.dx / math.max(box.maxWidth, 1)).clamp(0.0, 1.0));
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (d) => at(d.localPosition),
+        onHorizontalDragStart: (d) => at(d.localPosition),
+        onHorizontalDragUpdate: (d) => at(d.localPosition),
+        child: SizedBox(
+          height: 28,
+          child: Center(
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Container(height: 6, decoration: BoxDecoration(color: NotchPalette.of(context).card, borderRadius: BorderRadius.circular(3))),
+                FractionallySizedBox(
+                  widthFactor: value.clamp(0.0, 1.0),
+                  child: Container(height: 6, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 /// Answering a message in the notch: a line to type in and a send button.
 class _ReplyField extends StatefulWidget {
   final NotchController c;
@@ -1252,7 +1403,10 @@ class _Home extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        Wrap(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
@@ -1271,16 +1425,36 @@ class _Home extends StatelessWidget {
                     const SizedBox(width: 6),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 150),
-                      child: Text(
-                        text,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: NotchPalette.of(context).ink, fontSize: 13, fontFamily: nothing ? 'monospace' : null),
-                      ),
+                      child: Marquee(text, style: TextStyle(color: NotchPalette.of(context).ink, fontSize: 13, fontFamily: nothing ? 'monospace' : null)),
                     ),
                   ],
                 ),
               ),
+          ],
+        )),
+            const SizedBox(width: 8),
+            // The notch's settings, in the app.
+            Semantics(
+              button: true,
+              label: de ? 'Einstellungen' : 'Settings',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  c.collapse();
+                  c.action?.call('openApp', {'page': 'notch'});
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: NotchPalette.of(context).ink.withValues(alpha: nothing ? 0 : 0.1),
+                    border: nothing ? Border.all(color: NotchPalette.of(context).ink.withValues(alpha: 0.3)) : null,
+                  ),
+                  child: Icon(Icons.settings_rounded, size: 17, color: NotchPalette.of(context).dim),
+                ),
+              ),
+            ),
           ],
         ),
       ],
@@ -1342,19 +1516,9 @@ class _Player extends StatelessWidget {
                               alignment: Alignment.centerLeft,
                               child: DotText(m?.title ?? 'Nothing playing', dot: 2.6, maxChars: 22),
                             )
-                          : Text(
-                              m?.title ?? 'Nothing playing',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: NotchPalette.of(context).ink, fontSize: 17, fontWeight: FontWeight.w600),
-                            ),
+                          : Marquee(m?.title ?? 'Nothing playing', style: TextStyle(color: NotchPalette.of(context).ink, fontSize: 17, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 3),
-                      Text(
-                        m?.artist ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 14, fontFamily: nothing ? 'monospace' : null),
-                      ),
+                      Marquee(m?.artist ?? '', style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 14, fontFamily: nothing ? 'monospace' : null)),
                     ],
                   ),
                 ),
@@ -1364,7 +1528,7 @@ class _Player extends StatelessWidget {
             ),
             const Spacer(),
             if (dur > 0 && roomy)
-              _SongProgress(c, accent: accent, nothing: nothing, onSeek: m?.canSeek == true ? (ms) => act('seek', ms) : null),
+              _SongProgress(c, accent: accent, nothing: nothing, onSeek: (ms) => act('seek', ms)),
             if (!compact) controls,
           ],
         );
@@ -1388,6 +1552,11 @@ class _SongProgress extends StatefulWidget {
 
 class _SongProgressState extends State<_SongProgress> with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker((_) => setState(() {}));
+  /// Where a finger holds the song (0..1) while dragging; null otherwise.
+  double? _held;
+  /// Where it was let go, until the player reports from there (else the bar jumps back for a moment).
+  int? _sought;
+  DateTime _soughtAt = DateTime(0);
 
   @override
   void initState() {
@@ -1417,11 +1586,39 @@ class _SongProgressState extends State<_SongProgress> with SingleTickerProviderS
   Widget build(BuildContext context) {
     final m = widget.c.media;
     final dur = m?.duration ?? 0;
-    final pos = m?.positionAt(widget.c.mediaReceived) ?? 0;
+    var pos = m?.positionAt(widget.c.mediaReceived) ?? 0;
+    if (_held != null) {
+      pos = (_held! * dur).round();
+    } else if (_sought != null) {
+      if (DateTime.now().difference(_soughtAt) < const Duration(seconds: 2) && (pos - _sought!).abs() > 2000) {
+        pos = _sought!; // the player hasn't caught up yet
+      } else {
+        _sought = null;
+      }
+    }
     final time = TextStyle(color: NotchPalette.of(context).faint, fontSize: 11, fontFeatures: [FontFeature.tabularFigures()]);
     return LayoutBuilder(
-      builder: (context, box) => GestureDetector(
-        onTapDown: widget.onSeek == null || dur <= 0 ? null : (d) => widget.onSeek!((d.localPosition.dx / box.maxWidth * dur).round()),
+      builder: (context, box) {
+        double at(Offset p) => (p.dx / math.max(box.maxWidth, 1)).clamp(0.0, 1.0);
+        void seek(double f) {
+          final ms = (f * dur).round();
+          _sought = ms;
+          _soughtAt = DateTime.now();
+          widget.onSeek!(ms);
+        }
+        final can = widget.onSeek != null && dur > 0;
+        return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: !can ? null : (d) => setState(() => seek(at(d.localPosition))),
+        onHorizontalDragStart: !can ? null : (d) => setState(() => _held = at(d.localPosition)),
+        onHorizontalDragUpdate: !can ? null : (d) => setState(() => _held = at(d.localPosition)),
+        onHorizontalDragEnd: !can
+            ? null
+            : (_) => setState(() {
+                  if (_held != null) seek(_held!);
+                  _held = null;
+                }),
+        onHorizontalDragCancel: !can ? null : () => setState(() => _held = null),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
@@ -1436,7 +1633,8 @@ class _SongProgressState extends State<_SongProgress> with SingleTickerProviderS
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 }
@@ -1575,7 +1773,7 @@ class _Glyph extends StatelessWidget {
               : symbol(Icons.music_note_rounded),
         );
       case ActivityKind.timer:
-        return symbol(a.done ? Icons.alarm_on_rounded : Icons.timer_outlined);
+        return symbol(a.recording ? Icons.fiber_manual_record_rounded : a.done ? Icons.alarm_on_rounded : Icons.timer_outlined);
       case ActivityKind.charging:
         return symbol(a.on ? Icons.bolt_rounded : Icons.power_off_rounded);
       case ActivityKind.wifi:
@@ -1613,6 +1811,8 @@ class _Glyph extends StatelessWidget {
             : symbol(Icons.screenshot_rounded);
       case ActivityKind.home:
         return symbol(Icons.access_time_rounded);
+      case ActivityKind.buds:
+        return _BudsStill(c, a, size);
       default:
         final icon = a.package == null ? null : c.icons[a.package];
         if (icon == null) {
@@ -1637,6 +1837,187 @@ class _Glyph extends StatelessWidget {
           ),
         );
     }
+  }
+}
+
+/// The buds alone, out of their case (a still rendered from their 3D model), or a headphones symbol for earbuds Holm
+/// has no model of.
+class _BudsStill extends StatelessWidget {
+  final NotchController c;
+  final NotchActivity a;
+  final double size;
+  const _BudsStill(this.c, this.a, this.size);
+
+  @override
+  Widget build(BuildContext context) {
+    final model = NotchController.budsModel(a.title, c.settings.budsColor);
+    final symbol = Icon(Icons.headphones_rounded, color: Colors.white, size: size * 0.8);
+    if (model == null) return symbol;
+    return Image.asset(
+      'assets/buds/${model}_buds.webp',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, _, _) => symbol,
+    );
+  }
+}
+
+/// The colour of the earbuds themselves, for their card's glow: white, or the Pixel Buds' colour.
+Color _budsTint(NotchController c, NotchActivity a) => switch (NotchController.budsModel(a.title, c.settings.budsColor)) {
+  'pixel_peony' => const Color(0xFFE5677F),
+  'pixel_wintergreen' => const Color(0xFFB9D3B4),
+  'pixel_hazel' => const Color(0xFF9A9D96),
+  _ => Colors.white,
+};
+
+/// The earbuds' bubble beside the camera: just the buds.
+class _BudsBubble extends StatelessWidget {
+  final NotchController c;
+  final NotchActivity a;
+  final double size;
+  const _BudsBubble(this.c, this.a, this.size);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+    alignment: Alignment.center,
+    child: _BudsStill(c, a, size * 0.7),
+  );
+}
+
+/// The card's picture: the buds come out of their case, once, as it opens (frames rendered from the 3D model, side
+/// by side in one picture).
+class _BudsOut extends StatefulWidget {
+  final NotchController c;
+  final NotchActivity a;
+  const _BudsOut(this.c, this.a);
+
+  @override
+  State<_BudsOut> createState() => _BudsOutState();
+}
+
+class _BudsOutState extends State<_BudsOut> with SingleTickerProviderStateMixin {
+  late final AnimationController _play = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  ui.Image? _strip;
+  String? _model;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_BudsOut old) {
+    super.didUpdateWidget(old);
+    _load();
+  }
+
+  void _load() {
+    final model = NotchController.budsModel(widget.a.title, widget.c.settings.budsColor);
+    if (model == _model) return;
+    _model = model;
+    _stop();
+    _strip = null;
+    if (model == null) return;
+    final stream = AssetImage('assets/buds/${model}_out.webp').resolve(createLocalImageConfiguration(context));
+    _listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      setState(() => _strip = info.image);
+      _play.forward(from: 0);
+    });
+    stream.addListener(_listener!);
+    _stream = stream;
+  }
+
+  void _stop() {
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    _play.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strip = _strip;
+    if (_model == null) return const Center(child: Icon(Icons.headphones_rounded, color: Colors.white, size: 56));
+    if (strip == null) return const SizedBox.shrink();
+    return AnimatedBuilder(
+      animation: _play,
+      builder: (context, _) => CustomPaint(painter: _StripPainter(strip, Curves.easeOut.transform(_play.value))),
+    );
+  }
+}
+
+/// One frame of a strip of square frames, [t] from the first (0) to the last (1).
+class _StripPainter extends CustomPainter {
+  final ui.Image strip;
+  final double t;
+  _StripPainter(this.strip, this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final side = strip.height.toDouble();
+    final frames = math.max(1, (strip.width / side).floor());
+    final i = (t * (frames - 1)).round().clamp(0, frames - 1);
+    canvas.drawImageRect(
+      strip,
+      Rect.fromLTWH(i * side, 0, side, side),
+      Offset.zero & size,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_StripPainter old) => old.t != t || old.strip != strip;
+}
+
+/// One bud's (or the case's) battery: a ring with its name and level.
+class _BudLevel extends StatelessWidget {
+  final String name;
+  final int level;
+  final bool nothing;
+  const _BudLevel(this.name, this.level, {required this.nothing});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = level <= 15 ? const Color(0xFFFF453A) : level <= 30 ? const Color(0xFFFF9F0A) : const Color(0xFF30D158);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 34,
+          height: 34,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: CircularProgressIndicator(
+                  value: level / 100,
+                  strokeWidth: 3,
+                  color: nothing ? _nothingRed : color,
+                  backgroundColor: Colors.white12,
+                  strokeCap: StrokeCap.round,
+                ),
+              ),
+              Text(name, style: TextStyle(color: NotchPalette.of(context).ink, fontSize: name.length > 1 ? 9.5 : 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text('$level%', style: TextStyle(color: NotchPalette.of(context).dim, fontSize: 11.5, fontFeatures: const [FontFeature.tabularFigures()])),
+      ],
+    );
   }
 }
 
@@ -1845,5 +2226,6 @@ String _summary(NotchActivity a) => switch (a.kind) {
   ActivityKind.music => [a.title, a.text].whereType<String>().join(' · '),
   ActivityKind.timer => '${a.title ?? 'Timer'} · ${_clock(a)}',
   ActivityKind.charging => '${a.title} · ${a.level ?? ''}%',
+  ActivityKind.buds => [a.title, if (a.level != null) '${a.level}%'].whereType<String>().join(' · '),
   _ => [a.title, if (a.progress != null) '${(a.progress! * 100).round()}%' else a.text].whereType<String>().join(' · '),
 };

@@ -13,8 +13,10 @@ public sealed partial class NotchWindow
     /// <summary>The last song the phone told about: a pause and play of the same song doesn't pop out again.</summary>
     string? _phoneSong;
 
-    void OnPhoneStatus(string phone, PhoneStatus status)
+    void OnPhoneStatus(OwnDevice device, PhoneStatus status)
     {
+        NotePhone(device, status); // the phone tool's page
+        string phone = device.Name;
         switch (status.Kind)
         {
             case PhoneStatus.Notification or PhoneStatus.Call when status.On:
