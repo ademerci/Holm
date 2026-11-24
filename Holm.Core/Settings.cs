@@ -224,6 +224,11 @@ internal sealed class AppSettings
     public long? FriendsRelaySince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
+    /// <summary>
+    /// This PC among the account's devices (Sharing/OwnDevices.cs): made once, never synced, so each PC and phone has
+    /// its own and skips its own notes in the shared inbox.
+    /// </summary>
+    public string? DeviceId { get; set; }
     /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
     public List<OwnInvite> FriendInvites { get; set; } = new();
     /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>

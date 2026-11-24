@@ -228,7 +228,8 @@ public sealed class FriendIdentity : IDisposable
 public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byte[]? Secret = null, string? Code = null,
                                 string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
                                 string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null,
-                                string? Gif = null, string? Invite = null);
+                                string? Gif = null, string? Invite = null, string? Device = null, string? ForDevice = null, bool? Query = null,
+                                PhoneStatus? Phone = null);
 
 /// <summary>
 /// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
@@ -279,6 +280,17 @@ public enum FriendNoteKind
     Stream,
     /// <summary>A reaction to a chat message (an emoji in <c>Text</c>, none to take it away). Holm before 1.9.2 leaves it unopened.</summary>
     Reaction,
+    /// <summary>
+    /// "This device of yours is running": another Holm (a PC or the phone app) signed in to the same account, so with the
+    /// same identity, says its name and id in our own inbox. With <c>Query</c> it asks the others to say theirs. Holm
+    /// before 2.3 leaves it unopened.
+    /// </summary>
+    Device,
+    /// <summary>
+    /// The phone app, to the account's PCs: a notification, a call, a song, a timer or a full battery on the phone, for their notch
+    /// (<see cref="FriendNote.Phone"/>). Holm before 2.3 leaves it unopened.
+    /// </summary>
+    Phone,
 }
 
 public static class FriendNotes
@@ -318,6 +330,12 @@ public static class FriendNotes
         public bool? G { get; set; }
         /// <summary>In "request": the proof of the invite code it was made with (FriendInvite.Proof). Older Holm ignores it.</summary>
         public string? X { get; set; }
+        /// <summary>In notes between devices of one account: the sending device's id ("device", "files"). Older Holm ignores it.</summary>
+        public string? D { get; set; }
+        /// <summary>In "files" between devices of one account: the device it is for.</summary>
+        public string? N { get; set; }
+        /// <summary>In "device": "and who else is there?" – the others answer with their own.</summary>
+        public bool? H { get; set; }
     }
 
     /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
@@ -348,6 +366,8 @@ public static class FriendNotes
                 FriendNoteKind.Chat => "chat",
                 FriendNoteKind.Stream => "stream",
                 FriendNoteKind.Reaction => "react",
+                FriendNoteKind.Device => "device",
+                FriendNoteKind.Phone => "phone",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -355,20 +375,23 @@ public static class FriendNotes
             S = note.Secret == null ? null : Convert.ToBase64String(note.Secret),
             C = note.Code,
             R = note.RequestId,
-            A = note.Accepted,
+            A = note.Accepted ?? (note.Phone is { On: false } ? false : null),
             U = note.Profile?.Status,
             O = note.Profile?.Color,
             P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
             // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
             M = note.Text == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(note.Text)),
             I = note.MessageId,
-            Y = note.Activity?.Kind,
-            V = note.Activity?.Title,
-            W = note.Activity?.Detail,
-            Z = note.Activity?.Since,
+            Y = note.Activity?.Kind ?? note.Phone?.Kind,
+            V = note.Activity?.Title ?? note.Phone?.Title,
+            W = note.Activity?.Detail ?? note.Phone?.Detail,
+            Z = note.Activity?.Since ?? note.Phone?.Since,
             Q = note.Trophies,
             G = note.Gif != null ? true : null,
             X = note.Invite,
+            D = note.Device,
+            N = note.ForDevice,
+            H = note.Query == true ? true : null,
         };
         return SealDto(me, to, dto);
     }
@@ -453,9 +476,16 @@ public static class FriendNotes
                 // An emoji, or none (the reaction was taken away); anything else in it and the note is left unopened.
                 "react" when Guid.TryParseExact(dto.I, "N", out _) && (dto.M == null || ChatReaction.Clean(ChatText.FromNote(dto.M)) != null)
                     => new FriendNote(FriendNoteKind.Reaction, from, dto.T, Text: dto.M == null ? null : ChatReaction.Clean(ChatText.FromNote(dto.M)), MessageId: dto.I),
+                "device" when OwnDevice.IsId(dto.D) => new FriendNote(FriendNoteKind.Device, from, dto.T, Query: dto.H == true ? true : null),
+                "phone" when OwnDevice.IsId(dto.D) && PhoneStatus.From(dto.Y, dto.V, dto.W, dto.Z, dto.A) is { } phone
+                    => new FriendNote(FriendNoteKind.Phone, from, dto.T, Phone: phone),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
-            if (note != null) senderKey = parts[0];
+            if (note != null)
+            {
+                senderKey = parts[0];
+                note = note with { Device = OwnDevice.IsId(dto.D) ? dto.D : null, ForDevice = OwnDevice.IsId(dto.N) ? dto.N : null };
+            }
             return note;
         }
         catch (Exception ex) when (ex is CryptographicException or FormatException or JsonException) { return null; }
