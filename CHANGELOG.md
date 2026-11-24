@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0 – 2026-11-24
 
 ### Added
 
@@ -10,6 +10,7 @@
 - **Your phone in the notch.** With the phone app signed in to the same Holm account, the notch pops out the phone's notifications and calls, the song that starts there, its timers, and when it is fully charged.
 - **Holm for Android 1.2.** Reply to messages in the notch, answer and end calls, see the volume, navigation, camera and microphone in use, headphone batteries, send a fresh screenshot to the PC, a clipboard notice from the PC, quiet hours, gestures, an overview with a tap on the camera, app colours and Holm's 24 designs. Updates can be checked by hand and test versions chosen; the app is now signed with its own release key.
 - **Your devices, anywhere.** PCs and phones signed in to the same Holm account show up in the share view as your devices, even on another network. Files and copied text go to them over the relay, encrypted as for friends.
+- **Verity grows up.** She has her own switch on *Settings › General* and one for the closed notch. Pet, drag and throw her in the open notch, feed her with a right-click, and while music plays she sits beside the song's title.
 
 ## 2.2.3 – 2026-11-20
 
