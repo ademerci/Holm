@@ -1433,6 +1433,32 @@ class _Home extends StatelessWidget {
           ],
         )),
             const SizedBox(width: 8),
+            // The flashlight: lit while it's on.
+            Semantics(
+              button: true,
+              toggled: c.torchOn,
+              label: de ? 'Taschenlampe' : 'Flashlight',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: c.toggleTorch,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: c.torchOn ? const Color(0xFFFFD60A) : NotchPalette.of(context).ink.withValues(alpha: nothing ? 0 : 0.1),
+                    border: nothing && !c.torchOn ? Border.all(color: NotchPalette.of(context).ink.withValues(alpha: 0.3)) : null,
+                  ),
+                  child: Icon(
+                    c.torchOn ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+                    size: 17,
+                    color: c.torchOn ? Colors.black : NotchPalette.of(context).dim,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             // The notch's settings, in the app.
             Semantics(
               button: true,

@@ -105,6 +105,16 @@ class NotchController extends ChangeNotifier {
   /// Asks native code to do something (media controls, opening a notification, answering an offer); some answer.
   Future<Object?> Function(String method, Object? args)? action;
 
+  /// The flashlight is on (the overview's button shows it).
+  bool torchOn = false;
+
+  /// The flashlight on or off (the overview's button).
+  void toggleTorch() {
+    torchOn = !torchOn; // the service confirms within a moment
+    action?.call('gesture', 'torch');
+    notifyListeners();
+  }
+
   /// Do Not Disturb is on (for the quiet mode that follows it).
   bool dnd = false;
   /// Connections, for the PC's phone tab.
@@ -526,6 +536,9 @@ class NotchController extends ChangeNotifier {
     switch (e['type']) {
       case 'settings':
         setSettings(NotchSettings.fromJsonString(e['json'] as String?));
+      case 'torch':
+        torchOn = e['on'] == true;
+        notifyListeners();
       case 'orientation':
         landscape = e['landscape'] == true;
         if (landscape) expanded = false;

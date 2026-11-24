@@ -75,6 +75,7 @@ class NotchService : AccessibilityService() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
             torchCamera = cameraId
             torchOn = enabled
+            NotchBridge.toNotch(mapOf("type" to "torch", "on" to enabled)) // the overview's flashlight button
         }
     }
     private val micCallback = object : AudioManager.AudioRecordingCallback() {
