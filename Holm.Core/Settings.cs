@@ -17,8 +17,13 @@ internal sealed class AppSettings
     public double BounceLevel { get; set; } = 1;
     /// <summary>Just for fun: everything wobbles like jelly, far too much (<see cref="Spring.Jelly"/>).</summary>
     public bool Jelly { get; set; }
-    /// <summary>Verity shows in the notch, once she has been found (<see cref="WinNotch.Verity"/>).</summary>
-    public bool Verity { get; set; } = true;
+    /// <summary>Verity lives in the notch (<see cref="WinNotch.Verity"/>); off until switched on in Settings › General.
+    /// A new name: the old "Verity" setting was saved as on in every settings file.</summary>
+    public bool ShowVerity { get; set; }
+    /// <summary>Verity also shows small in the closed notch (idle and with music), not only in the open one.</summary>
+    public bool VerityInClosedNotch { get; set; }
+    /// <summary>When Verity last had a treat (local time); some hours later she's hungry. Stays on this computer.</summary>
+    public DateTime? VerityFedAt { get; set; }
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }

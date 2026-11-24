@@ -37,7 +37,13 @@ public class VerityTests
     }
 
     [Fact]
-    public void She_lives_in_the_notch_by_default_once_found() => Assert.True(new AppSettings().Verity);
+    public void She_waits_until_switched_on_even_with_the_old_setting_saved()
+    {
+        Assert.False(new AppSettings().ShowVerity);
+        Assert.False(new AppSettings().VerityInClosedNotch); // the open notch only, unless switched on
+        // Every settings file before this saved the old "Verity" switch as on: it must not bring her in.
+        Assert.False(System.Text.Json.JsonSerializer.Deserialize<AppSettings>("""{"Verity":true}""")!.ShowVerity);
+    }
 
     [Theory]
     [InlineData(1)]
@@ -85,6 +91,92 @@ public class VerityTests
         for (int frame = 0; frame < 90; frame++) { roam.Step(1 / 30.0, VerityMood.Dancing); highest = Math.Max(highest, roam.Lift); }
         Assert.Equal(x, roam.X);
         Assert.True(highest > 5);
+    }
+
+    [Fact]
+    public void Without_a_treat_for_hours_she_is_hungry_but_sleep_and_music_come_first()
+    {
+        var fed = Noon - Verity.HungryAfter;
+        Assert.Equal(VerityMood.Hungry, Verity.Mood(Noon, false, null, fed));
+        Assert.Equal(VerityMood.Awake, Verity.Mood(Noon, false, null, fed.AddMinutes(1)));
+        Assert.Equal(VerityMood.Awake, Verity.Mood(Noon, false, null, null));
+        Assert.Equal(VerityMood.Dancing, Verity.Mood(Noon, true, null, fed));
+        Assert.Equal(VerityMood.Asleep, Verity.Mood(Midnight, false, null, fed));
+        Assert.True(Verity.Sleepy(new DateTime(2026, 11, 19, 21, 30, 0)));
+        Assert.False(Verity.Sleepy(Noon));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Beside_buttons_she_keeps_to_her_free_stretch(int seed)
+    {
+        // A row with buttons from 100 to 380: free from 0 to 100 and from 380 to 480.
+        var roam = new VerityRoam(480, 30, new Random(seed), headroom: 16);
+        var free = new[] { (0.0, 100.0), (380.0, 480.0) };
+        roam.SetFloor(480, free);
+        roam.Notice(250); // the mouse over the buttons: she comes as close as her stretch goes
+        for (int frame = 0; frame < 30 * 60; frame++)
+        {
+            roam.Step(1 / 30.0, VerityMood.Awake);
+            if (frame > 60) Assert.True(roam.X <= 85 || roam.X >= 395, $"she stood on a button at {roam.X:0}");
+            Assert.InRange(roam.Lift, 0, 16);
+        }
+    }
+
+    [Fact]
+    public void Put_down_on_the_buttons_she_hops_off_them()
+    {
+        var roam = new VerityRoam(480, 30, new Random(1), headroom: 16);
+        roam.SetFloor(480, new[] { (0.0, 100.0), (380.0, 480.0) });
+        roam.Grab();
+        roam.HoldAt(200, 10);
+        roam.Throw(0, 0);
+        for (int frame = 0; frame < 30 * 5; frame++) roam.Step(1 / 30.0, VerityMood.Asleep); // even asleep
+        Assert.InRange(roam.X, 15, 85);
+        Assert.Equal(0, roam.Lift);
+        Assert.Equal(0, roam.Angle);
+    }
+
+    [Fact]
+    public void Thrown_she_flies_bounces_stays_on_her_floor_and_lands_upright()
+    {
+        var roam = new VerityRoam(480, 30, new Random(1), headroom: 16);
+        roam.Grab();
+        roam.HoldAt(240, 16);
+        roam.Throw(900, 300);
+        bool flew = false;
+        for (int frame = 0; frame < 30 * 4; frame++)
+        {
+            roam.Step(1 / 30.0, VerityMood.Awake);
+            Assert.InRange(roam.X, 15, 465);
+            Assert.InRange(roam.Lift, 0, 16);
+            flew |= roam.Angle != 0;
+        }
+        Assert.True(flew);
+        for (int frame = 0; frame < 60; frame++) roam.Step(1 / 30.0, VerityMood.Asleep);
+        Assert.False(roam.Moving);
+        Assert.Equal(0, roam.Angle);
+    }
+
+    [Fact]
+    public void A_treat_falls_she_hops_over_and_eats_it()
+    {
+        var roam = new VerityRoam(480, 30, new Random(1));
+        int ate = 0;
+        roam.Ate += () => ate++;
+        roam.Feed(roam.X - 60);
+        double at = roam.Treat!.Value.X;
+        bool chewed = false;
+        for (int frame = 0; frame < 30 * 8 && ate == 0; frame++)
+        {
+            roam.Step(1 / 30.0, VerityMood.Dancing); // a treat beats dancing
+            chewed |= roam.Eating;
+        }
+        Assert.Equal(1, ate);
+        Assert.True(chewed);
+        Assert.Null(roam.Treat);
+        Assert.InRange(roam.X, at - 2, at + 2);
     }
 
     [Fact]

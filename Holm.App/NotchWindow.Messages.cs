@@ -195,7 +195,7 @@ public sealed partial class NotchWindow
         Diag.Log($"Messages: {_chat.UnreadCount} unread" + (arrived != null ? $", new one from {arrived.App}" : ""));
         RefreshMessages();
         if (arrived != null && Silenced(arrived)) Diag.Log("Quiet hours: no pop-out");
-        else if (arrived != null) ShowMessage(arrived);
+        else if (arrived != null) { ShowMessage(arrived); VerityReact(VerityCue.Surprised); }
         ApplyState(animate: true);
     }
 

@@ -112,6 +112,8 @@ public sealed partial class NotchWindow
     readonly TextBlock _shuffleIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     readonly TextBlock _repeatIcon = new() { Text = "", FontFamily = IconFont, FontSize = 14 };
     NotchButton _playBtn = null!, _prevBtn = null!, _nextBtn = null!, _shuffleBtn = null!, _repeatBtn = null!;
+    /// <summary>The player's top: cover, song and, in the last column, Verity while music shows.</summary>
+    readonly Grid _mediaHead = new() { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
     readonly TextBlock _clockBig = new DotTextBlock { FontFamily = DisplayFont, FontSize = 40, FontWeight = FontWeight.Light, Margin = new Thickness(0, -5, 0, 0) };
     readonly TextBlock _volIcon = new() { Text = "\uE995", FontFamily = IconFont, FontSize = 14, Foreground = Dim };
     readonly MiniSlider _volSlider = new() { Width = 84, Margin = new Thickness(2, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -195,7 +197,7 @@ public sealed partial class NotchWindow
         _toolRow = BuildToolRow();
 
         // Home: the player (or the clock)
-        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var head = _mediaHead;
         _bigArt.Child = _artPlaceholder;
         var texts = _playerTexts = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         texts.Children.Add(_titleText);
@@ -417,6 +419,7 @@ public sealed partial class NotchWindow
     /// <summary>The volume changed, by a key, another app or us: the open notch follows, the closed one shows it for a moment.</summary>
     void OnVolumeChanged(float level, bool muted)
     {
+        VerityHearsVolume(level, muted);
         if (_state == NotchState.Expanded && _volSlider.IsEffectivelyVisible) { ReadVolume(); return; }
 
         var fill = _info?.IsPlaying == true ? _progress.Fill : Look.Ink;
