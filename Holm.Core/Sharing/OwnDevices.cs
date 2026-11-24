@@ -100,8 +100,13 @@ public sealed class OwnDevices
         string clean = new string(name.Where(c => !char.IsControl(c)).Take(OwnDevice.MaxName).ToArray()).Trim();
         if (clean.Length == 0) clean = "Holm";
         bool shown = _seen.TryGetValue(id, out var before) && before.Name == clean && now - before.Seen < Fresh;
+        // The same device under a new id (the phone app after an update or a reinstall): the old one is gone, not a
+        // second device that never answers.
+        var stale = _seen.Values.Where(d => d.Id != id && string.Equals(d.Name, clean, StringComparison.OrdinalIgnoreCase))
+                                .Select(d => d.Id).ToList();
+        foreach (var old in stale) _seen.Remove(old);
         _seen[id] = new OwnDevice(id, clean, now);
-        return !shown;
+        return !shown || stale.Count > 0;
     }
 
     /// <summary>The devices that spoke within <see cref="Fresh"/>, by name.</summary>

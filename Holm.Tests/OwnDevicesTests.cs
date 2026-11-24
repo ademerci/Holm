@@ -101,10 +101,25 @@ public class OwnDevicesTests
         var devices = new OwnDevices();
         Assert.True(devices.Saw(Phone, "Pixel 9", T0));
         Assert.False(devices.Saw(Phone, "Pixel 9", T0.AddMinutes(1))); // nothing new to show
-        Assert.True(devices.Saw(Phone, "Elias' Pixel", T0.AddMinutes(2))); // a new name is
+        Assert.True(devices.Saw(Phone, "Lena's Pixel", T0.AddMinutes(2))); // a new name is
         Assert.Single(devices.Recent(T0.AddMinutes(5)));
         Assert.Empty(devices.Recent(T0.AddMinutes(2) + OwnDevices.Fresh));
         Assert.False(devices.Saw("nope", "Pixel 9", T0));
+    }
+
+    [Fact]
+    public void The_same_device_under_a_new_id_replaces_the_old_one()
+    {
+        // The phone app after an update: same name, new id. The old one would stay as a device that never answers.
+        var devices = new OwnDevices();
+        devices.Saw(Phone, "Pixel 9", T0);
+        devices.Saw(Pc, "Office PC", T0);
+        string updated = Guid.NewGuid().ToString("N");
+        Assert.True(devices.Saw(updated, "pixel 9", T0.AddMinutes(1)));
+        var now = devices.Recent(T0.AddMinutes(2));
+        Assert.Equal(2, now.Count);
+        Assert.Contains(now, d => d.Id == updated);
+        Assert.DoesNotContain(now, d => d.Id == Phone);
     }
 
     [Fact]
