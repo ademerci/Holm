@@ -1,3 +1,5 @@
+import 'package:characters/characters.dart';
+import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -71,6 +73,8 @@ class _NotesPageState extends State<NotesPage> {
             child: TextField(
               controller: _text,
               focusNode: _focus,
+              maxLength: AppState.maxNote,
+              maxLengthEnforcement: MaxLengthEnforcement.enforced,
               maxLines: null,
               expands: true,
               textAlignVertical: TextAlignVertical.top,
@@ -82,6 +86,7 @@ class _NotesPageState extends State<NotesPage> {
                 setState(() {});
               },
               decoration: const InputDecoration(
+                counterText: '',
                 filled: false,
                 border: InputBorder.none,
                 hintText: 'Jot something down – it stays here, even after a restart',
@@ -96,7 +101,7 @@ class _NotesPageState extends State<NotesPage> {
         const Divider(),
         const SizedBox(height: 6),
         Row(children: [
-          Text('${_text.text.length} / ${AppState.maxNote}', style: const TextStyle(color: HolmColors.faint, fontSize: 12.5)),
+          Text('${_text.text.characters.length} / ${AppState.maxNote}', style: const TextStyle(color: HolmColors.faint, fontSize: 12.5)),
           const Spacer(),
           RoundIconButton(Icons.send_outlined, size: 40, tooltip: 'Send to laptop', onPressed: empty ? null : _send),
           RoundIconButton(Icons.copy_rounded, size: 40, tooltip: 'Copy', onPressed: empty ? null : () {

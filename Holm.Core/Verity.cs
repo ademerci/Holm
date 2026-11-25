@@ -127,7 +127,16 @@ internal sealed class VerityRoam
         }
         if (_zones.Count == 0) _zones.Add((0, _width));
         X = Math.Clamp(X, Lowest, Highest);
-        if (Treat is { } treat) Treat = (Math.Clamp(treat.X, Lowest, Highest), treat.Height);
+        if (_move is not (Move.Held or Move.Flying) &&
+            (!Placed || (_move == Move.Hop && (_target < Min || _target > Max))))
+        {
+            X = Math.Clamp(X, Min, Max);
+            Lift = 0;
+            Angle = 0;
+            Rest();
+        }
+        if (Treat is { } treat && !_zones.Exists(zone => treat.X >= zone.From + _size / 2 && treat.X <= zone.To - _size / 2))
+            Treat = (Math.Clamp(treat.X, Min, Max), treat.Height);
     }
 
     /// <summary>The mouse over the notch, in px from the left of her floor, or null when it's gone.</summary>

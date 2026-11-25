@@ -17,7 +17,7 @@ internal sealed class Reminder
 /// <summary>
 /// Reads a reminder typed in plain words, in English or German: "20 min laundry", "1 h 30 min call Lena",
 /// "14:30 dentist", "9 Uhr Arzt", "tomorrow 8:15 train", "morgen 7 Uhr Joggen", "2:30pm pick up the kids".
-/// A time of day that has passed today means tomorrow.
+/// A time of day with no explicit date that has passed today means tomorrow.
 /// </summary>
 internal static class ReminderParser
 {
@@ -37,31 +37,59 @@ internal static class ReminderParser
         @"(?<![\w:.,])(?:(?:um|at)\s+)?(?<h>\d{1,2})(?:(?<sep>[:.])(?<m>\d{2}))?\s*(?<suffix>uhr|am|pm|a\.m\.|p\.m\.)?(?![\w:.,])",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    static readonly Regex Day = new(@"(?<![\w])(?<day>übermorgen|uebermorgen|morgen|tomorrow|heute|today)(?![\w])",
+    static readonly Regex Day = new(@"(?<![\w])(?<day>übermorgen|uebermorgen|morgen|tomorrow|heute|today)(?![\w'\u2019])",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    /// <summary>
-    /// When (local time) and what. False if no time could be found, or it is more than a week away.
-    /// <paramref name="now"/> is local time.
-    /// </summary>
-    public static bool TryParse(string? input, DateTime now, out DateTime due, out string text)
+    /// <summary>Finds the due time in UTC, interpreting wall-clock times in the supplied time zone.</summary>
+    public static bool TryParse(string? input, DateTime nowUtc, TimeZoneInfo zone, out DateTime due, out string text)
     {
         due = default;
         text = "";
         string s = (input ?? "").Trim();
         if (s.Length == 0 || s.Length > 200) return false;
 
-        int days = 0;
-        bool dayGiven = false;
-        if (Day.Match(s) is { Success: true } day)
+        var relative = Relative.Match(s);
+        var today = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone).Date;
+        foreach (Match clock in Clock.Matches(s))
         {
-            string word = day.Groups["day"].Value.ToLowerInvariant();
-            days = word is "übermorgen" or "uebermorgen" ? 2 : word is "morgen" or "tomorrow" ? 1 : 0;
-            dayGiven = true;
-            s = Cut(s, day);
-        }
+            if (relative.Success && clock.Index >= relative.Index) break;
+            bool hasMinutes = clock.Groups["m"].Success;
+            string suffix = clock.Groups["suffix"].Value.ToLowerInvariant().Replace(".", "");
+            // A bare number is no time ("buy 3 apples"); "9 Uhr", "9am" and "9:15" are.
+            if (!hasMinutes && suffix.Length == 0) continue;
+            if (!int.TryParse(clock.Groups["h"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int hour)) return false;
+            int minute = 0;
+            if (hasMinutes && !int.TryParse(clock.Groups["m"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out minute)) return false;
+            if (suffix is "am" or "pm")
+            {
+                if (hour is < 1 or > 12) return false;
+                hour = hour % 12 + (suffix == "pm" ? 12 : 0);
+            }
+            if (hour > 23 || minute > 59) return false;
 
-        if (!dayGiven && Relative.Match(s) is { Success: true } relative)
+            // A day word qualifies the clock only when it sits next to it.
+            var day = Day.Matches(s).FirstOrDefault(d =>
+                (d.Index + d.Length <= clock.Index && string.IsNullOrWhiteSpace(s[(d.Index + d.Length)..clock.Index])) ||
+                (clock.Index + clock.Length <= d.Index && string.IsNullOrWhiteSpace(s[(clock.Index + clock.Length)..d.Index])));
+            int days = day?.Value.ToLowerInvariant() switch
+            {
+                "übermorgen" or "uebermorgen" => 2,
+                "morgen" or "tomorrow" => 1,
+                _ => 0,
+            };
+            var offset = new TimeSpan(days, hour, minute, 0);
+            if (offset > DateTime.MaxValue - today) return false;
+            var wallTime = DateTime.SpecifyKind(today + offset, DateTimeKind.Unspecified);
+            if (!TryClockUtc(wallTime, nowUtc, zone, out due)) return false;
+            if (due <= nowUtc)
+            {
+                if (day != null || wallTime.Date == DateTime.MaxValue.Date ||
+                    !TryClockUtc(wallTime.AddDays(1), nowUtc, zone, out due)) return false;
+            }
+            text = Tidy(day == null ? Cut(s, clock) : RemoveClockAndDay(s, clock, day));
+            return true;
+        }
+        if (relative.Success)
         {
             var length = TimeSpan.Zero;
             foreach (Match part in RelativePart.Matches(relative.Groups["all"].Value))
@@ -77,39 +105,34 @@ internal static class ReminderParser
                 if (!double.IsFinite(seconds) || seconds > Longest.TotalSeconds) return false;
                 length += TimeSpan.FromSeconds(seconds);
             }
-            if (length <= TimeSpan.Zero || length > Longest || length > DateTime.MaxValue - now) return false;
-            due = now + length;
+            if (length <= TimeSpan.Zero || length > Longest || length > DateTime.MaxValue - nowUtc) return false;
+            due = nowUtc + length;
             text = Tidy(Cut(s, relative));
             return true;
         }
 
-        foreach (Match clock in Clock.Matches(s))
-        {
-            bool hasMinutes = clock.Groups["m"].Success;
-            string suffix = clock.Groups["suffix"].Value.ToLowerInvariant().Replace(".", "");
-            // A bare number is no time ("buy 3 apples"); "9 Uhr", "9am" and "9:15" are.
-            if (!hasMinutes && suffix.Length == 0) continue;
-            if (!int.TryParse(clock.Groups["h"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int hour)) return false;
-            int minute = 0;
-            if (hasMinutes && !int.TryParse(clock.Groups["m"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out minute)) return false;
-            if (suffix is "am" or "pm")
-            {
-                if (hour is < 1 or > 12) return false;
-                hour = hour % 12 + (suffix == "pm" ? 12 : 0);
-            }
-            if (hour > 23 || minute > 59) return false;
-
-            var offset = new TimeSpan(days, hour, minute, 0);
-            if (offset <= now.TimeOfDay)
-            {
-                offset += TimeSpan.FromDays(1);
-            }
-            if (offset > DateTime.MaxValue - now.Date) return false;
-            due = now.Date + offset;
-            text = Tidy(Cut(s, clock));
-            return true;
-        }
         return false;
+    }
+
+    static bool TryClockUtc(DateTime wallTime, DateTime nowUtc, TimeZoneInfo zone, out DateTime due)
+    {
+        due = default;
+        if (zone.IsInvalidTime(wallTime)) return false;
+        due = TimeZoneInfo.ConvertTimeToUtc(wallTime, zone);
+        if (zone.IsAmbiguousTime(wallTime))
+        {
+            // Prefer the first occurrence that is still ahead of us on the fall-back night.
+            var earlier = new DateTimeOffset(wallTime, zone.GetAmbiguousTimeOffsets(wallTime).Max()).UtcDateTime;
+            if (earlier > nowUtc) due = earlier;
+        }
+        return true;
+    }
+
+    static string RemoveClockAndDay(string input, Match clock, Match day)
+    {
+        int start = Math.Min(clock.Index, day.Index);
+        int end = Math.Max(clock.Index + clock.Length, day.Index + day.Length);
+        return input.Remove(start, end - start).Insert(start, " ");
     }
 
     static string Cut(string s, Match match) => s.Remove(match.Index, match.Length).Insert(match.Index, " ");
@@ -123,12 +146,14 @@ internal static class ReminderParser
         return text.Length > 0 ? char.ToUpper(text[0], CultureInfo.CurrentCulture) + text[1..] : "Reminder";
     }
 
-    /// <summary>"in 20 min", "today at 14:30", "tomorrow at 09:00", "Fri at 08:15" (local times).</summary>
-    public static string Describe(DateTime due, DateTime now)
+    /// <summary>"in 20 min", "today at 14:30", "tomorrow at 09:00", "Fri at 08:15" (in the supplied time zone).</summary>
+    public static string Describe(DateTime dueUtc, DateTime nowUtc, TimeZoneInfo zone)
     {
-        var left = due - now;
+        var left = dueUtc - nowUtc;
         if (left > TimeSpan.Zero && left < TimeSpan.FromMinutes(60))
             return $"in {Math.Max(1, (int)Math.Ceiling(left.TotalMinutes - 1e-9))} min";
+        var due = TimeZoneInfo.ConvertTimeFromUtc(dueUtc, zone);
+        var now = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone);
         string time = due.ToString("HH:mm", CultureInfo.InvariantCulture);
         int days = (due.Date - now.Date).Days;
         return days switch

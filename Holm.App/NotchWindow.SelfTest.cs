@@ -102,6 +102,7 @@ public sealed partial class NotchWindow
             await CheckWideSpringFrameAsync();
             CheckOpeningContentSteady();
             await CheckVerityPlacementAsync(folder);
+            CheckReminderListScrolls();
             // The Beam tool's page: send and receive.
             ShowTool(Tool.Beam);
             ApplyState(animate: false);
@@ -347,6 +348,30 @@ public sealed partial class NotchWindow
             foreach (var other in row.Children)
                 if (other != _verityLane && other.IsVisible && other.Bounds.Width > 0 && face.Intersects(other.Bounds))
                     throw new InvalidOperationException($"Verity stood on {other.GetType().Name} {when} (her {face}, it {other.Bounds}; row {string.Join(" | ", row.Children.Select(c => $"{c.GetType().Name} {c.IsVisible} {c.Bounds}"))}).");
+        }
+    }
+
+    void CheckReminderListScrolls()
+    {
+        var due = DateTime.UtcNow.AddDays(1);
+        var added = Enumerable.Range(1, 8).Select(i => _reminders.Add($"Test reminder {i}", due.AddMinutes(i))).ToArray();
+        try
+        {
+            ShowTool(Tool.Reminders);
+            ApplyState(animate: false);
+            UpdateLayout();
+            var scroll = (ScrollViewer)_remindersPage.Children[^1];
+            if (_reminderRows.Children.Count != _reminders.Items.Count || scroll.Extent.Height <= scroll.Viewport.Height)
+                throw new InvalidOperationException("Additional reminders cannot be reached by scrolling.");
+            scroll.Offset = new Vector(0, scroll.Extent.Height);
+            if (scroll.Offset.Y <= 0)
+                throw new InvalidOperationException("The reminder list would not scroll.");
+        }
+        finally
+        {
+            foreach (var reminder in added) _reminders.Remove(reminder.Id);
+            ShowTool(Tool.None);
+            ShowReminderRows();
         }
     }
 
