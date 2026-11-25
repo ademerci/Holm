@@ -50,14 +50,14 @@ public sealed partial class NotchWindow
         {
             if (e.Key != Key.Enter) return;
             e.Handled = true;
-            var now = DateTime.Now;
-            if (!ReminderParser.TryParse(_reminderBox.Text, now, out var due, out var text))
+            var now = DateTime.UtcNow;
+            if (!ReminderParser.TryParse(_reminderBox.Text, now, TimeZoneInfo.Local, out var due, out var text))
             {
                 if ((_reminderBox.Text ?? "").Trim().Length > 0) _reminderHint.Text = "Couldn’t find a time – try “20 min laundry” or “14:30 dentist”";
                 return;
             }
             _reminderBox.Text = "";
-            AddReminder(text, due.ToUniversalTime());
+            AddReminder(text, due);
         }, RoutingStrategies.Tunnel);
         AllowTyping(_reminderBox);
         var field = new Grid();
@@ -123,11 +123,11 @@ public sealed partial class NotchWindow
     {
         string typed = _reminderBox.Text ?? "";
         _reminderPlaceholder.IsVisible = typed.Length == 0;
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         if (typed.Trim().Length == 0)
             _reminderHint.Text = "Type a time and what for – Enter to add";
-        else if (ReminderParser.TryParse(typed, now, out var due, out var text))
-            _reminderHint.Text = $"{text} · {ReminderParser.Describe(due, now)} · Enter to add";
+        else if (ReminderParser.TryParse(typed, now, TimeZoneInfo.Local, out var due, out var text))
+            _reminderHint.Text = $"{text} · {ReminderParser.Describe(due, now, TimeZoneInfo.Local)} · Enter to add";
         else
             _reminderHint.Text = "Add a time: 20 min, 1 h, 14:30, 9 Uhr, tomorrow 8:15";
     }
@@ -135,7 +135,7 @@ public sealed partial class NotchWindow
     void ShowReminderRows()
     {
         _reminderRows.Children.Clear();
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         foreach (var reminder in _reminders.Items.Take(6))
         {
             var row = new Grid { Margin = new Thickness(2, 0, 0, 6), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
@@ -143,7 +143,7 @@ public sealed partial class NotchWindow
             var text = new TextBlock { Text = reminder.Text, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0) };
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
-            var when = new TextBlock { Text = ReminderParser.Describe(reminder.Due.ToLocalTime(), now), FontSize = 12, Foreground = Dim, VerticalAlignment = VerticalAlignment.Center };
+            var when = new TextBlock { Text = ReminderParser.Describe(reminder.Due, now, TimeZoneInfo.Local), FontSize = 12, Foreground = Dim, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(when, 2);
             row.Children.Add(when);
             var remove = new NotchButton(new TextBlock { Text = "", FontFamily = IconFont, FontSize = 9, Foreground = Dim })

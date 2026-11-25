@@ -68,7 +68,7 @@ public sealed partial class NotchWindow
     /// <summary>The today cards of the open notch.</summary>
     void ShowToday()
     {
-        var (reminder, when) = Today.ReminderCard(_reminders.Items.FirstOrDefault(), DateTime.Now);
+        var (reminder, when) = Today.ReminderCard(_reminders.Items.FirstOrDefault(), DateTime.UtcNow);
         _todayReminderTitle.Text = reminder;
         _todayReminderWhen.Text = when;
         var (note, more) = Today.NoteCard(_settings.NoteText);
