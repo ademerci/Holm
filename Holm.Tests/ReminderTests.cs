@@ -36,6 +36,8 @@ public class ReminderParserTests
     [InlineData("tomorrow 8:15 train", 2026, 10, 28, 8, 15, "Train")]
     [InlineData("morgen 7 Uhr Joggen", 2026, 10, 28, 7, 0, "Joggen")]
     [InlineData("übermorgen 10:00 Termin", 2026, 10, 29, 10, 0, "Termin")]
+    [InlineData("tomorrow 08:15 walk 20 min", 2026, 10, 28, 8, 15, "Walk 20 min")]
+    [InlineData("14:30 tomorrow's guests", 2026, 10, 27, 14, 30, "Tomorrow's guests")]
     [InlineData("13:04 just passed", 2026, 10, 28, 13, 4, "Just passed")]
     public void Times_of_day(string input, int y, int mo, int d, int h, int mi, string text)
     {

@@ -37,7 +37,7 @@ internal static class ReminderParser
         @"(?<![\w:.,])(?:(?:um|at)\s+)?(?<h>\d{1,2})(?:(?<sep>[:.])(?<m>\d{2}))?\s*(?<suffix>uhr|am|pm|a\.m\.|p\.m\.)?(?![\w:.,])",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    static readonly Regex Day = new(@"(?<![\w])(?<day>übermorgen|uebermorgen|morgen|tomorrow|heute|today)(?![\w])",
+    static readonly Regex Day = new(@"(?<![\w])(?<day>übermorgen|uebermorgen|morgen|tomorrow|heute|today)(?![\w'\u2019])",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>Finds the due time in UTC, interpreting wall-clock times in the supplied time zone.</summary>
@@ -48,31 +48,11 @@ internal static class ReminderParser
         string s = (input ?? "").Trim();
         if (s.Length == 0 || s.Length > 200) return false;
 
-        if (Relative.Match(s) is { Success: true } relative)
-        {
-            var length = TimeSpan.Zero;
-            foreach (Match part in RelativePart.Matches(relative.Groups["all"].Value))
-            {
-                if (!double.TryParse(part.Groups["n"].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double n)) return false;
-                double secondsPerUnit = part.Groups["unit"].Value.ToLowerInvariant() switch
-                {
-                    "stunden" or "stunde" or "std" or "hours" or "hour" or "hrs" or "hr" or "h" => 3600,
-                    "sekunden" or "seconds" or "secs" or "sec" or "s" => 1,
-                    _ => 60,
-                };
-                double seconds = n * secondsPerUnit;
-                if (!double.IsFinite(seconds) || seconds > Longest.TotalSeconds) return false;
-                length += TimeSpan.FromSeconds(seconds);
-            }
-            if (length <= TimeSpan.Zero || length > Longest || length > DateTime.MaxValue - nowUtc) return false;
-            due = nowUtc + length;
-            text = Tidy(Cut(s, relative));
-            return true;
-        }
-
+        var relative = Relative.Match(s);
         var today = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone).Date;
         foreach (Match clock in Clock.Matches(s))
         {
+            if (relative.Success && clock.Index >= relative.Index) break;
             bool hasMinutes = clock.Groups["m"].Success;
             string suffix = clock.Groups["suffix"].Value.ToLowerInvariant().Replace(".", "");
             // A bare number is no time ("buy 3 apples"); "9 Uhr", "9am" and "9:15" are.
@@ -109,6 +89,28 @@ internal static class ReminderParser
             text = Tidy(day == null ? Cut(s, clock) : RemoveClockAndDay(s, clock, day));
             return true;
         }
+        if (relative.Success)
+        {
+            var length = TimeSpan.Zero;
+            foreach (Match part in RelativePart.Matches(relative.Groups["all"].Value))
+            {
+                if (!double.TryParse(part.Groups["n"].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double n)) return false;
+                double secondsPerUnit = part.Groups["unit"].Value.ToLowerInvariant() switch
+                {
+                    "stunden" or "stunde" or "std" or "hours" or "hour" or "hrs" or "hr" or "h" => 3600,
+                    "sekunden" or "seconds" or "secs" or "sec" or "s" => 1,
+                    _ => 60,
+                };
+                double seconds = n * secondsPerUnit;
+                if (!double.IsFinite(seconds) || seconds > Longest.TotalSeconds) return false;
+                length += TimeSpan.FromSeconds(seconds);
+            }
+            if (length <= TimeSpan.Zero || length > Longest || length > DateTime.MaxValue - nowUtc) return false;
+            due = nowUtc + length;
+            text = Tidy(Cut(s, relative));
+            return true;
+        }
+
         return false;
     }
 
