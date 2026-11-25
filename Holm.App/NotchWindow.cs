@@ -590,6 +590,9 @@ public sealed partial class NotchWindow : Window
         double frameWidth = w + 2 * (MaxEar + skew);
         scale = NotchPlacement.FitScale(scale, frameWidth, _screenWidth);
         EnsureFrameFits(frameWidth * scale, h * scale);
+        // X11 can present another frame before the native window reaches its requested width.
+        if (ClientSize.Width > 0)
+            scale = NotchPlacement.FitScale(scale, frameWidth, ClientSize.Width);
         ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
