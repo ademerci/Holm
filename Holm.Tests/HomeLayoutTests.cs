@@ -13,7 +13,7 @@ public class HomeLayoutTests
 
         Assert.True(layout.IsUsual);
         Assert.Equal(new[] { "tools", "main", "today", "live", "shelf", "status" }, layout.Sections);
-        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color", "beam" }, layout.ToolOrder);
+        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color", "beam", "phone" }, layout.ToolOrder);
         Assert.Empty(layout.Hidden);
         Assert.Empty(layout.Swapped);
         Assert.Empty(layout.HiddenTools);

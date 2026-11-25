@@ -6,7 +6,16 @@ import 'widgets.dart';
 
 /// Asks where something goes: a device of the account (anywhere) or a Holm on this Wi-Fi. With only one, takes it.
 Future<SendTarget?> pickTarget(BuildContext context, AppState state, {String title = 'Send to'}) async {
-  final targets = state.targets;
+  var targets = state.targets;
+  if (targets.isEmpty) {
+    state.nearby.refresh();
+    state.announceDevice(force: true);
+    for (var i = 0; i < 10 && state.targets.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    targets = state.targets;
+  }
+  if (!context.mounted) return null;
   if (targets.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(state.account == null

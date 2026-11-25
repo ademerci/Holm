@@ -22,21 +22,56 @@ public sealed record OwnDevice(string Id, string Name, DateTime Seen)
 
 /// <summary>
 /// What the phone app tells the account's PCs, for their notch: a notification or a call that came in, the song that
-/// started, a timer that runs or went off, the battery that is full. <see cref="Since"/> is a Unix time (a timer's end); <see cref="On"/> is
+/// started, a timer that runs or went off, the battery that is full, and now and then its state (<see cref="Status"/>:
+/// the battery in the title, charging in <see cref="On"/>, the song in the detail). <see cref="Since"/> is a Unix time (a timer's end); <see cref="On"/> is
 /// false when it stopped (the music paused, the timer was cancelled).
 /// </summary>
-public sealed record PhoneStatus(string Kind, string Title, string? Detail, long Since, bool On)
+public sealed record PhoneStatus(string Kind, string Title, string? Detail, long Since, bool On, string? Extra = null, string? Key = null)
 {
-    public const string Notification = "notification", Call = "call", Music = "music", Timer = "timer", Battery = "battery";
-    static readonly string[] Kinds = { Notification, Call, Music, Timer, Battery };
-    const int MaxTitle = 80, MaxDetail = 160;
+    /// <summary>From a PC to the phone: clear the notification with <see cref="Key"/> there. Not a status: never opened as one.</summary>
+    public const string Dismiss = "dismiss";
+    /// <summary>From a PC to the phone: the player there does <see cref="Title"/> (play, pause, toggle, next, previous). Not a status either.</summary>
+    public const string Control = "control";
+    public static readonly string[] MusicControls = { "play", "pause", "toggle", "next", "previous" };
+    const int MaxKey = 300;
+
+    /// <summary>A notification's key as a note brings it (Android's: "0|com.whatsapp|1|…"), checked.</summary>
+    public static string? CleanKey(string? key) => key is { Length: > 0 and <= MaxKey } && !key.Any(char.IsControl) ? key : null;
+
+    public const string Notification = "notification", Call = "call", Music = "music", Timer = "timer", Battery = "battery",
+        Status = "status";
+    static readonly string[] Kinds = { Notification, Call, Music, Timer, Battery, Status };
+    const int MaxTitle = 80, MaxDetail = 160, MaxExtra = 400;
 
     /// <summary>A status as a note brings it, checked; null for a kind this version doesn't know or no title.</summary>
-    public static PhoneStatus? From(string? kind, string? title, string? detail, long? since, bool? on)
+    /// <param name="extra">More of the phone's state as JSON (<see cref="Status"/> only), e.g. <c>{"net":"wifi","vpn":true}</c>.</param>
+    public static PhoneStatus? From(string? kind, string? title, string? detail, long? since, bool? on, string? extra = null)
     {
         if (kind == null || Array.IndexOf(Kinds, kind) < 0) return null;
         if (Clean(title, MaxTitle) is not { } cleanTitle) return null;
-        return new PhoneStatus(kind, cleanTitle, Clean(detail, MaxDetail), Math.Max(0, since ?? 0), on ?? true);
+        return new PhoneStatus(kind, cleanTitle, Clean(detail, MaxDetail), Math.Max(0, since ?? 0), on ?? true,
+                               extra is { Length: > 0 and <= MaxExtra } ? extra : null);
+    }
+
+    /// <summary>The phone's connections and modes from <see cref="Extra"/>, in words, for the phone tool.</summary>
+    public IReadOnlyList<string> Connections()
+    {
+        var words = new List<string>();
+        if (Extra == null) return words;
+        try
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(Extra);
+            var root = json.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object) return words;
+            if (root.TryGetProperty("net", out var net) && net.ValueKind == System.Text.Json.JsonValueKind.String)
+                words.Add(net.GetString() == "wifi" ? "Wi-Fi" : "Mobile data");
+            if (root.TryGetProperty("vpn", out var vpn) && vpn.ValueKind == System.Text.Json.JsonValueKind.True) words.Add("VPN");
+            if (root.TryGetProperty("bt", out var bt) && bt.ValueKind == System.Text.Json.JsonValueKind.String
+                && Clean(bt.GetString(), 40) is { } device) words.Add(device);
+            if (root.TryGetProperty("dnd", out var dnd) && dnd.ValueKind == System.Text.Json.JsonValueKind.True) words.Add("Do Not Disturb");
+        }
+        catch (System.Text.Json.JsonException) { }
+        return words;
     }
 
     static string? Clean(string? text, int max)
@@ -65,8 +100,13 @@ public sealed class OwnDevices
         string clean = new string(name.Where(c => !char.IsControl(c)).Take(OwnDevice.MaxName).ToArray()).Trim();
         if (clean.Length == 0) clean = "Holm";
         bool shown = _seen.TryGetValue(id, out var before) && before.Name == clean && now - before.Seen < Fresh;
+        // The same device under a new id (the phone app after an update or a reinstall): the old one is gone, not a
+        // second device that never answers.
+        var stale = _seen.Values.Where(d => d.Id != id && string.Equals(d.Name, clean, StringComparison.OrdinalIgnoreCase))
+                                .Select(d => d.Id).ToList();
+        foreach (var old in stale) _seen.Remove(old);
         _seen[id] = new OwnDevice(id, clean, now);
-        return !shown;
+        return !shown || stale.Count > 0;
     }
 
     /// <summary>The devices that spoke within <see cref="Fresh"/>, by name.</summary>

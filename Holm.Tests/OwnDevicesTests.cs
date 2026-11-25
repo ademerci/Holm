@@ -40,6 +40,25 @@ public class OwnDevicesTests
         Assert.False(FriendNotes.Open(me, text, out _)!.Phone!.On);
         Assert.Null(PhoneStatus.From("weather", "Sunny", null, 0, true));
         Assert.Equal(PhoneStatus.Battery, PhoneStatus.From("battery", "Charged", "100%", 0, true)!.Kind);
+        // Now and then the phone's state, for the phone tool: the battery, charging, the song.
+        var state = PhoneStatus.From("status", "87%", "Golden Hour · Holm Demo", 0, false)!;
+        Assert.Equal(("87%", "Golden Hour · Holm Demo", false), (state.Title, state.Detail, state.On));
+
+        // Its connections travel along as JSON and read as words; anything else in there is left out.
+        var full = new PhoneStatus(PhoneStatus.Status, "87%", null, 0, true, "{\"net\":\"wifi\",\"vpn\":true,\"bt\":\"AirPods 80%\",\"dnd\":true}");
+        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: full));
+        var back = FriendNotes.Open(me, text, out _)!.Phone!;
+        Assert.Equal(new[] { "Wi-Fi", "VPN", "AirPods 80%", "Do Not Disturb" }, back.Connections());
+        Assert.Empty(new PhoneStatus(PhoneStatus.Status, "87%", null, 0, true, "not json").Connections());
+
+        // A notification carries its key (the PC can close it on the phone); a PC's "close" is never read as a status.
+        var message = new PhoneStatus(PhoneStatus.Notification, "Lena", "WhatsApp · Hi", 0, true, Key: "0|com.whatsapp|1|null|10");
+        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: message));
+        Assert.Equal("0|com.whatsapp|1|null|10", FriendNotes.Open(me, text, out _)!.Phone!.Key);
+        var close = new PhoneStatus(PhoneStatus.Dismiss, "dismiss", null, 0, true, Key: "0|com.whatsapp|1|null|10");
+        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "PC", 10, Device: Pc, ForDevice: Phone, Phone: close));
+        Assert.Null(FriendNotes.Open(me, text, out _));
+        Assert.Null(PhoneStatus.CleanKey(new string('k', 400)));
         Assert.Null(PhoneStatus.From(PhoneStatus.Call, "  ", null, 0, true));
         Assert.Equal(80, PhoneStatus.From(PhoneStatus.Call, new string('a', 200), null, 0, true)!.Title.Length);
     }
@@ -82,10 +101,25 @@ public class OwnDevicesTests
         var devices = new OwnDevices();
         Assert.True(devices.Saw(Phone, "Pixel 9", T0));
         Assert.False(devices.Saw(Phone, "Pixel 9", T0.AddMinutes(1))); // nothing new to show
-        Assert.True(devices.Saw(Phone, "Elias' Pixel", T0.AddMinutes(2))); // a new name is
+        Assert.True(devices.Saw(Phone, "Lena's Pixel", T0.AddMinutes(2))); // a new name is
         Assert.Single(devices.Recent(T0.AddMinutes(5)));
         Assert.Empty(devices.Recent(T0.AddMinutes(2) + OwnDevices.Fresh));
         Assert.False(devices.Saw("nope", "Pixel 9", T0));
+    }
+
+    [Fact]
+    public void The_same_device_under_a_new_id_replaces_the_old_one()
+    {
+        // The phone app after an update: same name, new id. The old one would stay as a device that never answers.
+        var devices = new OwnDevices();
+        devices.Saw(Phone, "Pixel 9", T0);
+        devices.Saw(Pc, "Office PC", T0);
+        string updated = Guid.NewGuid().ToString("N");
+        Assert.True(devices.Saw(updated, "pixel 9", T0.AddMinutes(1)));
+        var now = devices.Recent(T0.AddMinutes(2));
+        Assert.Equal(2, now.Count);
+        Assert.Contains(now, d => d.Id == updated);
+        Assert.DoesNotContain(now, d => d.Id == Phone);
     }
 
     [Fact]

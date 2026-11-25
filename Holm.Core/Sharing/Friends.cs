@@ -380,8 +380,8 @@ public static class FriendNotes
             O = note.Profile?.Color,
             P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
             // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
-            M = note.Text == null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(note.Text)),
-            I = note.MessageId,
+            M = (note.Text ?? note.Phone?.Extra) is { } words ? Convert.ToBase64String(Encoding.UTF8.GetBytes(words)) : null,
+            I = note.MessageId ?? note.Phone?.Key,
             Y = note.Activity?.Kind ?? note.Phone?.Kind,
             V = note.Activity?.Title ?? note.Phone?.Title,
             W = note.Activity?.Detail ?? note.Phone?.Detail,
@@ -477,8 +477,8 @@ public static class FriendNotes
                 "react" when Guid.TryParseExact(dto.I, "N", out _) && (dto.M == null || ChatReaction.Clean(ChatText.FromNote(dto.M)) != null)
                     => new FriendNote(FriendNoteKind.Reaction, from, dto.T, Text: dto.M == null ? null : ChatReaction.Clean(ChatText.FromNote(dto.M)), MessageId: dto.I),
                 "device" when OwnDevice.IsId(dto.D) => new FriendNote(FriendNoteKind.Device, from, dto.T, Query: dto.H == true ? true : null),
-                "phone" when OwnDevice.IsId(dto.D) && PhoneStatus.From(dto.Y, dto.V, dto.W, dto.Z, dto.A) is { } phone
-                    => new FriendNote(FriendNoteKind.Phone, from, dto.T, Phone: phone),
+                "phone" when OwnDevice.IsId(dto.D) && PhoneStatus.From(dto.Y, dto.V, dto.W, dto.Z, dto.A, ChatText.FromNote(dto.M)) is { } phone
+                    => new FriendNote(FriendNoteKind.Phone, from, dto.T, Phone: phone with { Key = PhoneStatus.CleanKey(dto.I) }),
                 _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
             };
             if (note != null)

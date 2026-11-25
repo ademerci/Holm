@@ -27,6 +27,113 @@ Map<String, Object?> notification(String key, {String pkg = 'com.whatsapp', bool
     };
 
 void main() {
+  test('earbuds: a small activity beside everything else, gone when they disconnect', () {
+    final c = NotchController()..setSettings(const NotchSettings(maxActivities: 1));
+    c.handle({'type': 'bluetooth', 'connected': true, 'name': 'Pixel Buds Pro 2', 'audio': true});
+    c.handle({'type': 'bluetoothBattery', 'name': 'Pixel Buds Pro 2', 'level': 80});
+    // Alone, they're the notch's activity (the "connected" pop-up gone).
+    c.dismiss(c.visible.firstWhere((a) => a.kind == ActivityKind.bluetooth));
+    expect(c.primary!.kind, ActivityKind.buds);
+    expect(c.budsBubble, isNull);
+    final buds = c.primary!;
+    expect(buds.level, 80);
+    expect(NotchController.budsModel(buds.title, 'hazel'), 'pixel_hazel');
+    expect(NotchController.budsModel('Lena’s AirPods', 'hazel'), 'airpods');
+    expect(NotchController.budsModel('Nothing Ear (2)', 'hazel'), 'nothing');
+    expect(NotchController.budsModel('Ear (a)', 'hazel'), 'nothing');
+    expect(NotchController.budsModel('CMF Buds 2 Pro', 'hazel'), 'nothing');
+    expect(NotchController.looksLikeEarbuds('Ear (a)'), isTrue);
+
+    // Something else shows: the earbuds go into the bubble beside it.
+    c.handle(notification('d', pkg: 'com.android.chrome', ongoing: true, progress: 30, max: 100));
+    expect(c.budsBubble, isNotNull);
+    expect(c.visible.where((a) => a.kind == ActivityKind.buds), isEmpty);
+
+    // A third activity: the earbuds step back entirely, and come back when it's gone.
+    c.handle(notification('t', pkg: 'com.google.android.deskclock', ongoing: true, chrono: true, countDown: true));
+    expect(c.budsBubble, isNull);
+    c.handle({'type': 'notificationRemoved', 'key': 't'});
+    expect(c.budsBubble, isNotNull);
+
+    // Each bud's battery from Google Play services' card: the emptier one counts.
+    c.handle({'type': 'budsBattery', 'name': 'Pixel Buds Pro 2 von Lena', 'left': 100, 'right': 70, 'case': 96});
+    expect(c.budsBubble!.level, 70);
+    expect(c.budsCase, 96);
+
+    // Tapped: their card opens; closed again, they go back into the bubble.
+    c.openBuds();
+    expect(c.primary!.kind, ActivityKind.buds);
+    expect(c.budsBubble, isNull);
+    c.collapse();
+    expect(c.budsBubble, isNotNull);
+    expect(c.visible.where((a) => a.kind == ActivityKind.buds), isEmpty);
+
+    // A watch connecting isn't earbuds.
+    c.handle({'type': 'bluetooth', 'connected': true, 'name': 'Galaxy Watch', 'audio': false});
+    c.dismiss(c.visible.firstWhere((a) => a.kind == ActivityKind.bluetooth)); // its pop-up (a third activity) gone
+    expect(c.budsBubble!.title, 'Pixel Buds Pro 2');
+
+    c.handle({'type': 'bluetooth', 'connected': false, 'name': 'Pixel Buds Pro 2', 'audio': true});
+    expect(c.budsBubble, isNull);
+    c.dispose();
+  });
+
+  test('music swiped away comes back with the next song', () {
+    final c = NotchController();
+    Map<String, Object?> song(String title, {bool playing = true}) =>
+        {'type': 'media', 'active': true, 'package': 'com.spotify.music', 'app': 'Spotify', 'title': title, 'playing': playing};
+    c.handle(song('One'));
+    final music = c.visible.firstWhere((a) => a.kind == ActivityKind.music);
+    c.swipeAway(music);
+    expect(c.visible.where((a) => a.kind == ActivityKind.music), isEmpty);
+    c.handle(song('One')); // the same song, still playing: stays away
+    expect(c.visible.where((a) => a.kind == ActivityKind.music), isEmpty);
+    c.handle(song('Two'));
+    expect(c.visible.where((a) => a.kind == ActivityKind.music), isNotEmpty);
+    c.dispose();
+  });
+
+  test('a screen recording is a recording, and goes when it is saved', () {
+    final c = NotchController();
+    final rec = notification('rec', pkg: 'com.android.systemui', ongoing: true, chrono: true)
+      ..['channel'] = 'screen_record'
+      ..['title'] = 'Recording screen';
+    c.handle(rec);
+    final a = c.primary!;
+    expect(a.recording, isTrue);
+    // Stopped: Android puts "Screen recording saved" in the same notification, no longer ongoing.
+    c.handle(notification('rec', pkg: 'com.android.systemui')
+      ..['channel'] = 'screen_record'
+      ..['title'] = 'Screen recording saved');
+    expect(c.visible.where((x) => x.kind == ActivityKind.timer), isEmpty);
+    c.dispose();
+  });
+
+  test('the flashlight switched shows for a moment, not the state at the start', () {
+    final c = NotchController();
+    c.handle({'type': 'torch', 'on': false}); // Android tells the state once
+    expect(c.visible, isEmpty);
+    c.handle({'type': 'torch', 'on': true});
+    expect(c.primary!.kind, ActivityKind.torch);
+    expect(c.primary!.on, isTrue);
+    expect(c.primary!.wide, isTrue);
+    expect(c.torchOn, isTrue);
+    c.dispose();
+  });
+
+  test('an app muted for 5 minutes stays out of the notch meanwhile', () {
+    final c = NotchController();
+    c.handle(notification('a'));
+    final a = c.primary!;
+    c.snooze(a);
+    expect(c.visible, isEmpty);
+    c.handle(notification('b'));
+    expect(c.visible, isEmpty);
+    c.handle(notification('x', pkg: 'org.telegram.messenger'));
+    expect(c.primary?.package, 'org.telegram.messenger');
+    c.dispose();
+  });
+
   test('notifications become the right activities', () {
     final c = NotchController();
     c.handle(notification('a'));
@@ -226,6 +333,12 @@ void main() {
     c.handle({...notification('call', pkg: 'com.google.android.dialer', ongoing: true, chrono: true), 'title': 'Lena', 'callType': 2});
     expect(c.primary!.callType, 2);
     expect(c.primary!.countUpStart, isNotNull);
+    c.action = (method, args) async {
+      if (method == 'phoneStatus' && (args as Map)['kind'] == 'notification') told.add('key:${args['key']}');
+      return null;
+    };
+    c.handle(notification('msg'));
+    expect(told.last, 'key:msg'); // the PC can close it here
     c.dispose();
   });
 
@@ -297,6 +410,7 @@ void main() {
       doubleTap: NotchGesture.playPause,
       betaUpdates: true,
       toPc: false,
+      compactBanners: true,
     );
     final back = NotchSettings.fromJsonString(s.toJsonString());
     expect(back.design, 'paper');
@@ -306,6 +420,8 @@ void main() {
     expect(back.doubleTap, NotchGesture.playPause);
     expect(back.betaUpdates, isTrue);
     expect(back.toPc, isFalse);
+    expect(back.compactBanners, isTrue);
+    expect(const NotchSettings().compactBanners, isFalse);
     expect(back.copyWith(design: null).design, isNull);
   });
 
@@ -313,7 +429,7 @@ void main() {
     final c = NotchController();
     final told = <String>[];
     c.action = (method, args) async {
-      if (method == 'phoneStatus') told.add('${(args as Map)['kind']}:${args['detail']}');
+      if (method == 'phoneStatus' && (args as Map)['kind'] == 'battery') told.add('${args['kind']}:${args['detail']}');
       return null;
     };
     c.handle({'type': 'battery', 'level': 97, 'plugged': true, 'full': false});
@@ -324,6 +440,29 @@ void main() {
     expect(told, ['battery:100%']);
     c.handle({'type': 'battery', 'level': 100, 'plugged': true, 'full': true});
     expect(told.length, 1); // once
+    c.dispose();
+  });
+
+  test('the PC hears the battery and the song now and then, not every second', () {
+    final c = NotchController();
+    final told = <String>[];
+    c.action = (method, args) async {
+      if (method == 'phoneStatus' && (args as Map)['kind'] == 'status') told.add('${args['title']}|${args['on']}');
+      return null;
+    };
+    c.handle({'type': 'battery', 'level': 83, 'plugged': false});
+    c.handle({'type': 'battery', 'level': 82, 'plugged': false});
+    expect(told, ['83%|false']); // same tens, same state: nothing new
+    c.handle({'type': 'battery', 'level': 82, 'plugged': true});
+    expect(told.last, '82%|true'); // plugged in: at once
+    Map? extra;
+    c.action = (method, args) async {
+      if (method == 'phoneStatus') extra = (args as Map)['extra'] as Map?;
+      return null;
+    };
+    c.handle({'type': 'wifi', 'connected': true});
+    c.handle({'type': 'bluetooth', 'connected': true, 'name': 'AirPods'});
+    expect(extra, {'net': 'wifi', 'bt': 'AirPods'});
     c.dispose();
   });
 }

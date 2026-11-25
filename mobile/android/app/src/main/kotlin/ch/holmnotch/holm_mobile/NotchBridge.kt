@@ -39,6 +39,8 @@ object NotchBridge {
     var main: MethodChannel? = null
     var service: NotchService? = null
     var listener: NotchListener? = null
+    /** Shared from Android's share menu, until the app takes it ("takeShared"). */
+    var shared: Map<String, Any?>? = null
     private val pending = ArrayDeque<Map<String, Any?>>()
 
     fun group(context: Context): FlutterEngineGroup =
@@ -103,6 +105,36 @@ object NotchBridge {
                     "camera" to camera(context),
                 )
             )
+            "media" -> {
+                (args as? String)?.let { listener?.mediaAction(it, null) }
+                result.success(null)
+            }
+            "dismissNotification" -> {
+                (args as? String)?.let { listener?.clear(it) }
+                result.success(null)
+            }
+            "takeShared" -> {
+                result.success(shared)
+                shared = null
+            }
+            "saveToDownloads" -> Thread {
+                val ok = runCatching {
+                    val file = java.io.File(args as String)
+                    val values = android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.Downloads.DISPLAY_NAME, file.name)
+                        put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/Holm")
+                        put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+                    }
+                    val resolver = context.contentResolver
+                    val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+                    resolver.openOutputStream(uri)!!.use { out -> file.inputStream().use { it.copyTo(out, 256 * 1024) } }
+                    values.clear()
+                    values.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(uri, values, null, null)
+                    true
+                }.getOrDefault(false)
+                handler.post { result.success(ok) }
+            }.start()
             "copyUri" -> Thread {
                 val path = runCatching {
                     val uri = android.net.Uri.parse(args as String)

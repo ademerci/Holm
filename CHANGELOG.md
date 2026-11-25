@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.4.0 – unreleased
+
+### Added
+
+- **A phone tab in the open notch.** Next to the clipboard and sound tools: your phone's battery, Wi-Fi or mobile data, VPN, Bluetooth and Do Not Disturb, the song it plays and what came in on it lately. Send it files or the copied text, close a notification here and it goes on the phone too, and play, pause or skip its music.
+- **Your phone links by itself.** Signed in to the same Holm account, the PC and the phone find each other without a friend code. The phone tab says what's missing when they don't: not signed in, or a friend code of the PC's own to choose against the account's.
+- **Holm for Android 1.2.2 to 1.2.11.** Holm in Android's share menu. Compact notifications as tall as the closed notch. Long text rests, then slides to show all of it. The volume with a finger, held volume keys, and sliders for media, ringtone, notifications, alarm and calls in the open notch. Your earbuds as a live activity in 3D (Pixel Buds Pro 2 in their four colours, AirPods 4, Nothing): small beside other activities, and opened, they come out of their case, with each bud's and the case's battery from Google's card. A settings button in the overview, an app muted for 5 minutes from an open notification, and the open notch closes with a swipe sideways. The notch steps aside while the control centre is pulled down.
+
+### Fixed
+
+- **Your phone once.** A phone on the same Wi-Fi and in your account shows once in the share view, not twice (or four times with an emulator).
+- **Closing a message on the phone tab** keeps the notch open; the page no longer shrinks from under the pointer.
+- **Holm for Android:** a send from the PC no longer stays on "Connecting…" on the phone; the same note from both servers counts once; Spotify covers load (also after skipping with headphones); the song bar takes taps and drags; music swiped away comes back with the next song; a screen recording is no longer taken for a stopwatch that keeps counting.
+- **Tests stay out of your settings.** The tests use a folder of their own, and an inbox on this computer (only tests have one) that got into the settings is set back to Holm's relay.
+
 ## 2.3.1 – 2026-11-25
 
 ### Fixed

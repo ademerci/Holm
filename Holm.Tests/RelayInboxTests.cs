@@ -25,7 +25,6 @@ public sealed class RelayInboxTests : IDisposable
     {
         FriendIdentity.DefaultServer = _ntfy.Url;
         FriendIdentity.RelayServer = _relay.Url;
-        AppSettings.ReadOnly = true; // FriendsService saves its settings: never into the real settings file
         FriendsService.ProtectKey = (data, _) => data.ToArray();
         FriendsService.UnprotectKey = (data, _) => data.ToArray();
     }
@@ -34,7 +33,6 @@ public sealed class RelayInboxTests : IDisposable
     {
         FriendIdentity.DefaultServer = _wasDefault;
         FriendIdentity.RelayServer = _wasRelay;
-        AppSettings.ReadOnly = false;
         _relay.Dispose();
         _ntfy.Dispose();
     }

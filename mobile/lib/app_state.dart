@@ -167,6 +167,8 @@ class AppState extends ChangeNotifier {
   static const maxNote = 4000;
   final List<ReceivedFile> received = [];
   final List<String> _seen = [];
+  /// Notes taken already, by their sealed text (each is sealed with its own nonce, so equal text is the same note).
+  final List<int> _seenNotes = [];
   int? _since;
 
   TransferStatus? transfer;
@@ -315,6 +317,7 @@ class AppState extends ChangeNotifier {
   void setForeground(bool front) {
     if (foreground == front) return;
     foreground = front;
+    if (front) unawaited(refreshAccount()); // the PC may have changed the account's identity meanwhile
     final t = transfer;
     if (!front && t != null && !t.done) _toNotch(t);
   }
@@ -342,6 +345,10 @@ class AppState extends ChangeNotifier {
         'W': status['detail'],
         'Z': status['since'],
         'A': on ? null : false,
+        // The notification's key: the PC can close it here (Holm.Core PhoneStatus.Key).
+        'I': status['key'],
+        // More of the phone's state, as JSON (connections, Do Not Disturb): Holm.Core PhoneStatus.Extra.
+        'M': status['extra'] is Map ? Notes.chatText(jsonEncode(status['extra'])) : null,
       }, from: deviceName),
       keep: false,
     ).catchError((_) {}));
@@ -467,7 +474,13 @@ class AppState extends ChangeNotifier {
   }
 
   Timer? _clearStatus;
+  DateTime _lastProgress = DateTime(0);
   void _status(TransferStatus s) {
+    if (s.progress != null && !s.done && s.progress! < 1) {
+      final now = DateTime.now();
+      if (now.difference(_lastProgress) < const Duration(milliseconds: 125) && transfer?.title == s.title) return;
+      _lastProgress = now;
+    }
     transfer = s;
     if (!foreground) _toNotch(s);
     _clearStatus?.cancel();
@@ -516,13 +529,21 @@ class AppState extends ChangeNotifier {
         if (foreground) {
           _status(TransferStatus('Text from $sender', 'Copied to your clipboard', done: true));
         } else {
-          // In the notch: what was copied, and a button to copy it again.
+          // In the notch: what was copied, and a button to copy it again. In the app: done, not "Connecting…".
           NotchLink.send({'type': 'holm.clipboard', 'text': got.text, 'from': sender});
+          transfer = TransferStatus('Text from $sender', 'Copied to your clipboard', done: true);
+          notifyListeners();
+          _clearStatus?.cancel();
+          _clearStatus = Timer(const Duration(seconds: 6), () {
+            transfer = null;
+            notifyListeners();
+          });
         }
         return;
       }
       for (final path in got.paths) {
         received.insert(0, ReceivedFile(path, sender, DateTime.now()));
+        unawaited(NotchLink.saveToDownloads(path));
       }
       _status(TransferStatus(
           got.paths.length == 1 ? 'Saved ${p.basename(got.paths.first)}' : 'Saved ${got.paths.length} files',
@@ -571,7 +592,8 @@ class AppState extends ChangeNotifier {
     _lastClip = text;
     _addClip(ClipItem(text, DateTime.now()));
     if (!isNew || !clipboardSync) return;
-    final target = _targetNamed(syncTarget);
+    // The device chosen for sync, else the one that is there (a PC renamed, or the choice made on another network).
+    final target = _targetNamed(syncTarget) ?? (targets.length == 1 ? targets.first : null);
     if (target != null) await sendText(target, text, quiet: true);
   }
 
@@ -674,6 +696,15 @@ class AppState extends ChangeNotifier {
       if (card != null) friends.add(card);
     }
     friends.removeWhere((f) => data.removed.contains(f.key));
+    // A "friend" with our own key is one of our own devices, from before the account linked them: not a friend.
+    final self = friends.where((f) => f.key == me.publicKey).map((f) => f.key).toSet();
+    if (self.isNotEmpty) {
+      friends.removeWhere((f) => self.contains(f.key));
+      for (final key in self) {
+        chats.remove(key);
+        unread.remove(key);
+      }
+    }
     announceDevice(force: true);
   }
 
@@ -711,6 +742,15 @@ class AppState extends ChangeNotifier {
     if (account == null || !OwnDevice.isId(id) || id == deviceId) return; // ours, back from the inbox
     final from = note.from.isEmpty ? 'Holm' : note.from;
     switch (note.kind) {
+      // A PC closed one of our notifications in its phone tool: gone here too.
+      case 'phone' when note.fields['Y'] == 'dismiss' && note.fields['N'] == deviceId && note.fields['I'] is String:
+        NotchLink.dismissNotification(note.fields['I'] as String);
+        return;
+      // A PC plays, pauses or skips our music from its phone tool.
+      case 'phone' when note.fields['Y'] == 'control' && note.fields['N'] == deviceId && age <= 30:
+        final what = note.fields['V'];
+        if (what is String && const {'play', 'pause', 'toggle', 'next', 'previous'}.contains(what)) NotchLink.mediaControl(what);
+        return;
       case 'device' when age <= 30:
         _devices[id as String] = OwnDevice(id, from, DateTime.now());
         if (note.fields['H'] == true) announceDevice(query: false);
@@ -719,6 +759,10 @@ class AppState extends ChangeNotifier {
         if (secret is! String) return;
         final bytes = base64Decode(secret);
         if (bytes.length != ShareSecret.length) return;
+        // The same send can come over both servers (sealed apart): taken once, else a second wait sits on "Connecting…".
+        if (_takenSecrets.contains(secret)) return;
+        _takenSecrets.add(secret);
+        if (_takenSecrets.length > 50) _takenSecrets.removeAt(0);
         final name = _devices[id]?.name ?? from;
         _devices[id as String] = OwnDevice(id, name, DateTime.now());
         unawaited(_receiveOverRelay(bytes, name));
@@ -727,14 +771,23 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  final List<String> _takenSecrets = [];
+
   Future<void> _receiveOverRelay(List<int> secret, String from) async {
-    _status(TransferStatus('$from is sending you something', 'Connecting…'));
+    final connecting = TransferStatus('$from is sending you something', 'Connecting…');
+    _status(connecting);
     try {
       final channel = await RelayLink.connectWithRetry(secret, initiator: false, patience: const Duration(minutes: 2));
       try {
         await _onIncoming(channel, knownSender: from);
       } finally {
         await channel.close();
+        // A text that went quietly to the clipboard (in the background) says nothing more: don't stay on "Connecting…".
+        if (identical(transfer, connecting)) {
+          transfer = null;
+          notifyListeners();
+          NotchLink.send({'type': 'holm.transfer', 'clear': true}); // and off the notch
+        }
       }
     } catch (e) {
       _status(TransferStatus("Couldn't receive", e is TimeoutException ? '$from cancelled or went offline' : _why(e),
@@ -913,7 +966,12 @@ class AppState extends ChangeNotifier {
 
   // ───────────── our inbox ─────────────
 
+  Timer? _accountCheck;
+
   void startInbox() {
+    // The account's identity can change on a PC ("Which friend code?"): look again every ten minutes, also while
+    // the app is in the background (the notch keeps it running).
+    _accountCheck ??= Timer.periodic(const Duration(minutes: 10), (_) => refreshAccount());
     if (_following) return;
     _following = true;
     _connect(const Duration(seconds: 2));
@@ -979,6 +1037,12 @@ class AppState extends ChangeNotifier {
     if (e.time > (_since ?? 0)) _since = e.time;
     final text = e.text;
     if (text == null || !text.startsWith(Notes.prefix)) return;
+    // The same note comes through both servers (Holm's relay and ntfy), with different ids: once is enough.
+    // Without this, a PC's "files" note started a second "Connecting…" that waited for a sender long gone.
+    final digest = text.hashCode ^ text.length;
+    if (_seenNotes.contains(digest)) return;
+    _seenNotes.add(digest);
+    if (_seenNotes.length > 300) _seenNotes.removeAt(0);
     final opened = Notes.open(me, text);
     if (opened == null) return;
     final (note, sender) = opened;
@@ -1021,6 +1085,7 @@ class AppState extends ChangeNotifier {
         } else if (!incoming.any((r) => r.requestId == id)) {
           incoming.add(FriendRequest(id, card, unixNow() - age));
           toast?.call('${card.name} would like to be friends');
+          if (!foreground) NotchLink.send({'type': 'holm.chat', 'name': card.name, 'text': 'Would like to be friends · open Holm to answer'});
         }
       case 'response':
         final match = outgoing.where((r) => r.requestId == note.requestId && r.card.key == sender).toList();

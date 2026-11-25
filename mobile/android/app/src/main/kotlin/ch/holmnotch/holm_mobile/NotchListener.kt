@@ -28,6 +28,14 @@ class NotchListener : NotificationListenerService() {
     private var controller: MediaController? = null
     private val iconsSent = mutableSetOf<String>()
     private var lastArtKey: String? = null
+    /** Covers loaded from a player's link (Spotify gives one instead of a picture), by song. */
+    private val artFromUri = object : LinkedHashMap<String, ByteArray>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ByteArray>?) = size > 8
+    }
+    private val artLoading = mutableSetOf<String>()
+    /** The song whose cover is still missing, and how often it was looked for again. */
+    private var artMissingKey: String? = null
+    private var artRetries = 0
     private val me get() = ComponentName(this, NotchListener::class.java)
 
     private val onSessions = MediaSessionManager.OnActiveSessionsChangedListener { list -> pick(list ?: emptyList()) }
@@ -152,6 +160,8 @@ class NotchListener : NotificationListenerService() {
         val n = sbn.notification
         val x = n.extras
         val pkg = sbn.packageName
+        // Google Play services' earbuds card ("L: 100%  C: 96%  R: 100%"): the earbuds activity shows it, not a pop-up.
+        if (pkg == "com.google.android.gms" && sendBudsBattery(n)) return
         sendIcon(pkg)
         val ranking = Ranking()
         val importance = if (currentRanking?.getRanking(sbn.key, ranking) == true) ranking.importance else NotificationManager.IMPORTANCE_DEFAULT
@@ -204,6 +214,42 @@ class NotchListener : NotificationListenerService() {
         )
     }
 
+    /**
+     * Each earbud's and the case's battery, from Google Play services' notification for Fast Pair earbuds. Its view is
+     * custom: its texts are read from the view, laid out off screen. True if it was that card.
+     */
+    private fun sendBudsBattery(n: Notification): Boolean {
+        val x = n.extras
+        val texts = mutableListOf<String>()
+        listOf(Notification.EXTRA_TITLE, Notification.EXTRA_TEXT, Notification.EXTRA_BIG_TEXT, Notification.EXTRA_SUB_TEXT)
+            .forEach { k -> x.getCharSequence(k)?.let { texts += it.toString() } }
+        x.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.forEach { texts += it.toString() }
+        for (views in listOfNotNull(n.bigContentView, n.contentView, n.headsUpContentView)) {
+            runCatching {
+                val view = views.apply(this, android.widget.FrameLayout(this))
+                fun walk(v: android.view.View) {
+                    if (v is android.widget.TextView) v.text?.let { texts += it.toString() }
+                    if (v is android.view.ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i))
+                }
+                walk(view)
+            }
+        }
+        val levels = mutableMapOf<String, Int>()
+        val pattern = Regex("""\b([LRC])\s*:\s*(\d{1,3})\s*%""")
+        for (t in texts) for (m in pattern.findAll(t)) levels.putIfAbsent(m.groupValues[1], m.groupValues[2].toInt().coerceIn(0, 100))
+        if (levels.isEmpty()) return false
+        NotchBridge.toNotch(
+            mapOf(
+                "type" to "budsBattery",
+                "name" to x.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+                "left" to levels["L"],
+                "right" to levels["R"],
+                "case" to levels["C"],
+            )
+        )
+        return true
+    }
+
     private fun label(pkg: String) =
         runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
 
@@ -244,9 +290,10 @@ class NotchListener : NotificationListenerService() {
         if (artKey != lastArtKey) {
             val bmp = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
                 ?: meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-            art = bmp?.let { runCatching { png(it, 256) }.getOrNull() } ?: coverFromNotification(c.packageName)
+            art = bmp?.let { runCatching { png(it, 256) }.getOrNull() } ?: artFromUri[artKey] ?: coverFromNotification(c.packageName, title)
+            if (art == null) loadArt(artKey, meta)
             // Players often send the title first and the cover a moment later: only a song with its cover counts as sent.
-            if (art != null) lastArtKey = artKey
+            if (art != null) lastArtKey = artKey else lookAgainForArt(artKey)
         }
         NotchBridge.toNotch(
             mapOf(
@@ -268,8 +315,54 @@ class NotchListener : NotificationListenerService() {
         )
     }
 
+    /**
+     * Skipped with the headphones, the screen off: some players (Spotify) fetch the cover only later and say so on no
+     * channel the notch hears. Looked for again a few times (1.5 s, 4 s, 10 s), as long as that song plays.
+     */
+    private fun lookAgainForArt(artKey: String) {
+        if (artMissingKey != artKey) {
+            artMissingKey = artKey
+            artRetries = 0
+        }
+        if (artRetries >= 3) return
+        val delay = longArrayOf(1500, 4000, 10000)[artRetries++]
+        NotchBridge.handler.postDelayed({
+            if (artMissingKey == artKey && lastArtKey != artKey) sendMedia()
+        }, delay)
+    }
+
+    /**
+     * Spotify and others name the cover by a link (an https address or a content:// one) instead of handing it over:
+     * fetched once in the background, then the song is sent again with it.
+     */
+    private fun loadArt(artKey: String, meta: MediaMetadata) {
+        val uri = listOf(MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI, MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+            .firstNotNullOfOrNull { meta.getString(it)?.takeIf { s -> s.isNotBlank() } } ?: return
+        if (!artLoading.add(artKey)) return
+        Thread {
+            val bytes = runCatching {
+                val parsed = android.net.Uri.parse(uri)
+                val input = when (parsed.scheme) {
+                    "http", "https" -> (java.net.URL(uri).openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 8000
+                        readTimeout = 8000
+                    }.inputStream
+                    else -> contentResolver.openInputStream(parsed)
+                }
+                input?.use { android.graphics.BitmapFactory.decodeStream(it) }?.let { png(it, 256) }
+            }.getOrNull()
+            NotchBridge.handler.post {
+                artLoading.remove(artKey)
+                if (bytes != null) {
+                    artFromUri[artKey] = bytes
+                    if (lastArtKey != artKey) sendMedia()
+                }
+            }
+        }.start()
+    }
+
     /** Some players (Chrome, for one) put the cover only on their media notification, as its large icon. */
-    private fun coverFromNotification(pkg: String): ByteArray? = runCatching {
+    private fun coverFromNotification(pkg: String, title: String?): ByteArray? = runCatching {
         val players = activeNotifications.filter {
             it.packageName == pkg && it.notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
         }
@@ -278,6 +371,9 @@ class NotchListener : NotificationListenerService() {
         val n = (players.firstOrNull {
             it.notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, android.media.session.MediaSession.Token::class.java) == token
         } ?: players.firstOrNull { it.notification.getLargeIcon() != null })?.notification ?: return null
+        // Right after a skip the notification may still show the song before: its cover isn't this song's.
+        val shows = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+        if (title != null && shows != null && shows != title) return null
         val drawable = n.getLargeIcon()?.loadDrawable(this) ?: return null
         png(drawable, 256)
     }.getOrNull()

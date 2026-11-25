@@ -16,6 +16,16 @@ class NotchLink {
   static void Function(String package, String name)? onMute;
   /// Something on the phone for the account's PCs (kind, title, detail, since, on).
   static void Function(Map<String, Object?> status)? onPhoneStatus;
+  /// Something was shared from another app; [takeShared] gets it.
+  static void Function()? onShared;
+
+  /// What another app shared with Holm (Android's share menu): text, or content:// files. Null if nothing is waiting.
+  static Future<({String? text, List<String> uris})?> takeShared() async {
+    final r = await _bridge.invokeMethod<Map>('takeShared').catchError((_) => null);
+    if (r == null) return null;
+    return (text: r['text'] as String?, uris: [for (final u in (r['uris'] as List? ?? const [])) '$u']);
+  }
+
   /// A file the notch wants sent to the PC (a screenshot's content:// address).
   static void Function(String uri)? onBeamFile;
   /// "Update" in the update notification.
@@ -33,6 +43,8 @@ class NotchLink {
           onOpen?.call(call.arguments as String);
         case 'phoneStatus':
           onPhoneStatus?.call(Map<String, Object?>.from(call.arguments as Map));
+        case 'shared':
+          onShared?.call();
         case 'beamFile':
           onBeamFile?.call(call.arguments as String);
         case 'installUpdate':
@@ -106,6 +118,16 @@ class NotchLink {
         if (a is Map) (package: '${a['package']}', name: '${a['name']}', icon: a['icon'] as Uint8List?),
     ];
   }
+
+  /// The player plays, pauses or skips (asked from a PC).
+  static void mediaControl(String action) => _bridge.invokeMethod('media', action).catchError((_) {});
+
+  /// Copies a received file into Downloads/Holm (Android's MediaStore), where the Files app finds it.
+  static Future<bool> saveToDownloads(String path) async =>
+      await _bridge.invokeMethod<bool>('saveToDownloads', path).catchError((_) => false) ?? false;
+
+  /// Clears one of the phone's notifications (closed on a PC).
+  static void dismissNotification(String key) => _bridge.invokeMethod('dismissNotification', key).catchError((_) {});
 
   /// This app's version name ("1.2.0").
   static Future<String?> appVersionName() => _bridge.invokeMethod<String>('appVersionName').catchError((_) => null);

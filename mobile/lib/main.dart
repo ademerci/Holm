@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_state.dart';
 import 'net/transfer.dart';
 import 'notch/link.dart';
+import 'ui/targets.dart';
 import 'update.dart';
 import 'notch/notch_main.dart';
 import 'ui/account_page.dart';
@@ -64,6 +66,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     };
     WidgetsBinding.instance.addPostFrameCallback((_) => s.syncClipboardNow());
     Updater.instance.addListener(_whatsNew);
+    NotchLink.onShared = _takeShared;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeShared());
     NotchLink.onOpen = (page) {
       final i = const ['devices', 'chat', 'clipboard', 'notes', 'notch'].indexOf(page);
       if (i >= 0 && mounted) setState(() => _page = i);
@@ -75,6 +79,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     Updater.instance.removeListener(_whatsNew);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Shared from another app: where it goes, and off it goes.
+  Future<void> _takeShared() async {
+    final shared = await NotchLink.takeShared();
+    if (shared == null || !mounted) return;
+    setState(() => _page = 0); // the devices page shows how sending goes
+    final target = await pickTarget(context, s, title: shared.uris.isEmpty ? 'Send the text to' : 'Send to');
+    if (target == null) return;
+    if (shared.uris.isEmpty) {
+      await s.sendText(target, shared.text ?? '');
+      return;
+    }
+    final paths = <String>[];
+    for (final uri in shared.uris) {
+      final path = await NotchLink.copyUri(uri);
+      if (path != null) paths.add(path);
+    }
+    if (paths.isEmpty) {
+      s.toast?.call("Couldn't read what was shared");
+      return;
+    }
+    await s.sendFiles(target, paths);
   }
 
   bool _showingWhatsNew = false;
@@ -118,10 +145,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<bool> _askOffer(ShareOffer offer) async {
     if (!mounted) return false;
     final single = offer.files.length == 1;
+    BuildContext? dialog;
+    // The sender doesn't wait forever (AppState counts no answer in a minute as no): the question goes with it.
+    final expire = Timer(const Duration(seconds: 58), () {
+      final open = dialog;
+      if (open != null && open.mounted) Navigator.of(open).pop(false);
+    });
     final answer = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) {
+        dialog = context;
+        return AlertDialog(
         icon: Avatar(offer.sender, size: 56, icon: Icons.laptop_rounded),
         title: Text(offer.isText ? 'Text from ${offer.sender}' : '${offer.sender} wants to send you'),
         content: Text(
@@ -138,8 +173,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Decline')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(offer.isText ? 'Copy' : 'Accept')),
         ],
-      ),
+      );
+      },
     );
+    expire.cancel();
     return answer ?? false;
   }
 

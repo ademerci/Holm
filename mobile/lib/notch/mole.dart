@@ -54,7 +54,8 @@ class _MolePainter extends CustomPainter {
     final s = size.width;
     final ground = s * 0.86;
     canvas.save();
-    canvas.clipRect(Rect.fromLTWH(-s, -s, s * 3, ground + 0.5));
+    // Everything above the ground (the mole is hidden below it, in its hole).
+    canvas.clipRect(Rect.fromLTRB(-s, -s, s * 2, ground + 0.5));
     final top = ground - s * 0.78 * rise;
     // Looking left and right once it's out, then a nod.
     final look = up && t > 0.55 ? math.sin((t - 0.55) / 0.45 * math.pi * 2) * s * 0.06 : 0.0;
