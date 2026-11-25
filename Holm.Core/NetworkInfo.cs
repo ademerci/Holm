@@ -12,7 +12,7 @@ internal sealed record NetworkDetails(string? Adapter, string? Mac, IReadOnlyLis
     IReadOnlyList<IPAddress> Gateways, IReadOnlyList<IPAddress> Dns, bool? Dhcp, string? DnsSuffix);
 
 /// <summary>
-/// What Windows knows about the connection, read on this PC only: nothing is sent anywhere to find it out.
+/// What the operating system knows about the connection, read on this PC only: nothing is sent anywhere to find it out.
 /// </summary>
 internal static class NetworkInfo
 {
@@ -31,12 +31,15 @@ internal static class NetworkInfo
             var addresses = ip.UnicastAddresses
                 .Where(a => !a.Address.IsIPv6LinkLocal && !IPAddress.IsLoopback(a.Address))
                 .OrderBy(a => a.Address.AddressFamily == AddressFamily.InterNetworkV6 ? 1 : 0)
-                .ThenBy(a => a.SuffixOrigin == SuffixOrigin.Random ? 1 : 0) // IPv6 privacy addresses last
+                .ThenBy(a => OperatingSystem.IsWindows() && a.SuffixOrigin == SuffixOrigin.Random ? 1 : 0) // IPv6 privacy addresses last
                 .Select(a => a.Address)
                 .ToArray();
             bool? dhcp = null;
-            try { dhcp = ip.GetIPv4Properties()?.IsDhcpEnabled; }
-            catch (NetworkInformationException) { }
+            if (OperatingSystem.IsWindows())
+            {
+                try { dhcp = ip.GetIPv4Properties()?.IsDhcpEnabled; }
+                catch (NetworkInformationException) { }
+            }
             return new NetworkDetails(
                 nic.Description,
                 FormatMac(nic.GetPhysicalAddress().GetAddressBytes()),
@@ -77,7 +80,7 @@ internal static class NetworkInfo
         Add("Connection", link == null ? null : link.IsWifi ? "Wi-Fi" : "Ethernet");
         if (link?.IsWifi == true)
         {
-            Add("Network", string.IsNullOrWhiteSpace(link.Ssid) ? "Name hidden by Windows (location is off)" : link.Ssid.Trim());
+            Add("Network", string.IsNullOrWhiteSpace(link.Ssid) ? (OperatingSystem.IsWindows() ? "Name hidden by Windows (location is off)" : null) : link.Ssid.Trim());
             Add("Signal", link.SignalBars is { } bars ? $"{bars} of 5 bars" : null);
         }
         if (link is { LinkBitsPerSecond: > 0 }) Add("Link speed", SpeedTest.FormatLinkSpeed(link.LinkBitsPerSecond));
