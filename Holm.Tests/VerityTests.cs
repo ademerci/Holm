@@ -125,6 +125,20 @@ public class VerityTests
     }
 
     [Fact]
+    public void A_new_toolbar_layout_places_her_on_the_free_stretch_immediately()
+    {
+        var roam = new VerityRoam(480, 30, new Random(1));
+        roam.SetFloor(480, new[] { (0.0, 83.0) });
+        Assert.InRange(roam.X, 15, 68);
+        for (int frame = 0; frame < 120; frame++)
+            roam.Step(1 / 30.0, VerityMood.Awake);
+
+        roam.SetFloor(480, new[] { (380.0, 480.0) });
+        roam.Step(1 / 30.0, VerityMood.Awake);
+        Assert.InRange(roam.X, 395, 465);
+    }
+
+    [Fact]
     public void Put_down_on_the_buttons_she_hops_off_them()
     {
         var roam = new VerityRoam(480, 30, new Random(1), headroom: 16);
