@@ -66,7 +66,13 @@ public sealed partial class NotchWindow
         _remindersPage.Children.Add(PageTitle("Reminders"));
         _remindersPage.Children.Add(field);
         _remindersPage.Children.Add(_reminderHint);
-        _remindersPage.Children.Add(_reminderRows);
+        _remindersPage.Children.Add(new ScrollViewer
+        {
+            Content = _reminderRows,
+            MaxHeight = 168,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+        });
         return _remindersPage;
     }
 
@@ -136,7 +142,7 @@ public sealed partial class NotchWindow
     {
         _reminderRows.Children.Clear();
         var now = DateTime.UtcNow;
-        foreach (var reminder in _reminders.Items.Take(6))
+        foreach (var reminder in _reminders.Items)
         {
             var row = new Grid { Margin = new Thickness(2, 0, 0, 6), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
             row.Children.Add(new TextBlock { Text = BellGlyph, FontFamily = IconFont, FontSize = 12, Foreground = TimerOrange, VerticalAlignment = VerticalAlignment.Center });
@@ -164,8 +170,6 @@ public sealed partial class NotchWindow
             row.Children.Add(remove);
             _reminderRows.Children.Add(row);
         }
-        if (_reminders.Items.Count > 6)
-            _reminderRows.Children.Add(new TextBlock { Text = $"+{_reminders.Items.Count - 6} more", FontSize = 11, Foreground = Dim, Margin = new Thickness(24, 0, 0, 0) });
         ShowIdleStatus();
         if (_state == NotchState.Expanded && _tool == Tool.Reminders) ApplyState(animate: true);
     }

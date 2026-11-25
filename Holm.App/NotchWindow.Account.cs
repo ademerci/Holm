@@ -70,7 +70,11 @@ public sealed partial class NotchWindow
         }
         try
         {
-            if (_settings.Reminders != remindersBefore) ShowIdleStatus();
+            if (_settings.Reminders != remindersBefore)
+            {
+                CheckReminders();
+                ShowIdleStatus();
+            }
         }
         catch (Exception ex) { Diag.Error(ex); }
         ApplyBounce();

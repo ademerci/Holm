@@ -39,7 +39,7 @@ public sealed partial class NotchWindow
     {
         new(HomeLayout.Notes, "Notes", (brush, size) => ToolIcon("", brush, size), () => _settings.Notes, () => _settings.Notes = true),
         new(HomeLayout.Reminders, "Reminders", (brush, size) => ToolIcon(BellGlyph, brush, size), () => _settings.Reminders,
-            () => { _settings.Reminders = true; ShowIdleStatus(); }),
+            () => { _settings.Reminders = true; CheckReminders(); ShowIdleStatus(); }),
         new(HomeLayout.Calculator, "Calculator", (brush, size) => ToolIcon("", brush, size), () => _settings.Calculator, () => _settings.Calculator = true),
         new(HomeLayout.Chats, "Chats", (brush, size) => ToolIcon(ChatsGlyph, brush, size)),
         new(HomeLayout.Clipboard, "Clipboard history", (brush, size) => ToolIcon(ClipboardGlyph, brush, size), () => _settings.ClipboardHistory,
