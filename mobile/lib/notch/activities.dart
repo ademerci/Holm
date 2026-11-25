@@ -72,7 +72,9 @@ class NotchActivity {
   bool get wide =>
       (kind == ActivityKind.timer && done) ||
       (kind == ActivityKind.download && done && isAlert) ||
-      (isAlert && const {ActivityKind.charging, ActivityKind.wifi, ActivityKind.bluetooth, ActivityKind.vpn, ActivityKind.volume}.contains(kind));
+      (isAlert &&
+          const {ActivityKind.charging, ActivityKind.wifi, ActivityKind.bluetooth, ActivityKind.vpn, ActivityKind.volume, ActivityKind.torch}
+              .contains(kind));
 
   bool get peeks => banner || wide;
 }
@@ -107,12 +109,11 @@ class NotchController extends ChangeNotifier {
 
   /// The flashlight is on (the overview's button shows it).
   bool torchOn = false;
+  bool _torchKnown = false;
 
   /// The flashlight on or off (the overview's button).
   void toggleTorch() {
-    torchOn = !torchOn; // the service confirms within a moment
-    action?.call('gesture', 'torch');
-    notifyListeners();
+    action?.call('gesture', 'torch'); // the service tells the new state back
   }
 
   /// Do Not Disturb is on (for the quiet mode that follows it).
@@ -537,7 +538,16 @@ class NotchController extends ChangeNotifier {
       case 'settings':
         setSettings(NotchSettings.fromJsonString(e['json'] as String?));
       case 'torch':
-        torchOn = e['on'] == true;
+        final on = e['on'] == true;
+        // Switched (not the state Android tells once at the start): a moment in the notch.
+        if (_torchKnown && on != torchOn) {
+          torchOn = on;
+          _alert(NotchActivity('torch', ActivityKind.torch, show: const Duration(seconds: 2))
+            ..on = on
+            ..title = 'Flashlight');
+        }
+        torchOn = on;
+        _torchKnown = true;
         notifyListeners();
       case 'orientation':
         landscape = e['landscape'] == true;
@@ -1100,6 +1110,7 @@ class NotchController extends ChangeNotifier {
     }
     return switch (a.kind) {
       ActivityKind.timer => const Color(0xFFFF9F0A),
+      ActivityKind.torch => a.on ? const Color(0xFFFFD60A) : const Color(0xFF8E8E93),
       ActivityKind.charging => const Color(0xFF30D158),
       ActivityKind.download || ActivityKind.quickShare => const Color(0xFF0A84FF),
       ActivityKind.vpn => a.on ? const Color(0xFF30D158) : const Color(0xFFFF453A),

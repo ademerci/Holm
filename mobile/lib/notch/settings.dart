@@ -56,6 +56,7 @@ enum ActivityKind {
   bluetooth('Bluetooth', 'Headphones connecting, with their battery'),
   buds('Earbuds', 'While connected: your earbuds in 3D with their battery, small beside everything else'),
   vpn('VPN', 'On and off, with Mullvad’s mole'),
+  torch('Flashlight', 'On and off, for a moment'),
   privacy('Camera and microphone', 'A dot while an app uses them'),
   quickShare('Quick Share', 'Files coming and going'),
   liveUpdate('Live Updates', 'Rides, deliveries and more (Android 16)'),

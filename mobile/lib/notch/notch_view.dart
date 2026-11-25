@@ -31,7 +31,7 @@ double openHeight(NotchSettings s, NotchActivity a, NotchActivity? second, [Notc
     ActivityKind.timer => 66.0 + actions,
     ActivityKind.charging => 64.0,
     ActivityKind.vpn => a.mullvad ? 70.0 : 56.0,
-    ActivityKind.wifi || ActivityKind.bluetooth || ActivityKind.privacy => 56.0,
+    ActivityKind.wifi || ActivityKind.bluetooth || ActivityKind.privacy || ActivityKind.torch => 56.0,
     ActivityKind.volume => 5 * 32.0,
     ActivityKind.call => 112.0,
     ActivityKind.navigation => 72.0,
@@ -554,7 +554,7 @@ class _ClosedTrailing extends StatelessWidget {
         return Text(a.title ?? '', style: style.copyWith(color: Colors.white));
       case ActivityKind.privacy:
         return _Dot(color: accent, size: size * 0.42);
-      case ActivityKind.wifi || ActivityKind.vpn || ActivityKind.bluetooth:
+      case ActivityKind.wifi || ActivityKind.vpn || ActivityKind.bluetooth || ActivityKind.torch:
         return Icon(a.on ? Icons.check_rounded : Icons.close_rounded, color: accent, size: size * 0.8);
       case ActivityKind.buds:
         return a.level == null
@@ -595,6 +595,7 @@ class _Wide extends StatelessWidget {
     ActivityKind.bluetooth => (a.title ?? 'Bluetooth', a.on ? (a.level != null ? '${a.level}%' : 'Connected') : 'Off'),
     ActivityKind.volume => (a.title ?? 'Volume', '${((a.progress ?? 0) * 100).round()}%'),
     ActivityKind.vpn => (a.mullvad ? 'Mullvad' : 'VPN', a.on ? 'On' : 'Off'),
+    ActivityKind.torch => (a.title ?? 'Flashlight', a.on ? 'On' : 'Off'),
     ActivityKind.download => (a.title ?? 'Download', 'Downloaded'),
     _ => (a.title ?? '', a.text ?? ''),
   };
@@ -1837,6 +1838,8 @@ class _Glyph extends StatelessWidget {
             : symbol(Icons.screenshot_rounded);
       case ActivityKind.home:
         return symbol(Icons.access_time_rounded);
+      case ActivityKind.torch:
+        return symbol(a.on ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded);
       case ActivityKind.buds:
         return _BudsStill(c, a, size);
       default:

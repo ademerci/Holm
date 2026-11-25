@@ -109,6 +109,18 @@ void main() {
     c.dispose();
   });
 
+  test('the flashlight switched shows for a moment, not the state at the start', () {
+    final c = NotchController();
+    c.handle({'type': 'torch', 'on': false}); // Android tells the state once
+    expect(c.visible, isEmpty);
+    c.handle({'type': 'torch', 'on': true});
+    expect(c.primary!.kind, ActivityKind.torch);
+    expect(c.primary!.on, isTrue);
+    expect(c.primary!.wide, isTrue);
+    expect(c.torchOn, isTrue);
+    c.dispose();
+  });
+
   test('an app muted for 5 minutes stays out of the notch meanwhile', () {
     final c = NotchController();
     c.handle(notification('a'));
