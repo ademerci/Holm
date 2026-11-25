@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:characters/characters.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -583,7 +584,7 @@ class AppState extends ChangeNotifier {
   // ───────────── note ─────────────
 
   void setNote(String text) {
-    if (text.length > maxNote) text = text.substring(0, maxNote);
+    text = text.characters.take(maxNote).toString();
     if (text == note) return;
     note = text;
     _changed();
