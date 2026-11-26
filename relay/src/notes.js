@@ -15,6 +15,15 @@ export const isInvite = (t) => INVITE.test(t);
 export const isReadToken = (t) => typeof t === "string" && READ_TOKEN.test(t);
 export const now = () => Math.floor(Date.now() / 1000);
 
+/**
+ * The inbox a read token owns (Holm 2.4.2+): "wnf-" and 26 letters from the token's SHA-256, as Friends.cs makes it.
+ * An inbox named this way can only be read with its own token, so nobody can claim it first.
+ */
+export async function inboxFor(token) {
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)));
+  return "wnf-" + Array.from(hash.slice(0, 26), (b) => "abcdefghijklmnopqrstuvwxyz234567"[b & 31]).join("");
+}
+
 /** ntfy's "since": Unix seconds, a duration like 12h, or "all". Anything else means "only new notes". */
 export function parseSince(value, t = now()) {
   if (value == null || value === "") return null;

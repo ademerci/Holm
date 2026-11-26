@@ -144,27 +144,37 @@ public sealed class FriendIdentity : IDisposable
         RelayReadToken = ComputeRelayReadToken(key, topic);
     }
 
+    /// <summary>
+    /// An inbox named after its token (<see cref="InboxFor"/>, Holm 2.4.2+) uses the v2 token, which the relay can check
+    /// against the name, so nobody can claim the inbox first. Older inboxes keep the v1 token they are bound to.
+    /// </summary>
     static string ComputeRelayReadToken(ECDiffieHellman key, string topic)
     {
-        var p = key.ExportParameters(includePrivateParameters: true);
-        try
-        {
-            byte[] mac = HMACSHA256.HashData(p.D!, Encoding.UTF8.GetBytes("Holm relay read v1\0" + topic));
-            return Base64Url(mac);
-        }
-        finally
-        {
-            if (p.D != null) CryptographicOperations.ZeroMemory(p.D);
-        }
+        string v2 = Mac(key, "Holm relay read v2");
+        return InboxFor(v2) == topic ? v2 : Mac(key, "Holm relay read v1\0" + topic);
     }
 
-    /// <summary>A new inbox (130 random bits, so nobody can guess it) and a new key pair.</summary>
-    public static FriendIdentity Create(string name, string? server)
+    static string Mac(ECDiffieHellman key, string label)
+    {
+        var p = key.ExportParameters(includePrivateParameters: true);
+        try { return Base64Url(HMACSHA256.HashData(p.D!, Encoding.UTF8.GetBytes(label))); }
+        finally { if (p.D != null) CryptographicOperations.ZeroMemory(p.D); }
+    }
+
+    /// <summary>The inbox a read token owns: "wnf-" and 26 letters from its SHA-256, as relay/src/notes.js checks it.</summary>
+    internal static string InboxFor(string readToken)
     {
         const string alphabet = "abcdefghijklmnopqrstuvwxyz234567";
         var topic = new StringBuilder("wnf-");
-        foreach (byte b in RandomNumberGenerator.GetBytes(26)) topic.Append(alphabet[b & 31]);
-        return new FriendIdentity(name, topic.ToString(), server, ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256));
+        foreach (byte b in SHA256.HashData(Encoding.UTF8.GetBytes(readToken)).AsSpan(0, 26)) topic.Append(alphabet[b & 31]);
+        return topic.ToString();
+    }
+
+    /// <summary>A new key pair and its inbox, named after its read token (130 bits of a hash, so nobody can guess it).</summary>
+    public static FriendIdentity Create(string name, string? server)
+    {
+        var key = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        return new FriendIdentity(name, InboxFor(Mac(key, "Holm relay read v2")), server, key);
     }
 
     public FriendIdentity WithName(string name) => new(name, Topic, Server, Key);

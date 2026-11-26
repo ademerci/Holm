@@ -18,6 +18,7 @@ import {
   parseSince,
   now,
   extractReadToken,
+  inboxFor,
   readTextCapped,
   INBOX_TTL,
   INVITE_TTL,
@@ -140,9 +141,9 @@ async function route(request, env, url) {
     if (!(await allowRead(env, ip))) return fail(429, "too many requests, wait a minute");
     const headers = {};
     if (!isInvite(topic)) {
-      const { present, token } = extractReadToken(request);
-      if (present && !token) return fail(401, "unauthorized");
-      if (token) headers["x-holm-read-token"] = token;
+      const { token } = extractReadToken(request);
+      if (!token) return fail(401, "unauthorized");
+      headers["x-holm-read-token"] = token;
     }
     const stub = env.INBOX.get(env.INBOX.idFromName(topic));
     return stub.fetch(`https://inbox/${topic}/json?since=${encodeURIComponent(url.searchParams.get("since") ?? "")}`, { headers });
@@ -150,10 +151,7 @@ async function route(request, env, url) {
   if (request.method === "GET" && action === "ws") {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return fail(426, "a WebSocket only");
     if (!(await allowRead(env, ip))) return fail(429, "too many requests, wait a minute");
-    if (!isInvite(topic)) {
-      const { present, token } = extractReadToken(request);
-      if (present && !token) return fail(401, "unauthorized");
-    }
+    if (!isInvite(topic) && !extractReadToken(request).token) return fail(401, "unauthorized");
     const stub = env.INBOX.get(env.INBOX.idFromName(topic));
     return stub.fetch(request);
   }
@@ -221,42 +219,38 @@ export class Inbox extends DurableObject {
 
   /**
    * Read authentication for wnf-* personal inboxes (not holm-inv-* invite topics).
-   * - Once a read_hash is bound, matching X-Holm-Read-Token is required (401 otherwise).
-   * - First valid X-Holm-Read-Token binds read_hash with a rolling TTL and cleanup alarm.
-   * - Unauthenticated reads on an unbound inbox remain allowed for legacy Holm (<2.4) without initializing storage.
+   * - A valid X-Holm-Read-Token is always required (Holm older than 2.4 sends none and can't read any more).
+   * - An inbox named after its token (inboxFor) takes that token and binds it, replacing anyone who bound first.
+   * - Older inboxes: once a read_hash is bound, the matching token is required; the first valid token binds it.
    */
   async authorizeRead(topic, request) {
     if (isInvite(topic)) return true;
-    const { present, token } = extractReadToken(request);
-    if (present && !token) return false;
+    const { token } = extractReadToken(request);
+    if (!token) return false;
 
     const t = now();
+    const supplied = await sha256Bytes(token);
     let stored = null;
     if (this.metaExist()) {
       const rows = this.sql.exec("SELECT value, expires FROM meta WHERE key = 'read_hash'").toArray();
       if (rows.length > 0 && rows[0].expires > t) stored = rows[0];
     }
-
     if (stored != null) {
-      if (!token) return false;
-      const supplied = await sha256Bytes(token);
       const expected = hexToBytes(stored.value);
-      if (supplied.byteLength !== expected.byteLength || !crypto.subtle.timingSafeEqual(supplied, expected)) return false;
-      if (stored.expires - t < AUTH_REFRESH_THRESHOLD) {
-        const nextExp = t + AUTH_TTL;
-        this.sql.exec("UPDATE meta SET expires = ? WHERE key = 'read_hash'", nextExp);
-        await this.ensureAlarm(nextExp + 60);
+      const same = supplied.byteLength === expected.byteLength && crypto.subtle.timingSafeEqual(supplied, expected);
+      if (same) {
+        if (stored.expires - t < AUTH_REFRESH_THRESHOLD) {
+          this.sql.exec("UPDATE meta SET expires = ? WHERE key = 'read_hash'", t + AUTH_TTL);
+          await this.ensureAlarm(t + AUTH_TTL + 60);
+        }
+        return true;
       }
-      return true;
+      // Someone else bound first: only an inbox named after this very token can take it back.
+      if ((await inboxFor(token)) !== topic) return false;
     }
-
-    if (token) {
-      const hashHex = bytesToHex(await sha256Bytes(token));
-      this.ensureMetaTable();
-      const exp = t + AUTH_TTL;
-      this.sql.exec("INSERT OR REPLACE INTO meta (key, value, expires) VALUES ('read_hash', ?, ?)", hashHex, exp);
-      await this.ensureAlarm(exp + 60);
-    }
+    this.ensureMetaTable();
+    this.sql.exec("INSERT OR REPLACE INTO meta (key, value, expires) VALUES ('read_hash', ?, ?)", bytesToHex(supplied), t + AUTH_TTL);
+    await this.ensureAlarm(t + AUTH_TTL + 60);
     return true;
   }
 
