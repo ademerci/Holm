@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.4.1 – 2026-11-26
+
+### Fixed
+
+- **Verity stays calm.** She no longer twitches on short stretches of the notch or after being thrown.
 
 ### Security
 
