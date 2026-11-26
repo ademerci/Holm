@@ -127,8 +127,9 @@ internal sealed class VerityRoam
         }
         if (_zones.Count == 0) _zones.Add((0, _width));
         X = Math.Clamp(X, Lowest, Highest);
+        // The layout moved under her: straight onto her stretch. A hop back onto it (after a throw) carries on.
         if (_move is not (Move.Held or Move.Flying) &&
-            (!Placed || (_move == Move.Hop && (_target < Min || _target > Max))))
+            (_move == Move.Hop ? _target < Min || _target > Max : !Placed))
         {
             X = Math.Clamp(X, Min, Max);
             Lift = 0;
@@ -226,7 +227,7 @@ internal sealed class VerityRoam
                 Angle = Upright(Angle, seconds);
                 if (p < 1) break;
                 Land();
-                if (Math.Abs(_target - X) < 1 || mood == VerityMood.Asleep) Rest();
+                if (Math.Abs(_target - X) < 1 || (mood == VerityMood.Asleep && Placed)) Rest();
                 else { _t = 0; _hopFrom = X; }
                 break;
             }
@@ -258,7 +259,8 @@ internal sealed class VerityRoam
                 Lift = 0;
                 _sinceLanding = 0;
                 if (_vy < -150) { _vy = -_vy * 0.45; _vx *= 0.7; Squash = 0.2; } // bounces
-                else Rest();
+                else if (Placed) Rest();
+                else HopTo(Math.Clamp(X, Min, Max)); // landed on the buttons: she hops off them
                 break;
 
             case Move.Eating:
@@ -293,11 +295,12 @@ internal sealed class VerityRoam
         double roll = _random.NextDouble();
         if (roll < 0.15) { Begin(Move.Leap); _target = X; return; }
         // Curious: over to the mouse, as far as her stretch goes.
-        if (_pointer is { } p && _random.NextDouble() < Curious && Math.Abs(Math.Clamp(p, Min, Max) - X) >= 8) { HopTo(Math.Clamp(p, Min, Max)); return; }
-        // Somewhere at least a hop away, on either side.
+        if (_pointer is { } p && _random.NextDouble() < Curious && Math.Abs(Math.Clamp(p, Min, Max) - X) >= HopStep / 2) { HopTo(Math.Clamp(p, Min, Max)); return; }
+        // Somewhere at least a hop away, on either side. A stretch too short for that (her seat beside the song) she
+        // doesn't wander: tiny hops back and forth looked like twitching.
         double target = X;
         for (int i = 0; i < 8 && Math.Abs(target - X) < HopStep; i++) target = Min + _random.NextDouble() * (Max - Min);
-        if (Math.Abs(target - X) < 1) { Rest(); return; }
+        if (Math.Abs(target - X) < HopStep) { Rest(); return; }
         HopTo(target);
     }
 
