@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **Friend inboxes need their read token.** The relay no longer hands out an inbox's sealed notes without the owner's read token, so Holm older than 2.4 can't read friend notes any more; update Holm. New inboxes are named after their read token, so nobody can claim one before its owner.
+
 ## 2.4.0 – 2026-11-26
 
 ### Removed

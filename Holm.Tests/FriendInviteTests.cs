@@ -7,6 +7,18 @@ public class FriendInviteTests
     static long Now => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     [Fact]
+    public void A_new_inbox_is_named_after_its_read_token_and_an_old_one_keeps_its_token()
+    {
+        Assert.Equal("wnf-zhz2d6o4y72a2pia7ohfmpfsrb", FriendIdentity.InboxFor(new string('o', 43))); // same as relay/src/notes.js
+        using var fresh = FriendIdentity.Create("Lena", null);
+        Assert.Equal(fresh.Topic, FriendIdentity.InboxFor(fresh.RelayReadToken));
+        using var key = System.Security.Cryptography.ECDiffieHellman.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        using var old = new FriendIdentity("Max", "wnf-" + new string('a', 26), null, key);
+        Assert.NotEqual(old.Topic, FriendIdentity.InboxFor(old.RelayReadToken));
+        Assert.Equal(43, old.RelayReadToken.Length);
+    }
+
+    [Fact]
     public void A_new_code_is_short_and_reads_back_as_itself()
     {
         Assert.Equal(16, FriendInvite.Length);

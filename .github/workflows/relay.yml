@@ -1,0 +1,32 @@
+# Tests the relay (relay/) against a local wrangler dev: notes, limits, read tokens and the admin page.
+name: Relay
+
+on:
+  push:
+    paths: ["relay/**", ".github/workflows/relay.yml"]
+    branches: ["main", "dev"]
+  pull_request:
+    paths: ["relay/**", ".github/workflows/relay.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm test

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { isNoteFor, parseSince, readTextCapped, MAX_BODY_BYTES } from "../src/notes.js";
+import { isNoteFor, parseSince, readTextCapped, inboxFor, MAX_BODY_BYTES } from "../src/notes.js";
 
 const PORT = 8799;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -20,7 +20,8 @@ const card = () => `hinv1 ${"C".repeat(80)}`;
 // Each run is its own address to the per-address limit, so runs right after one another don't share a minute.
 const ip = `10.${[0, 0, 0].map(() => Math.floor(Math.random() * 250)).join(".")}`;
 const post = (t, text, headers = {}) => fetch(`${BASE}/${t}`, { method: "POST", body: text, headers: { "cf-connecting-ip": ip, ...headers } });
-const poll = async (t, since = "all", headers = {}) => (await (await fetch(`${BASE}/${t}/json?poll=1&since=${since}`, { headers })).text())
+const TOKEN = "t".repeat(43); // every test inbox is read with this token unless a test says otherwise
+const poll = async (t, since = "all", headers = {}) => (await (await fetch(`${BASE}/${t}/json?poll=1&since=${since}`, { headers: { "x-holm-read-token": TOKEN, ...headers } })).text())
   .split("\n").filter(Boolean).map((l) => JSON.parse(l));
 
 before(async () => {
@@ -87,7 +88,7 @@ test("Cache: no is delivered live but not kept", async () => {
 });
 
 function follow(t, since) {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/${t}/ws${since != null ? `?since=${since}` : ""}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/${t}/ws${since != null ? `?since=${since}` : ""}`, { headers: { "x-holm-read-token": TOKEN } });
   const events = [];
   const waiters = [];
   ws.addEventListener("message", (e) => { events.push(JSON.parse(e.data)); waiters.splice(0).forEach((w) => w()); });
@@ -190,7 +191,7 @@ test("GET /json is rate-limited per IP", async () => {
   let lastStatus = 0;
   let okCount = 0;
   for (let i = 0; i < 61; i++) {
-    const r = await fetch(`${BASE}/${t}/json?poll=1&since=all`, { headers: { "cf-connecting-ip": readIp } });
+    const r = await fetch(`${BASE}/${t}/json?poll=1&since=all`, { headers: { "x-holm-read-token": TOKEN, "cf-connecting-ip": readIp } });
     lastStatus = r.status;
     if (r.status === 200) okCount++;
   }
@@ -236,7 +237,7 @@ test("excess WebSocket followers are rejected with 429 instead of evicting exist
       await f.until(1);
       followers.push(f);
     }
-    const ninthStatus = await wsHandshake(`/${t}/ws`, { "cf-connecting-ip": "10.204.4.4" });
+    const ninthStatus = await wsHandshake(`/${t}/ws`, { "x-holm-read-token": TOKEN, "cf-connecting-ip": "10.204.4.4" });
     assert.equal(ninthStatus, 429);
 
     // First follower was NOT evicted and still receives new notes.
@@ -279,6 +280,22 @@ test("wnf-* inbox binds X-Holm-Read-Token and rejects unauthorized reads", async
   const again = await poll(t, "all", { "x-holm-read-token": tokenA, "cf-connecting-ip": "10.205.5.6" });
   assert.equal(again.length, 1);
   assert.equal(await wsHandshake(`/${t}/ws`, { "x-holm-read-token": tokenA, "cf-connecting-ip": "10.205.5.6" }), 101);
+});
+
+test("a read without a token is refused, and an inbox named after its token can't be claimed first", async () => {
+  // No token, even on an inbox nobody has read yet (Holm older than 2.4 sent none).
+  const fresh = inbox();
+  assert.equal((await fetch(`${BASE}/${fresh}/json?poll=1&since=all`, { headers: { "cf-connecting-ip": "10.207.7.1" } })).status, 401);
+  assert.equal(await wsHandshake(`/${fresh}/ws`, { "cf-connecting-ip": "10.207.7.1" }), 401);
+
+  // Holm 2.4.2+ names a new inbox after its token: a squatter who binds first is replaced by the owner.
+  const owner = "o".repeat(43), squatter = "s".repeat(43);
+  const t = await inboxFor(owner);
+  await post(t, note("Q".repeat(40)), { "cf-connecting-ip": "10.207.7.2" });
+  assert.equal((await poll(t, "all", { "x-holm-read-token": squatter, "cf-connecting-ip": "10.207.7.3" })).length, 1);
+  assert.equal((await poll(t, "all", { "x-holm-read-token": owner, "cf-connecting-ip": "10.207.7.4" })).length, 1);
+  const locked = await fetch(`${BASE}/${t}/json?poll=1&since=all`, { headers: { "x-holm-read-token": squatter, "cf-connecting-ip": "10.207.7.3" } });
+  assert.equal(locked.status, 401);
 });
 
 test("only a WebSocket follows", async () => {
