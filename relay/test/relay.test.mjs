@@ -26,7 +26,7 @@ const poll = async (t, since = "all", headers = {}) => (await (await fetch(`${BA
 
 before(async () => {
   dev = spawn(`npx wrangler dev --port ${PORT} --ip 127.0.0.1 --show-interactive-dev-session=false --var ADMIN_KEY:test-admin-key`,
-              { cwd: fileURLToPath(new URL("..", import.meta.url)), shell: true, stdio: ["ignore", "pipe", "pipe"] });
+              { cwd: fileURLToPath(new URL("..", import.meta.url)), shell: true, stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("wrangler dev didn't start")), 60_000);
     const look = (d) => { if (/Ready on/.test(String(d))) { clearTimeout(timer); resolve(); } };
@@ -37,7 +37,7 @@ before(async () => {
 
 after(() => {
   if (process.platform === "win32") spawn("taskkill", ["/pid", String(dev.pid), "/t", "/f"]);
-  else dev.kill();
+  else process.kill(-dev.pid, "SIGTERM"); // the whole group: dev.kill() stops only the shell and wrangler keeps the job alive
 });
 
 test("only Holm notes and Holm inboxes", async () => {
