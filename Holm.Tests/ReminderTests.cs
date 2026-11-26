@@ -4,8 +4,8 @@ namespace WinNotch.Tests;
 
 public class ReminderParserTests
 {
-    // A Tuesday afternoon, local time.
-    static readonly DateTime Now = new(2026, 10, 27, 13, 5, 0);
+    // A Tuesday afternoon in UTC.
+    static readonly DateTime Now = new(2026, 10, 27, 13, 5, 0, DateTimeKind.Utc);
 
     [Theory]
     [InlineData("20 min Wäsche", 20, "Wäsche")]
@@ -17,9 +17,10 @@ public class ReminderParserTests
     [InlineData("1,5 Stunden lernen", 90, "Lernen")]
     [InlineData("Pizza in 12 Minuten", 12, "Pizza")]
     [InlineData("45 minutes", 45, "Reminder")]
+    [InlineData("in 20 min call tomorrow's guests", 20, "Call tomorrow's guests")]
     public void Relative_times(string input, int minutes, string text)
     {
-        Assert.True(ReminderParser.TryParse(input, Now, out var due, out var what));
+        Assert.True(ReminderParser.TryParse(input, Now, TimeZoneInfo.Utc, out var due, out var what));
         Assert.Equal(Now.AddMinutes(minutes), due);
         Assert.Equal(text, what);
     }
@@ -35,10 +36,12 @@ public class ReminderParserTests
     [InlineData("tomorrow 8:15 train", 2026, 10, 28, 8, 15, "Train")]
     [InlineData("morgen 7 Uhr Joggen", 2026, 10, 28, 7, 0, "Joggen")]
     [InlineData("übermorgen 10:00 Termin", 2026, 10, 29, 10, 0, "Termin")]
+    [InlineData("tomorrow 08:15 walk 20 min", 2026, 10, 28, 8, 15, "Walk 20 min")]
+    [InlineData("14:30 tomorrow's guests", 2026, 10, 27, 14, 30, "Tomorrow's guests")]
     [InlineData("13:04 just passed", 2026, 10, 28, 13, 4, "Just passed")]
     public void Times_of_day(string input, int y, int mo, int d, int h, int mi, string text)
     {
-        Assert.True(ReminderParser.TryParse(input, Now, out var due, out var what));
+        Assert.True(ReminderParser.TryParse(input, Now, TimeZoneInfo.Utc, out var due, out var what));
         Assert.Equal(new DateTime(y, mo, d, h, mi, 0), due);
         Assert.Equal(text, what);
     }
@@ -48,6 +51,7 @@ public class ReminderParserTests
     [InlineData("laundry")]
     [InlineData("buy 3 apples")]          // a bare number is no time
     [InlineData("25:00 nope")]
+    [InlineData("today 09:00 dentist")]
     [InlineData("13pm nope")]
     [InlineData("0 min nothing")]
     [InlineData("30 days holiday")]
@@ -56,7 +60,19 @@ public class ReminderParserTests
     [InlineData("100 h 100 h too far in total")]
     [InlineData("١٤:٣٠ dentist")]
     public void What_isnt_a_time_is_refused(string input)
-        => Assert.False(ReminderParser.TryParse(input, Now, out _, out _));
+        => Assert.False(ReminderParser.TryParse(input, Now, TimeZoneInfo.Utc, out _, out _));
+
+    [Theory]
+    [InlineData(3, 29, 0, 45)]
+    [InlineData(10, 24, 23, 45)]
+    public void Relative_times_keep_elapsed_duration_across_clock_changes(int month, int day, int hour, int minute)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
+        var now = new DateTime(2026, month, day, hour, minute, 0, DateTimeKind.Utc);
+        Assert.True(ReminderParser.TryParse("2 h laundry", now, zone, out var due, out _));
+        Assert.Equal(now.AddHours(2), due);
+        Assert.Equal(DateTimeKind.Utc, due.Kind);
+    }
 
     [Theory]
     [InlineData(20, "in 20 min")]
@@ -65,7 +81,7 @@ public class ReminderParserTests
     [InlineData(20 * 60, "tomorrow at 09:05")]
     [InlineData(3 * 24 * 60, "Fri at 13:05")]
     public void Says_when_in_short_words(int minutes, string expected)
-        => Assert.Equal(expected, ReminderParser.Describe(Now.AddMinutes(minutes), Now));
+        => Assert.Equal(expected, ReminderParser.Describe(Now.AddMinutes(minutes), Now, TimeZoneInfo.Utc));
 }
 
 public class ReminderListTests

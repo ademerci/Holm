@@ -249,11 +249,16 @@ internal sealed partial class HandyBridge : IDisposable
         && uri.Host == "github.com" && uri.IsDefaultPort && uri.AbsoluteUri.StartsWith(DownloadPrefix, StringComparison.Ordinal)
         && uri.AbsolutePath.EndsWith("_x64-setup.exe", StringComparison.OrdinalIgnoreCase);
 
+    static bool IsValidSha256(string? hex) =>
+        hex != null && hex.Length == 64 && hex.All(Uri.IsHexDigit);
+
     /// <summary>Downloads the installer to a fresh folder under %TEMP%\Holm\handy and returns its path. Runs nothing.</summary>
-    /// <param name="sha256">The digest GitHub lists for it: a download that doesn't match is deleted and refused.</param>
+    /// <param name="sha256">The required SHA-256 digest GitHub lists for it: a missing or mismatched digest is refused.</param>
     public static async Task<string> DownloadInstallerAsync(HttpClient http, string url, string? sha256, CancellationToken ct)
     {
         if (!IsTrustedDownload(url)) throw new InvalidDataException("That is not a Handy release download.");
+        if (!IsValidSha256(sha256)) throw new InvalidDataException("The Handy release is missing a SHA-256 digest.");
+        string expected = sha256!.ToLowerInvariant();
         string folder = Path.Combine(Path.GetTempPath(), "Holm", "handy", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, "Handy-x64-setup.exe");
@@ -269,12 +274,9 @@ internal sealed partial class HandyBridge : IDisposable
             await using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 64 * 1024, true))
                 if (await CopyBoundedAsync(input, output, MaxInstallerBytes, timeout.Token).ConfigureAwait(false) == 0)
                     throw new InvalidDataException("The Handy installer download was empty.");
-            if (sha256 != null)
-            {
-                await using var written = File.OpenRead(path);
-                string actual = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(written, timeout.Token).ConfigureAwait(false)).ToLowerInvariant();
-                if (actual != sha256) throw new InvalidDataException("The Handy installer doesn't match its release.");
-            }
+            await using var written = File.OpenRead(path);
+            string actual = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(written, timeout.Token).ConfigureAwait(false)).ToLowerInvariant();
+            if (actual != expected) throw new InvalidDataException("The Handy installer doesn't match its release.");
             return path;
         }
         catch

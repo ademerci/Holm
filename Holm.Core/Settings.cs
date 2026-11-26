@@ -17,8 +17,13 @@ internal sealed class AppSettings
     public double BounceLevel { get; set; } = 1;
     /// <summary>Just for fun: everything wobbles like jelly, far too much (<see cref="Spring.Jelly"/>).</summary>
     public bool Jelly { get; set; }
-    /// <summary>Verity shows in the notch, once she has been found (<see cref="WinNotch.Verity"/>).</summary>
-    public bool Verity { get; set; } = true;
+    /// <summary>Verity lives in the notch (<see cref="WinNotch.Verity"/>); off until switched on in Settings › General.
+    /// A new name: the old "Verity" setting was saved as on in every settings file.</summary>
+    public bool ShowVerity { get; set; }
+    /// <summary>Verity also shows small in the closed notch (idle and with music), not only in the open one.</summary>
+    public bool VerityInClosedNotch { get; set; }
+    /// <summary>When Verity last had a treat (local time); some hours later she's hungry. Stays on this computer.</summary>
+    public DateTime? VerityFedAt { get; set; }
     /// <summary>The equalizer bars follow the sound that plays (read from the output, nothing is recorded or kept).</summary>
     public bool ReactiveEqualizer { get; set; } = true;
     public bool MiniIdle { get; set; }
@@ -224,6 +229,11 @@ internal sealed class AppSettings
     public long? FriendsRelaySince { get; set; }
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
+    /// <summary>
+    /// This PC among the account's devices (Sharing/OwnDevices.cs): made once, never synced, so each PC has
+    /// its own and skips its own notes in the shared inbox.
+    /// </summary>
+    public string? DeviceId { get; set; }
     /// <summary>Our invite codes that still work (Sharing/FriendInvite.cs).</summary>
     public List<OwnInvite> FriendInvites { get; set; } = new();
     /// <summary>Friend requests we sent that haven't been answered yet; a late yes still makes you friends.</summary>
@@ -246,7 +256,13 @@ internal sealed class AppSettings
 
     public static AppSettings Load()
     {
-        try { return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new(); }
+        try
+        {
+            if (Directory.Exists(Diag.Folder)) SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
+            if (!File.Exists(FilePath)) return new();
+            SecurityGuards.SetPrivatePermissions(FilePath);
+            return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new();
+        }
         catch { return new(); }
     }
 
@@ -256,12 +272,10 @@ internal sealed class AppSettings
         lock (SaveGate)
         {
             string path = FilePath;
-            string temp = path + ".tmp";
             try
             {
-                Directory.CreateDirectory(Diag.Folder);
-                File.WriteAllText(temp, JsonSerializer.Serialize(this));
-                File.Move(temp, path, overwrite: true);
+                SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
+                SecurityGuards.WritePrivateFile(path, JsonSerializer.Serialize(this));
             }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
@@ -287,8 +301,9 @@ internal static class FormerName
             string now = Path.Combine(Diag.Folder, "settings.json");
             if (!File.Exists(now) && File.Exists(before))
             {
-                Directory.CreateDirectory(Diag.Folder);
+                SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
                 File.Copy(before, now);
+                SecurityGuards.SetPrivatePermissions(now);
             }
         }
         catch (Exception ex) { Diag.Error(ex); }
@@ -333,7 +348,8 @@ internal static class Autostart
 internal static class Diag
 {
     public static bool Enabled;
-    public static readonly string Folder = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
+    /// <summary>Holm's data: settings, account, chats. The tests point it at a folder of their own (Holm.Tests/TestSetup.cs).</summary>
+    public static string Folder { get; internal set; } = DevFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Holm");
 
     /// <summary>Dev and bench builds only: HOLM_DATA=folder runs Holm on test data beside your own Holm (measurements, snapshots).</summary>
     public static string? DevFolder =>
@@ -353,8 +369,10 @@ internal static class Diag
     {
         try
         {
-            Directory.CreateDirectory(Folder);
-            File.AppendAllText(Path.Combine(Folder, file), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            SecurityGuards.EnsurePrivateDirectory(Folder);
+            string logPath = Path.Combine(Folder, file);
+            File.AppendAllText(logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            SecurityGuards.SetPrivatePermissions(logPath);
         }
         catch { }
     }

@@ -34,10 +34,11 @@ public class TodayTests
     [Fact]
     public void The_reminder_card()
     {
-        Assert.Equal(("No reminders", "Add one: 20 min laundry"), Today.ReminderCard(null, Now.ToLocalTime()));
-        var dentist = new Reminder { Text = "Dentist", Due = DateTime.UtcNow.AddMinutes(30) };
-        var (title, more) = Today.ReminderCard(dentist, DateTime.Now);
+        Assert.Equal(("No reminders", "Add one: 20 min laundry"), Today.ReminderCard(null, Now));
+        var now = DateTime.UtcNow;
+        var dentist = new Reminder { Text = "Dentist", Due = now.AddMinutes(30) };
+        var (title, more) = Today.ReminderCard(dentist, now);
         Assert.Equal("Dentist", title);
-        Assert.Equal(ReminderParser.Describe(dentist.Due.ToLocalTime(), DateTime.Now), more);
+        Assert.Equal(ReminderParser.Describe(dentist.Due, now, TimeZoneInfo.Local), more);
     }
 }

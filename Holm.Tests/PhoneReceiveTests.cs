@@ -132,12 +132,13 @@ public class PhoneReceiveTests : IDisposable
     {
         var bytes = new byte[700_000];
         new Random(7).NextBytes(bytes);
+        var second = "second"u8.ToArray();
         string? received = null;
         _share.Received += path => received = path;
-        Assert.Equal(HttpStatusCode.OK, await Ask());
+        Assert.Equal(HttpStatusCode.OK, await Ask(count: 2, size: bytes.Length + second.Length, name: "Ferien äöü.jpg"));
 
         Assert.Equal(HttpStatusCode.OK, (await Upload("Ferien äöü.jpg", bytes)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await Upload("Ferien äöü.jpg", "second"u8.ToArray())).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Upload("Ferien äöü.jpg", second)).StatusCode);
 
         Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(_folder, "Ferien äöü.jpg")));
         Assert.Equal("second", File.ReadAllText(Path.Combine(_folder, "Ferien äöü (1).jpg")));
@@ -167,7 +168,7 @@ public class PhoneReceiveTests : IDisposable
     [Fact]
     public async Task A_file_cut_off_halfway_is_not_kept()
     {
-        Assert.Equal(HttpStatusCode.OK, await Ask());
+        Assert.Equal(HttpStatusCode.OK, await Ask(count: 1, size: 100_000, name: "half.bin"));
         var url = new Uri(_share.Url);
         using (var client = new TcpClient())
         {

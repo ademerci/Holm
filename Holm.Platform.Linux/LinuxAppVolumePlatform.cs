@@ -235,7 +235,7 @@ public sealed class LinuxAppVolumePlatform : IAppVolumePlatform
     /// <summary>An icon name as the freedesktop icon theme files it, as a PNG of a size that suits a 22 px icon.</summary>
     internal static string? FindIcon(string name, IEnumerable<string>? roots = null)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Contains('/') || name.Contains("..")) return null;
+        if (string.IsNullOrWhiteSpace(name) || name.Contains('/') || name.Contains('\\') || name.Contains('\0') || name.Contains("..")) return null;
         foreach (string root in roots ?? IconRoots)
             foreach (string size in IconSizes)
             {

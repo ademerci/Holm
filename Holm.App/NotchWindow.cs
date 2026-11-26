@@ -590,6 +590,9 @@ public sealed partial class NotchWindow : Window
         double frameWidth = w + 2 * (MaxEar + skew);
         scale = NotchPlacement.FitScale(scale, frameWidth, _screenWidth);
         EnsureFrameFits(frameWidth * scale, h * scale);
+        // X11 can present another frame before the native window reaches its requested width.
+        if (ClientSize.Width > 0)
+            scale = NotchPlacement.FitScale(scale, frameWidth, ClientSize.Width);
         ApplyShape(w, h, Math.Max(0, _rSpring.Value), Math.Max(0, _earSpring.Value), scale);
 
         if (settled)
@@ -620,6 +623,10 @@ public sealed partial class NotchWindow : Window
     void ApplyShape(double w, double h, double radius, double earSize, double scale)
     {
         _notchScale.ScaleX = _notchScale.ScaleY = scale;
+        // A whole, even number of screen pixels: the island's left edge and the content centred in it then fall on
+        // whole pixels. Otherwise layout rounding rounds them apart, the content swaps a pixel to and fro each frame
+        // and the opening notch shakes.
+        w = Math.Ceiling(w * RenderScaling / 2 - 1e-9) * 2 / RenderScaling;
         double r = Math.Clamp(radius, 0, Math.Min(h, w / 2));
         double e = Math.Clamp(earSize, 0, Math.Min(MaxEar, h - r));
         // Scale and drag skew are render transforms and don't need new paths or layout.

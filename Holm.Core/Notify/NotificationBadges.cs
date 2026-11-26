@@ -259,14 +259,14 @@ public sealed class WinSqlite : IDisposable
     static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s + "\0");
     static string Message(IntPtr db) => Marshal.PtrToStringUTF8(sqlite3_errmsg(db)) ?? "";
 
-    [DllImport("winsqlite3")] static extern int sqlite3_open_v2(byte[] filename, out IntPtr db, int flags, IntPtr vfs);
-    [DllImport("winsqlite3")] static extern int sqlite3_close_v2(IntPtr db);
-    [DllImport("winsqlite3")] static extern int sqlite3_exec(IntPtr db, byte[] sql, IntPtr callback, IntPtr arg, out IntPtr error);
-    [DllImport("winsqlite3")] static extern void sqlite3_free(IntPtr p);
-    [DllImport("winsqlite3")] static extern int sqlite3_prepare_v2(IntPtr db, byte[] sql, int bytes, out IntPtr statement, IntPtr tail);
-    [DllImport("winsqlite3")] static extern int sqlite3_step(IntPtr statement);
-    [DllImport("winsqlite3")] static extern int sqlite3_finalize(IntPtr statement);
-    [DllImport("winsqlite3")] static extern IntPtr sqlite3_column_blob(IntPtr statement, int column);
-    [DllImport("winsqlite3")] static extern int sqlite3_column_bytes(IntPtr statement, int column);
-    [DllImport("winsqlite3")] static extern IntPtr sqlite3_errmsg(IntPtr db);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_open_v2(byte[] filename, out IntPtr db, int flags, IntPtr vfs);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_close_v2(IntPtr db);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_exec(IntPtr db, byte[] sql, IntPtr callback, IntPtr arg, out IntPtr error);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern void sqlite3_free(IntPtr p);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_prepare_v2(IntPtr db, byte[] sql, int bytes, out IntPtr statement, IntPtr tail);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_step(IntPtr statement);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_finalize(IntPtr statement);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern IntPtr sqlite3_column_blob(IntPtr statement, int column);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern int sqlite3_column_bytes(IntPtr statement, int column);
+    [DllImport("winsqlite3"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern IntPtr sqlite3_errmsg(IntPtr db);
 }

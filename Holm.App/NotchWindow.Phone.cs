@@ -27,11 +27,12 @@ public sealed partial class NotchWindow
 {
     static readonly IBrush PhoneIndigo = Brush("#FF5E5CE6");
     static readonly TimeSpan PhoneLinkLife = TimeSpan.FromMinutes(10);
+    static readonly TimeSpan PhoneMaxLife = TimeSpan.FromMinutes(30);
 
     PhoneShare? _phone;
     readonly List<string> _phoneZips = new();
     readonly DispatcherTimer _phoneExpire = new() { Interval = PhoneLinkLife }, _phoneFinished = new() { Interval = TimeSpan.FromSeconds(15) };
-    DateTime _lastPhoneUi;
+    DateTime _lastPhoneUi, _phoneStartedUtc;
     readonly Grid _phoneView = new() { Margin = new Thickness(16, 14, 16, 14), ColumnDefinitions = new ColumnDefinitions("Auto,*") };
     readonly Border _phoneQrHost = new() { Width = 132, Height = 132, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _phoneSubtitle = new() { FontSize = 12, Foreground = Dim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0) };
@@ -133,7 +134,8 @@ public sealed partial class NotchWindow
         if (_phone != share) return;
         RestartPhoneExpiry();
         int count = share.ReceivedFiles.Count;
-        _phoneStatus.Text = count == 1 ? $"Received {System.IO.Path.GetFileName(path)} · in Downloads" : $"Received {count} files · in Downloads";
+        string name = System.IO.Path.GetFileName(path);
+        _phoneStatus.Text = count == 1 ? $"Received {name} · in Downloads" : $"Received {name} ({count} files) · in Downloads";
     }
 
     /// <summary>
@@ -145,7 +147,7 @@ public sealed partial class NotchWindow
         if (_phone != share) return false;
         RestartPhoneExpiry();
         var answer = _phoneAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        string what = request.Count == 1 ? request.FirstName : $"{request.Count} files";
+        string what = request.Count == 1 ? request.FirstName : $"{request.FirstName} +{request.Count - 1} more";
         _phoneStatus.Text = $"{request.Device} wants to send {what} · {PhoneShare.Size(request.Bytes)}. Accept only if it's yours.";
         _phoneButtons.IsVisible = false;
         _phoneAskButtons.IsVisible = true;
@@ -162,7 +164,14 @@ public sealed partial class NotchWindow
 
     void RestartPhoneExpiry()
     {
+        var remaining = PhoneMaxLife - (DateTime.UtcNow - _phoneStartedUtc);
+        if (remaining <= TimeSpan.Zero)
+        {
+            StopPhone(expired: true);
+            return;
+        }
         _phoneExpire.Stop();
+        _phoneExpire.Interval = remaining < PhoneLinkLife ? remaining : PhoneLinkLife;
         _phoneExpire.Start();
     }
 
@@ -189,6 +198,7 @@ public sealed partial class NotchWindow
             return null;
         }
         _phone = share;
+        _phoneStartedUtc = DateTime.UtcNow;
         _phoneQrHost.Child = QrImage(share.Url, 132);
         _phoneSubtitle.Text = subtitle;
         _phoneStatus.Text = "Your phone has to be on the same Wi-Fi as this computer. The link isn't encrypted, so avoid public Wi-Fi.";
@@ -196,6 +206,7 @@ public sealed partial class NotchWindow
         _expandDelay.Stop();
         SetExpanded(false);
         ApplyState(animate: true);
+        _phoneExpire.Interval = PhoneLinkLife;
         _phoneExpire.Start();
         return share;
     }
@@ -231,6 +242,7 @@ public sealed partial class NotchWindow
         _phone = null;
         _phoneAnswer?.TrySetResult(false); // a question still open is a no
         FolderPack.Forget(_phoneZips, FolderPack.TempFolder);
+        FolderPack.Forget(_phoneZips, SecurityGuards.GetPrivateTempDirectory("Beam"));
         _phoneZips.Clear();
         bool delivered = share.AllDelivered;
         share.Dispose();
@@ -240,12 +252,20 @@ public sealed partial class NotchWindow
         var received = share.ReceivedFiles;
         if (share.IsReceiving && received.Count > 0)
         {
-            // As a beam from a friend: open the file, or show it in Downloads.
             string first = received[0];
-            EndTask("", GreenBrush, received.Count == 1 ? $"Saved {System.IO.Path.GetFileName(first)}" : $"Saved {received.Count} files",
-                    "From your phone · in Downloads",
-                    ("Open", () => { HideTask(); _shell.Open(first); }),
-                    ("Show", () => { HideTask(); _shell.Reveal(first); }));
+            string firstName = System.IO.Path.GetFileName(first);
+            string title = received.Count == 1 ? $"Saved {firstName}" : $"Saved {firstName} +{received.Count - 1} more";
+            if (SecurityGuards.IsDangerousOpenExtension(first))
+            {
+                EndTask("", GreenBrush, title, "From your phone · in Downloads",
+                        ("Show", () => { HideTask(); _shell.Reveal(first); }));
+            }
+            else
+            {
+                EndTask("", GreenBrush, title, "From your phone · in Downloads",
+                        ("Open", () => { HideTask(); _shell.Open(first); }),
+                        ("Show", () => { HideTask(); _shell.Reveal(first); }));
+            }
             _taskHide.Interval = TimeSpan.FromSeconds(8);
             _taskHide.Start();
         }

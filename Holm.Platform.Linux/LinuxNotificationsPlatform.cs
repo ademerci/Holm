@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Security;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Holm.Platform;
@@ -14,33 +13,37 @@ namespace Holm.Platform.Linux;
 
 /// <summary>
 /// Notifications as they are sent to the desktop's notification server on the session bus (org.freedesktop.
-/// Notifications), seen through dbus-monitor, which works with both dbus-daemon and dbus-broker and needs no
-/// consent; and the numbers apps put on their launcher icons (com.canonical.Unity.LauncherEntry, used by
-/// Telegram, Signal and others). Nothing is changed or answered.
+/// Notifications), observed over binary D-Bus via <c>org.freedesktop.DBus.Monitoring.BecomeMonitor</c> (which works
+/// with both dbus-daemon and dbus-broker without text-stream parsing or consent prompts); and the numbers apps put on
+/// their launcher icons (com.canonical.Unity.LauncherEntry, used by Telegram, Signal and others). Nothing is changed
+/// or answered.
 /// </summary>
 public sealed class LinuxNotificationsPlatform : INotificationsPlatform
 {
     const int Keep = 60; // notifications remembered (the newest)
+    const int MaxLogoBytes = 2 * 1024 * 1024;
+    const int MaxDesktopFileBytes = 256 * 1024;
+    const int MaxLogos = 64;
 
-    static readonly Regex Header = new(@"^(method call|method return|signal|error) time=", RegexOptions.Compiled);
     static readonly Regex Value = new(@"^(\s+)(string|int16|uint16|int32|uint32|int64|uint64|double|byte|boolean|variant|array \[|dict entry\(|object path|signature|struct \{|\]|\)|\}|file descriptor|unix fd)",
                                       RegexOptions.Compiled);
     static readonly Regex Markup = new(@"<[^>]{1,200}>", RegexOptions.Compiled);
+    static readonly char[] InvalidEntryChars = Path.GetInvalidFileNameChars().Concat(new[] { '/', '\\', '\0' }).Distinct().ToArray();
 
     readonly object _gate = new();
     readonly List<SystemNotification> _toasts = new();
     readonly Dictionary<string, string> _badges = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, byte[]> _logos = new(StringComparer.OrdinalIgnoreCase);
-    Process? _monitor;
+    DBusConnection? _monitor;
     IDisposable? _badgeWatch;
     uint _nextId = 1;
-    bool _running;
+    volatile bool _running;
 
     public event Action? Changed;
 
     public NotificationAccess Access { get; private set; } = NotificationAccess.Off;
 
-    public string? AccessHint => Access == NotificationAccess.Unavailable ? "dbus-monitor is missing – app badge counts only" : null;
+    public string? AccessHint => Access == NotificationAccess.Unavailable ? "Session D-Bus monitoring is unavailable – app badge counts only" : null;
 
     public void OpenAccessSettings() { }
 
@@ -48,43 +51,59 @@ public sealed class LinuxNotificationsPlatform : INotificationsPlatform
     {
         if (_running) return;
         _running = true;
-        try
-        {
-            var start = new ProcessStartInfo("dbus-monitor")
-            {
-                RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
-                StandardOutputEncoding = Encoding.UTF8,
-            };
-            start.ArgumentList.Add("--session");
-            start.ArgumentList.Add("type='method_call',interface='org.freedesktop.Notifications',member='Notify'");
-            _monitor = Process.Start(start);
-            if (_monitor == null) Access = NotificationAccess.Unavailable;
-            else
-            {
-                Access = NotificationAccess.Allowed;
-                var monitor = _monitor;
-                _ = Task.Run(() => ReadMonitor(monitor));
-                _ = Task.Run(async () => { try { await monitor.StandardError.ReadToEndAsync(); } catch { } });
-            }
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        if (DBusAddress.Session is not { Length: > 0 } address)
         {
             Access = NotificationAccess.Unavailable;
-            WinNotch.Diag.Log("Notifications: dbus-monitor unavailable");
+            WinNotch.Diag.Log("Notifications: session bus address unavailable");
         }
-        _badgeWatch = await WatchBadgesAsync();
+        else
+        {
+            var monitor = new DBusConnection(address);
+            try
+            {
+                await monitor.ConnectAsync().ConfigureAwait(false);
+                await monitor.BecomeMonitorAsync(OnMonitorMessage, new[]
+                {
+                    new MatchRule
+                    {
+                        Type = MessageType.MethodCall,
+                        Interface = "org.freedesktop.Notifications",
+                        Member = "Notify",
+                    },
+                }).ConfigureAwait(false);
+                if (!_running)
+                {
+                    monitor.Dispose();
+                    return;
+                }
+                _monitor = monitor;
+                Access = NotificationAccess.Allowed;
+            }
+            catch (Exception ex)
+            {
+                monitor.Dispose();
+                Access = NotificationAccess.Unavailable;
+                WinNotch.Diag.Log("Notifications: D-Bus monitoring unavailable: " + ex.Message);
+            }
+        }
+        var watch = await WatchBadgesAsync().ConfigureAwait(false);
+        if (!_running)
+        {
+            watch?.Dispose();
+            return;
+        }
+        _badgeWatch = watch;
         Changed?.Invoke();
     }
 
     public void Stop()
     {
         _running = false;
-        try { if (_monitor is { HasExited: false }) _monitor.Kill(); } catch { }
         _monitor?.Dispose();
         _monitor = null;
         _badgeWatch?.Dispose();
         _badgeWatch = null;
-        lock (_gate) { _toasts.Clear(); _badges.Clear(); }
+        lock (_gate) { _toasts.Clear(); _badges.Clear(); _logos.Clear(); }
         Access = NotificationAccess.Off;
     }
 
@@ -101,38 +120,53 @@ public sealed class LinuxNotificationsPlatform : INotificationsPlatform
 
     // ───────────── notifications ─────────────
 
-    void ReadMonitor(Process monitor)
+    void OnMonitorMessage(Exception? ex, DisposableMessage disposable)
     {
-        var block = new List<string>();
-        bool notify = false;
-        try
+        if (ex != null) return;
+        using (disposable)
         {
-            string? line;
-            while ((line = monitor.StandardOutput.ReadLine()) != null)
-            {
-                if (Header.IsMatch(line))
-                {
-                    if (notify) Take(block);
-                    block.Clear();
-                    notify = line.StartsWith("method call", StringComparison.Ordinal) && line.Contains("member=Notify", StringComparison.Ordinal);
-                    continue;
-                }
-                if (!notify) continue;
-                block.Add(line);
-                // The timeout is the call's last argument: take it now, not when the next message comes.
-                if (IsLastArgument(block))
-                {
-                    Take(block);
-                    block.Clear();
-                    notify = false;
-                }
-            }
-            if (notify) Take(block);
+            if (!_running) return;
+            Message message = disposable.Message;
+            if (message.MessageType != MessageType.MethodCall
+                || !string.Equals(message.InterfaceAsString, "org.freedesktop.Notifications", StringComparison.Ordinal)
+                || !string.Equals(message.MemberAsString, "Notify", StringComparison.Ordinal))
+                return;
+            if (ReadNotify(message) is { } n) Take(n);
         }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
     }
 
-    /// <summary>Whether the block ends with Notify's timeout: an int32 at the outer level after at least six values.</summary>
+    /// <summary>Reads a binary D-Bus <c>org.freedesktop.Notifications.Notify</c> (<c>susssasa{sv}i</c>) message.</summary>
+    internal static (string App, string Icon, string Summary, string Body, string? DesktopEntry)? ReadNotify(Message message)
+    {
+        if (message.SignatureAsString != "susssasa{sv}i") return null;
+        try
+        {
+            var reader = message.GetBodyReader();
+            string app = reader.ReadString();
+            _ = reader.ReadUInt32(); // replaces_id
+            string icon = reader.ReadString();
+            string summary = reader.ReadString();
+            string body = reader.ReadString();
+            _ = reader.ReadArrayOfString(); // actions
+            string? desktopEntry = null;
+            ArrayEnd hintsEnd = reader.ReadDictionaryStart();
+            while (reader.HasNext(hintsEnd))
+            {
+                string key = reader.ReadString();
+                var value = reader.ReadVariantValue();
+                if (key == "desktop-entry" && value.Type == VariantValueType.String)
+                    desktopEntry = value.GetString();
+            }
+            _ = reader.ReadInt32(); // expire_timeout
+            return (app, icon, summary, body, desktopEntry);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Legacy text-parser helper kept for existing unit tests; production uses binary <see cref="ReadNotify"/>.</summary>
     internal static bool IsLastArgument(IReadOnlyList<string> block)
     {
         string last = block[^1];
@@ -143,7 +177,7 @@ public sealed class LinuxNotificationsPlatform : INotificationsPlatform
         return outer >= 7;
     }
 
-    /// <summary>The values of a Notify call: app name, replaced id, icon, summary, body, actions, hints, timeout.</summary>
+    /// <summary>Legacy text-parser helper kept for existing unit tests; production uses binary <see cref="ReadNotify"/>.</summary>
     internal static (string App, string Icon, string Summary, string Body, string? DesktopEntry)? ParseNotify(IReadOnlyList<string> lines)
     {
         var values = new List<(int Indent, string Text)>();
@@ -171,9 +205,8 @@ public sealed class LinuxNotificationsPlatform : INotificationsPlatform
     static string? Str(string text)
         => text.StartsWith("string \"", StringComparison.Ordinal) && text.EndsWith('"') && text.Length >= 9 ? text[8..^1] : null;
 
-    void Take(List<string> block)
+    void Take((string App, string Icon, string Summary, string Body, string? DesktopEntry) n)
     {
-        if (ParseNotify(block) is not { } n) return;
         string appId = n.DesktopEntry is { Length: > 0 } entry ? entry : n.App;
         if (appId.Length == 0) return;
         // A browser names the site in the body (Chrome: the first line, as a link): put it last, where Windows has it.
@@ -181,37 +214,64 @@ public sealed class LinuxNotificationsPlatform : INotificationsPlatform
         lines.AddRange(Plain(n.Body).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
         int site = lines.FindIndex(1, l => l.Length <= 60 && Messengers.All.Any(m => m.WebHosts.Any(h => l.Contains(h, StringComparison.OrdinalIgnoreCase))));
         if (site > 0 && site < lines.Count - 1) { string host = lines[site]; lines.RemoveAt(site); lines.Add(host); }
+
+        bool needLogo;
         lock (_gate)
         {
             // An app updating its notification sends the same again: one entry.
             _toasts.RemoveAll(t => t.AppId == appId && t.Lines.SequenceEqual(lines));
             _toasts.Add(new SystemNotification(_nextId++, appId, n.App, lines, DateTimeOffset.Now));
             if (_toasts.Count > Keep) _toasts.RemoveRange(0, _toasts.Count - Keep);
-            if (!_logos.ContainsKey(appId) && IconFile(n.Icon, n.DesktopEntry ?? n.App) is { } file)
-                try { _logos[appId] = File.ReadAllBytes(file); } catch (IOException) { }
+            needLogo = !_logos.ContainsKey(appId) && _logos.Count < MaxLogos;
+        }
+
+        if (needLogo && IconFile(n.Icon, n.DesktopEntry ?? n.App) is { } file
+            && LinuxFileChecks.ReadBoundedFile(file, MaxLogoBytes) is { } logoBytes)
+        {
+            lock (_gate)
+            {
+                if (_running && !_logos.ContainsKey(appId) && _logos.Count < MaxLogos)
+                    _logos[appId] = logoBytes;
+            }
         }
         Changed?.Invoke();
     }
 
     static string Plain(string text) => System.Net.WebUtility.HtmlDecode(Markup.Replace(text, ""));
 
-    /// <summary>The app's icon: the notification's own PNG, or the icon its desktop file names.</summary>
-    static string? IconFile(string icon, string desktopEntry)
+    internal static bool IsSafeDesktopEntry(string? desktopEntry)
     {
-        if (icon.StartsWith("file://", StringComparison.Ordinal)) icon = Uri.UnescapeDataString(icon[7..]);
-        if (icon.StartsWith('/') && icon.EndsWith(".png", StringComparison.OrdinalIgnoreCase) && File.Exists(icon)) return icon;
-        if (LinuxAppVolumePlatform.FindIcon(icon) is { } named) return named;
+        if (string.IsNullOrWhiteSpace(desktopEntry) || desktopEntry.Length > 128) return false;
+        if (desktopEntry is "." or ".." || desktopEntry.Contains("..", StringComparison.Ordinal)) return false;
+        return desktopEntry.IndexOfAny(InvalidEntryChars) < 0;
+    }
+
+    /// <summary>The app's icon: the notification's own PNG, or the icon its desktop file names.</summary>
+    internal static string? IconFile(string icon, string desktopEntry)
+    {
+        if (icon.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Uri.TryCreate(icon, UriKind.Absolute, out var uri) || !uri.IsFile) icon = "";
+            else icon = uri.LocalPath;
+        }
+        if (icon.StartsWith('/') && icon.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            && LinuxFileChecks.IsRegularFile(icon, MaxLogoBytes))
+            return icon;
+        if (LinuxAppVolumePlatform.FindIcon(icon) is { } named && LinuxFileChecks.IsRegularFile(named, MaxLogoBytes))
+            return named;
+        if (!IsSafeDesktopEntry(desktopEntry)) return null;
         foreach (string folder in new[] { "/usr/share/applications", "/var/lib/flatpak/exports/share/applications",
                      Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/applications") })
         {
             string file = Path.Combine(folder, desktopEntry + ".desktop");
-            if (!File.Exists(file)) continue;
+            if (!LinuxFileChecks.IsRegularFile(file, MaxDesktopFileBytes)) continue;
             try
             {
                 string? name = File.ReadLines(file).FirstOrDefault(l => l.StartsWith("Icon=", StringComparison.Ordinal))?[5..].Trim();
-                if (name != null && LinuxAppVolumePlatform.FindIcon(name) is { } found) return found;
+                if (name != null && LinuxAppVolumePlatform.FindIcon(name) is { } found && LinuxFileChecks.IsRegularFile(found, MaxLogoBytes))
+                    return found;
             }
-            catch (IOException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException) { }
         }
         return null;
     }

@@ -7,6 +7,7 @@ namespace WinNotch;
 internal static class PackageIdentity
 {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern int GetCurrentPackageFullName(ref int length, System.Text.StringBuilder? name);
 
     public static bool IsPackaged { get; } = HasPackage();

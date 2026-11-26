@@ -20,6 +20,13 @@ public interface IIdentityPlatform
 /// </summary>
 public class UnixIdentityPlatform : IIdentityPlatform
 {
+    static readonly object KeyGate = new();
+    static readonly UnixFileMode PrivateDirMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+    static readonly UnixFileMode PrivateFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+    static readonly UnixFileMode GroupOrOtherBits =
+        UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute |
+        UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
+
     readonly string _keyFile;
 
     public UnixIdentityPlatform(string folder) => _keyFile = Path.Combine(folder, "secret.key");
@@ -48,18 +55,93 @@ public class UnixIdentityPlatform : IIdentityPlatform
 
     byte[] Key(bool create)
     {
-        if (File.Exists(_keyFile)) return File.ReadAllBytes(_keyFile);
-        if (!create) throw new CryptographicException("No key on this computer.");
-        Directory.CreateDirectory(Path.GetDirectoryName(_keyFile)!);
-        byte[] key = RandomNumberGenerator.GetBytes(32);
-        // Created for the user alone before anything is written into it.
-        using (var file = new FileStream(_keyFile, new FileStreamOptions
-               {
-                   Mode = FileMode.CreateNew, Access = FileAccess.Write,
-                   UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
-               }))
-            file.Write(key);
+        lock (KeyGate)
+        {
+            if (File.Exists(_keyFile)) return ReadVerifiedKey();
+            if (!create) throw new CryptographicException("No key on this computer.");
+
+            string dir = Path.GetDirectoryName(_keyFile)!;
+            EnsurePrivateDirectory(dir);
+
+            byte[] key = RandomNumberGenerator.GetBytes(32);
+            string temp = Path.Combine(dir, ".secret-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant() + ".tmp");
+            try
+            {
+                var options = new FileStreamOptions
+                {
+                    Mode = FileMode.CreateNew,
+                    Access = FileAccess.Write,
+                    Share = FileShare.None,
+                };
+                if (!OperatingSystem.IsWindows())
+                    options.UnixCreateMode = PrivateFileMode;
+                // Created for the user alone before anything is written into it, then atomically renamed.
+                using (var file = new FileStream(temp, options))
+                {
+                    file.Write(key);
+                    file.Flush(flushToDisk: true);
+                }
+                if (!OperatingSystem.IsWindows())
+                {
+                    try { File.SetUnixFileMode(temp, PrivateFileMode); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException) { }
+                }
+                try
+                {
+                    File.Move(temp, _keyFile, overwrite: false);
+                    return key;
+                }
+                catch (IOException) when (File.Exists(_keyFile))
+                {
+                    // Another process created the key first; discard ours and use the installed key.
+                    try { File.Delete(temp); } catch { }
+                    return ReadVerifiedKey();
+                }
+            }
+            catch
+            {
+                try { File.Delete(temp); } catch { }
+                throw;
+            }
+        }
+    }
+
+    byte[] ReadVerifiedKey()
+    {
+        var info = new FileInfo(_keyFile);
+        if (info.LinkTarget != null || (info.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new CryptographicException("Key file must not be a symlink.");
+        if (!OperatingSystem.IsWindows())
+        {
+            var mode = File.GetUnixFileMode(_keyFile);
+            if ((mode & GroupOrOtherBits) != 0)
+                throw new CryptographicException("Key file permissions are too broad.");
+        }
+        byte[] key = File.ReadAllBytes(_keyFile);
+        if (key.Length != 32)
+            throw new CryptographicException("Key file is invalid.");
         return key;
+    }
+
+    static void EnsurePrivateDirectory(string dir)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(dir);
+            return;
+        }
+        if (Directory.Exists(dir))
+        {
+            var info = new DirectoryInfo(dir);
+            if (info.LinkTarget != null || (info.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new CryptographicException("Key directory must not be a symlink.");
+        }
+        else
+        {
+            Directory.CreateDirectory(dir, PrivateDirMode);
+        }
+        try { File.SetUnixFileMode(dir, PrivateDirMode); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException) { }
     }
 
     public virtual string AccountName()

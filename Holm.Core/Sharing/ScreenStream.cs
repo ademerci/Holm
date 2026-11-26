@@ -127,6 +127,7 @@ public sealed class StreamHost : IAsyncDisposable
     }
 
     readonly List<Viewer> _viewers = new();
+    readonly HashSet<Task> _inFlight = new();
     readonly object _lock = new();
     readonly CancellationTokenSource _stop = new();
     bool _ended;
@@ -195,7 +196,11 @@ public sealed class StreamHost : IAsyncDisposable
         int hash = Hash(jpeg);
         byte[]? frame = null;
         Viewer[] viewers;
-        lock (_lock) viewers = _viewers.ToArray();
+        lock (_lock)
+        {
+            if (_ended) return;
+            viewers = _viewers.ToArray();
+        }
         var now = DateTime.UtcNow;
         foreach (var viewer in viewers)
         {
@@ -208,11 +213,23 @@ public sealed class StreamHost : IAsyncDisposable
             if (Interlocked.CompareExchange(ref viewer.Busy, 1, 0) != 0) continue;
             viewer.LastHash = hash;
             viewer.LastSent = now;
-            _ = SendAsync(viewer, same ? new[] { StreamProtocol.Alive } : frame ??= StreamProtocol.FrameMessage(jpeg), waitForReceipt: !same && viewer.Paced);
+            var msg = same ? new[] { StreamProtocol.Alive } : frame ??= StreamProtocol.FrameMessage(jpeg);
+            StartTrackedSend(viewer, msg, waitForReceipt: !same && viewer.Paced);
         }
     }
 
-    async Task SendAsync(Viewer viewer, byte[] message, bool waitForReceipt)
+    void StartTrackedSend(Viewer viewer, byte[] message, bool waitForReceipt)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_lock)
+        {
+            if (_ended) { Interlocked.Exchange(ref viewer.Busy, 0); return; }
+            _inFlight.Add(done.Task);
+        }
+        _ = SendAsync(viewer, message, waitForReceipt, done);
+    }
+
+    async Task SendAsync(Viewer viewer, byte[] message, bool waitForReceipt, TaskCompletionSource done)
     {
         try
         {
@@ -226,14 +243,36 @@ public sealed class StreamHost : IAsyncDisposable
         {
             Remove(viewer); // they closed the window or the connection died
         }
+        finally
+        {
+            lock (_lock) _inFlight.Remove(done.Task);
+            done.TrySetResult();
+        }
     }
 
     /// <summary>Asks a paced viewer for receipts, then frees it for the next frame as each one comes.</summary>
     async Task PaceAsync(Viewer viewer)
     {
+        var pacedDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool tracked = false;
         try
         {
-            await viewer.Channel.SendAsync(new[] { StreamProtocol.Paced }, _stop.Token).ConfigureAwait(false);
+            lock (_lock)
+            {
+                if (_ended) return;
+                _inFlight.Add(pacedDone.Task);
+                tracked = true;
+            }
+            try
+            {
+                await viewer.Channel.SendAsync(new[] { StreamProtocol.Paced }, _stop.Token).ConfigureAwait(false);
+            }
+            finally
+            {
+                lock (_lock) _inFlight.Remove(pacedDone.Task);
+                pacedDone.TrySetResult();
+                tracked = false;
+            }
             Interlocked.Exchange(ref viewer.Busy, 0);
             while (true)
             {
@@ -248,6 +287,11 @@ public sealed class StreamHost : IAsyncDisposable
         catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException or System.Net.Sockets.SocketException
                                    or InvalidDataException or System.Security.Cryptography.CryptographicException)
         {
+            if (tracked)
+            {
+                lock (_lock) _inFlight.Remove(pacedDone.Task);
+                pacedDone.TrySetResult();
+            }
             Remove(viewer);
         }
     }
@@ -265,14 +309,21 @@ public sealed class StreamHost : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         Viewer[] viewers;
+        Task[] inFlight;
         lock (_lock)
         {
             if (_ended) return;
             _ended = true;
             viewers = _viewers.ToArray();
             _viewers.Clear();
+            inFlight = _inFlight.ToArray();
         }
         _stop.Cancel();
+        if (inFlight.Length > 0)
+        {
+            try { await Task.WhenAll(inFlight).WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); }
+            catch (Exception) { }
+        }
         foreach (var viewer in viewers)
         {
             try

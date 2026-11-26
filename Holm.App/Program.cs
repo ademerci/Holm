@@ -40,12 +40,52 @@ class Program
     {
         try
         {
-            Directory.CreateDirectory(WinNotch.Diag.Folder);
+            string folder = WinNotch.Diag.Folder;
+            if (!OperatingSystem.IsWindows())
+            {
+                var dirMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+                Directory.CreateDirectory(folder, dirMode);
+                TrySetUnixMode(folder, dirMode);
+                HardenExistingFile(Path.Combine(folder, "diag.log"));
+                HardenExistingFile(Path.Combine(folder, "error.log"));
+            }
+            else
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            string lockPath = Path.Combine(folder, "holm-app.lock");
             // Not the WPF app's mutex: on Windows the port runs next to an installed Holm.
-            return new FileStream(Path.Combine(WinNotch.Diag.Folder, "holm-app.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            if (!OperatingSystem.IsWindows())
+            {
+                var fileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+                var stream = new FileStream(lockPath, new FileStreamOptions
+                {
+                    Mode = FileMode.OpenOrCreate,
+                    Access = FileAccess.ReadWrite,
+                    Share = FileShare.None,
+                    UnixCreateMode = fileMode,
+                });
+                TrySetUnixMode(lockPath, fileMode);
+                return stream;
+            }
+            return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException) { return null; } // held by the running one
         catch (UnauthorizedAccessException) { return new MemoryStream(); } // can't tell: start rather than not at all
+    }
+
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    static void HardenExistingFile(string path)
+    {
+        if (File.Exists(path)) TrySetUnixMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    static void TrySetUnixMode(string path, UnixFileMode mode)
+    {
+        try { File.SetUnixFileMode(path, mode); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException) { }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

@@ -39,7 +39,7 @@ public sealed partial class NotchWindow
     {
         new(HomeLayout.Notes, "Notes", (brush, size) => ToolIcon("", brush, size), () => _settings.Notes, () => _settings.Notes = true),
         new(HomeLayout.Reminders, "Reminders", (brush, size) => ToolIcon(BellGlyph, brush, size), () => _settings.Reminders,
-            () => { _settings.Reminders = true; ShowIdleStatus(); }),
+            () => { _settings.Reminders = true; CheckReminders(); ShowIdleStatus(); }),
         new(HomeLayout.Calculator, "Calculator", (brush, size) => ToolIcon("", brush, size), () => _settings.Calculator, () => _settings.Calculator = true),
         new(HomeLayout.Chats, "Chats", (brush, size) => ToolIcon(ChatsGlyph, brush, size)),
         new(HomeLayout.Clipboard, "Clipboard history", (brush, size) => ToolIcon(ClipboardGlyph, brush, size), () => _settings.ClipboardHistory,
@@ -87,7 +87,6 @@ public sealed partial class NotchWindow
             if (section == HomeLayout.Main) parts.Add(_toolPage);
             parts.Add(Section(section));
         }
-        parts.Add(_verityLane); // her floor, at the bottom
         if (_expandedPanel.Children.SequenceEqual(parts)) return;
         _expandedPanel.Children.Clear();
         _expandedPanel.Children.AddRange(parts);
@@ -120,7 +119,8 @@ public sealed partial class NotchWindow
         _liveSection.IsVisible = home;
         _shelfSection.IsVisible = home;
         _statusSection.IsVisible = !_home.IsHidden(HomeLayout.Status);
-        _verityLane.IsVisible = home && VerityHome;
+        _verityLane.IsVisible = VerityHome; // she shows with the row she's in
+        PlaceVerityLane();
     }
 
     /// <summary>

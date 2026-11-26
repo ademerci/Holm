@@ -10,11 +10,14 @@ namespace Holm.App.Controls;
 
 /// <summary>
 /// Verity drawn directly: a yellow ball with two eyes and a smile. She blinks now and then, bounces while she
-/// dances, shuts her eyes with a "z" while she sleeps and sends up hearts when she's petted. Her timers run only
+/// dances, shuts her eyes with a "z" while she sleeps, sends up hearts when she's petted, pouts when she's hungry,
+/// chews a treat, and is surprised, cheers or yawns for a moment (<see cref="Express"/>). Her timers run only
 /// while <see cref="Active"/> (her view shows), so a hidden Verity costs nothing.
 /// </summary>
 internal sealed class VerityFace : Control
 {
+    static readonly TimeSpan CueFor = TimeSpan.FromSeconds(1.6);
+
     static readonly IBrush Body = new RadialGradientBrush
     {
         Center = new RelativePoint(0.45, 0.4, RelativeUnit.Relative),
@@ -33,15 +36,22 @@ internal sealed class VerityFace : Control
     static readonly TimeSpan HopFor = TimeSpan.FromSeconds(0.5);
 
     readonly DispatcherTimer _frame = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
-    readonly DispatcherTimer _blink = new(), _hop = new();
+    readonly DispatcherTimer _blink = new(), _hop = new(), _yawn = new();
     readonly Random _random = new();
     VerityMood _mood;
-    bool _active, _animate = true, _blinking, _posed;
+    VerityCue _cue;
+    bool _active, _animate = true, _blinking, _posed, _chewing, _sleepy;
     double _squash, _angle, _look;
-    DateTime _started = DateTime.UtcNow, _pettedAt = DateTime.MinValue, _hopAt = DateTime.MinValue;
+    DateTime _started = DateTime.UtcNow, _pettedAt = DateTime.MinValue, _hopAt = DateTime.MinValue, _cueAt = DateTime.MinValue;
 
     public VerityFace()
     {
+        // Late in the evening she yawns now and then.
+        _yawn.Tick += (_, _) =>
+        {
+            _yawn.Interval = TimeSpan.FromSeconds(25 + _random.NextDouble() * 30);
+            Express(VerityCue.Yawn);
+        };
         _frame.Tick += (_, _) => { InvalidateVisual(); Schedule(); };
         _blink.Tick += (_, _) =>
         {
@@ -98,12 +108,45 @@ internal sealed class VerityFace : Control
         Schedule();
     }
 
+    /// <summary>A moment on her face: surprised, cheering (with hearts) or a yawn.</summary>
+    public void Express(VerityCue cue)
+    {
+        if (cue == VerityCue.Yawn && _mood is VerityMood.Asleep or VerityMood.Happy) return;
+        _cue = cue;
+        _cueAt = DateTime.UtcNow;
+        if (cue == VerityCue.Cheer) _pettedAt = _cueAt;
+        InvalidateVisual();
+        Schedule();
+    }
+
+    /// <summary>Left alone (in the closed notch): a hop on the spot, now.</summary>
+    public void Hop()
+    {
+        _hopAt = DateTime.UtcNow;
+        Schedule();
+    }
+
+    /// <summary>She's eating: her mouth chews.</summary>
+    public bool Chewing
+    {
+        get => _chewing;
+        set { if (_chewing != value) { _chewing = value; InvalidateVisual(); Schedule(); } }
+    }
+
+    /// <summary>Late in the evening: she yawns now and then.</summary>
+    public bool Sleepy
+    {
+        get => _sleepy;
+        set { if (_sleepy != value) { _sleepy = value; Schedule(); } }
+    }
+
     bool HeartsShowing => DateTime.UtcNow - _pettedAt < HeartsFor;
     bool Hopping => DateTime.UtcNow - _hopAt < HopFor;
+    VerityCue Cue => DateTime.UtcNow - _cueAt < CueFor ? _cue : VerityCue.None;
 
     void Schedule()
     {
-        bool moving = _active && _animate && (!_posed && (_mood == VerityMood.Dancing || Hopping) || HeartsShowing);
+        bool moving = _active && _animate && (!_posed && (_mood == VerityMood.Dancing || Hopping) || HeartsShowing || Cue != VerityCue.None || _chewing);
         if (moving && !_frame.IsEnabled) { _started = DateTime.UtcNow; _frame.Start(); }
         else if (!moving && _frame.IsEnabled) { _frame.Stop(); InvalidateVisual(); }
         bool blinks = _active && _mood is VerityMood.Awake or VerityMood.Dancing;
@@ -112,6 +155,9 @@ internal sealed class VerityFace : Control
         bool hops = _active && _animate && !_posed && _mood == VerityMood.Awake;
         if (hops && !_hop.IsEnabled) { _hop.Interval = TimeSpan.FromSeconds(3 + _random.NextDouble() * 6); _hop.Start(); }
         else if (!hops && _hop.IsEnabled) _hop.Stop();
+        bool yawns = _active && _sleepy && _mood is VerityMood.Awake or VerityMood.Hungry;
+        if (yawns && !_yawn.IsEnabled) { _yawn.Interval = TimeSpan.FromSeconds(8 + _random.NextDouble() * 20); _yawn.Start(); }
+        else if (!yawns && _yawn.IsEnabled) _yawn.Stop();
     }
 
     public override void Render(DrawingContext dc)
@@ -152,23 +198,47 @@ internal sealed class VerityFace : Control
         // eyes. On her way somewhere, her face turns a little toward where she's going.
         double stroke = Math.Max(1, ball * 0.026);
         var pen = new Pen(Face, stroke, lineCap: PenLineCap.Round);
-        bool closed = _mood == VerityMood.Asleep || _blinking;
+        var cue = Cue;
+        double cueTime = (DateTime.UtcNow - _cueAt).TotalSeconds / CueFor.TotalSeconds;
+        bool closed = _mood == VerityMood.Asleep || _blinking || cue == VerityCue.Yawn;
         double gaze = look * r * 0.1;
         foreach (double side in new[] { -1.0, 1.0 })
         {
             var eye = new Point(c.X + side * r * 0.24 + gaze, c.Y - ry * 0.2);
-            if (closed) dc.DrawGeometry(null, pen, Arc(eye.X - r * 0.09, eye.Y + ry * 0.04, eye.X + r * 0.09, eye.Y + ry * 0.04, eye.Y + ry * 0.1));
+            if (cue == VerityCue.Cheer) // ^ ^
+                dc.DrawGeometry(null, pen, Arc(eye.X - r * 0.1, eye.Y + ry * 0.06, eye.X + r * 0.1, eye.Y + ry * 0.06, eye.Y - ry * 0.1));
+            else if (closed) dc.DrawGeometry(null, pen, Arc(eye.X - r * 0.09, eye.Y + ry * 0.04, eye.X + r * 0.09, eye.Y + ry * 0.04, eye.Y + ry * 0.1));
+            else if (cue == VerityCue.Surprised) dc.DrawEllipse(Face, null, eye, Math.Max(1.2, r * 0.11), Math.Max(1.8, ry * 0.17));
             else dc.DrawEllipse(Face, null, eye, Math.Max(0.9, r * 0.075), Math.Max(1.6, ry * 0.145));
         }
         double cornerY = c.Y + ry * 0.24, mx = c.X + gaze * 0.6;
-        var smile = new StreamGeometry();
-        using (var g = smile.Open())
+        if (cue is VerityCue.Surprised or VerityCue.Yawn)
         {
-            g.BeginFigure(new Point(mx - r * 0.7, cornerY - ry * 0.1), false);
-            g.CubicBezierTo(new Point(mx - r * 0.52, cornerY + ry * 0.42), new Point(mx + r * 0.52, cornerY + ry * 0.42), new Point(mx + r * 0.7, cornerY - ry * 0.1));
-            g.EndFigure(false);
+            // An "o", or a yawn that opens wide and closes again.
+            double open = cue == VerityCue.Yawn ? Math.Sin(Math.Min(1, cueTime) * Math.PI) : 1;
+            double wide = cue == VerityCue.Yawn ? r * 0.17 : r * 0.13, tall = cue == VerityCue.Yawn ? ry * (0.06 + 0.22 * open) : ry * 0.14;
+            dc.DrawEllipse(Face, null, new Point(mx, cornerY + ry * 0.12), wide, tall);
         }
-        dc.DrawGeometry(null, pen, smile);
+        else if (_chewing)
+        {
+            // Munching: the mouth opens and shuts.
+            double chew = Math.Abs(Math.Sin((DateTime.UtcNow - _started).TotalSeconds * Math.PI * 3));
+            dc.DrawEllipse(Face, null, new Point(mx, cornerY + ry * 0.1), r * (0.2 - 0.06 * chew), ry * (0.03 + 0.1 * chew));
+        }
+        else
+        {
+            // Hungry, a small pout; cheering, a wide open smile; else her smile.
+            bool hungry = _mood == VerityMood.Hungry && cue == VerityCue.None;
+            double half = hungry ? r * 0.36 : r * 0.7, dip = hungry ? -ry * 0.12 : ry * 0.42, lift = hungry ? ry * 0.08 : -ry * 0.1;
+            var smile = new StreamGeometry();
+            using (var g = smile.Open())
+            {
+                g.BeginFigure(new Point(mx - half, cornerY + lift), cue == VerityCue.Cheer);
+                g.CubicBezierTo(new Point(mx - half * 0.74, cornerY + dip), new Point(mx + half * 0.74, cornerY + dip), new Point(mx + half, cornerY + lift));
+                g.EndFigure(cue == VerityCue.Cheer);
+            }
+            dc.DrawGeometry(cue == VerityCue.Cheer ? Face : null, pen, smile);
+        }
 
         turned.Dispose(); // the hearts and the "z" stay upright
         if (!big) return;

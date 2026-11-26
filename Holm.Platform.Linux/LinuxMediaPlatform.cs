@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Holm.Platform;
 using Tmds.DBus.Protocol;
@@ -21,9 +22,16 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
     const string Root = "org.mpris.MediaPlayer2", Player = "org.mpris.MediaPlayer2.Player";
     /// <summary>A cover larger than this isn't one.</summary>
     const int MaxCoverBytes = 8 * 1024 * 1024;
+    /// <summary>Maximum base64 payload characters that can decode to <see cref="MaxCoverBytes"/>.</summary>
+    const int MaxBase64Chars = ((MaxCoverBytes + 2) / 3) * 4;
     static readonly TimeSpan CoverRetryDelay = TimeSpan.FromSeconds(3);
+    static readonly TimeSpan CoverReadTimeout = TimeSpan.FromSeconds(6);
 
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(6), MaxResponseContentBufferSize = MaxCoverBytes };
+    static readonly HttpClient Http = new(WinNotch.SecurityGuards.CreateSafeHttpHandler(allowRedirects: false))
+    {
+        Timeout = CoverReadTimeout,
+        MaxResponseContentBufferSize = MaxCoverBytes,
+    };
 
     readonly Bus _bus;
     readonly TimeProvider _time;
@@ -169,8 +177,8 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
     }
 
     /// <summary>
-    /// The picture a player points to: a file (most players), an address on the web (Spotify hands out its
-    /// CDN's) or the picture itself as a data URL.
+    /// The picture a player points to: a regular local file (most players), an HTTPS address on the public web
+    /// (Spotify hands out its CDN's) or the picture itself as a bounded data URL.
     /// </summary>
     internal static async Task<byte[]?> LoadCoverAsync(string url)
     {
@@ -180,16 +188,33 @@ public sealed class LinuxMediaPlatform : IMediaPlatform
             {
                 int comma = url.IndexOf(',');
                 if (comma < 0 || !url.AsSpan(0, comma).EndsWith(";base64", StringComparison.OrdinalIgnoreCase)) return null;
-                return Convert.FromBase64String(url[(comma + 1)..]);
+                int payloadLen = url.Length - (comma + 1);
+                if (payloadLen <= 0 || payloadLen > MaxBase64Chars) return null;
+                byte[] decoded = Convert.FromBase64String(url[(comma + 1)..]);
+                return decoded.Length > 0 && decoded.Length <= MaxCoverBytes ? decoded : null;
             }
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
             if (uri.IsFile)
+                return await LinuxFileChecks.ReadBoundedFileAsync(uri.LocalPath, MaxCoverBytes, CoverReadTimeout).ConfigureAwait(false);
+            if (uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo))
             {
-                var file = new FileInfo(uri.LocalPath);
-                return file.Exists && file.Length <= MaxCoverBytes ? await File.ReadAllBytesAsync(file.FullName).ConfigureAwait(false) : null;
+                using var cts = new CancellationTokenSource(CoverReadTimeout);
+                using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode) return null;
+                if (response.Content.Headers.ContentLength > MaxCoverBytes) return null;
+                await using var input = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
+                using var copy = new MemoryStream();
+                var buffer = new byte[16 * 1024];
+                int total = 0;
+                int read;
+                while ((read = await input.ReadAsync(buffer, cts.Token).ConfigureAwait(false)) > 0)
+                {
+                    total += read;
+                    if (total > MaxCoverBytes) return null;
+                    copy.Write(buffer, 0, read);
+                }
+                return total == 0 ? null : copy.ToArray();
             }
-            if (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
-                return await Http.GetByteArrayAsync(uri).ConfigureAwait(false);
         }
         catch { }
         return null;

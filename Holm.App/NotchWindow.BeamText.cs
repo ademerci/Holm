@@ -25,7 +25,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    static readonly string TextInbox = Path.Combine(Path.GetTempPath(), "Holm", "Text") + Path.DirectorySeparatorChar;
+    static string TextInbox => SecurityGuards.GetPrivateTempDirectory("Text").TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
     const string LaterGlyph = ""; // a clock
     string? _pickText; // the text file the share view was opened for
     readonly DispatcherTimer _laterTick = new(), _laterSoon = new() { Interval = TimeSpan.FromSeconds(30) };
@@ -61,10 +61,10 @@ public sealed partial class NotchWindow
         string path;
         try
         {
-            Directory.CreateDirectory(FolderPack.TempFolder);
-            path = Path.Combine(FolderPack.TempFolder, "Beamed text.txt");
-            for (int n = 2; File.Exists(path); n++) path = Path.Combine(FolderPack.TempFolder, $"Beamed text ({n}).txt");
-            File.WriteAllText(path, text, new UTF8Encoding(false));
+            string beamTemp = SecurityGuards.GetPrivateTempDirectory("Beam");
+            using var stream = SecurityGuards.CreatePrivateTempFile(beamTemp, ".txt", out path, prefix: "beam-");
+            byte[] utf8 = new UTF8Encoding(false).GetBytes(text);
+            stream.Write(utf8, 0, utf8.Length);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -87,17 +87,23 @@ public sealed partial class NotchWindow
             return;
         }
         try { await SendFilesAsync(target, new() { path }, text: true); }
-        finally { FolderPack.Forget(new[] { path }, FolderPack.TempFolder); }
+        finally { ForgetBeamTemp(path); }
     }
 
     void ForgetPickedText()
     {
         if (_pickText is not { } path) return;
         _pickText = null;
+        ForgetBeamTemp(path);
+    }
+
+    static void ForgetBeamTemp(string path)
+    {
+        FolderPack.Forget(new[] { path }, SecurityGuards.GetPrivateTempDirectory("Beam"));
         FolderPack.Forget(new[] { path }, FolderPack.TempFolder);
     }
 
-    /// <summary>A text arrived: onto the clipboard it goes, and the file is gone. Busy clipboard: it stays in Downloads.</summary>
+    /// <summary>A text arrived: onto the clipboard it goes, and the file is gone. Busy clipboard: it stays in Downloads as .txt.</summary>
     async Task TakeBeamedTextAsync(string path, string sender)
     {
         string text;
@@ -114,12 +120,36 @@ public sealed partial class NotchWindow
             EndTask("", GreenBrush, $"Text from {sender} copied", "Paste it with Ctrl+V");
             return;
         }
-        // The clipboard is busy: keep it where they'd look for a file.
-        string kept = Path.Combine(_shell.DownloadsFolder(), Path.GetFileName(path));
-        try { File.Move(path, kept, overwrite: false); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { kept = path; }
-        EndTask("", GreenBrush, $"Text from {sender} saved", "The clipboard was busy · in Downloads",
-                ("Open", () => { HideTask(); _shell.Open(kept); }),
-                ("Show", () => { HideTask(); _shell.Reveal(kept); }));
+        // The clipboard is busy: keep it where they'd look for a file, always forced to .txt.
+        string rawStem = Path.GetFileNameWithoutExtension(FileTransfer.SafeFileName(Path.GetFileName(path)));
+        if (string.IsNullOrWhiteSpace(rawStem)) rawStem = "Beamed text";
+        string txtName = FileTransfer.SafeFileName(rawStem + ".txt");
+        string downloads = _shell.DownloadsFolder();
+        string kept;
+        try
+        {
+            Directory.CreateDirectory(downloads);
+            kept = FileTransfer.UniquePath(downloads, txtName);
+            File.Move(path, kept, overwrite: false);
+            FileTransfer.MarkFromInternet(kept);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            kept = path;
+        }
+        string keptName = Path.GetFileName(kept);
+        string subtitle = $"From {sender} (clipboard busy) · in Downloads";
+        if (SecurityGuards.IsDangerousOpenExtension(kept))
+        {
+            EndTask("", GreenBrush, $"Saved {keptName}", subtitle,
+                    ("Show", () => { HideTask(); _shell.Reveal(kept); }));
+        }
+        else
+        {
+            EndTask("", GreenBrush, $"Saved {keptName}", subtitle,
+                    ("Open", () => { HideTask(); _shell.Open(kept); }),
+                    ("Show", () => { HideTask(); _shell.Reveal(kept); }));
+        }
     }
 
     /// <summary>Beam text › Beam copied text…, and whether beamed text goes to the clipboard.</summary>
@@ -158,14 +188,16 @@ public sealed partial class NotchWindow
     {
         var send = new QueuedSend { FriendKey = friend.Key, FriendName = friend.Name, Text = text, QueuedUtc = DateTime.UtcNow, AskedUtc = DateTime.UtcNow };
         string own = Path.Combine(SendLater.Folder, send.Id);
+        string beamTemp = SecurityGuards.GetPrivateTempDirectory("Beam");
         foreach (var path in paths)
         {
-            if (!SendLater.IsHolmsOwn(path, FolderPack.TempFolder)) { send.Paths.Add(path); continue; }
+            if (!SendLater.IsHolmsOwn(path, FolderPack.TempFolder) && !SendLater.IsHolmsOwn(path, beamTemp)) { send.Paths.Add(path); continue; }
             try
             {
-                Directory.CreateDirectory(own);
+                SecurityGuards.EnsurePrivateDirectory(own);
                 string moved = Path.Combine(own, Path.GetFileName(path));
                 File.Move(path, moved);
+                SecurityGuards.SetPrivatePermissions(moved);
                 send.Paths.Add(moved);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Diag.Log("Send later: " + ex.GetType().Name); }

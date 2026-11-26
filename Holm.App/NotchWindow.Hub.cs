@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -182,7 +183,12 @@ public sealed partial class NotchWindow
             }
         }
         catch (IOException ex) { return (false, ex.Message + ". Check your connection and try again."); }
-        return (false, "That isn't a Holm code. Codes look like HOLM-7KQ2X-9XF4M.");
+        catch (Exception ex) when (ex is CryptographicException or ArgumentException)
+        {
+            Diag.Log("Add friend rejected invalid card: " + ex.GetType().Name);
+            return (false, "That code isn't valid.");
+        }
+        return (false, "That isn't a Holm code. Codes look like HOLM-7KQ2-9XF4-M3NP-8VWZ.");
     }
 
     async Task AnswerFromHubAsync(Friend card, string requestId, bool accept)
@@ -235,8 +241,9 @@ public sealed partial class NotchWindow
 
     void OnGifReceived(Friend friend, string id, string url, long sent)
     {
-        Received(friend, new FriendMessage { Id = id, Mine = false, Text = url, Gif = url, Sent = sent, State = ChatState.Received });
-        RememberGif(url);
+        if (ChatGif.Clean(url) is not { } clean) return;
+        Received(friend, new FriendMessage { Id = id, Mine = false, Text = clean, Gif = clean, Sent = sent, State = ChatState.Received });
+        RememberGif(clean);
     }
 
     void Received(Friend friend, FriendMessage message)
@@ -275,9 +282,10 @@ public sealed partial class NotchWindow
 
     async Task ShowTaskGifAsync(string url, string messageId)
     {
+        if (ChatGif.Clean(url) is not { } clean) return;
         try
         {
-            var gif = await GifCache.LoadAsync(url, 96);
+            var gif = await GifCache.LoadAsync(clean, 96);
             if (gif == null || gif.Frames.Count == 0 || !_taskVisible || _taskGif?.Id != messageId) return;
             var brush = new Avalonia.Media.ImageBrush(gif.Frames[0]) { Stretch = Avalonia.Media.Stretch.UniformToFill };
             if (_settings.Animations && gif.Frames.Count > 1 && gif.Duration > TimeSpan.Zero)

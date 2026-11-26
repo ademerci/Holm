@@ -49,7 +49,7 @@ internal sealed class AchievementBook
         new("night-owl", "Night owl", "Use Holm between 2 and 4 at night", "", Purple, Night, 1),
         new("streak-7", "Regular", "Use Holm 7 days in a row", "", Gold, Streak, 7),
         new("streak-30", "Part of the furniture", "Use Holm 30 days in a row", "", Gold, Streak, 30),
-        new("verity", "Verity", "Find the secret code on Settings › General", "", Gold, Verity, 1),
+        new("verity", "Verity", "Invite Verity into your notch on Settings › General", "", Gold, Verity, 1),
     };
 
     readonly string? _path;

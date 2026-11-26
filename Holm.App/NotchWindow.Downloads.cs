@@ -114,9 +114,18 @@ public sealed partial class NotchWindow
             ShowPeek(DownloadGlyph, "Downloaded " + name, "", null);
             return;
         }
-        ShowTask(CheckGlyph, Green, "Downloaded", $"{name} · {SizeText(download.Bytes)}", null,
-                 ("Open", () => { HideTask(); Try(() => _shell.Open(file)); }),
-                 ("Show", () => { HideTask(); Try(() => _shell.Reveal(file)); }));
+        if (SecurityGuards.IsDangerousOpenExtension(file))
+        {
+            ShowTask(CheckGlyph, Green, "Downloaded", $"{name} · {SizeText(download.Bytes)}", null,
+                     ("Show", () => { HideTask(); Try(() => _shell.Reveal(file)); }),
+                     ("OK", HideTask));
+        }
+        else
+        {
+            ShowTask(CheckGlyph, Green, "Downloaded", $"{name} · {SizeText(download.Bytes)}", null,
+                     ("Open", () => { HideTask(); Try(() => _shell.Open(file)); }),
+                     ("Show", () => { HideTask(); Try(() => _shell.Reveal(file)); }));
+        }
         _taskHide.Interval = TimeSpan.FromSeconds(6);
         _taskHide.Start();
     }

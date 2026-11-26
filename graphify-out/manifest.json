@@ -1,0 +1,1508 @@
+{
+  ".github/workflows/footprint.yml": {
+    "mtime": 1794673049.8871217,
+    "seen": 1794673625.5505972,
+    "ast_hash": "37e9c99c30ac091366c8d9df8295ac8d",
+    "semantic_hash": "37e9c99c30ac091366c8d9df8295ac8d"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1794673049.8871217,
+    "seen": 1794673625.5506375,
+    "ast_hash": "81479334a795ef6b75eb10b5786b8286",
+    "semantic_hash": "81479334a795ef6b75eb10b5786b8286"
+  },
+  ".github/workflows/test.yml": {
+    "mtime": 1794673049.8871217,
+    "seen": 1794673625.5506492,
+    "ast_hash": "6fec0fa4a196416100312172be169081",
+    "semantic_hash": "6fec0fa4a196416100312172be169081"
+  },
+  ".github/workflows/website.yml": {
+    "mtime": 1794673049.8871217,
+    "seen": 1794673625.5506558,
+    "ast_hash": "f34a640e3b330e631642e3e62c597c2c",
+    "semantic_hash": "f34a640e3b330e631642e3e62c597c2c"
+  },
+  "WinNotch.Tests/AchievementTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.550662,
+    "ast_hash": "fe1713e1039f504dcfeb561f8c564e46",
+    "semantic_hash": "fe1713e1039f504dcfeb561f8c564e46"
+  },
+  "WinNotch.Tests/ActivityTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.550667,
+    "ast_hash": "729ee849add9e0feeb4b083fa80c3a58",
+    "semantic_hash": "729ee849add9e0feeb4b083fa80c3a58"
+  },
+  "WinNotch.Tests/AppVolumeTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.5506737,
+    "ast_hash": "0db0b483becc2e35c628d5b51f448494",
+    "semantic_hash": "0db0b483becc2e35c628d5b51f448494"
+  },
+  "WinNotch.Tests/BluetoothControlTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.5506775,
+    "ast_hash": "8e308b193937dcbc21ac242b6d80b7a3",
+    "semantic_hash": "8e308b193937dcbc21ac242b6d80b7a3"
+  },
+  "WinNotch.Tests/BrowsersTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.550682,
+    "ast_hash": "1e9ceb05a2320ff67ded871407b82b14",
+    "semantic_hash": "1e9ceb05a2320ff67ded871407b82b14"
+  },
+  "WinNotch.Tests/BtDeviceTests.cs": {
+    "mtime": 1794673049.9029965,
+    "seen": 1794673625.5506868,
+    "ast_hash": "95419db5a36b65f36ed312e7ed76bd86",
+    "semantic_hash": "95419db5a36b65f36ed312e7ed76bd86"
+  },
+  "WinNotch.Tests/CalculatorTests.cs": {
+    "mtime": 1794673049.907936,
+    "seen": 1794673625.550691,
+    "ast_hash": "4f2fcfd8814c03c306a26d12aabcecc2",
+    "semantic_hash": "4f2fcfd8814c03c306a26d12aabcecc2"
+  },
+  "WinNotch.Tests/CallPauseTests.cs": {
+    "mtime": 1794673049.9099562,
+    "seen": 1794673625.5506978,
+    "ast_hash": "113ef2fae09cf201381f44065f2c6fba",
+    "semantic_hash": "113ef2fae09cf201381f44065f2c6fba"
+  },
+  "WinNotch.Tests/CallsTests.cs": {
+    "mtime": 1794673049.9099562,
+    "seen": 1794673625.5507023,
+    "ast_hash": "92a45654273a052f040ca63156730238",
+    "semantic_hash": "92a45654273a052f040ca63156730238"
+  },
+  "WinNotch.Tests/CapsLockTests.cs": {
+    "mtime": 1794673049.9114716,
+    "seen": 1794673625.5507061,
+    "ast_hash": "9fa84d442ba1ece328d44ef43e82300b",
+    "semantic_hash": "9fa84d442ba1ece328d44ef43e82300b"
+  },
+  "WinNotch.Tests/ChatLookTests.cs": {
+    "mtime": 1794673049.9114716,
+    "seen": 1794673625.5507102,
+    "ast_hash": "83061f1720bebbcb39cebd70d0beb890",
+    "semantic_hash": "83061f1720bebbcb39cebd70d0beb890"
+  },
+  "WinNotch.Tests/ChatTests.cs": {
+    "mtime": 1794673049.9139178,
+    "seen": 1794673625.5507143,
+    "ast_hash": "420c24da4320da2d623421f8e7da9ead",
+    "semantic_hash": "420c24da4320da2d623421f8e7da9ead"
+  },
+  "WinNotch.Tests/ClipboardHistoryTests.cs": {
+    "mtime": 1794673049.9151196,
+    "seen": 1794673625.5507176,
+    "ast_hash": "664e14bf39d0969fd2e8db29066f0598",
+    "semantic_hash": "664e14bf39d0969fd2e8db29066f0598"
+  },
+  "WinNotch.Tests/ColorPickTests.cs": {
+    "mtime": 1794673049.9173465,
+    "seen": 1794673625.5507226,
+    "ast_hash": "a187438d9b91a1dcf57128ab2102d467",
+    "semantic_hash": "a187438d9b91a1dcf57128ab2102d467"
+  },
+  "WinNotch.Tests/CountdownTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.550727,
+    "ast_hash": "cca89c6b4fa22a45206d66ee8b059a11",
+    "semantic_hash": "cca89c6b4fa22a45206d66ee8b059a11"
+  },
+  "WinNotch.Tests/DiskSpaceTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.5507307,
+    "ast_hash": "4378f0735c0571f1b897d19244f97bff",
+    "semantic_hash": "4378f0735c0571f1b897d19244f97bff"
+  },
+  "WinNotch.Tests/DownloadWatcherTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.550735,
+    "ast_hash": "59add601c2513b7d1c5d934799d9f347",
+    "semantic_hash": "59add601c2513b7d1c5d934799d9f347"
+  },
+  "WinNotch.Tests/EndToEndTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.5507386,
+    "ast_hash": "228171c2777bfc610bfe9f345b2af647",
+    "semantic_hash": "228171c2777bfc610bfe9f345b2af647"
+  },
+  "WinNotch.Tests/ExitWatchdogTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.5507476,
+    "ast_hash": "3035dfd7b6b614b7ef01bebc6933cdee",
+    "semantic_hash": "3035dfd7b6b614b7ef01bebc6933cdee"
+  },
+  "WinNotch.Tests/FileTransferTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.5507512,
+    "ast_hash": "78164e739114113d2c26e3061e229d07",
+    "semantic_hash": "78164e739114113d2c26e3061e229d07"
+  },
+  "WinNotch.Tests/FocumonTests.cs": {
+    "mtime": 1794673049.9198875,
+    "seen": 1794673625.5507553,
+    "ast_hash": "c8a174c7f9fd9d7309cffeb0368936d6",
+    "semantic_hash": "c8a174c7f9fd9d7309cffeb0368936d6"
+  },
+  "WinNotch.Tests/FolderPackTests.cs": {
+    "mtime": 1794673049.929047,
+    "seen": 1794673625.5507593,
+    "ast_hash": "3faf78792af934a041a6701c59497fa8",
+    "semantic_hash": "3faf78792af934a041a6701c59497fa8"
+  },
+  "WinNotch.Tests/FriendInviteTests.cs": {
+    "mtime": 1794673049.9299128,
+    "seen": 1794673625.5507638,
+    "ast_hash": "06dca19ec3092f304e7c6dc4f9f2a3c1",
+    "semantic_hash": "06dca19ec3092f304e7c6dc4f9f2a3c1"
+  },
+  "WinNotch.Tests/FriendsTests.cs": {
+    "mtime": 1794673049.9319375,
+    "seen": 1794673625.550768,
+    "ast_hash": "99f537d35038ce47bad0f48c0ce74224",
+    "semantic_hash": "99f537d35038ce47bad0f48c0ce74224"
+  },
+  "WinNotch.Tests/GifSafetyTests.cs": {
+    "mtime": 1794673049.9333148,
+    "seen": 1794673625.5507717,
+    "ast_hash": "243c2bd1b8ca3525df337b203621e1ae",
+    "semantic_hash": "243c2bd1b8ca3525df337b203621e1ae"
+  },
+  "WinNotch.Tests/LiveSensorTests.cs": {
+    "mtime": 1794673049.9333148,
+    "seen": 1794673625.5507758,
+    "ast_hash": "82e3f55ad97c4fd7e0f8a87f141a77ab",
+    "semantic_hash": "82e3f55ad97c4fd7e0f8a87f141a77ab"
+  },
+  "WinNotch.Tests/MediaUpdateTests.cs": {
+    "mtime": 1794673049.9361124,
+    "seen": 1794673625.5507796,
+    "ast_hash": "55d280c2b176faaa4a98bc2bc18adc8b",
+    "semantic_hash": "55d280c2b176faaa4a98bc2bc18adc8b"
+  },
+  "WinNotch.Tests/MessageBadgesTests.cs": {
+    "mtime": 1794673049.9361124,
+    "seen": 1794673625.5507846,
+    "ast_hash": "01e43ae859137bdfb64e5233d47cf9dc",
+    "semantic_hash": "01e43ae859137bdfb64e5233d47cf9dc"
+  },
+  "WinNotch.Tests/MessengersTests.cs": {
+    "mtime": 1794673049.9390962,
+    "seen": 1794673625.5507886,
+    "ast_hash": "5ac286604acc07aae682d746b42c56dc",
+    "semantic_hash": "5ac286604acc07aae682d746b42c56dc"
+  },
+  "WinNotch.Tests/MotionTests.cs": {
+    "mtime": 1794673049.939593,
+    "seen": 1794673625.5507922,
+    "ast_hash": "91d8a147f8bbe9f3188fc3d56b261441",
+    "semantic_hash": "91d8a147f8bbe9f3188fc3d56b261441"
+  },
+  "WinNotch.Tests/NearbyServiceTests.cs": {
+    "mtime": 1794673049.939593,
+    "seen": 1794673625.5507956,
+    "ast_hash": "65ed0117c6f9efcc3fa48170dfa7bcc9",
+    "semantic_hash": "65ed0117c6f9efcc3fa48170dfa7bcc9"
+  },
+  "WinNotch.Tests/NetworkInfoTests.cs": {
+    "mtime": 1794673049.939593,
+    "seen": 1794673625.5507991,
+    "ast_hash": "266f7d7ff1cfb7035d18308c766f0bb5",
+    "semantic_hash": "266f7d7ff1cfb7035d18308c766f0bb5"
+  },
+  "WinNotch.Tests/NotchSizingTests.cs": {
+    "mtime": 1794673049.939593,
+    "seen": 1794673625.5508034,
+    "ast_hash": "8b1596f51523fc8bf6e24c305aa25c2a",
+    "semantic_hash": "8b1596f51523fc8bf6e24c305aa25c2a"
+  },
+  "WinNotch.Tests/NotepadTests.cs": {
+    "mtime": 1794673049.9443374,
+    "seen": 1794673625.5508068,
+    "ast_hash": "620327aaa4f2faaea429057b5ff63b48",
+    "semantic_hash": "620327aaa4f2faaea429057b5ff63b48"
+  },
+  "WinNotch.Tests/NotificationBadgesTests.cs": {
+    "mtime": 1794673049.9443374,
+    "seen": 1794673625.5508113,
+    "ast_hash": "74df6ecabcf2e39200ad80c50d1eeefc",
+    "semantic_hash": "74df6ecabcf2e39200ad80c50d1eeefc"
+  },
+  "WinNotch.Tests/NotificationCenterTests.cs": {
+    "mtime": 1794673049.9463644,
+    "seen": 1794673625.5508153,
+    "ast_hash": "c9a9e950437e145af1a6aea244ec7d84",
+    "semantic_hash": "c9a9e950437e145af1a6aea244ec7d84"
+  },
+  "WinNotch.Tests/OutageTests.cs": {
+    "mtime": 1794673049.9487214,
+    "seen": 1794673625.5508194,
+    "ast_hash": "dea550661a00e4b2f40b9414d0e20663",
+    "semantic_hash": "dea550661a00e4b2f40b9414d0e20663"
+  },
+  "WinNotch.Tests/OutputDeviceTests.cs": {
+    "mtime": 1794673049.9487214,
+    "seen": 1794673625.5508232,
+    "ast_hash": "2ea7621a2c5bac26f5831b7d5055bd18",
+    "semantic_hash": "2ea7621a2c5bac26f5831b7d5055bd18"
+  },
+  "WinNotch.Tests/PhoneShareTests.cs": {
+    "mtime": 1794673049.9525142,
+    "seen": 1794673625.5508273,
+    "ast_hash": "22aa95d0fb799fdf0e5a3dba134928b5",
+    "semantic_hash": "22aa95d0fb799fdf0e5a3dba134928b5"
+  },
+  "WinNotch.Tests/PrivacyMonitorTests.cs": {
+    "mtime": 1794673049.9525142,
+    "seen": 1794673625.5508356,
+    "ast_hash": "10a3a2aed9954cf487a22036913738c6",
+    "semantic_hash": "10a3a2aed9954cf487a22036913738c6"
+  },
+  "WinNotch.Tests/ProfileTests.cs": {
+    "mtime": 1794673049.9544947,
+    "seen": 1794673625.55084,
+    "ast_hash": "ff0582cb5cc29d47384596e75047342e",
+    "semantic_hash": "ff0582cb5cc29d47384596e75047342e"
+  },
+  "WinNotch.Tests/QuietHoursTests.cs": {
+    "mtime": 1794673049.9555101,
+    "seen": 1794673625.5508437,
+    "ast_hash": "e7185c0ba36dd68f9f4eecaf8cd76487",
+    "semantic_hash": "e7185c0ba36dd68f9f4eecaf8cd76487"
+  },
+  "WinNotch.Tests/ReactionsAndGifsTests.cs": {
+    "mtime": 1794673049.9555101,
+    "seen": 1794673625.5508478,
+    "ast_hash": "5c5140c02d1c89cd4e543e25132838c3",
+    "semantic_hash": "5c5140c02d1c89cd4e543e25132838c3"
+  },
+  "WinNotch.Tests/RelayTests.cs": {
+    "mtime": 1794673049.9555101,
+    "seen": 1794673625.5508513,
+    "ast_hash": "0d2602d4c3c3858779362f966f683533",
+    "semantic_hash": "0d2602d4c3c3858779362f966f683533"
+  },
+  "WinNotch.Tests/ReminderTests.cs": {
+    "mtime": 1794673049.9587524,
+    "seen": 1794673625.5508554,
+    "ast_hash": "b8ea1aa3cc5c212709f011525dcc381d",
+    "semantic_hash": "b8ea1aa3cc5c212709f011525dcc381d"
+  },
+  "WinNotch.Tests/ScreenTextTests.cs": {
+    "mtime": 1794673049.9587524,
+    "seen": 1794673625.5508597,
+    "ast_hash": "63a7bb76bf3b3484f0372fe03582a4b9",
+    "semantic_hash": "63a7bb76bf3b3484f0372fe03582a4b9"
+  },
+  "WinNotch.Tests/ScreenshotWatcherTests.cs": {
+    "mtime": 1794673049.9607742,
+    "seen": 1794673625.550864,
+    "ast_hash": "6e16bde182cf596c5201123fdefd76db",
+    "semantic_hash": "6e16bde182cf596c5201123fdefd76db"
+  },
+  "WinNotch.Tests/SecureChannelTests.cs": {
+    "mtime": 1794673049.9612918,
+    "seen": 1794673625.5508678,
+    "ast_hash": "ae00915994752a625523548035f73dfd",
+    "semantic_hash": "ae00915994752a625523548035f73dfd"
+  },
+  "WinNotch.Tests/SendLaterTests.cs": {
+    "mtime": 1794673049.9642594,
+    "seen": 1794673625.5508718,
+    "ast_hash": "56dd4ddb8c256ea56daca20079188b27",
+    "semantic_hash": "56dd4ddb8c256ea56daca20079188b27"
+  },
+  "WinNotch.Tests/SettingsTests.cs": {
+    "mtime": 1794673049.9649,
+    "seen": 1794673625.550876,
+    "ast_hash": "6468327391b93bdae4418d2ac32b977e",
+    "semantic_hash": "6468327391b93bdae4418d2ac32b977e"
+  },
+  "WinNotch.Tests/ShareCodeTests.cs": {
+    "mtime": 1794673049.9669197,
+    "seen": 1794673625.55088,
+    "ast_hash": "ec531364baee08a83794ec453eea34fe",
+    "semantic_hash": "ec531364baee08a83794ec453eea34fe"
+  },
+  "WinNotch.Tests/ShelfTests.cs": {
+    "mtime": 1794673049.96894,
+    "seen": 1794673625.550884,
+    "ast_hash": "96ea2ac275533be1aa5815ad4a3dd7fa",
+    "semantic_hash": "96ea2ac275533be1aa5815ad4a3dd7fa"
+  },
+  "WinNotch.Tests/SleepTimerTests.cs": {
+    "mtime": 1794673049.96894,
+    "seen": 1794673625.5508885,
+    "ast_hash": "7d660ce37025a6143b1a8078fdd53a49",
+    "semantic_hash": "7d660ce37025a6143b1a8078fdd53a49"
+  },
+  "WinNotch.Tests/SpeedTestTests.cs": {
+    "mtime": 1794673049.9714553,
+    "seen": 1794673625.5508924,
+    "ast_hash": "37f3a77d362eca9705fb938b488f4573",
+    "semantic_hash": "37f3a77d362eca9705fb938b488f4573"
+  },
+  "WinNotch.Tests/StreamTests.cs": {
+    "mtime": 1794673049.9714553,
+    "seen": 1794673625.5508964,
+    "ast_hash": "14338f51f513e5ecc8a6f90d674171c2",
+    "semantic_hash": "14338f51f513e5ecc8a6f90d674171c2"
+  },
+  "WinNotch.Tests/TestHelpers.cs": {
+    "mtime": 1794673049.97348,
+    "seen": 1794673625.5509007,
+    "ast_hash": "24a4544a6954d73f19b8ef20341296bb",
+    "semantic_hash": "24a4544a6954d73f19b8ef20341296bb"
+  },
+  "WinNotch.Tests/TodayTests.cs": {
+    "mtime": 1794673049.97348,
+    "seen": 1794673625.5509045,
+    "ast_hash": "f4e3699d09ef3163520947ad0a2792a8",
+    "semantic_hash": "f4e3699d09ef3163520947ad0a2792a8"
+  },
+  "WinNotch.Tests/UpdateInstallerTests.cs": {
+    "mtime": 1794673049.97348,
+    "seen": 1794673625.550908,
+    "ast_hash": "8575a398756465f4d20e444fde543874",
+    "semantic_hash": "8575a398756465f4d20e444fde543874"
+  },
+  "WinNotch.Tests/UpdateMenuTests.cs": {
+    "mtime": 1794673049.97348,
+    "seen": 1794673625.5509121,
+    "ast_hash": "6f1896252f56f4895b06a1e71560d44a",
+    "semantic_hash": "6f1896252f56f4895b06a1e71560d44a"
+  },
+  "WinNotch.Tests/UpdateServiceTests.cs": {
+    "mtime": 1794673049.9771755,
+    "seen": 1794673625.5509164,
+    "ast_hash": "272cccc290072f17a9f1340cc1bf0048",
+    "semantic_hash": "272cccc290072f17a9f1340cc1bf0048"
+  },
+  "WinNotch.Tests/UsbDrivesTests.cs": {
+    "mtime": 1794673049.9771755,
+    "seen": 1794673625.5509198,
+    "ast_hash": "eb69ffb247b638b9bf7dc17dad8c1a36",
+    "semantic_hash": "eb69ffb247b638b9bf7dc17dad8c1a36"
+  },
+  "WinNotch.Tests/VpnWatcherTests.cs": {
+    "mtime": 1794673049.9792037,
+    "seen": 1794673625.5509238,
+    "ast_hash": "0379b5ddb0690e9a36607173ff53f48e",
+    "semantic_hash": "0379b5ddb0690e9a36607173ff53f48e"
+  },
+  "WinNotch.Tests/WaveTests.cs": {
+    "mtime": 1794673049.9792037,
+    "seen": 1794673625.5509279,
+    "ast_hash": "019d7e0f3c1284f68e3625284455cbe6",
+    "semantic_hash": "019d7e0f3c1284f68e3625284455cbe6"
+  },
+  "WinNotch.Tests/WeatherTests.cs": {
+    "mtime": 1794673049.9842646,
+    "seen": 1794673625.5509315,
+    "ast_hash": "9ce996dba9c43edcb70239e4ea5b0b11",
+    "semantic_hash": "9ce996dba9c43edcb70239e4ea5b0b11"
+  },
+  "WinNotch.Tests/WinNotch.Tests.csproj": {
+    "mtime": 1794673049.9858356,
+    "seen": 1794673625.550935,
+    "ast_hash": "dd130d7d189eb4ee109f78fbbbce42b2",
+    "semantic_hash": "dd130d7d189eb4ee109f78fbbbce42b2"
+  },
+  "WinNotch/Achievements.cs": {
+    "mtime": 1794673049.987857,
+    "seen": 1794673625.550939,
+    "ast_hash": "94eab2ba9185a66bd888ad36aec9c6cf",
+    "semantic_hash": "94eab2ba9185a66bd888ad36aec9c6cf"
+  },
+  "WinNotch/AchievementsPage.cs": {
+    "mtime": 1794673049.987857,
+    "seen": 1794673625.5509434,
+    "ast_hash": "7d6eb9d46d187bad136218b1cf0a9ef6",
+    "semantic_hash": "7d6eb9d46d187bad136218b1cf0a9ef6"
+  },
+  "WinNotch/ActivityPage.cs": {
+    "mtime": 1794673049.9915175,
+    "seen": 1794673625.5509477,
+    "ast_hash": "a448475395ddd216f5a5e81948123373",
+    "semantic_hash": "a448475395ddd216f5a5e81948123373"
+  },
+  "WinNotch/AddFriendPage.cs": {
+    "mtime": 1794673049.9939141,
+    "seen": 1794673625.5509517,
+    "ast_hash": "b38b65bbb358881e30cdefba12765e1a",
+    "semantic_hash": "b38b65bbb358881e30cdefba12765e1a"
+  },
+  "WinNotch/AiLauncher.cs": {
+    "mtime": 1794673049.9939141,
+    "seen": 1794673625.5509555,
+    "ast_hash": "7cef152afc24ff60516c3e10285e19b3",
+    "semantic_hash": "7cef152afc24ff60516c3e10285e19b3"
+  },
+  "WinNotch/App.xaml": {
+    "mtime": 1794673049.9975958,
+    "seen": 1794673625.5509598,
+    "ast_hash": "3816c7949387cf16d5447697f2d85327",
+    "semantic_hash": "3816c7949387cf16d5447697f2d85327"
+  },
+  "WinNotch/App.xaml.cs": {
+    "mtime": 1794673049.9975958,
+    "seen": 1794673625.5509639,
+    "ast_hash": "6986ec41def27bdf11e7909d2ef99688",
+    "semantic_hash": "6986ec41def27bdf11e7909d2ef99688"
+  },
+  "WinNotch/AppVolumeList.cs": {
+    "mtime": 1794673050.0001647,
+    "seen": 1794673625.5509686,
+    "ast_hash": "c072d43f1c620b75c11c6020a557777a",
+    "semantic_hash": "c072d43f1c620b75c11c6020a557777a"
+  },
+  "WinNotch/AppVolumes.cs": {
+    "mtime": 1794673050.002183,
+    "seen": 1794673625.5509737,
+    "ast_hash": "5bd0e3c2f769c650efbab0d8412544c9",
+    "semantic_hash": "5bd0e3c2f769c650efbab0d8412544c9"
+  },
+  "WinNotch/AssemblyInfo.cs": {
+    "mtime": 1794673050.0044148,
+    "seen": 1794673625.5509784,
+    "ast_hash": "9f3e598d92f7e42e7c41360583b9b0d2",
+    "semantic_hash": "9f3e598d92f7e42e7c41360583b9b0d2"
+  },
+  "WinNotch/AudioMeter.cs": {
+    "mtime": 1794673050.0068822,
+    "seen": 1794673625.550982,
+    "ast_hash": "c693b1f41a0d1ea8a809014f8ae789e3",
+    "semantic_hash": "c693b1f41a0d1ea8a809014f8ae789e3"
+  },
+  "WinNotch/BluetoothBattery.cs": {
+    "mtime": 1794673050.0086472,
+    "seen": 1794673625.5509868,
+    "ast_hash": "35c30265c8e3e512b7950eb99dc22e0b",
+    "semantic_hash": "35c30265c8e3e512b7950eb99dc22e0b"
+  },
+  "WinNotch/BluetoothControl.cs": {
+    "mtime": 1794673050.0086472,
+    "seen": 1794673625.5509906,
+    "ast_hash": "979ffc6af5df50c4f957a9ccd290b0a6",
+    "semantic_hash": "979ffc6af5df50c4f957a9ccd290b0a6"
+  },
+  "WinNotch/Browsers.cs": {
+    "mtime": 1794673050.0086472,
+    "seen": 1794673625.5509944,
+    "ast_hash": "ec7b1418deaaeb13271faa87f4144420",
+    "semantic_hash": "ec7b1418deaaeb13271faa87f4144420"
+  },
+  "WinNotch/Calculator.cs": {
+    "mtime": 1794673050.0086472,
+    "seen": 1794673625.5509982,
+    "ast_hash": "6545daecf6fe09ddb544aa512296bb6c",
+    "semantic_hash": "6545daecf6fe09ddb544aa512296bb6c"
+  },
+  "WinNotch/CallPause.cs": {
+    "mtime": 1794673050.0086472,
+    "seen": 1794673625.551002,
+    "ast_hash": "fcc4f9e79e6893081395c698526eaefc",
+    "semantic_hash": "fcc4f9e79e6893081395c698526eaefc"
+  },
+  "WinNotch/Calls.cs": {
+    "mtime": 1794673050.0169163,
+    "seen": 1794673625.5510066,
+    "ast_hash": "b16ae03825f01452f38564294b965771",
+    "semantic_hash": "b16ae03825f01452f38564294b965771"
+  },
+  "WinNotch/CameraActivity.cs": {
+    "mtime": 1794673050.0169163,
+    "seen": 1794673625.5510154,
+    "ast_hash": "4a37fe1136abec7f063c72bf4821a293",
+    "semantic_hash": "4a37fe1136abec7f063c72bf4821a293"
+  },
+  "WinNotch/CapsLockWatcher.cs": {
+    "mtime": 1794673050.01894,
+    "seen": 1794673625.5510204,
+    "ast_hash": "a3c9ff9d3eaad756d7b2e55216fa5e82",
+    "semantic_hash": "a3c9ff9d3eaad756d7b2e55216fa5e82"
+  },
+  "WinNotch/ChatExtras.cs": {
+    "mtime": 1794673050.021861,
+    "seen": 1794673625.5510242,
+    "ast_hash": "99f744f4eb1f161f7aa770b43a88f2a2",
+    "semantic_hash": "99f744f4eb1f161f7aa770b43a88f2a2"
+  },
+  "WinNotch/ChatPage.cs": {
+    "mtime": 1794673050.0254045,
+    "seen": 1794673625.5510275,
+    "ast_hash": "48c626df93431d16080214cfb38d1241",
+    "semantic_hash": "48c626df93431d16080214cfb38d1241"
+  },
+  "WinNotch/ClipboardHistory.cs": {
+    "mtime": 1794673050.0274258,
+    "seen": 1794673625.5510318,
+    "ast_hash": "de12a96e1373c36d62cd395b3ac71839",
+    "semantic_hash": "de12a96e1373c36d62cd395b3ac71839"
+  },
+  "WinNotch/ColorPick.cs": {
+    "mtime": 1794673050.0274258,
+    "seen": 1794673625.5510354,
+    "ast_hash": "00653ee368ae326f8fb9c18c6d35ced6",
+    "semantic_hash": "00653ee368ae326f8fb9c18c6d35ced6"
+  },
+  "WinNotch/ColorPicker.cs": {
+    "mtime": 1794673050.029445,
+    "seen": 1794673625.5510392,
+    "ast_hash": "a79876933269c441806e0084eb9b1ebe",
+    "semantic_hash": "a79876933269c441806e0084eb9b1ebe"
+  },
+  "WinNotch/Controls.cs": {
+    "mtime": 1794673050.0314715,
+    "seen": 1794673625.551043,
+    "ast_hash": "dbaead28646b0ba4b95f837a269da003",
+    "semantic_hash": "dbaead28646b0ba4b95f837a269da003"
+  },
+  "WinNotch/Countdown.cs": {
+    "mtime": 1794673050.0334923,
+    "seen": 1794673625.5510464,
+    "ast_hash": "f6fd2ead6a059a568f6ba700bf20c1ea",
+    "semantic_hash": "f6fd2ead6a059a568f6ba700bf20c1ea"
+  },
+  "WinNotch/DiskSpace.cs": {
+    "mtime": 1794673050.035519,
+    "seen": 1794673625.5510504,
+    "ast_hash": "b9e0d7d5936798f21abf8211ae1f1652",
+    "semantic_hash": "b9e0d7d5936798f21abf8211ae1f1652"
+  },
+  "WinNotch/ExitWatchdog.cs": {
+    "mtime": 1794673050.0375419,
+    "seen": 1794673625.5510552,
+    "ast_hash": "6bc9b79aa7afddf7d88b76375efe0518",
+    "semantic_hash": "6bc9b79aa7afddf7d88b76375efe0518"
+  },
+  "WinNotch/FileIcons.cs": {
+    "mtime": 1794673050.039565,
+    "seen": 1794673625.551059,
+    "ast_hash": "ac52873db4df9f5453d987a3bc84b413",
+    "semantic_hash": "ac52873db4df9f5453d987a3bc84b413"
+  },
+  "WinNotch/Focumon.cs": {
+    "mtime": 1794673050.0415828,
+    "seen": 1794673625.5510628,
+    "ast_hash": "9b92e37b9fa4d5acc317c68ed0286e0a",
+    "semantic_hash": "9b92e37b9fa4d5acc317c68ed0286e0a"
+  },
+  "WinNotch/FolderPack.cs": {
+    "mtime": 1794673050.0415828,
+    "seen": 1794673625.5510666,
+    "ast_hash": "6db9ef48d2f76c8d4796d82d612b00c3",
+    "semantic_hash": "6db9ef48d2f76c8d4796d82d612b00c3"
+  },
+  "WinNotch/FriendsService.cs": {
+    "mtime": 1794673050.0461545,
+    "seen": 1794673625.5510707,
+    "ast_hash": "73dff5314658cac2f6f7cfc47fd62227",
+    "semantic_hash": "73dff5314658cac2f6f7cfc47fd62227"
+  },
+  "WinNotch/Gifs.cs": {
+    "mtime": 1794673050.0481741,
+    "seen": 1794673625.551101,
+    "ast_hash": "b565352a6b83b6633e6e76ef91acfc34",
+    "semantic_hash": "b565352a6b83b6633e6e76ef91acfc34"
+  },
+  "WinNotch/HubTheme.cs": {
+    "mtime": 1794673050.0499458,
+    "seen": 1794673625.5511053,
+    "ast_hash": "f9d2f5592a0b9f03b62f6ced6e049e42",
+    "semantic_hash": "f9d2f5592a0b9f03b62f6ced6e049e42"
+  },
+  "WinNotch/MainWindow.Achievements.cs": {
+    "mtime": 1794673050.0531473,
+    "seen": 1794673625.551109,
+    "ast_hash": "25c7dffbc3f44db650e6e7ac681b908c",
+    "semantic_hash": "25c7dffbc3f44db650e6e7ac681b908c"
+  },
+  "WinNotch/MainWindow.Activity.cs": {
+    "mtime": 1794673050.055166,
+    "seen": 1794673625.5511124,
+    "ast_hash": "945c813d693d9c857cefc7024d8c9276",
+    "semantic_hash": "945c813d693d9c857cefc7024d8c9276"
+  },
+  "WinNotch/MainWindow.BeamText.cs": {
+    "mtime": 1794673050.0556808,
+    "seen": 1794673625.5511158,
+    "ast_hash": "95f26c06274cfe5e0da2d8a79e1f80e9",
+    "semantic_hash": "95f26c06274cfe5e0da2d8a79e1f80e9"
+  },
+  "WinNotch/MainWindow.Bench.cs": {
+    "mtime": 1794673050.0585234,
+    "seen": 1794673625.551119,
+    "ast_hash": "124c23625046e4f822959d390b844281",
+    "semantic_hash": "124c23625046e4f822959d390b844281"
+  },
+  "WinNotch/MainWindow.Bluetooth.cs": {
+    "mtime": 1794673050.059535,
+    "seen": 1794673625.5511234,
+    "ast_hash": "09a2a92344611acd585c12a744ae91cd",
+    "semantic_hash": "09a2a92344611acd585c12a744ae91cd"
+  },
+  "WinNotch/MainWindow.Calculator.cs": {
+    "mtime": 1794673050.0620751,
+    "seen": 1794673625.5511272,
+    "ast_hash": "665c9c9cf826baa6184d45d0ee2ee553",
+    "semantic_hash": "665c9c9cf826baa6184d45d0ee2ee553"
+  },
+  "WinNotch/MainWindow.Call.cs": {
+    "mtime": 1794673050.0651703,
+    "seen": 1794673625.5511315,
+    "ast_hash": "0f02e91c5e70308d9f875fc26ed5efc5",
+    "semantic_hash": "0f02e91c5e70308d9f875fc26ed5efc5"
+  },
+  "WinNotch/MainWindow.CallPause.cs": {
+    "mtime": 1794673050.0668325,
+    "seen": 1794673625.551135,
+    "ast_hash": "89be06cac468d7c4b94c2f247d0ed0b0",
+    "semantic_hash": "89be06cac468d7c4b94c2f247d0ed0b0"
+  },
+  "WinNotch/MainWindow.CapsLock.cs": {
+    "mtime": 1794673050.068861,
+    "seen": 1794673625.551139,
+    "ast_hash": "95ef8cbcd2fa2227736993ea0fdc629e",
+    "semantic_hash": "95ef8cbcd2fa2227736993ea0fdc629e"
+  },
+  "WinNotch/MainWindow.Chat.cs": {
+    "mtime": 1794673050.0726717,
+    "seen": 1794673625.5511425,
+    "ast_hash": "66b2b7b01c6f9bf593c0874a8f1fabee",
+    "semantic_hash": "66b2b7b01c6f9bf593c0874a8f1fabee"
+  },
+  "WinNotch/MainWindow.ClickAway.cs": {
+    "mtime": 1794673050.075243,
+    "seen": 1794673625.5511465,
+    "ast_hash": "dadb2f7a7e778fad8fd808db140d0684",
+    "semantic_hash": "dadb2f7a7e778fad8fd808db140d0684"
+  },
+  "WinNotch/MainWindow.Clipboard.cs": {
+    "mtime": 1794673050.0776992,
+    "seen": 1794673625.5511503,
+    "ast_hash": "f8df55cc94600e30b27cce954c9fda30",
+    "semantic_hash": "f8df55cc94600e30b27cce954c9fda30"
+  },
+  "WinNotch/MainWindow.ColorPicker.cs": {
+    "mtime": 1794673050.079884,
+    "seen": 1794673625.5511541,
+    "ast_hash": "f3f9961647427c290111a5692a2f7570",
+    "semantic_hash": "f3f9961647427c290111a5692a2f7570"
+  },
+  "WinNotch/MainWindow.Connectivity.cs": {
+    "mtime": 1794673050.0837536,
+    "seen": 1794673625.551158,
+    "ast_hash": "7a2f677a22cbb5a6ec64e0e68a8d2326",
+    "semantic_hash": "7a2f677a22cbb5a6ec64e0e68a8d2326"
+  },
+  "WinNotch/MainWindow.DiskSpace.cs": {
+    "mtime": 1794673050.086342,
+    "seen": 1794673625.5511618,
+    "ast_hash": "c4fccd1a9058940357532f132f54cd35",
+    "semantic_hash": "c4fccd1a9058940357532f132f54cd35"
+  },
+  "WinNotch/MainWindow.Downloads.cs": {
+    "mtime": 1794673050.0883698,
+    "seen": 1794673625.551165,
+    "ast_hash": "c5053ce7385ee851092a2ab8257965cb",
+    "semantic_hash": "c5053ce7385ee851092a2ab8257965cb"
+  },
+  "WinNotch/MainWindow.Focumon.cs": {
+    "mtime": 1794673050.0896218,
+    "seen": 1794673625.5511694,
+    "ast_hash": "80c7c916e82d622493d29e6e94dcc436",
+    "semantic_hash": "80c7c916e82d622493d29e6e94dcc436"
+  },
+  "WinNotch/MainWindow.Hub.cs": {
+    "mtime": 1794673050.091112,
+    "seen": 1794673625.551174,
+    "ast_hash": "aa00159b49ba68f91c01d08d0ddb66a0",
+    "semantic_hash": "aa00159b49ba68f91c01d08d0ddb66a0"
+  },
+  "WinNotch/MainWindow.Invites.cs": {
+    "mtime": 1794673050.0941448,
+    "seen": 1794673625.5511775,
+    "ast_hash": "3616edc7490d2153cd7abb9328104057",
+    "semantic_hash": "3616edc7490d2153cd7abb9328104057"
+  },
+  "WinNotch/MainWindow.MenuToggle.cs": {
+    "mtime": 1794673050.0960474,
+    "seen": 1794673625.551181,
+    "ast_hash": "24eea5bac5ff4df44a88fc877af15615",
+    "semantic_hash": "24eea5bac5ff4df44a88fc877af15615"
+  },
+  "WinNotch/MainWindow.Mixer.cs": {
+    "mtime": 1794673050.0976136,
+    "seen": 1794673625.551185,
+    "ast_hash": "85380bcad802bcd30718d9164472b4f4",
+    "semantic_hash": "85380bcad802bcd30718d9164472b4f4"
+  },
+  "WinNotch/MainWindow.Motion.cs": {
+    "mtime": 1794673050.0993733,
+    "seen": 1794673625.551189,
+    "ast_hash": "9bc592d5e602acb700278977926cc3da",
+    "semantic_hash": "9bc592d5e602acb700278977926cc3da"
+  },
+  "WinNotch/MainWindow.Notes.cs": {
+    "mtime": 1794673050.101907,
+    "seen": 1794673625.5511937,
+    "ast_hash": "29fb8878e2e062761ed0ad6b0d897b44",
+    "semantic_hash": "29fb8878e2e062761ed0ad6b0d897b44"
+  },
+  "WinNotch/MainWindow.PasswordWipe.cs": {
+    "mtime": 1794673050.1039245,
+    "seen": 1794673625.551198,
+    "ast_hash": "9c926ddb19ad6432e9d4a9ee158638fa",
+    "semantic_hash": "9c926ddb19ad6432e9d4a9ee158638fa"
+  },
+  "WinNotch/MainWindow.Phone.cs": {
+    "mtime": 1794673050.1039245,
+    "seen": 1794673625.5512016,
+    "ast_hash": "26a7289e9ee850b4c2953dfc446e0dac",
+    "semantic_hash": "26a7289e9ee850b4c2953dfc446e0dac"
+  },
+  "WinNotch/MainWindow.Privacy.cs": {
+    "mtime": 1794673050.1067047,
+    "seen": 1794673625.5512059,
+    "ast_hash": "8ec7e87d720482847b8cf23c9d2df730",
+    "semantic_hash": "8ec7e87d720482847b8cf23c9d2df730"
+  },
+  "WinNotch/MainWindow.Profile.cs": {
+    "mtime": 1794673050.107724,
+    "seen": 1794673625.55121,
+    "ast_hash": "1536a9dc3f07a8873f62bc88057780fb",
+    "semantic_hash": "1536a9dc3f07a8873f62bc88057780fb"
+  },
+  "WinNotch/MainWindow.QuietHours.cs": {
+    "mtime": 1794673050.107724,
+    "seen": 1794673625.5512137,
+    "ast_hash": "0ea9c60ab42b7ece1a331750c795ec76",
+    "semantic_hash": "0ea9c60ab42b7ece1a331750c795ec76"
+  },
+  "WinNotch/MainWindow.Reminders.cs": {
+    "mtime": 1794673050.107724,
+    "seen": 1794673625.551218,
+    "ast_hash": "939859a5e60405f44e04ca3b84d7bb74",
+    "semantic_hash": "939859a5e60405f44e04ca3b84d7bb74"
+  },
+  "WinNotch/MainWindow.Screenshot.cs": {
+    "mtime": 1794673050.107724,
+    "seen": 1794673625.5512216,
+    "ast_hash": "f8f8291a3b963f99251e499b2d3e8868",
+    "semantic_hash": "f8f8291a3b963f99251e499b2d3e8868"
+  },
+  "WinNotch/MainWindow.SendFolders.cs": {
+    "mtime": 1794673050.1139317,
+    "seen": 1794673625.5512254,
+    "ast_hash": "596ad17a828dc3efffa039413e4a8154",
+    "semantic_hash": "596ad17a828dc3efffa039413e4a8154"
+  },
+  "WinNotch/MainWindow.SendLater.cs": {
+    "mtime": 1794673050.1176612,
+    "seen": 1794673625.5512292,
+    "ast_hash": "2ab6723835bb226bd44a6d427b84a323",
+    "semantic_hash": "2ab6723835bb226bd44a6d427b84a323"
+  },
+  "WinNotch/MainWindow.Settings.cs": {
+    "mtime": 1794673050.1191807,
+    "seen": 1794673625.551233,
+    "ast_hash": "36960bb778b7d9183cd46afee2449d32",
+    "semantic_hash": "36960bb778b7d9183cd46afee2449d32"
+  },
+  "WinNotch/MainWindow.Share.cs": {
+    "mtime": 1794673050.1212003,
+    "seen": 1794673625.5512364,
+    "ast_hash": "93a729211bb8f97e4f2bc44d37805e17",
+    "semantic_hash": "93a729211bb8f97e4f2bc44d37805e17"
+  },
+  "WinNotch/MainWindow.Shelf.cs": {
+    "mtime": 1794673050.1252391,
+    "seen": 1794673625.5512402,
+    "ast_hash": "525229942ea4e32ca74430a651661024",
+    "semantic_hash": "525229942ea4e32ca74430a651661024"
+  },
+  "WinNotch/MainWindow.Sky.cs": {
+    "mtime": 1794673050.1252391,
+    "seen": 1794673625.5512438,
+    "ast_hash": "194341054c4d8b5e27e5f16fbf51b038",
+    "semantic_hash": "194341054c4d8b5e27e5f16fbf51b038"
+  },
+  "WinNotch/MainWindow.Sleep.cs": {
+    "mtime": 1794673050.1252391,
+    "seen": 1794673625.5512476,
+    "ast_hash": "3dbe5c77086b09b484be591bb939bf5b",
+    "semantic_hash": "3dbe5c77086b09b484be591bb939bf5b"
+  },
+  "WinNotch/MainWindow.Stream.cs": {
+    "mtime": 1794673050.1291447,
+    "seen": 1794673625.5512512,
+    "ast_hash": "fe6774d4cf00a0767ca843912ad2a8e9",
+    "semantic_hash": "fe6774d4cf00a0767ca843912ad2a8e9"
+  },
+  "WinNotch/MainWindow.Timer.cs": {
+    "mtime": 1794673050.1291447,
+    "seen": 1794673625.5512545,
+    "ast_hash": "f2d2abd942c35120fb2cadbaec8efc06",
+    "semantic_hash": "f2d2abd942c35120fb2cadbaec8efc06"
+  },
+  "WinNotch/MainWindow.Today.cs": {
+    "mtime": 1794673050.1311693,
+    "seen": 1794673625.5512578,
+    "ast_hash": "51872407d68756ff3e5db60019ee0e03",
+    "semantic_hash": "51872407d68756ff3e5db60019ee0e03"
+  },
+  "WinNotch/MainWindow.Tools.cs": {
+    "mtime": 1794673050.1311693,
+    "seen": 1794673625.5512617,
+    "ast_hash": "a00850b9456b4e6d6fe64c003f13c8c7",
+    "semantic_hash": "a00850b9456b4e6d6fe64c003f13c8c7"
+  },
+  "WinNotch/MainWindow.Updates.cs": {
+    "mtime": 1794673050.1331875,
+    "seen": 1794673625.551265,
+    "ast_hash": "e01ab6d337482d357add19ade93fa47e",
+    "semantic_hash": "e01ab6d337482d357add19ade93fa47e"
+  },
+  "WinNotch/MainWindow.Usb.cs": {
+    "mtime": 1794673050.136245,
+    "seen": 1794673625.551269,
+    "ast_hash": "1529b987843b149dc2f63d6a7d566d4c",
+    "semantic_hash": "1529b987843b149dc2f63d6a7d566d4c"
+  },
+  "WinNotch/MainWindow.Wave.cs": {
+    "mtime": 1794673050.136245,
+    "seen": 1794673625.5512726,
+    "ast_hash": "5c54a4c754b601b883ca57dd946b4259",
+    "semantic_hash": "5c54a4c754b601b883ca57dd946b4259"
+  },
+  "WinNotch/MainWindow.Weather.cs": {
+    "mtime": 1794673050.1396458,
+    "seen": 1794673625.5512764,
+    "ast_hash": "38d12770d71dc0436466ac48d08452ec",
+    "semantic_hash": "38d12770d71dc0436466ac48d08452ec"
+  },
+  "WinNotch/MainWindow.xaml": {
+    "mtime": 1794673050.1421103,
+    "seen": 1794673625.5512815,
+    "ast_hash": "89e9fc479b0aa79291802f98ae5f9683",
+    "semantic_hash": "89e9fc479b0aa79291802f98ae5f9683"
+  },
+  "WinNotch/MainWindow.xaml.cs": {
+    "mtime": 1794673050.1461594,
+    "seen": 1794673625.5512857,
+    "ast_hash": "77223402ad7d89216886c1509a99a0df",
+    "semantic_hash": "77223402ad7d89216886c1509a99a0df"
+  },
+  "WinNotch/MediaService.cs": {
+    "mtime": 1794673050.1497993,
+    "seen": 1794673625.5512898,
+    "ast_hash": "7911db5e59daa5fb3ab34893391c1253",
+    "semantic_hash": "7911db5e59daa5fb3ab34893391c1253"
+  },
+  "WinNotch/MessagesService.cs": {
+    "mtime": 1794673050.1518533,
+    "seen": 1794673625.5512931,
+    "ast_hash": "b6e461b61ae7467507e90fee4ed484e3",
+    "semantic_hash": "b6e461b61ae7467507e90fee4ed484e3"
+  },
+  "WinNotch/MicrophoneActivity.cs": {
+    "mtime": 1794673050.153876,
+    "seen": 1794673625.5512965,
+    "ast_hash": "062b053d3a67bfb0bc66074c72746054",
+    "semantic_hash": "062b053d3a67bfb0bc66074c72746054"
+  },
+  "WinNotch/Native.cs": {
+    "mtime": 1794673050.1558912,
+    "seen": 1794673625.5513008,
+    "ast_hash": "c5252479139d6ae6baf7cfc55b1ecc84",
+    "semantic_hash": "c5252479139d6ae6baf7cfc55b1ecc84"
+  },
+  "WinNotch/NetworkInfo.cs": {
+    "mtime": 1794673050.1579092,
+    "seen": 1794673625.5513048,
+    "ast_hash": "e1bf75cb2f30d8749e4a705f6c76fc4d",
+    "semantic_hash": "e1bf75cb2f30d8749e4a705f6c76fc4d"
+  },
+  "WinNotch/NetworkPage.cs": {
+    "mtime": 1794673050.1599288,
+    "seen": 1794673625.551308,
+    "ast_hash": "4ed69ec77888511c95c130751c184103",
+    "semantic_hash": "4ed69ec77888511c95c130751c184103"
+  },
+  "WinNotch/NetworkWatcher.cs": {
+    "mtime": 1794673050.1619477,
+    "seen": 1794673625.5513124,
+    "ast_hash": "897a6fd62eaaff23b378d3fc56a9781a",
+    "semantic_hash": "897a6fd62eaaff23b378d3fc56a9781a"
+  },
+  "WinNotch/Notepad.cs": {
+    "mtime": 1794673050.1650307,
+    "seen": 1794673625.5513155,
+    "ast_hash": "b87c47014582370a1e0ab3e1eb10b8ab",
+    "semantic_hash": "b87c47014582370a1e0ab3e1eb10b8ab"
+  },
+  "WinNotch/Notify/DownloadWatcher.cs": {
+    "mtime": 1794673050.167431,
+    "seen": 1794673625.551319,
+    "ast_hash": "55d78be661bcfefaf8085d73b462fb28",
+    "semantic_hash": "55d78be661bcfefaf8085d73b462fb28"
+  },
+  "WinNotch/Notify/Messengers.cs": {
+    "mtime": 1794673050.1694534,
+    "seen": 1794673625.5513227,
+    "ast_hash": "0125836d6fcb9e516821cc546c34a81f",
+    "semantic_hash": "0125836d6fcb9e516821cc546c34a81f"
+  },
+  "WinNotch/Notify/NotificationBadges.cs": {
+    "mtime": 1794673050.1720145,
+    "seen": 1794673625.5513265,
+    "ast_hash": "5483e62da5b82c8ebb8cbb7910ef43b7",
+    "semantic_hash": "5483e62da5b82c8ebb8cbb7910ef43b7"
+  },
+  "WinNotch/PrivacyMonitor.cs": {
+    "mtime": 1794673050.1720145,
+    "seen": 1794673625.5513306,
+    "ast_hash": "7401e56e6f6f79122316064ccfc06485",
+    "semantic_hash": "7401e56e6f6f79122316064ccfc06485"
+  },
+  "WinNotch/ProfileEditor.cs": {
+    "mtime": 1794673050.1745503,
+    "seen": 1794673625.5513341,
+    "ast_hash": "dae40f8a2cc72c2e34071d28214157b8",
+    "semantic_hash": "dae40f8a2cc72c2e34071d28214157b8"
+  },
+  "WinNotch/ProfilePicture.cs": {
+    "mtime": 1794673050.1770868,
+    "seen": 1794673625.5513375,
+    "ast_hash": "0383de7f91c62a8b1fa52298873d4297",
+    "semantic_hash": "0383de7f91c62a8b1fa52298873d4297"
+  },
+  "WinNotch/QrCode.cs": {
+    "mtime": 1794673050.1770868,
+    "seen": 1794673625.551341,
+    "ast_hash": "bb0b7fe327027b813486d64f9a3bb08a",
+    "semantic_hash": "bb0b7fe327027b813486d64f9a3bb08a"
+  },
+  "WinNotch/QuietHours.cs": {
+    "mtime": 1794673050.179103,
+    "seen": 1794673625.551345,
+    "ast_hash": "fe18816f017a9ad55e122d52caf800b7",
+    "semantic_hash": "fe18816f017a9ad55e122d52caf800b7"
+  },
+  "WinNotch/Reminders.cs": {
+    "mtime": 1794673050.181123,
+    "seen": 1794673625.5513487,
+    "ast_hash": "beaf8939790433c1d93f9573696bbbbe",
+    "semantic_hash": "beaf8939790433c1d93f9573696bbbbe"
+  },
+  "WinNotch/ScreenCapture.cs": {
+    "mtime": 1794673050.1825643,
+    "seen": 1794673625.5513525,
+    "ast_hash": "1197fdf6bdb5237082884e9d6d277318",
+    "semantic_hash": "1197fdf6bdb5237082884e9d6d277318"
+  },
+  "WinNotch/ScreenText.cs": {
+    "mtime": 1794673050.1852438,
+    "seen": 1794673625.5513566,
+    "ast_hash": "ebca2f1cb76e748ae8415e6da754e85b",
+    "semantic_hash": "ebca2f1cb76e748ae8415e6da754e85b"
+  },
+  "WinNotch/ScreenshotWatcher.cs": {
+    "mtime": 1794673050.187862,
+    "seen": 1794673625.5513606,
+    "ast_hash": "54a948d1be5a02240fc53e5aaf893719",
+    "semantic_hash": "54a948d1be5a02240fc53e5aaf893719"
+  },
+  "WinNotch/SendLater.cs": {
+    "mtime": 1794673050.1884604,
+    "seen": 1794673625.551364,
+    "ast_hash": "3615c563a2d788622843f88f4ea86019",
+    "semantic_hash": "3615c563a2d788622843f88f4ea86019"
+  },
+  "WinNotch/Settings.cs": {
+    "mtime": 1794673050.1915069,
+    "seen": 1794673625.5513964,
+    "ast_hash": "10358fbeb6b71de29009a5ecb342de22",
+    "semantic_hash": "10358fbeb6b71de29009a5ecb342de22"
+  },
+  "WinNotch/SettingsWindow.cs": {
+    "mtime": 1794673050.193524,
+    "seen": 1794673625.5514007,
+    "ast_hash": "13d115f733654d824abd521cdf807f94",
+    "semantic_hash": "13d115f733654d824abd521cdf807f94"
+  },
+  "WinNotch/Sharing/Chat.cs": {
+    "mtime": 1794673050.1963334,
+    "seen": 1794673625.551404,
+    "ast_hash": "0ff52ac728ec89be5f624e0ef75d3f08",
+    "semantic_hash": "0ff52ac728ec89be5f624e0ef75d3f08"
+  },
+  "WinNotch/Sharing/FileTransfer.cs": {
+    "mtime": 1794673050.1975977,
+    "seen": 1794673625.5514076,
+    "ast_hash": "367bbab8464eee1a4857e03f2f0ec901",
+    "semantic_hash": "367bbab8464eee1a4857e03f2f0ec901"
+  },
+  "WinNotch/Sharing/FriendInvite.cs": {
+    "mtime": 1794673050.1975977,
+    "seen": 1794673625.5514112,
+    "ast_hash": "9756b679d59667eb4dbb215a189ef253",
+    "semantic_hash": "9756b679d59667eb4dbb215a189ef253"
+  },
+  "WinNotch/Sharing/Friends.cs": {
+    "mtime": 1794673050.1975977,
+    "seen": 1794673625.5514147,
+    "ast_hash": "a0400e64f59af7bea237cd48cd0fd911",
+    "semantic_hash": "a0400e64f59af7bea237cd48cd0fd911"
+  },
+  "WinNotch/Sharing/NearbyService.cs": {
+    "mtime": 1794673050.2019644,
+    "seen": 1794673625.5514188,
+    "ast_hash": "b12f2dfcb0480f2d15332760f2ac4fd7",
+    "semantic_hash": "b12f2dfcb0480f2d15332760f2ac4fd7"
+  },
+  "WinNotch/Sharing/PhoneShare.cs": {
+    "mtime": 1794673050.2034798,
+    "seen": 1794673625.5514228,
+    "ast_hash": "4350ba245e64914b6ba573cc16b018fd",
+    "semantic_hash": "4350ba245e64914b6ba573cc16b018fd"
+  },
+  "WinNotch/Sharing/RelayLink.cs": {
+    "mtime": 1794673050.2034798,
+    "seen": 1794673625.5514266,
+    "ast_hash": "30d4c805242f999d33e2679137fa504d",
+    "semantic_hash": "30d4c805242f999d33e2679137fa504d"
+  },
+  "WinNotch/Sharing/ScreenStream.cs": {
+    "mtime": 1794673050.2034798,
+    "seen": 1794673625.5514305,
+    "ast_hash": "82084d07c012622411f38fc0d9507163",
+    "semantic_hash": "82084d07c012622411f38fc0d9507163"
+  },
+  "WinNotch/Sharing/SecureChannel.cs": {
+    "mtime": 1794673050.2034798,
+    "seen": 1794673625.551434,
+    "ast_hash": "5036ea8bcefe310a667f89c95b484a32",
+    "semantic_hash": "5036ea8bcefe310a667f89c95b484a32"
+  },
+  "WinNotch/Sharing/ShareCode.cs": {
+    "mtime": 1794673050.2034798,
+    "seen": 1794673625.5514374,
+    "ast_hash": "69c29433dadd251d10ce86aaf7d93f57",
+    "semantic_hash": "69c29433dadd251d10ce86aaf7d93f57"
+  },
+  "WinNotch/Shelf.cs": {
+    "mtime": 1794673050.2117925,
+    "seen": 1794673625.5514407,
+    "ast_hash": "04b12869d53e90b0fa1da9337b766734",
+    "semantic_hash": "04b12869d53e90b0fa1da9337b766734"
+  },
+  "WinNotch/Shell.cs": {
+    "mtime": 1794673050.2117925,
+    "seen": 1794673625.5514443,
+    "ast_hash": "48778111dc042ddf7746e8b097b2a6db",
+    "semantic_hash": "48778111dc042ddf7746e8b097b2a6db"
+  },
+  "WinNotch/SleepTimer.cs": {
+    "mtime": 1794673050.2117925,
+    "seen": 1794673625.5514479,
+    "ast_hash": "4be9052e7f4c98e51f6dce31656045a3",
+    "semantic_hash": "4be9052e7f4c98e51f6dce31656045a3"
+  },
+  "WinNotch/SpeedTest.cs": {
+    "mtime": 1794673050.21426,
+    "seen": 1794673625.5514514,
+    "ast_hash": "efab0a51a02cf393bedf53642362e14a",
+    "semantic_hash": "efab0a51a02cf393bedf53642362e14a"
+  },
+  "WinNotch/StreamViewerWindow.cs": {
+    "mtime": 1794673050.2151937,
+    "seen": 1794673625.551455,
+    "ast_hash": "15589781c83da64125db1c1283fd4e9d",
+    "semantic_hash": "15589781c83da64125db1c1283fd4e9d"
+  },
+  "WinNotch/Today.cs": {
+    "mtime": 1794673050.2151937,
+    "seen": 1794673625.5514588,
+    "ast_hash": "6ec7afaae3adfcb861721880b12af59a",
+    "semantic_hash": "6ec7afaae3adfcb861721880b12af59a"
+  },
+  "WinNotch/Updates/UpdateInstaller.cs": {
+    "mtime": 1794673050.2191627,
+    "seen": 1794673625.5514627,
+    "ast_hash": "c29c7f23338021a91058212fc2f50839",
+    "semantic_hash": "c29c7f23338021a91058212fc2f50839"
+  },
+  "WinNotch/Updates/UpdateService.cs": {
+    "mtime": 1794673050.2201788,
+    "seen": 1794673625.5514665,
+    "ast_hash": "352037a9c3fe82ca4daf7199443e68df",
+    "semantic_hash": "352037a9c3fe82ca4daf7199443e68df"
+  },
+  "WinNotch/UsbDrives.cs": {
+    "mtime": 1794673050.2201788,
+    "seen": 1794673625.5514703,
+    "ast_hash": "2660a01c86013ee1f23a075d89b3d057",
+    "semantic_hash": "2660a01c86013ee1f23a075d89b3d057"
+  },
+  "WinNotch/VolumeService.cs": {
+    "mtime": 1794673050.2201788,
+    "seen": 1794673625.5514739,
+    "ast_hash": "bda68230ddf86100bc9b6f62615c777d",
+    "semantic_hash": "bda68230ddf86100bc9b6f62615c777d"
+  },
+  "WinNotch/VpnWatcher.cs": {
+    "mtime": 1794673050.2201788,
+    "seen": 1794673625.5514772,
+    "ast_hash": "2cc8febb72cac95c11264bdf7cc53076",
+    "semantic_hash": "2cc8febb72cac95c11264bdf7cc53076"
+  },
+  "WinNotch/Waves.cs": {
+    "mtime": 1794673050.2201788,
+    "seen": 1794673625.5514808,
+    "ast_hash": "75fc6ff1572c2f5e45610671ef739dc4",
+    "semantic_hash": "75fc6ff1572c2f5e45610671ef739dc4"
+  },
+  "WinNotch/Weather.cs": {
+    "mtime": 1794673050.2268474,
+    "seen": 1794673625.551484,
+    "ast_hash": "90057dbac22e1ce23fea4c7bfd8b7584",
+    "semantic_hash": "90057dbac22e1ce23fea4c7bfd8b7584"
+  },
+  "WinNotch/WeatherIcons.cs": {
+    "mtime": 1794673050.2284715,
+    "seen": 1794673625.5514874,
+    "ast_hash": "b2dc427ec08ac778ba245e89f4e2a1bf",
+    "semantic_hash": "b2dc427ec08ac778ba245e89f4e2a1bf"
+  },
+  "WinNotch/WeatherLocation.cs": {
+    "mtime": 1794673050.230492,
+    "seen": 1794673625.5514905,
+    "ast_hash": "328f9992196457acc8186a8efe61c37b",
+    "semantic_hash": "328f9992196457acc8186a8efe61c37b"
+  },
+  "WinNotch/WinNotch.csproj": {
+    "mtime": 1794673050.2317877,
+    "seen": 1794673625.5514936,
+    "ast_hash": "a52d1e6c03ca4cf158e62293c374d44d",
+    "semantic_hash": "a52d1e6c03ca4cf158e62293c374d44d"
+  },
+  "extension/focumon/background.js": {
+    "mtime": 1794673050.3423643,
+    "seen": 1794673625.5514972,
+    "ast_hash": "95822587470d14a2c0be7313d16aa59d",
+    "semantic_hash": "95822587470d14a2c0be7313d16aa59d"
+  },
+  "extension/focumon/content.js": {
+    "mtime": 1794673050.3441446,
+    "seen": 1794673625.5515003,
+    "ast_hash": "c077c59693948506785e524936b9b4f3",
+    "semantic_hash": "c077c59693948506785e524936b9b4f3"
+  },
+  "extension/focumon/manifest.json": {
+    "mtime": 1794673050.3454564,
+    "seen": 1794673625.5515037,
+    "ast_hash": "0b99deec7b500248124b1a7489643238",
+    "semantic_hash": "0b99deec7b500248124b1a7489643238"
+  },
+  "extension/focumon/readers.js": {
+    "mtime": 1794673050.3485396,
+    "seen": 1794673625.551537,
+    "ast_hash": "ae3299ad9f2bbdde270fc3999ba6fa5f",
+    "semantic_hash": "ae3299ad9f2bbdde270fc3999ba6fa5f"
+  },
+  "tools/MakeIcon.ps1": {
+    "mtime": 1794673050.3909085,
+    "seen": 1794673625.551541,
+    "ast_hash": "b56439147bd7d06df13f9de5d0e95a8d",
+    "semantic_hash": "b56439147bd7d06df13f9de5d0e95a8d"
+  },
+  "tools/Measure-Footprint.ps1": {
+    "mtime": 1794673050.3909085,
+    "seen": 1794673625.5515444,
+    "ast_hash": "e5e643bf4520578b4a8291ca80e41fd4",
+    "semantic_hash": "e5e643bf4520578b4a8291ca80e41fd4"
+  },
+  "website/.prettierrc.json": {
+    "mtime": 1794673050.40445,
+    "seen": 1794673625.5515482,
+    "ast_hash": "d68b05400d039802253ea458066b4c7b",
+    "semantic_hash": "d68b05400d039802253ea458066b4c7b"
+  },
+  "website/data/releases.json": {
+    "mtime": 1794673050.4105682,
+    "seen": 1794673625.5515523,
+    "ast_hash": "a86e86b9d1bd2ca2cc1df660090052b8",
+    "semantic_hash": "a86e86b9d1bd2ca2cc1df660090052b8"
+  },
+  "website/data/store.json": {
+    "mtime": 1794673050.4118533,
+    "seen": 1794673625.551556,
+    "ast_hash": "f4cc4ed6db5e729ae3297f3924826c57",
+    "semantic_hash": "f4cc4ed6db5e729ae3297f3924826c57"
+  },
+  "website/package.json": {
+    "mtime": 1794673050.4156675,
+    "seen": 1794673625.5515683,
+    "ast_hash": "65dc2378b08ff219aa33116df4f294db",
+    "semantic_hash": "65dc2378b08ff219aa33116df4f294db"
+  },
+  "website/scripts/build.mjs": {
+    "mtime": 1794673050.4197636,
+    "seen": 1794673625.5515723,
+    "ast_hash": "3b9e0625a0776d182e8856b212cc6c28",
+    "semantic_hash": "3b9e0625a0776d182e8856b212cc6c28"
+  },
+  "website/scripts/prepare-screenshots.py": {
+    "mtime": 1794673050.4209502,
+    "seen": 1794673625.5515761,
+    "ast_hash": "88912c2994acc698bd0b5a8b89f15813",
+    "semantic_hash": "88912c2994acc698bd0b5a8b89f15813"
+  },
+  "website/scripts/refresh-releases.mjs": {
+    "mtime": 1794673050.4227173,
+    "seen": 1794673625.5515804,
+    "ast_hash": "5edbdb631df360accdd946bd63df63c1",
+    "semantic_hash": "5edbdb631df360accdd946bd63df63c1"
+  },
+  "website/scripts/serve.mjs": {
+    "mtime": 1794673050.4253533,
+    "seen": 1794673625.551584,
+    "ast_hash": "6c0c9356659e3385e5c320eb7283d5a0",
+    "semantic_hash": "6c0c9356659e3385e5c320eb7283d5a0"
+  },
+  "website/src/assets/screenshots/manifest.json": {
+    "mtime": 1794673050.5034401,
+    "seen": 1794673625.5515876,
+    "ast_hash": "574b84a1bc680c90d1c65f4261369590",
+    "semantic_hash": "574b84a1bc680c90d1c65f4261369590"
+  },
+  "website/src/client.js": {
+    "mtime": 1794673050.5533578,
+    "seen": 1794673625.5515912,
+    "ast_hash": "266a484f5bd19365f1bf1073a246e6f0",
+    "semantic_hash": "266a484f5bd19365f1bf1073a246e6f0"
+  },
+  "website/src/content.mjs": {
+    "mtime": 1794673050.5533578,
+    "seen": 1794673625.5515957,
+    "ast_hash": "8b4fc17d207791ca7108d340c4336e40",
+    "semantic_hash": "8b4fc17d207791ca7108d340c4336e40"
+  },
+  "website/src/pages.mjs": {
+    "mtime": 1794673050.561609,
+    "seen": 1794673625.5515993,
+    "ast_hash": "3f55b13a37f04842030fed4c0d4770db",
+    "semantic_hash": "3f55b13a37f04842030fed4c0d4770db"
+  },
+  "website/src/releases.mjs": {
+    "mtime": 1794673050.561609,
+    "seen": 1794673625.5516028,
+    "ast_hash": "d4c7012256efb7c9e715dcf1db0ee171",
+    "semantic_hash": "d4c7012256efb7c9e715dcf1db0ee171"
+  },
+  "website/tests/releases.test.mjs": {
+    "mtime": 1794673050.5673668,
+    "seen": 1794673625.551607,
+    "ast_hash": "0f733fbaf9c3e6fb66acf266867e3e2c",
+    "semantic_hash": "0f733fbaf9c3e6fb66acf266867e3e2c"
+  },
+  "website/tests/screenshots.test.mjs": {
+    "mtime": 1794673050.5698936,
+    "seen": 1794673625.5516107,
+    "ast_hash": "a5540e829fa9f25f8c176400c87307aa",
+    "semantic_hash": "a5540e829fa9f25f8c176400c87307aa"
+  },
+  "website/tests/site.test.mjs": {
+    "mtime": 1794673050.5714102,
+    "seen": 1794673625.5516145,
+    "ast_hash": "9d6d337f2ff3cc14188018ac826ecef9",
+    "semantic_hash": "9d6d337f2ff3cc14188018ac826ecef9"
+  },
+  "AGENTS.md": {
+    "mtime": 1794673049.8948414,
+    "seen": 1794673625.551619,
+    "ast_hash": "292f0ac09a2280a7d2352ebbe969b8ca",
+    "semantic_hash": "292f0ac09a2280a7d2352ebbe969b8ca"
+  },
+  "CHANGELOG.md": {
+    "mtime": 1794673049.8975742,
+    "seen": 1794673625.5516229,
+    "ast_hash": "d4ae8064fb4ac218a56f16d7dd9e91c0",
+    "semantic_hash": "d4ae8064fb4ac218a56f16d7dd9e91c0"
+  },
+  "CONTRIBUTORS.md": {
+    "mtime": 1794673049.8982735,
+    "seen": 1794673625.5516267,
+    "ast_hash": "8c0ea273f8759f78237cb79dc5dabea4",
+    "semantic_hash": "8c0ea273f8759f78237cb79dc5dabea4"
+  },
+  "README.md": {
+    "mtime": 1794673049.9004555,
+    "seen": 1794673625.5516305,
+    "ast_hash": "c031269b75c146c32a035ccf40a32685",
+    "semantic_hash": "c031269b75c146c32a035ccf40a32685"
+  },
+  "extension/focumon/README.md": {
+    "mtime": 1794673050.3423643,
+    "seen": 1794673625.551634,
+    "ast_hash": "108b8d92498cde6ddabff850bea3f353",
+    "semantic_hash": "108b8d92498cde6ddabff850bea3f353"
+  },
+  "publish/release-1.10.0-release-notes.md": {
+    "mtime": 1794673050.3485396,
+    "seen": 1794673625.5516376,
+    "ast_hash": "3a402955a0a4c4bbedcb6b8bfe37c67d",
+    "semantic_hash": "3a402955a0a4c4bbedcb6b8bfe37c67d"
+  },
+  "publish/release-1.11.0-release-notes.md": {
+    "mtime": 1794673050.350706,
+    "seen": 1794673625.5516407,
+    "ast_hash": "a7936c2d01d0a3a2da18a3b0bbeed3c4",
+    "semantic_hash": "a7936c2d01d0a3a2da18a3b0bbeed3c4"
+  },
+  "publish/release-1.11.1-release-notes.md": {
+    "mtime": 1794673050.3531477,
+    "seen": 1794673625.5516443,
+    "ast_hash": "c0d253ddbf44c015b320a3b4dcdcca4c",
+    "semantic_hash": "c0d253ddbf44c015b320a3b4dcdcca4c"
+  },
+  "publish/release-1.5.5-release-notes.md": {
+    "mtime": 1794673050.3531477,
+    "seen": 1794673625.5516527,
+    "ast_hash": "0050173187a020af384700f21fdd53e0",
+    "semantic_hash": "0050173187a020af384700f21fdd53e0"
+  },
+  "publish/release-1.5.7-release-notes.md": {
+    "mtime": 1794673050.3586502,
+    "seen": 1794673625.5516572,
+    "ast_hash": "568b130065c74df3b93402be4b59bf37",
+    "semantic_hash": "568b130065c74df3b93402be4b59bf37"
+  },
+  "publish/release-1.5.8-release-notes.md": {
+    "mtime": 1794673050.3586502,
+    "seen": 1794673625.5516605,
+    "ast_hash": "fd0c2c0ebb97e64e3764360c41a46a5a",
+    "semantic_hash": "fd0c2c0ebb97e64e3764360c41a46a5a"
+  },
+  "publish/release-1.6.1-release-notes.md": {
+    "mtime": 1794673050.3618038,
+    "seen": 1794673625.5516644,
+    "ast_hash": "0efb62f5d1e55f41b17c2afce0506863",
+    "semantic_hash": "0efb62f5d1e55f41b17c2afce0506863"
+  },
+  "publish/release-1.7.0-release-notes.md": {
+    "mtime": 1794673050.3618038,
+    "seen": 1794673625.5516684,
+    "ast_hash": "dde46a98ef0ef56b77e17dde40887217",
+    "semantic_hash": "dde46a98ef0ef56b77e17dde40887217"
+  },
+  "publish/release-1.7.1-release-notes.md": {
+    "mtime": 1794673050.365847,
+    "seen": 1794673625.5516725,
+    "ast_hash": "e096899b20742c91a03980dfeb808b7e",
+    "semantic_hash": "e096899b20742c91a03980dfeb808b7e"
+  },
+  "publish/release-1.7.2-release-notes.md": {
+    "mtime": 1794673050.3668666,
+    "seen": 1794673625.5516758,
+    "ast_hash": "5554317f1ec3a77872d14b54f848586d",
+    "semantic_hash": "5554317f1ec3a77872d14b54f848586d"
+  },
+  "publish/release-1.7.3-release-notes.md": {
+    "mtime": 1794673050.3699129,
+    "seen": 1794673625.5516794,
+    "ast_hash": "e132b3f0fcf05d947f201cced32c7cf4",
+    "semantic_hash": "e132b3f0fcf05d947f201cced32c7cf4"
+  },
+  "publish/release-1.7.4-release-notes.md": {
+    "mtime": 1794673050.3699129,
+    "seen": 1794673625.5516827,
+    "ast_hash": "57ce89db638da7950390258593ef1204",
+    "semantic_hash": "57ce89db638da7950390258593ef1204"
+  },
+  "publish/release-1.7.5-release-notes.md": {
+    "mtime": 1794673050.3719351,
+    "seen": 1794673625.5516868,
+    "ast_hash": "7d7d7ecb406f4ce9da472c7d96977092",
+    "semantic_hash": "7d7d7ecb406f4ce9da472c7d96977092"
+  },
+  "publish/release-1.7.6-release-notes.md": {
+    "mtime": 1794673050.3719351,
+    "seen": 1794673625.5516896,
+    "ast_hash": "ad28870b84fd114518b1508d5bd4755c",
+    "semantic_hash": "ad28870b84fd114518b1508d5bd4755c"
+  },
+  "publish/release-1.7.7-release-notes.md": {
+    "mtime": 1794673050.375015,
+    "seen": 1794673625.5516977,
+    "ast_hash": "c829aa6bbed2745b2b589b0c578355c4",
+    "semantic_hash": "c829aa6bbed2745b2b589b0c578355c4"
+  },
+  "publish/release-1.7.9-release-notes.md": {
+    "mtime": 1794673050.375015,
+    "seen": 1794673625.551701,
+    "ast_hash": "d585b594dafed8e4b35b04abdfa37863",
+    "semantic_hash": "d585b594dafed8e4b35b04abdfa37863"
+  },
+  "publish/release-1.8.0-release-notes.md": {
+    "mtime": 1794673050.375015,
+    "seen": 1794673625.5517046,
+    "ast_hash": "20f0d5274a2f3692bce1bffdd91e6e03",
+    "semantic_hash": "20f0d5274a2f3692bce1bffdd91e6e03"
+  },
+  "publish/release-1.9.0-release-notes.md": {
+    "mtime": 1794673050.3828423,
+    "seen": 1794673625.5517085,
+    "ast_hash": "fb90262f2c48be263faccba668cb392c",
+    "semantic_hash": "fb90262f2c48be263faccba668cb392c"
+  },
+  "publish/release-1.9.1-release-notes.md": {
+    "mtime": 1794673050.3828423,
+    "seen": 1794673625.551712,
+    "ast_hash": "f6489311200cf6a24e6121449b21a66a",
+    "semantic_hash": "f6489311200cf6a24e6121449b21a66a"
+  },
+  "publish/release-1.9.2-release-notes.md": {
+    "mtime": 1794673050.3828423,
+    "seen": 1794673625.5517151,
+    "ast_hash": "e4719acd72864ed188d2405f03b99bbb",
+    "semantic_hash": "e4719acd72864ed188d2405f03b99bbb"
+  },
+  "publish/release-1.9.3-release-notes.md": {
+    "mtime": 1794673050.3871236,
+    "seen": 1794673625.551719,
+    "ast_hash": "1fa509b180d178d9e4df836c963c3622",
+    "semantic_hash": "1fa509b180d178d9e4df836c963c3622"
+  },
+  "publish/release-1.9.4-release-notes.md": {
+    "mtime": 1794673050.3891435,
+    "seen": 1794673625.5517223,
+    "ast_hash": "ce8a71544fb28b44f90ca44b49a6a491",
+    "semantic_hash": "ce8a71544fb28b44f90ca44b49a6a491"
+  },
+  "publish/release-1.9.5-release-notes.md": {
+    "mtime": 1794673050.3909085,
+    "seen": 1794673625.5517263,
+    "ast_hash": "d8f213a786377d71350dabc5ce53169e",
+    "semantic_hash": "d8f213a786377d71350dabc5ce53169e"
+  },
+  "website/README.md": {
+    "mtime": 1794673050.4085813,
+    "seen": 1794673625.5517304,
+    "ast_hash": "4f2e53bcd2a2f21c3362784b5517ec01",
+    "semantic_hash": "4f2e53bcd2a2f21c3362784b5517ec01"
+  },
+  "WinNotch/Assets/incoming-file.wav": {
+    "mtime": 1794673050.005827,
+    "seen": 1794673625.5517342,
+    "ast_hash": "a641b85b59580246864865fa82396287",
+    "semantic_hash": "a641b85b59580246864865fa82396287"
+  }
+}

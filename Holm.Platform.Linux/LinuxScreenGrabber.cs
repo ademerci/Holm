@@ -52,30 +52,52 @@ sealed unsafe class LinuxScreenGrabber : IScreenGrabber
 
     public ScreenImage? Grab()
     {
-        IntPtr image = XGetImage(_display, _root, _x, _y, (uint)_areaWidth, (uint)_areaHeight, ulong.MaxValue, ZPixmap);
-        if (image == IntPtr.Zero) return null;
+        IntPtr prevHandler = XSetErrorHandler(IgnoreErrors);
+        IntPtr image = IntPtr.Zero;
         try
         {
+            if (XGetGeometry(_display, _root, out _, out _, out _, out uint rootW, out uint rootH, out _, out _) == 0)
+                return null;
+
+            int x0 = Math.Max(0, _x), y0 = Math.Max(0, _y);
+            int x1 = Math.Min((int)rootW, _x + _areaWidth), y1 = Math.Min((int)rootH, _y + _areaHeight);
+            int rw = x1 - x0, rh = y1 - y0;
+            if (rw <= 0 || rh <= 0) return null;
+
+            image = XGetImage(_display, _root, x0, y0, (uint)rw, (uint)rh, ulong.MaxValue, ZPixmap);
+            if (image == IntPtr.Zero) return null;
+
             var info = (XImage*)image;
-            if (info->BitsPerPixel != 32 || info->ByteOrder != 0) return null; // a true-colour screen, blue first
+            if (info->Data == IntPtr.Zero || info->BitsPerPixel != 32 || info->ByteOrder != 0
+                || info->Width < rw || info->Height < rh || info->BytesPerLine < rw * 4)
+                return null; // a true-colour screen, blue first
+
             var pixels = new byte[_width * _height * 4];
             byte* data = (byte*)info->Data;
             int stride = info->BytesPerLine;
+            int offX = x0 - _x, offY = y0 - _y;
             fixed (byte* target = pixels)
             {
                 for (int row = 0; row < _height; row++)
                 {
-                    int y0 = _rowStart[row], y1 = Math.Max(y0 + 1, _rowStart[row + 1]);
+                    int rowStart = _rowStart[row], rowEnd = Math.Max(rowStart + 1, _rowStart[row + 1]);
+                    int cy0 = Math.Max(rowStart, offY), cy1 = Math.Min(rowEnd, offY + rh);
                     for (int column = 0; column < _width; column++)
                     {
-                        int x0 = _columnStart[column], x1 = Math.Max(x0 + 1, _columnStart[column + 1]);
-                        int b = 0, g = 0, r = 0, n = (x1 - x0) * (y1 - y0);
-                        for (int sy = y0; sy < y1; sy++)
-                        {
-                            byte* p = data + sy * stride + x0 * 4;
-                            for (int sx = x0; sx < x1; sx++, p += 4) { b += p[0]; g += p[1]; r += p[2]; }
-                        }
+                        int colStart = _columnStart[column], colEnd = Math.Max(colStart + 1, _columnStart[column + 1]);
+                        int cx0 = Math.Max(colStart, offX), cx1 = Math.Min(colEnd, offX + rw);
                         byte* q = target + (row * _width + column) * 4;
+                        if (cx1 <= cx0 || cy1 <= cy0)
+                        {
+                            q[0] = 0; q[1] = 0; q[2] = 0; q[3] = 0xFF;
+                            continue;
+                        }
+                        int b = 0, g = 0, r = 0, n = (cx1 - cx0) * (cy1 - cy0);
+                        for (int sy = cy0; sy < cy1; sy++)
+                        {
+                            byte* p = data + (sy - offY) * stride + (cx0 - offX) * 4;
+                            for (int sx = cx0; sx < cx1; sx++, p += 4) { b += p[0]; g += p[1]; r += p[2]; }
+                        }
                         q[0] = (byte)(b / n); q[1] = (byte)(g / n); q[2] = (byte)(r / n); q[3] = 0xFF;
                     }
                 }
@@ -85,9 +107,13 @@ sealed unsafe class LinuxScreenGrabber : IScreenGrabber
         }
         finally
         {
-            var info = (XImage*)image;
-            if (info->Data != IntPtr.Zero) XFree(info->Data);
-            XFree(image);
+            if (image != IntPtr.Zero)
+            {
+                var info = (XImage*)image;
+                if (info->Data != IntPtr.Zero) XFree(info->Data);
+                XFree(image);
+            }
+            if (prevHandler != IntPtr.Zero) XSetErrorHandler(prevHandler);
         }
     }
 
@@ -98,6 +124,7 @@ sealed unsafe class LinuxScreenGrabber : IScreenGrabber
         if (cursor == null) return;
         try
         {
+            if (cursor->Width == 0 || cursor->Height == 0 || cursor->Pixels == null) return;
             double scale = _width / (double)_areaWidth;
             // As on Windows: a smaller picture gets a smaller pointer, never smaller than 12 pixels on a 32-pixel pointer.
             double size = scale < 1 ? Math.Max(12, 32 * scale) / 32 : 1;
@@ -149,11 +176,17 @@ sealed unsafe class LinuxScreenGrabber : IScreenGrabber
         public IntPtr Name;
     }
 
+    static readonly ErrorHandler IgnoreErrors = (_, _) => 0;
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int ErrorHandler(IntPtr display, IntPtr error);
+
     [DllImport(X11)] static extern IntPtr XOpenDisplay(IntPtr name);
     [DllImport(X11)] static extern int XCloseDisplay(IntPtr display);
     [DllImport(X11)] static extern IntPtr XDefaultRootWindow(IntPtr display);
+    [DllImport(X11)] static extern int XGetGeometry(IntPtr display, IntPtr drawable, out IntPtr root, out int x, out int y, out uint width, out uint height, out uint border, out uint depth);
     [DllImport(X11)] static extern IntPtr XGetImage(IntPtr display, IntPtr drawable, int x, int y, uint width, uint height, ulong planeMask, int format);
     [DllImport(X11)] static extern int XFree(IntPtr data);
+    [DllImport(X11)] static extern IntPtr XSetErrorHandler(ErrorHandler handler);
+    [DllImport(X11)] static extern IntPtr XSetErrorHandler(IntPtr handler);
     [DllImport(XFixes)] static extern bool XFixesQueryExtension(IntPtr display, out int eventBase, out int errorBase);
     [DllImport(XFixes)] static extern XFixesCursorImage* XFixesGetCursorImage(IntPtr display);
 }

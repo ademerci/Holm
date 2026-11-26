@@ -1,5 +1,50 @@
 # Changelog
 
+## 2.4.0 – 2026-11-26
+
+### Removed
+
+- **Holm for Android and phone integration.** Holm for Android and the desktop phone tab and phone-status integration have been discontinued and removed. Browser QR-code phone file transfer and PC-to-PC Holm account sync remain available. Upgrading from 2.3.x cleanly strips legacy phone settings and ignores legacy phone notes without errors.
+
+### Changed
+
+- **Windows and received-file safety.** Locked native DLL searches to System32 and resolved `explorer.exe` via the Windows directory. Received files and downloads now show exact saved filenames and hide one-click *Open* for dangerous executable, script, shortcut, or installer extensions (offering *Show* instead).
+- **Beam LAN and QR phone-transfer hardening.** Unverified LAN peers are marked `(LAN)`, cannot shadow authenticated account devices or be overwritten from another IP, and display a 6-digit verification code (SAS) on both sides alongside offer and idle timeouts. Browser QR phone transfers now enforce approved file-count and byte quotas, client IP pinning, per-IP connection caps, header and write timeouts, and a 30-minute lifetime ceiling.
+- **Stronger friend invites and encrypted messaging.** Friend invite codes now use 80-bit PBKDF2-stretched codes (`HOLM-XXXX-XXXX-XXXX-XXXX`) with single-use redemption, revocation, persistent replay protection, strict NIST P-256 key validation, and public HTTPS inbox URLs without mirroring to `ntfy.sh` by default.
+- **Relay and admin hardening.** Added per-IP and per-topic rate limits, streaming body caps, storage-free empty reads with automatic cleanup alarms, authenticated `wnf-*` inbox reads, non-evicting WebSocket limits, and constant-time rate-limited admin stats with strict security headers.
+- **Media, network, and Linux privacy hardening.** Blocked SSRF to private and non-public IPs across GIF, cover, and relay fetches, bounded bitmap and cover decoding before allocation, moved temporary and state files to private `0700`/`0600` locations, switched Linux notifications to binary D-Bus monitoring, stopped Linux dictation from searching `~/Downloads`, and required SHA-256 verification for Windows Handy downloads.
+- **Least-privilege CI workflows.** Scoped all GitHub Actions workflows to least-privilege permissions and pinned every action to a full commit SHA.
+
+### Fixed
+
+- **Tests stay out of your settings.** The tests use a folder of their own, and an inbox on this computer (only tests have one) that got into the settings is set back to Holm's relay.
+
+## 2.3.1 – 2026-11-25
+
+### Fixed
+
+- **Verity in the Instrument layout.** When the open notch has no music playing, Verity moves into the free space as the layout changes and keeps clear of the toolbar.
+- **Notch animation on Linux.** The notch fits each animated frame inside the window while X11 catches up with a resize.
+- **Network details on Linux.** The Network page keeps showing adapter details, including addresses, gateways and DNS servers.
+- **Reminders for today.** A time that has already passed is rejected when you explicitly say “today.” A time without a date still rolls over to tomorrow.
+- **Reminder titles.** Day words and durations in the title stay in the title. For example, “in 20 min call tomorrow’s guests” and “tomorrow 08:15 walk 20 min” use the intended time.
+- **Reminders across clock changes.** A two-hour reminder takes two elapsed hours across daylight-saving changes. On the fall-back night, a repeated clock time uses the first occurrence that is still ahead.
+- **Long reminder lists.** Scroll to see and remove reminders beyond the first six.
+- **Re-enabling reminders.** Pending reminders start firing again when Reminders is turned back on.
+- **Mobile notes.** The editor and saved note use the same 4,000-character limit. Pasted text is clipped at the limit without splitting emoji.
+
+## 2.3.0 – 2026-11-24
+
+### Added
+
+- **Holm for Android.** A new app in `mobile/`: Beam files and text to your PC, keep the clipboard in sync, chat with friends and keep a note. Sign in with your Holm account and your PCs reach the phone on any network.
+- **Dynamic Notch on Android.** The phone app draws a notch around the camera with up to two live activities: music with controls, notifications, timers, downloads, Holm transfers and offers, chat, charging, Wi-Fi, Bluetooth, VPN, Quick Share, Live Updates and reminders. Fit its size, position and corners to your phone with a live preview; open, it can use a Nothing look.
+- **The phone app updates itself.** It finds new versions on Holm's update server, says so with a notification and an *Update* button, and installs them after Android's confirmation. In the notch, each open corner can have its own radius, notifications swipe away, single apps and Android's own notices (battery saver) can be kept out, and Shizuku unlocks hiding Android's pop-ups without a computer.
+- **Your phone in the notch.** With the phone app signed in to the same Holm account, the notch pops out the phone's notifications and calls, the song that starts there, its timers, and when it is fully charged.
+- **Holm for Android 1.2.** Reply to messages in the notch, answer and end calls, see the volume, navigation, camera and microphone in use, headphone batteries, send a fresh screenshot to the PC, a clipboard notice from the PC, quiet hours, gestures, an overview with a tap on the camera, app colours and Holm's 24 designs. Updates can be checked by hand and test versions chosen; the app is now signed with its own release key.
+- **Your devices, anywhere.** PCs and phones signed in to the same Holm account show up in the share view as your devices, even on another network. Files and copied text go to them over the relay, encrypted as for friends.
+- **Verity grows up.** She has her own switch on *Settings › General* and one for the closed notch. Pet, drag and throw her in the open notch, feed her with a right-click, and while music plays she sits beside the song's title.
+
 ## 2.2.3 – 2026-11-20
 
 ### Added

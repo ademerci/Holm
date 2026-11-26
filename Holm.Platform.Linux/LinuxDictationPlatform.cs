@@ -19,7 +19,7 @@ public sealed class LinuxDictationPlatform : IDictationPlatform
         foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "/usr/bin").Split(':'))
             if (folder.Length > 0 && File.Exists(Path.Combine(folder, "handy"))) return Path.Combine(folder, "handy");
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        foreach (string folder in new[] { Path.Combine(home, "Applications"), Path.Combine(home, ".local", "bin"), Path.Combine(home, "Downloads") })
+        foreach (string folder in new[] { Path.Combine(home, "Applications"), Path.Combine(home, ".local", "bin") })
         {
             try
             {

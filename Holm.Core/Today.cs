@@ -30,7 +30,7 @@ internal static class Today
     }
 
     /// <summary>The reminder card: the next one and when, or how to add one.</summary>
-    public static (string Title, string More) ReminderCard(Reminder? next, DateTime nowLocal)
+    public static (string Title, string More) ReminderCard(Reminder? next, DateTime nowUtc)
         => next == null ? ("No reminders", "Add one: 20 min laundry")
-                        : (next.Text, ReminderParser.Describe(next.Due.ToLocalTime(), nowLocal));
+                        : (next.Text, ReminderParser.Describe(next.Due, nowUtc, TimeZoneInfo.Local));
 }

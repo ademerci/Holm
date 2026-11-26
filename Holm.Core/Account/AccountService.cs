@@ -326,6 +326,10 @@ internal sealed class AccountService : IDisposable
             var mine = _friends.ExportIdentity();
             string? myPrint = mine?.Fingerprint(), theirPrint = remote.Identity?.Fingerprint();
             var step = IdentitySync.Decide(myPrint, _friends.Friends.Count, theirPrint, state, _identityChoice);
+            // The same identity, but the account says its inbox is on a computer (a test's): send it back corrected.
+            if (step == IdentityStep.Nothing && myPrint != null && myPrint == theirPrint
+                && FriendsService.IsLoopbackServer(remote.Identity?.Server) && !FriendsService.IsLoopbackServer(mine?.Server))
+                step = IdentityStep.Upload;
             switch (step)
             {
                 case IdentityStep.Ask:
@@ -422,7 +426,12 @@ internal sealed class AccountService : IDisposable
 
     static AccountFile Load(string path)
     {
-        try { return File.Exists(path) ? JsonSerializer.Deserialize<AccountFile>(File.ReadAllText(path), AccountJson.Options) ?? new() : new(); }
+        try
+        {
+            if (!File.Exists(path)) return new();
+            SecurityGuards.SetPrivatePermissions(path);
+            return JsonSerializer.Deserialize<AccountFile>(File.ReadAllText(path), AccountJson.Options) ?? new();
+        }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             Diag.Log("Account file unreadable, signed out: " + ex.Message);
@@ -435,10 +444,8 @@ internal sealed class AccountService : IDisposable
         if (AppSettings.ReadOnly || _file.Uid == null) return;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            string temp = _path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(_file, AccountJson.Options));
-            File.Move(temp, _path, overwrite: true);
+            SecurityGuards.EnsurePrivateDirectory(Path.GetDirectoryName(_path)!);
+            SecurityGuards.WritePrivateFile(_path, JsonSerializer.Serialize(_file, AccountJson.Options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Diag.Log("Couldn't save the account: " + ex.Message); }
     }

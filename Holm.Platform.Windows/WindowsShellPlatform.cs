@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using Holm.Platform;
 using WinNotch;
@@ -9,6 +10,8 @@ namespace Holm.Platform.Windows;
 /// <summary>Downloads through the known folder, Explorer for opening and showing (as the WPF app's Shell).</summary>
 public sealed class WindowsShellPlatform : IShellPlatform
 {
+    static string ExplorerExe => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+
     public string DownloadsFolder() => Native.DownloadsFolder();
 
     public void Open(string path)
@@ -23,7 +26,7 @@ public sealed class WindowsShellPlatform : IShellPlatform
         try
         {
             AllowSetForegroundWindow(-1);
-            Process.Start(new ProcessStartInfo("explorer.exe", @"shell:AppsFolder\" + appId) { UseShellExecute = true })?.Dispose();
+            Process.Start(new ProcessStartInfo(ExplorerExe, @"shell:AppsFolder\" + appId) { UseShellExecute = true })?.Dispose();
             return true;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
@@ -33,10 +36,10 @@ public sealed class WindowsShellPlatform : IShellPlatform
     {
         AllowSetForegroundWindow(-1);
         // Explorer wants exactly /select,"path" (quotes around the path only).
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\""))?.Dispose();
+        Process.Start(new ProcessStartInfo(ExplorerExe, $"/select,\"{path}\""))?.Dispose();
     }
 
-    public string SystemDrive() => System.IO.Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
+    public string SystemDrive() => Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
 
     public void OpenStorage() => Open("ms-settings:storagesense");
 

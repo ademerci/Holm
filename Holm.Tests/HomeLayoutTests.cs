@@ -140,6 +140,22 @@ public class HomeLayoutTests
     }
 
     [Fact]
+    public void Legacy_phone_tool_in_saved_settings_is_dropped_cleanly()
+    {
+        var settings = Read("""{"HomeTools":["beam","phone","notes","phone"],"HomeHiddenTools":["phone","beam"]}""");
+
+        var layout = HomeLayout.Read(settings);
+
+        Assert.DoesNotContain("phone", layout.ToolOrder);
+        Assert.DoesNotContain("phone", layout.HiddenTools);
+        Assert.Equal(HomeLayout.UsualTools.Count, layout.ToolOrder.Count);
+        Assert.Equal(HomeLayout.UsualTools.Count, layout.ToolOrder.Distinct().Count());
+        Assert.Equal("beam", layout.ToolOrder[0]);
+        Assert.Equal("notes", layout.ToolOrder[1]);
+        Assert.Equal(new[] { "beam" }, layout.HiddenTools);
+    }
+
+    [Fact]
     public void The_start_page_goes_with_the_account()
     {
         foreach (string name in new[] { nameof(AppSettings.HomeSections), nameof(AppSettings.HomeHidden), nameof(AppSettings.HomeSwapped),

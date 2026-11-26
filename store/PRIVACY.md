@@ -1,6 +1,6 @@
 # Privacy policy for Holm for Windows
 
-**Effective date: November 23, 2026**
+**Effective date: November 26, 2026**
 
 Holm for Windows is published by Aleandro D'Urso, an individual developer, under the name Holm Team. This policy explains how Holm handles information on your device and when you use its connected features. You can contact the team at [contact@holmnotch.ch](mailto:contact@holmnotch.ch).
 
@@ -24,7 +24,7 @@ If automatic weather location is enabled and Windows provides a location, Holm r
 
 ## Beam and friends
 
-**Nearby devices.** When Beam is on, Holm announces its display name, a session identifier and connection port to the local network in unencrypted discovery messages; nearby devices can also see its network address and availability. When you send to a nearby Holm, the apps establish a fresh key and encrypt the file offer and transfer using AES-256-GCM. The key exchange does not verify device identity, so someone on the network could impersonate a device or interfere with the connection. Use a code on networks you do not trust.
+**Nearby devices.** When Beam is on, Holm announces its display name, a session identifier and connection port to the local network in unencrypted discovery messages; nearby devices can also see its network address and availability. When you send to a nearby Holm, the apps establish a fresh key, encrypt the file offer and transfer using AES-256-GCM, and show a 6-digit verification code on both sides so you can check that you are connected to the intended device. Unverified nearby peers are marked (LAN) because discovery does not authenticate device identity; compare the 6-digit code or use a transfer code on networks you do not trust.
 
 **Codes and friends.** For a code transfer, Holm generates a random secret, derives the encryption key from it and connects through the public [magic-wormhole transit relay](https://magic-wormhole.readthedocs.io/en/latest/transit.html). The sender name, offered file names, sizes and file contents travel inside the encrypted connection. The relay can see network addresses, connection timing, traffic sizes and a transfer identifier, but does not receive the code or encryption key. Anyone with the code can attempt to join the transfer, so share it only with the intended recipient over a trusted channel. The recipient is asked to accept the offer before file content is sent.
 
@@ -47,7 +47,7 @@ Screen streaming starts when you choose to invite a friend, and the viewer must 
 
 Chat reactions are shared in encrypted friend notes. GIF search sends search terms and request metadata to GIPHY using the configured API key. GIF links are included in encrypted chat notes, and displaying a GIF downloads it over HTTPS from its host. GIPHY and GIF hosts can receive your IP address and request information. GIF files are cached locally. See [GIPHY privacy information](https://giphy.com/privacy).
 
-Short friend invite codes provide access to an encrypted friend card stored on the configured inbox server. The card includes the information needed to add you as a friend. Codes last 12 hours and anyone with a valid code can add you automatically. Share them only with intended friends. Pending friend requests are stored locally for up to two days.
+Short friend invite codes provide access to an encrypted friend card stored on the configured inbox server. The card includes the information needed to add you as a friend. Codes are single-use, last up to 12 hours, and can be revoked; anyone with an active unredeemed code can add you once. Share them only with intended friends. Pending friend requests are stored locally for up to two days.
 
 The audio-reactive equalizer reads the default audio output locally to animate its bars. These audio samples are not sent to the Holm Team or other services. You can disable this under General settings.
 
@@ -60,7 +60,7 @@ The Wi-Fi tools read connection and adapter details locally, including network n
 Dictation with Handy detects the separately installed Handy app's listening overlay and reflects its state in the notch. Holm may start the installed Handy app in the tray and read its overlay setting; this integration does not capture dictation audio or send it to the Holm Team. Handy's own settings and privacy practices govern its processing. In the Store version, Get Handy opens Handy's official GitHub release page in your browser so you can install it separately.
 ## Optional Holm account
 
-If you create an account, Holm uses Google Firebase Authentication for sign-in and Cloud Firestore in Zürich to store a client-encrypted copy of your settings, profile, achievements, and friends. Firebase receives your email address, account identifier, sign-in information, and request metadata. Chats, notes, reminders, and files stay on your device. You can delete the account from the profile page. See [Firebase privacy information](https://firebase.google.com/support/privacy).
+If you create an account, Holm uses Google Firebase Authentication for sign-in and Cloud Firestore in Zürich to store a client-encrypted copy of your settings, profile, achievements, and friends. PCs signed in to the same Holm account can also appear as your own devices in Beam and exchange encrypted file and text transfers through the relay. Firebase receives your email address, account identifier, sign-in information, and request metadata. Chats, notes, reminders, and files stay on your device. You can delete the account from the profile page. See [Firebase privacy information](https://firebase.google.com/support/privacy).
 
 ## Other services
 

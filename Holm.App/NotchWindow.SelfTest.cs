@@ -52,10 +52,20 @@ public sealed partial class NotchWindow
             var aiIcons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
             foreach (var preset in AiPresets) aiIcons.Children.Add(AiTile(preset.Key, BadgeLogoSize)!);
             SnapshotIconStrip(aiIcons, folder, "ai-launcher-icons.png");
-            // Verity at her sizes in the notch and big, awake and asleep, on the notch's black.
+            // Verity at her sizes in the notch and big: awake, asleep, hungry, surprised, cheering and chewing, on the notch's black.
             var verity = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8, Background = Avalonia.Media.Brushes.Black };
-            foreach (var (size, mood) in new[] { (16.0, WinNotch.VerityMood.Awake), (30.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Awake), (96.0, WinNotch.VerityMood.Asleep) })
-                verity.Children.Add(new Holm.App.Controls.VerityFace { Width = size, Height = size, Mood = mood, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom });
+            foreach (var (size, mood, cue, chewing) in new[]
+            {
+                (16.0, WinNotch.VerityMood.Awake, VerityCue.None, false), (30.0, WinNotch.VerityMood.Awake, VerityCue.None, false),
+                (96.0, WinNotch.VerityMood.Awake, VerityCue.None, false), (96.0, WinNotch.VerityMood.Asleep, VerityCue.None, false),
+                (96.0, WinNotch.VerityMood.Hungry, VerityCue.None, false), (96.0, WinNotch.VerityMood.Awake, VerityCue.Surprised, false),
+                (96.0, WinNotch.VerityMood.Awake, VerityCue.Cheer, false), (96.0, WinNotch.VerityMood.Awake, VerityCue.None, true),
+            })
+            {
+                var face = new Holm.App.Controls.VerityFace { Width = size, Height = size, Mood = mood, Chewing = chewing, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom };
+                if (cue != VerityCue.None) face.Express(cue);
+                verity.Children.Add(face);
+            }
             SnapshotIconStrip(verity, folder, "verity.png");
             // And moving: a leap with its somersault and the hops after it, one pose every tenth of a second.
             var roam = new WinNotch.VerityRoam(480, 30, new Random(4));
@@ -66,7 +76,7 @@ public sealed partial class NotchWindow
                 for (int i = 0; i < 3; i++) roam.Step(1 / 30.0, WinNotch.VerityMood.Awake);
                 if (frame % 2 == 1) continue;
                 var face = new Holm.App.Controls.VerityFace { Width = 30, Height = 30, Margin = new Thickness(2, 34 - roam.Lift, 2, roam.Lift) };
-                face.Pose(roam.Squash, roam.Angle, roam.Moving ? roam.Facing : 0);
+                face.Pose(roam.Squash, roam.Angle, roam.Gaze);
                 moves.Children.Add(face);
             }
             SnapshotIconStrip(moves, folder, "verity-moves.png");
@@ -90,6 +100,9 @@ public sealed partial class NotchWindow
             CheckWeatherLocationWhilePlaying();
             CheckExpandedVolumeFeedback();
             await CheckWideSpringFrameAsync();
+            CheckOpeningContentSteady();
+            await CheckVerityPlacementAsync(folder);
+            CheckReminderListScrolls();
             // The Beam tool's page: send and receive.
             ShowTool(Tool.Beam);
             ApplyState(animate: false);
@@ -256,6 +269,110 @@ public sealed partial class NotchWindow
         ApplyState(animate: false);
         if (Width != restingWidth)
             throw new InvalidOperationException("The notch window did not return to its resting width.");
+    }
+
+    /// <summary>The open notch's content stays put while the shape grows around it: rounding it twice moved it a pixel to
+    /// and fro each frame, and the opening notch shook.</summary>
+    void CheckOpeningContentSteady()
+    {
+        _hovered = false;
+        ApplyState(animate: false);
+        _hovered = true;
+        ApplyState(animate: true);
+        var centres = new List<double>();
+        for (int frame = 0; _motionRunning && frame < 240; frame++)
+        {
+            StepShape(_motionLastTick + Stopwatch.Frequency / 60);
+            UpdateLayout();
+            // The view's centre: its own opening scale (top centre) doesn't move it.
+            if (_expandedView.TranslatePoint(new Point(_expandedView.Bounds.Width / 2, 0), this) is { } centre)
+                centres.Add(centre.X);
+        }
+        if (centres.Count == 0 || centres.Max() - centres.Min() > 0.01)
+            throw new InvalidOperationException(
+                $"The open notch's content moved sideways while opening: {string.Join(", ", centres.Distinct().Select(x => x.ToString("0.###")))}.");
+        ApplyState(animate: false);
+    }
+
+    /// <summary>Verity in the open notch keeps to the free stretches of her row: never on a button. Her row is the tool row,
+    /// or with music (the clock, the tool words and the weather then fill the tool row) her seat beside the song's title.</summary>
+    async Task CheckVerityPlacementAsync(string folder)
+    {
+        bool was = _settings.ShowVerity, mediaEnabled = _settings.MediaControls;
+        var info = _info;
+        _settings.ShowVerity = true;
+        try
+        {
+            _info = null;
+            RefreshMediaUi();
+            CheckVerityOffButtons("without music");
+            UpdateLayout();
+            FreezeForPicture();
+            Snapshot(Path.Combine(folder, "verity-open.png"));
+
+            _settings.MediaControls = true;
+            _info = new MediaInfo { Title = "Playing for Verity", IsPlaying = true };
+            RefreshMediaUi();
+            CheckVerityOffButtons("with music");
+            await Task.Delay(800); // the player fades in
+            _hovered = true; // an actual pointer may have left meanwhile
+            ApplyState(animate: false);
+            UpdateLayout();
+            FreezeForPicture();
+            Snapshot(Path.Combine(folder, "verity-open-music.png"));
+        }
+        finally
+        {
+            _settings.ShowVerity = was;
+            _settings.MediaControls = mediaEnabled;
+            _info = info;
+            RefreshMediaUi();
+            ApplyState(animate: false);
+        }
+    }
+
+    void CheckVerityOffButtons(string when)
+    {
+        _hovered = true;
+        ApplyState(animate: false);
+        UpdateLayout();
+        var row = VerityFloor;
+        if (!_verityLane.Active || _verityLane.Parent != row)
+            throw new InvalidOperationException($"Verity isn't on her floor {when}.");
+        for (int frame = 0; frame < 30 * 20; frame++)
+        {
+            _verityLane.Tick(1 / 30.0);
+            if (frame < 90 || !_verityLane.Face.IsVisible) continue; // time to hop off a button she started on
+            var face = new Rect(_verityLane.Bounds.Left + Canvas.GetLeft(_verityLane.Face), _verityLane.Bounds.Top + Canvas.GetTop(_verityLane.Face),
+                _verityLane.Face.Width, _verityLane.Face.Height).Deflate(1);
+            foreach (var other in row.Children)
+                if (other != _verityLane && other.IsVisible && other.Bounds.Width > 0 && face.Intersects(other.Bounds))
+                    throw new InvalidOperationException($"Verity stood on {other.GetType().Name} {when} (her {face}, it {other.Bounds}; row {string.Join(" | ", row.Children.Select(c => $"{c.GetType().Name} {c.IsVisible} {c.Bounds}"))}).");
+        }
+    }
+
+    void CheckReminderListScrolls()
+    {
+        var due = DateTime.UtcNow.AddDays(1);
+        var added = Enumerable.Range(1, 8).Select(i => _reminders.Add($"Test reminder {i}", due.AddMinutes(i))).ToArray();
+        try
+        {
+            ShowTool(Tool.Reminders);
+            ApplyState(animate: false);
+            UpdateLayout();
+            var scroll = (ScrollViewer)_remindersPage.Children[^1];
+            if (_reminderRows.Children.Count != _reminders.Items.Count || scroll.Extent.Height <= scroll.Viewport.Height)
+                throw new InvalidOperationException("Additional reminders cannot be reached by scrolling.");
+            scroll.Offset = new Vector(0, scroll.Extent.Height);
+            if (scroll.Offset.Y <= 0)
+                throw new InvalidOperationException("The reminder list would not scroll.");
+        }
+        finally
+        {
+            foreach (var reminder in added) _reminders.Remove(reminder.Id);
+            ShowTool(Tool.None);
+            ShowReminderRows();
+        }
     }
 
     void CheckNotchWidth()
