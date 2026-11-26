@@ -152,6 +152,46 @@ public class VerityTests
         Assert.Equal(0, roam.Angle);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void On_a_seat_too_short_to_hop_she_stays_put_instead_of_twitching(int seed)
+    {
+        // Her seat beside the song: 44 px, free from 4 px on, with the mouse wandering over it.
+        var roam = new VerityRoam(480, 30, new Random(seed), headroom: 16);
+        roam.SetFloor(44, new[] { (4.0, 44.0) });
+        double x = roam.X;
+        for (int frame = 0; frame < 30 * 60; frame++)
+        {
+            roam.SetFloor(44, new[] { (4.0, 44.0) });
+            roam.Notice(frame % 90 * 0.5);
+            roam.Step(1 / 30.0, VerityMood.Awake);
+            Assert.Equal(x, roam.X); // leaps on the spot only
+        }
+    }
+
+    [Fact]
+    public void Thrown_onto_the_buttons_she_hops_off_them_instead_of_jumping_there()
+    {
+        var roam = new VerityRoam(480, 30, new Random(1), headroom: 16);
+        var free = new[] { (0.0, 100.0), (380.0, 480.0) };
+        roam.SetFloor(480, free);
+        roam.Grab();
+        roam.HoldAt(200, 10);
+        roam.Throw(0, 0);
+        double last = roam.X;
+        for (int frame = 0; frame < 30 * 5; frame++)
+        {
+            roam.SetFloor(480, free); // as the app does, every frame
+            roam.Step(1 / 30.0, VerityMood.Asleep);
+            Assert.InRange(Math.Abs(roam.X - last), 0, 6);
+            last = roam.X;
+        }
+        Assert.InRange(roam.X, 15, 85);
+        Assert.Equal(0, roam.Lift);
+    }
+
     [Fact]
     public void Thrown_she_flies_bounces_stays_on_her_floor_and_lands_upright()
     {
