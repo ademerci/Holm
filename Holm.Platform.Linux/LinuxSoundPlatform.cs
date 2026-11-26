@@ -18,8 +18,10 @@ public sealed class LinuxSoundPlatform : ISoundPlatform
         "/usr/share/sounds/freedesktop/stereo/complete.oga",
         "/usr/share/sounds/freedesktop/stereo/bell.oga",
     };
+    readonly object _gate = new();
     string? _wavFile;
     byte[]? _wavFor;
+    bool _exitHooked;
 
     public void PlayAlarm()
     {
@@ -60,16 +62,50 @@ public sealed class LinuxSoundPlatform : ISoundPlatform
     {
         try
         {
-            // The players want a file: the app's sound is written once to the temp folder.
-            if (!ReferenceEquals(wav, _wavFor) || _wavFile == null || !File.Exists(_wavFile))
+            string file;
+            string? oldFile = null;
+            lock (_gate)
             {
-                _wavFile = Path.Combine(Path.GetTempPath(), $"holm-sound-{Environment.UserName}-{wav.Length}.wav");
-                File.WriteAllBytes(_wavFile, wav);
-                _wavFor = wav;
+                // The players want a file: the app's sound is written once to a 0700 user-private folder with 0600 mode.
+                if (!ReferenceEquals(wav, _wavFor) || _wavFile == null || !LinuxFileChecks.IsRegularFile(_wavFile, 16 * 1024 * 1024))
+                {
+                    oldFile = _wavFile;
+                    string dir = WinNotch.SecurityGuards.GetPrivateTempDirectory("Sound");
+                    string created;
+                    using (var stream = WinNotch.SecurityGuards.CreatePrivateTempFile(dir, ".wav", out created, prefix: "sound-"))
+                    {
+                        stream.Write(wav, 0, wav.Length);
+                    }
+                    _wavFile = created;
+                    _wavFor = wav;
+                    if (!_exitHooked)
+                    {
+                        _exitHooked = true;
+                        AppDomain.CurrentDomain.ProcessExit += (_, _) => CleanupCachedWav();
+                    }
+                }
+                file = _wavFile;
             }
-            Play(_wavFile, oggOnly: false);
+            if (oldFile != null && oldFile != file)
+            {
+                _ = System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
+                {
+                    try { if (File.Exists(oldFile)) File.Delete(oldFile); } catch { }
+                }, System.Threading.Tasks.TaskScheduler.Default);
+            }
+            Play(file, oggOnly: false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    void CleanupCachedWav()
+    {
+        string? file;
+        lock (_gate) { file = _wavFile; _wavFile = null; _wavFor = null; }
+        if (file != null)
+        {
+            try { if (File.Exists(file)) File.Delete(file); } catch { }
+        }
     }
 
     /// <summary>The first player that is installed; aplay can't play Ogg, so it is skipped for those.</summary>

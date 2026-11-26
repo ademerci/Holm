@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using SkiaSharp;
 using WinNotch;
 
 namespace Holm.App;
@@ -127,8 +128,8 @@ internal sealed class StreamViewerWindow : Window
         if (Interlocked.CompareExchange(ref _decoding, 1, 0) != 0) return;
         try
         {
-            var frame = new Bitmap(new MemoryStream(jpeg));
-            if (frame.PixelSize.Width > MaxSide || frame.PixelSize.Height > MaxSide) { frame.Dispose(); return; }
+            var frame = SafeBitmap.SafeBitmapDecode(jpeg, MaxSide);
+            if (frame == null) return;
             Dispatcher.UIThread.Post(() =>
             {
                 if (_closed.IsCancellationRequested) { frame.Dispose(); return; }
@@ -147,7 +148,7 @@ internal sealed class StreamViewerWindow : Window
                 }
             });
         }
-        catch (Exception ex) when (ex is NotSupportedException or ArgumentException or IOException or InvalidOperationException or NullReferenceException)
+        catch (Exception ex) when (ex is OutOfMemoryException or NotSupportedException or ArgumentException or IOException or InvalidOperationException or NullReferenceException)
         {
             Diag.Log("Stream frame unreadable: " + ex.Message);
         }
@@ -213,5 +214,46 @@ internal sealed class StreamBadge : Window
             _ => $"{names.Count} watching",
         };
         ToolTip.SetTip(this, string.Join(", ", names));
+    }
+}
+
+/// <summary>
+/// Bounded bitmap decoding: checks encoded image dimensions via <see cref="SKCodec"/> before allocating pixel buffers,
+/// rejecting pixel bombs and handling <see cref="OutOfMemoryException"/> safely.
+/// </summary>
+internal static class SafeBitmap
+{
+    /// <summary>Allows full 8K (7680×4320 = 33.18 MP) while capping RGBA allocation around ~134 MB.</summary>
+    public const long DefaultMaxPixels = 33_554_432;
+
+    public static Bitmap? SafeBitmapDecode(byte[] bytes, int maxSide, long maxPixels = DefaultMaxPixels)
+    {
+        if (bytes == null || bytes.Length == 0 || maxSide <= 0 || maxPixels <= 0) return null;
+        try
+        {
+            using (var header = new MemoryStream(bytes, writable: false))
+            using (var codec = SKCodec.Create(header))
+            {
+                if (codec == null) return null;
+                var info = codec.Info;
+                if (info.Width <= 0 || info.Height <= 0 || info.Width > maxSide || info.Height > maxSide) return null;
+                if ((long)info.Width * info.Height > maxPixels) return null;
+            }
+            using var ms = new MemoryStream(bytes, writable: false);
+            var bitmap = new Bitmap(ms);
+            if (bitmap.PixelSize.Width <= 0 || bitmap.PixelSize.Height <= 0
+                || bitmap.PixelSize.Width > maxSide || bitmap.PixelSize.Height > maxSide
+                || (long)bitmap.PixelSize.Width * bitmap.PixelSize.Height > maxPixels)
+            {
+                bitmap.Dispose();
+                return null;
+            }
+            return bitmap;
+        }
+        catch (Exception ex) when (ex is OutOfMemoryException or NotSupportedException or ArgumentException or IOException or InvalidOperationException or NullReferenceException)
+        {
+            Diag.Log("Image decode rejected: " + ex.GetType().Name + ": " + ex.Message);
+            return null;
+        }
     }
 }

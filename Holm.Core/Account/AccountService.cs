@@ -76,8 +76,6 @@ internal sealed class AccountService : IDisposable
 
     public bool SignedIn => _file.Uid != null;
     public string? Email => _file.Email;
-    /// <summary>The account and this PC have different friend codes and the person hasn't said which to use yet.</summary>
-    public bool IdentityPending => _identityAsked;
     public bool Syncing { get; private set; }
     public DateTimeOffset? LastSync => _file.LastSync is long t and > 0 ? DateTimeOffset.FromUnixTimeSeconds(t) : null;
     /// <summary>Why the last sync failed, in words for the person; null when it worked.</summary>
@@ -428,7 +426,12 @@ internal sealed class AccountService : IDisposable
 
     static AccountFile Load(string path)
     {
-        try { return File.Exists(path) ? JsonSerializer.Deserialize<AccountFile>(File.ReadAllText(path), AccountJson.Options) ?? new() : new(); }
+        try
+        {
+            if (!File.Exists(path)) return new();
+            SecurityGuards.SetPrivatePermissions(path);
+            return JsonSerializer.Deserialize<AccountFile>(File.ReadAllText(path), AccountJson.Options) ?? new();
+        }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             Diag.Log("Account file unreadable, signed out: " + ex.Message);
@@ -441,10 +444,8 @@ internal sealed class AccountService : IDisposable
         if (AppSettings.ReadOnly || _file.Uid == null) return;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            string temp = _path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(_file, AccountJson.Options));
-            File.Move(temp, _path, overwrite: true);
+            SecurityGuards.EnsurePrivateDirectory(Path.GetDirectoryName(_path)!);
+            SecurityGuards.WritePrivateFile(_path, JsonSerializer.Serialize(_file, AccountJson.Options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Diag.Log("Couldn't save the account: " + ex.Message); }
     }

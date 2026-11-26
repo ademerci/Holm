@@ -5,21 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Holm relay</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* White, ink text and one Holm blue: the sky over a small island. */
   :root {
     --deep: #fff; --bg: #fafafa; --card: #fff; --raised: #f0f1f3; --line: rgba(17, 24, 39, .1);
     --text: #111827; --text2: #4b5565; --muted: #6b7487; --step: #c9ced6;
     --lamp: #1a73d9; --live: #2f9e48; --bad: #dc2626; --warn: #d97706;
-    --mono: "Geist Mono", ui-monospace, Consolas, monospace;
+    --mono: ui-monospace, Consolas, monospace;
     --ease: cubic-bezier(.2, .8, .2, 1);
   }
   * { box-sizing: border-box; }
   html, body { background: var(--bg); }
-  body { margin: 0; min-height: 100vh; color: var(--text); font: 14px/1.5 Geist, system-ui, sans-serif; }
+  body { margin: 0; min-height: 100vh; color: var(--text); font: 14px/1.5 system-ui, -apple-system, sans-serif; }
   main { max-width: 1120px; margin: 0 auto; padding: 0 24px 64px; }
   .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
@@ -112,7 +109,7 @@
   .login p { color: var(--text2); font-size: 13px; margin: 8px 0 24px; }
   .login form { display: flex; gap: 8px; }
   .login input { flex: 1; min-width: 0; height: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 2px; color: var(--text); font: 14px var(--mono); padding: 0 12px; }
-  .login button { height: 40px; border: 0; border-radius: 2px; padding: 0 16px; font: 500 14px Geist, sans-serif; color: var(--deep); background: var(--text); cursor: pointer; transition: background-color .15s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+  .login button { height: 40px; border: 0; border-radius: 2px; padding: 0 16px; font: 500 14px system-ui, -apple-system, sans-serif; color: var(--deep); background: var(--text); cursor: pointer; transition: background-color .15s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
   .login button:hover { background: #000; }
   .login input:focus-visible, .login button:focus-visible, .foot a:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
   .error { color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 20px; }
@@ -182,7 +179,7 @@
     <div class="foot"><span>Online counts open connections, one account on two PCs counts once. Quotas are estimates, the Cloudflare dashboard has the exact ones</span><a href="#" id="logout">Log out</a></div>
   </section>
 </main>
-<script>
+<script nonce="__NONCE__">
 const $ = (id) => document.getElementById(id);
 const fmt = (v) => Number(v || 0).toLocaleString("en");
 const demo = new URLSearchParams(location.search).has("demo");

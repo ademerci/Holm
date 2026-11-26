@@ -190,7 +190,6 @@ public sealed partial class NotchWindow
         _hoverBoost = false;
         _hovered = expand;
         Diag.Log(expand ? "Expanded" : "Collapsed");
-        if (!expand) _phoneLinked.MinHeight = 0; // held while rows were closed (NotchWindow.PhoneTool.cs)
         if (expand)
         {
             _trimTimer.Stop();

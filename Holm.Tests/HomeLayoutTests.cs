@@ -13,7 +13,7 @@ public class HomeLayoutTests
 
         Assert.True(layout.IsUsual);
         Assert.Equal(new[] { "tools", "main", "today", "live", "shelf", "status" }, layout.Sections);
-        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color", "beam", "phone" }, layout.ToolOrder);
+        Assert.Equal(new[] { "notes", "reminders", "calculator", "chats", "clipboard", "mixer", "ai", "color", "beam" }, layout.ToolOrder);
         Assert.Empty(layout.Hidden);
         Assert.Empty(layout.Swapped);
         Assert.Empty(layout.HiddenTools);
@@ -137,6 +137,22 @@ public class HomeLayoutTests
         layout.Write(settings);
         Assert.Empty(settings.HomeSections);
         Assert.Empty(settings.HomeTools);
+    }
+
+    [Fact]
+    public void Legacy_phone_tool_in_saved_settings_is_dropped_cleanly()
+    {
+        var settings = Read("""{"HomeTools":["beam","phone","notes","phone"],"HomeHiddenTools":["phone","beam"]}""");
+
+        var layout = HomeLayout.Read(settings);
+
+        Assert.DoesNotContain("phone", layout.ToolOrder);
+        Assert.DoesNotContain("phone", layout.HiddenTools);
+        Assert.Equal(HomeLayout.UsualTools.Count, layout.ToolOrder.Count);
+        Assert.Equal(HomeLayout.UsualTools.Count, layout.ToolOrder.Distinct().Count());
+        Assert.Equal("beam", layout.ToolOrder[0]);
+        Assert.Equal("notes", layout.ToolOrder[1]);
+        Assert.Equal(new[] { "beam" }, layout.HiddenTools);
     }
 
     [Fact]

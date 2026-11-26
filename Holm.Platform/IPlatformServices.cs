@@ -53,5 +53,5 @@ public sealed class NoPlatformServices : IPlatformServices
     public IMediaKeysPlatform MediaKeys { get; } = new NoMediaKeysPlatform();
     public ILocationPlatform Location { get; } = new NoLocationPlatform();
     public ISoundPlatform Sound { get; } = new NoSoundPlatform();
-    public IIdentityPlatform Identity { get; } = new UnixIdentityPlatform(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Holm"));
+    public IIdentityPlatform Identity { get; } = new UnixIdentityPlatform(System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Holm"));
 }

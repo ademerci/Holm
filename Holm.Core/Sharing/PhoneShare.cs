@@ -30,8 +30,9 @@ public sealed record PhoneRequest(string FirstName, int Count, long Bytes, strin
 /// </summary>
 public sealed class PhoneShare : IDisposable
 {
-    const int MaxHeader = 16 * 1024, MaxClients = 16;
-    static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(15), BodyTimeout = TimeSpan.FromSeconds(60);
+    const int MaxHeader = 16 * 1024, MaxClients = 16, MaxClientsPerIp = 4;
+    static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(5), BodyTimeout = TimeSpan.FromSeconds(60),
+                             WriteTimeout = TimeSpan.FromSeconds(30), MaxServerLifetime = TimeSpan.FromMinutes(30);
 
     static readonly Dictionary<string, string> Viewable = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -45,6 +46,7 @@ public sealed class PhoneShare : IDisposable
     readonly string _token;
     readonly CancellationTokenSource _cts = new();
     readonly SemaphoreSlim _slots = new(MaxClients);
+    readonly Dictionary<IPAddress, int> _clientsByIp = new();
     readonly bool[] _delivered;
     readonly string? _inbox;
     readonly List<string> _received = new();
@@ -72,7 +74,15 @@ public sealed class PhoneShare : IDisposable
     public Func<PhoneRequest, Task<bool>>? Ask { get; set; }
 
     const int MaxSessions = 32; // phones asked about in one link: more is someone pressing on
-    readonly Dictionary<string, Task<bool>> _sessions = new(StringComparer.Ordinal);
+    sealed class SessionState
+    {
+        public required IPAddress ClientIp { get; init; }
+        public required Task<bool> Answer { get; init; }
+        public int RemainingFiles;
+        public long RemainingBytes;
+        public bool Retired;
+    }
+    readonly Dictionary<string, SessionState> _sessions = new(StringComparer.Ordinal);
     readonly SemaphoreSlim _asking = new(1);
 
     /// <summary>The phone opened the page. Raised on a worker thread.</summary>
@@ -92,6 +102,7 @@ public sealed class PhoneShare : IDisposable
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         string host = address.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{address}]" : address.ToString();
         Url = $"http://{host}:{port}/{_token}/";
+        _cts.CancelAfter(MaxServerLifetime);
     }
 
     /// <summary>Offers the files on <paramref name="address"/>, on a port Windows picks.</summary>
@@ -128,21 +139,50 @@ public sealed class PhoneShare : IDisposable
             catch (SocketException) when (!ct.IsCancellationRequested) { continue; }
             catch (SocketException) { return; }
             if (!_slots.Wait(0)) { client.Dispose(); continue; } // more at once than any phone needs
+            var remoteIp = (client.Client.RemoteEndPoint as IPEndPoint)?.Address;
+            if (remoteIp == null || !TryAcquireIpSlot(remoteIp))
+            {
+                client.Dispose();
+                try { _slots.Release(); } catch (ObjectDisposedException) { }
+                continue;
+            }
             _ = Task.Run(async () =>
             {
-                try { await ServeAsync(client, ct).ConfigureAwait(false); }
+                try { await ServeAsync(client, remoteIp, ct).ConfigureAwait(false); }
                 catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException or ObjectDisposedException) { }
                 catch (Exception ex) { Diag.Log("Phone link: " + ex.Message); }
                 finally
                 {
                     client.Dispose();
+                    ReleaseIpSlot(remoteIp);
                     try { _slots.Release(); } catch (ObjectDisposedException) { }
                 }
             });
         }
     }
 
-    async Task ServeAsync(TcpClient client, CancellationToken ct)
+    bool TryAcquireIpSlot(IPAddress ip)
+    {
+        lock (_clientsByIp)
+        {
+            _clientsByIp.TryGetValue(ip, out int current);
+            if (current >= MaxClientsPerIp) return false;
+            _clientsByIp[ip] = current + 1;
+            return true;
+        }
+    }
+
+    void ReleaseIpSlot(IPAddress ip)
+    {
+        lock (_clientsByIp)
+        {
+            if (!_clientsByIp.TryGetValue(ip, out int current)) return;
+            if (current <= 1) _clientsByIp.Remove(ip);
+            else _clientsByIp[ip] = current - 1;
+        }
+    }
+
+    async Task ServeAsync(TcpClient client, IPAddress remoteIp, CancellationToken ct)
     {
         client.NoDelay = true;
         var stream = client.GetStream();
@@ -166,19 +206,14 @@ public sealed class PhoneShare : IDisposable
         var route = Route(parts[1], _token, Files.Count, IsReceiving);
         if (method == "POST" && route.Kind == RouteKind.Ask)
         {
-            bool yes = await AskAsync(lines).ConfigureAwait(false);
+            bool yes = await AskAsync(lines, remoteIp).ConfigureAwait(false);
             await WriteAsync(stream, yes ? 200 : 403, yes ? "OK" : "Forbidden", "text/plain; charset=utf-8",
                 yes ? "Accepted"u8.ToArray() : "Declined on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
             return;
         }
         if (method == "POST" && route.Kind == RouteKind.Upload)
         {
-            if (!Accepted(Header(lines, "X-Session")))
-            {
-                await WriteAsync(stream, 403, "Forbidden", "text/plain; charset=utf-8", "Not accepted on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
-                return;
-            }
-            await ReceiveFileAsync(stream, lines, head.Value.Body, ct).ConfigureAwait(false);
+            await ReceiveFileAsync(stream, lines, head.Value.Body, remoteIp, ct).ConfigureAwait(false);
             return;
         }
         if (method != "GET" && !headOnly)
@@ -267,25 +302,40 @@ public sealed class PhoneShare : IDisposable
     /// <summary>A phone's page names itself with a random id; 16 to 64 letters, digits, - or _.</summary>
     static bool IsSession(string? id) => id is { Length: >= 16 and <= 64 } && id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
 
-    bool Accepted(string? session)
+    bool TryConsumeSessionQuota(string? session, IPAddress remoteIp, long fileLength)
     {
-        if (!IsSession(session)) return false;
-        lock (_sessions) return _sessions.TryGetValue(session!, out var answer) && answer.IsCompletedSuccessfully && answer.Result;
+        if (!IsSession(session) || fileLength < 0 || fileLength > FileTransfer.MaxTotalBytes) return false;
+        lock (_sessions)
+        {
+            if (!_sessions.TryGetValue(session!, out var state)) return false;
+            if (state.Retired || !state.ClientIp.Equals(remoteIp)) return false;
+            if (!state.Answer.IsCompletedSuccessfully || !state.Answer.Result) return false;
+            if (state.RemainingFiles < 1 || state.RemainingBytes < fileLength) return false;
+            state.RemainingFiles -= 1;
+            state.RemainingBytes -= fileLength;
+            if (state.RemainingFiles == 0) state.Retired = true;
+            return true;
+        }
     }
 
     /// <summary>
     /// Before anything is sent, the phone asks: how many files, how big, the first one's name. Whoever sits at the
-    /// computer says yes or no (<see cref="Ask"/>); the answer holds for that phone's page as long as the link is
-    /// open, and anyone else who scans the code is asked about again. One question at a time; none answered is no.
+    /// computer says yes or no (<see cref="Ask"/>); the answer holds for that client IP up to the approved file count
+    /// and byte quota, after which the session is retired. One question at a time; none answered is no.
     /// </summary>
-    async Task<bool> AskAsync(string[] lines)
+    async Task<bool> AskAsync(string[] lines, IPAddress remoteIp)
     {
         string? session = Header(lines, "X-Session");
         if (!IsSession(session) || Ask is not { } ask) return false;
-        Task<bool> answer;
+        SessionState state;
         lock (_sessions)
         {
-            if (!_sessions.TryGetValue(session!, out answer!))
+            if (_sessions.TryGetValue(session!, out var existing))
+            {
+                if (!existing.ClientIp.Equals(remoteIp) || existing.Retired) return false;
+                state = existing;
+            }
+            else
             {
                 if (_sessions.Count >= MaxSessions) return false;
                 string raw = Header(lines, "X-Name") ?? "";
@@ -293,12 +343,21 @@ public sealed class PhoneShare : IDisposable
                 var culture = System.Globalization.CultureInfo.InvariantCulture;
                 int.TryParse(Header(lines, "X-Count"), System.Globalization.NumberStyles.None, culture, out int count);
                 long.TryParse(Header(lines, "X-Size"), System.Globalization.NumberStyles.None, culture, out long bytes);
-                var request = new PhoneRequest(FileTransfer.SafeFileName(raw), Math.Max(1, count), bytes, DeviceName(Header(lines, "User-Agent")));
-                answer = OneAtATimeAsync(() => ask(request));
-                _sessions[session!] = answer;
+                if (count > FileTransfer.MaxFiles || bytes < 0 || bytes > FileTransfer.MaxTotalBytes) return false;
+                int approvedCount = Math.Max(1, count);
+                var request = new PhoneRequest(FileTransfer.SafeFileName(raw), approvedCount, bytes, DeviceName(Header(lines, "User-Agent")));
+                var answer = OneAtATimeAsync(() => ask(request));
+                state = new SessionState
+                {
+                    ClientIp = remoteIp,
+                    Answer = answer,
+                    RemainingFiles = approvedCount,
+                    RemainingBytes = bytes,
+                };
+                _sessions[session!] = state;
             }
         }
-        try { return await answer.ConfigureAwait(false); }
+        try { return await state.Answer.ConfigureAwait(false); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return false; }
     }
 
@@ -313,13 +372,18 @@ public sealed class PhoneShare : IDisposable
     /// One file from the phone: its name in X-Name, its bytes as the body, with their length known up front. It is
     /// written under a name of its own in the inbox and kept only once every byte is there.
     /// </summary>
-    async Task ReceiveFileAsync(NetworkStream stream, string[] lines, byte[] rest, CancellationToken ct)
+    async Task ReceiveFileAsync(NetworkStream stream, string[] lines, byte[] rest, IPAddress remoteIp, CancellationToken ct)
     {
         if (Header(lines, "Transfer-Encoding") != null
             || !long.TryParse(Header(lines, "Content-Length"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long length)
-            || rest.Length > length)
+            || length < 0 || length > FileTransfer.MaxTotalBytes || rest.Length > length)
         {
             await WriteAsync(stream, 411, "Length Required", "text/plain; charset=utf-8", "The size of the file is missing"u8.ToArray(), false, ct).ConfigureAwait(false);
+            return;
+        }
+        if (!TryConsumeSessionQuota(Header(lines, "X-Session"), remoteIp, length))
+        {
+            await WriteAsync(stream, 403, "Forbidden", "text/plain; charset=utf-8", "Not accepted on the computer"u8.ToArray(), false, ct).ConfigureAwait(false);
             return;
         }
         string folder = _inbox!;
@@ -419,11 +483,13 @@ public sealed class PhoneShare : IDisposable
             source.Position = from;
             var buffer = new byte[64 * 1024];
             long left = to - from + 1, sent = 0, reported = 0;
+            using var writeIdle = CancellationTokenSource.CreateLinkedTokenSource(ct);
             while (left > 0)
             {
                 int read = await source.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, left)), ct).ConfigureAwait(false);
                 if (read == 0) break;
-                await stream.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                writeIdle.CancelAfter(WriteTimeout);
+                await stream.WriteAsync(buffer.AsMemory(0, read), writeIdle.Token).ConfigureAwait(false);
                 left -= read;
                 sent += read;
                 if (sent - reported >= 256 * 1024)
@@ -457,7 +523,12 @@ public sealed class PhoneShare : IDisposable
     static async Task WriteThenBodyAsync(NetworkStream stream, int status, string reason, IEnumerable<(string, string)> headers, byte[] body, CancellationToken ct)
     {
         await WriteHeadersAsync(stream, status, reason, headers, ct).ConfigureAwait(false);
-        if (body.Length > 0) await stream.WriteAsync(body, ct).ConfigureAwait(false);
+        if (body.Length > 0)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(WriteTimeout);
+            await stream.WriteAsync(body, timeout.Token).ConfigureAwait(false);
+        }
     }
 
     static async Task WriteHeadersAsync(NetworkStream stream, int status, string reason, IEnumerable<(string Name, string Value)> headers, CancellationToken ct)
@@ -465,7 +536,9 @@ public sealed class PhoneShare : IDisposable
         var text = new StringBuilder($"HTTP/1.1 {status} {reason}\r\n");
         foreach (var (name, value) in headers) text.Append(name).Append(": ").Append(value).Append("\r\n");
         text.Append("Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n");
-        await stream.WriteAsync(Encoding.Latin1.GetBytes(text.ToString()), ct).ConfigureAwait(false);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(WriteTimeout);
+        await stream.WriteAsync(Encoding.Latin1.GetBytes(text.ToString()), timeout.Token).ConfigureAwait(false);
     }
 
     public enum RouteKind { NotFound, Page, Download, View, Script, Upload, Ask }
@@ -580,7 +653,9 @@ public sealed class PhoneShare : IDisposable
     const string SendScript = """
         const input = document.getElementById('f'), list = document.getElementById('l');
         const base = location.pathname.replace(/\/?$/, '/');
-        const session = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+        function newSession() {
+          return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+        }
         let queue = Promise.resolve();
         input.addEventListener('change', () => {
           const files = Array.from(input.files), rows = [];
@@ -596,11 +671,12 @@ public sealed class PhoneShare : IDisposable
           input.value = '';
           if (files.length === 0) return;
           queue = queue.then(async () => {
-            if (!await ask(files)) { for (const state of rows) state.textContent = 'Declined on the computer'; return; }
-            for (let i = 0; i < files.length; i++) await send(files[i], rows[i]);
+            const session = newSession();
+            if (!await ask(session, files)) { for (const state of rows) state.textContent = 'Declined on the computer'; return; }
+            for (let i = 0; i < files.length; i++) await send(session, files[i], rows[i]);
           });
         });
-        async function ask(files) {
+        async function ask(session, files) {
           try {
             const answer = await fetch(base + 'ask', { method: 'POST', headers: {
               'X-Session': session, 'X-Name': encodeURIComponent(files[0].name),
@@ -608,7 +684,7 @@ public sealed class PhoneShare : IDisposable
             return answer.status === 200;
           } catch { return false; }
         }
-        function send(file, state) {
+        function send(session, file, state) {
           return new Promise(done => {
             const request = new XMLHttpRequest();
             request.open('POST', base + 'u');

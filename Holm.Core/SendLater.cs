@@ -29,7 +29,7 @@ internal static class SendLater
 {
     public static readonly TimeSpan GiveUpAfter = TimeSpan.FromDays(7);
     public static readonly TimeSpan NoteEvery = TimeSpan.FromHours(6);
-    public static string Folder => Path.Combine(Path.GetTempPath(), "Holm", "Later");
+    public static string Folder => SecurityGuards.GetPrivateTempDirectory("Later");
 
     public static TimeSpan AskEvery(TimeSpan waited) => waited < TimeSpan.FromHours(2) ? TimeSpan.FromMinutes(15) : TimeSpan.FromHours(1);
 

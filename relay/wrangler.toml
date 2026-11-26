@@ -22,6 +22,18 @@ name = "POST_LIMIT"
 namespace_id = "4711"
 simple = { limit = 120, period = 60 }
 
+# 60 reads or WebSocket opens a minute per address across /<topic>/json and /<topic>/ws.
+[[ratelimits]]
+name = "READ_LIMIT"
+namespace_id = "4712"
+simple = { limit = 60, period = 60 }
+
+# 10 admin stats requests a minute per address.
+[[ratelimits]]
+name = "ADMIN_LIMIT"
+namespace_id = "4713"
+simple = { limit = 10, period = 60 }
+
 # Anonymous counts for /admin (src/stats.js): kind of request and a short inbox hash, kept 3 months.
 [[analytics_engine_datasets]]
 binding = "STATS"

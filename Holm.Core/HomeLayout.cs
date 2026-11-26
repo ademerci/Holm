@@ -17,13 +17,13 @@ internal sealed class HomeLayout
 
     // The tools in the bar.
     public const string Notes = "notes", Reminders = "reminders", Calculator = "calculator", Chats = "chats",
-        Clipboard = "clipboard", Mixer = "mixer", Ai = "ai", ColorPicker = "color", Beam = "beam", Phone = "phone";
+        Clipboard = "clipboard", Mixer = "mixer", Ai = "ai", ColorPicker = "color", Beam = "beam";
 
     /// <summary>The sections from top to bottom as Holm shows them unless you move them.</summary>
     public static readonly IReadOnlyList<string> UsualSections = new[] { Tools, Main, Today, Live, Shelf, Status };
 
     /// <summary>The tools from left to right as Holm shows them unless you move them.</summary>
-    public static readonly IReadOnlyList<string> UsualTools = new[] { Notes, Reminders, Calculator, Chats, Clipboard, Mixer, Ai, ColorPicker, Beam, Phone };
+    public static readonly IReadOnlyList<string> UsualTools = new[] { Notes, Reminders, Calculator, Chats, Clipboard, Mixer, Ai, ColorPicker, Beam };
 
     /// <summary>
     /// What you can hide: the tool bar, the two cards, and the battery and volume. The player and clock always shows;

@@ -1,6 +1,8 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -14,8 +16,8 @@ using System.Threading.Tasks;
 
 namespace WinNotch.Sharing;
 
-/// <summary>Another Holm on the same network.</summary>
-public sealed record NearbyPeer(Guid Id, string Name, IPEndPoint Endpoint, DateTime LastSeen);
+/// <summary>Another Holm on the same network (unauthenticated LAN announcement unless verified via SAS).</summary>
+public sealed record NearbyPeer(Guid Id, string Name, IPEndPoint Endpoint, DateTime LastSeen, bool Authenticated = false);
 
 /// <summary>
 /// Finds other Holm apps on the local network (a small UDP broadcast) and accepts their transfers
@@ -115,7 +117,7 @@ public sealed class NearbyService : IDisposable
         await Task.Delay(700, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Connects to a peer for sending; the returned channel is encrypted.</summary>
+    /// <summary>Connects to a peer for sending; the returned channel is encrypted with an out-of-band SAS code.</summary>
     public static async Task<SecureChannel> ConnectAsync(NearbyPeer peer, CancellationToken ct)
     {
         var client = new TcpClient(AddressFamily.InterNetwork) { NoDelay = true };
@@ -125,8 +127,8 @@ public sealed class NearbyService : IDisposable
             timeout.CancelAfter(TimeSpan.FromSeconds(8));
             await client.ConnectAsync(peer.Endpoint, timeout.Token).ConfigureAwait(false);
             var stream = new NetworkStream(client.Client, ownsSocket: true);
-            var key = await AgreeKeyAsync(stream, initiator: true, timeout.Token).ConfigureAwait(false);
-            return new SecureChannel(stream, key, initiator: true);
+            var (key, sas) = await AgreeKeyWithSasAsync(stream, initiator: true, timeout.Token).ConfigureAwait(false);
+            return new SecureChannel(stream, key, initiator: true, verificationCode: sas, authenticated: false);
         }
         catch
         {
@@ -219,15 +221,28 @@ public sealed class NearbyService : IDisposable
             catch (JsonException) { continue; }
             if (packet == null || packet.App != App || packet.V != 1 || packet.Id == _id) continue;
 
+            var now = DateTime.UtcNow;
+            var senderIp = result.RemoteEndPoint.Address;
             if (packet.T == "bye")
             {
-                if (_peers.TryRemove(packet.Id, out _)) PeersChanged?.Invoke();
+                if (_peers.TryGetValue(packet.Id, out var existingBye)
+                    && existingBye.Endpoint.Address.Equals(senderIp)
+                    && _peers.TryRemove(packet.Id, out _))
+                    PeersChanged?.Invoke();
                 continue;
             }
             if (packet.Port is <= 0 or > 65535) continue;
 
+            // Refuse to overwrite an active, non-expired peer entry from a different source IP (HOLM-SEC-002).
+            if (_peers.TryGetValue(packet.Id, out var existing)
+                && now - existing.LastSeen < PeerLifetime
+                && !existing.Endpoint.Address.Equals(senderIp))
+            {
+                continue;
+            }
+
             string name = new string((packet.Name ?? "").Where(c => !char.IsControl(c)).Take(40).ToArray()).Trim();
-            var peer = new NearbyPeer(packet.Id, name.Length > 0 ? name : "Holm", new IPEndPoint(result.RemoteEndPoint.Address, packet.Port), DateTime.UtcNow);
+            var peer = new NearbyPeer(packet.Id, name.Length > 0 ? name : "Holm", new IPEndPoint(senderIp, packet.Port), now, Authenticated: false);
             bool isNew = !_peers.ContainsKey(packet.Id);
             _peers[packet.Id] = peer;
             if (isNew) PeersChanged?.Invoke();
@@ -267,12 +282,13 @@ public sealed class NearbyService : IDisposable
                 client.NoDelay = true;
                 var stream = new NetworkStream(client.Client, ownsSocket: false);
                 byte[] key;
+                string sas;
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
                 {
                     timeout.CancelAfter(TimeSpan.FromSeconds(10));
-                    key = await AgreeKeyAsync(stream, initiator: false, timeout.Token).ConfigureAwait(false);
+                    (key, sas) = await AgreeKeyWithSasAsync(stream, initiator: false, timeout.Token).ConfigureAwait(false);
                 }
-                await using var channel = new SecureChannel(stream, key, initiator: false);
+                await using var channel = new SecureChannel(stream, key, initiator: false, verificationCode: sas, authenticated: false);
                 var handler = Incoming;
                 if (handler != null)
                     await handler(channel, ((IPEndPoint)client.Client.RemoteEndPoint!).Address.ToString()).ConfigureAwait(false);
@@ -283,10 +299,13 @@ public sealed class NearbyService : IDisposable
     }
 
     /// <summary>
-    /// Ephemeral ECDH: both sides send a fresh public key; the shared key also covers both public keys,
-    /// so it is bound to this one connection.
+    /// Ephemeral ECDH: both sides send a fresh NIST P-256 public key; the shared key and a 6-digit
+    /// Short Authentication String (SAS) both cover the transcript of the two public keys.
     /// </summary>
     internal static async Task<byte[]> AgreeKeyAsync(Stream stream, bool initiator, CancellationToken ct)
+        => (await AgreeKeyWithSasAsync(stream, initiator, ct).ConfigureAwait(false)).Key;
+
+    internal static async Task<(byte[] Key, string Sas)> AgreeKeyWithSasAsync(Stream stream, bool initiator, CancellationToken ct)
     {
         using var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         byte[] mine = ecdh.PublicKey.ExportSubjectPublicKeyInfo();
@@ -301,12 +320,30 @@ public sealed class NearbyService : IDisposable
         var theirs = new byte[length];
         await stream.ReadExactlyAsync(theirs, ct).ConfigureAwait(false);
 
-        using var other = ECDiffieHellman.Create();
-        other.ImportSubjectPublicKeyInfo(theirs, out _);
-        if (other.KeySize != 256) throw new InvalidDataException("Bad key.");
+        ECDiffieHellman other;
+        try { other = SecurityGuards.ImportP256PublicKey(theirs); }
+        catch (Exception ex) when (ex is CryptographicException or ArgumentException)
+        {
+            throw new InvalidDataException("Bad key.", ex);
+        }
+        using (other)
+        {
+            byte[] transcript = SHA256.HashData(initiator ? Concat(mine, theirs) : Concat(theirs, mine));
+            byte[] key = ecdh.DeriveKeyFromHash(other.PublicKey, HashAlgorithmName.SHA256, Encoding.ASCII.GetBytes("WinNotch LAN v1"), transcript);
+            string sas = ComputeSas(transcript);
+            return (key, sas);
+        }
+    }
 
-        byte[] transcript = SHA256.HashData(initiator ? Concat(mine, theirs) : Concat(theirs, mine));
-        return ecdh.DeriveKeyFromHash(other.PublicKey, HashAlgorithmName.SHA256, Encoding.ASCII.GetBytes("WinNotch LAN v1"), transcript);
+    internal static string ComputeSas(byte[] transcript)
+    {
+        byte[] label = "Holm LAN SAS v1"u8.ToArray();
+        byte[] input = new byte[transcript.Length + label.Length];
+        transcript.CopyTo(input, 0);
+        label.CopyTo(input, transcript.Length);
+        byte[] hash = SHA256.HashData(input);
+        uint code = BinaryPrimitives.ReadUInt32BigEndian(hash) % 1_000_000;
+        return code.ToString("D6", CultureInfo.InvariantCulture);
     }
 
     static byte[] Concat(byte[] a, byte[] b)

@@ -128,6 +128,11 @@ public sealed class FriendIdentity : IDisposable
     public string Server { get; }
     public ECDiffieHellman Key { get; }
     public string PublicKey { get; }
+    /// <summary>
+    /// Deterministic 256-bit base64url read token derived from the private scalar and inbox topic, used to authenticate
+    /// <c>GET /&lt;topic&gt;/ws</c> on Holm's relay (<c>X-Holm-Read-Token</c>, HOLM-SEC-004).
+    /// </summary>
+    public string RelayReadToken { get; }
 
     public FriendIdentity(string name, string topic, string? server, ECDiffieHellman key)
     {
@@ -136,6 +141,21 @@ public sealed class FriendIdentity : IDisposable
         Server = NormalizeServer(server);
         Key = key;
         PublicKey = Base64Url(key.ExportSubjectPublicKeyInfo());
+        RelayReadToken = ComputeRelayReadToken(key, topic);
+    }
+
+    static string ComputeRelayReadToken(ECDiffieHellman key, string topic)
+    {
+        var p = key.ExportParameters(includePrivateParameters: true);
+        try
+        {
+            byte[] mac = HMACSHA256.HashData(p.D!, Encoding.UTF8.GetBytes("Holm relay read v1\0" + topic));
+            return Base64Url(mac);
+        }
+        finally
+        {
+            if (p.D != null) CryptographicOperations.ZeroMemory(p.D);
+        }
     }
 
     /// <summary>A new inbox (130 random bits, so nobody can guess it) and a new key pair.</summary>
@@ -169,20 +189,16 @@ public sealed class FriendIdentity : IDisposable
     {
         if (FindFriendCode(text) is not { } code) return null;
         try { return FromCard(JsonSerializer.Deserialize<CodeCard>(FromBase64Url(code[CodePrefix.Length..]), CodeJson)); }
-        catch (Exception ex) when (ex is JsonException or FormatException or CryptographicException) { return null; }
+        catch (Exception ex) when (ex is JsonException or FormatException or CryptographicException or ArgumentException) { return null; }
     }
 
     static Friend? FromCard(CodeCard? card)
     {
         if (card == null || string.IsNullOrWhiteSpace(card.T) || string.IsNullOrWhiteSpace(card.K)) return null;
         if (!Regex.IsMatch(card.T, "^[A-Za-z0-9_-]{1,64}$")) return null;
-        using (var check = ECDiffieHellman.Create())
-        {
-            check.ImportSubjectPublicKeyInfo(FromBase64Url(card.K), out _);
-            if (check.KeySize != 256) return null;
-        }
+        if (!SecurityGuards.IsP256Spki(FromBase64Url(card.K))) return null;
         string? server = card.S == null ? null : NormalizeServer(card.S);
-        if (server != null && !(Uri.TryCreate(server, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")) return null;
+        if (server != null && !SecurityGuards.IsSafePublicHttpsUri(server, allowLoopbackWhenTesting: true)) return null;
         string name = new string((card.N ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
         if (name.Length == 0) name = "Friend";
         return new Friend { Name = name.Length > 40 ? name[..40] : name, Topic = card.T, Key = card.K, Server = server };
@@ -229,7 +245,7 @@ public sealed record FriendNote(FriendNoteKind Kind, string From, long Sent, byt
                                 string? RequestId = null, bool? Accepted = null, FriendProfile? Profile = null,
                                 string? Text = null, string? MessageId = null, FriendActivity? Activity = null, int? Trophies = null,
                                 string? Gif = null, string? Invite = null, string? Device = null, string? ForDevice = null, bool? Query = null,
-                                PhoneStatus? Phone = null);
+                                string? Nonce = null);
 
 /// <summary>
 /// What a friend is doing, as their notch shows it to friends who ask: listening to music, in a call, playing a game,
@@ -281,16 +297,11 @@ public enum FriendNoteKind
     /// <summary>A reaction to a chat message (an emoji in <c>Text</c>, none to take it away). Holm before 1.9.2 leaves it unopened.</summary>
     Reaction,
     /// <summary>
-    /// "This device of yours is running": another Holm (a PC or the phone app) signed in to the same account, so with the
+    /// "This device of yours is running": another Holm PC signed in to the same account, so with the
     /// same identity, says its name and id in our own inbox. With <c>Query</c> it asks the others to say theirs. Holm
     /// before 2.3 leaves it unopened.
     /// </summary>
     Device,
-    /// <summary>
-    /// The phone app, to the account's PCs: a notification, a call, a song, a timer or a full battery on the phone, for their notch
-    /// (<see cref="FriendNote.Phone"/>). Holm before 2.3 leaves it unopened.
-    /// </summary>
-    Phone,
 }
 
 public static class FriendNotes
@@ -336,15 +347,21 @@ public static class FriendNotes
         public string? N { get; set; }
         /// <summary>In "device": "and who else is there?" – the others answer with their own.</summary>
         public bool? H { get; set; }
+        /// <summary>Unique per-note replay-protection nonce (HOLM-SEC-006). Optional for backwards compatibility.</summary>
+        public string? J { get; set; }
     }
 
-    /// <summary>The key two friends share: SHA-256 over a label and their ECDH secret.</summary>
+    /// <summary>The key two friends share: SHA-256 over a label and their NIST P-256 ECDH secret.</summary>
     static byte[] SharedKey(ECDiffieHellman mine, string theirPublicKey)
     {
-        using var theirs = ECDiffieHellman.Create();
-        theirs.ImportSubjectPublicKeyInfo(FriendIdentity.FromBase64Url(theirPublicKey), out _);
+        using var theirs = SecurityGuards.ImportP256PublicKey(FriendIdentity.FromBase64Url(theirPublicKey));
         return mine.DeriveKeyFromHash(theirs.PublicKey, HashAlgorithmName.SHA256, KeyLabel, null);
     }
+
+    static string NewNoteNonce() => FriendIdentity.Base64Url(RandomNumberGenerator.GetBytes(12));
+
+    static string? CleanNonce(string? nonce)
+        => nonce is { Length: >= 8 and <= 64 } && nonce.All(c => c is >= '!' and <= '~') ? nonce : null;
 
     public static string Seal(FriendIdentity me, Friend to, FriendNote note)
     {
@@ -367,7 +384,6 @@ public static class FriendNotes
                 FriendNoteKind.Stream => "stream",
                 FriendNoteKind.Reaction => "react",
                 FriendNoteKind.Device => "device",
-                FriendNoteKind.Phone => "phone",
                 _ => throw new ArgumentOutOfRangeException(nameof(note)),
             },
             F = note.From,
@@ -375,23 +391,24 @@ public static class FriendNotes
             S = note.Secret == null ? null : Convert.ToBase64String(note.Secret),
             C = note.Code,
             R = note.RequestId,
-            A = note.Accepted ?? (note.Phone is { On: false } ? false : null),
+            A = note.Accepted,
             U = note.Profile?.Status,
             O = note.Profile?.Color,
             P = note.Profile?.Picture == null ? null : Convert.ToBase64String(note.Profile.Picture),
             // As base64 of the UTF-8: JSON would write each emoji as twelve characters.
-            M = (note.Text ?? note.Phone?.Extra) is { } words ? Convert.ToBase64String(Encoding.UTF8.GetBytes(words)) : null,
-            I = note.MessageId ?? note.Phone?.Key,
-            Y = note.Activity?.Kind ?? note.Phone?.Kind,
-            V = note.Activity?.Title ?? note.Phone?.Title,
-            W = note.Activity?.Detail ?? note.Phone?.Detail,
-            Z = note.Activity?.Since ?? note.Phone?.Since,
+            M = note.Text is { } words ? Convert.ToBase64String(Encoding.UTF8.GetBytes(words)) : null,
+            I = note.MessageId,
+            Y = note.Activity?.Kind,
+            V = note.Activity?.Title,
+            W = note.Activity?.Detail,
+            Z = note.Activity?.Since,
             Q = note.Trophies,
             G = note.Gif != null ? true : null,
             X = note.Invite,
             D = note.Device,
             N = note.ForDevice,
             H = note.Query == true ? true : null,
+            J = CleanNonce(note.Nonce) ?? NewNoteNonce(),
         };
         return SealDto(me, to, dto);
     }
@@ -414,7 +431,7 @@ public static class FriendNotes
 
     /// <summary>Seals a note of any kind, also one this version doesn't know (to test how unknown kinds are met).</summary>
     internal static string SealKind(FriendIdentity me, Friend to, string kind, string from, long sent)
-        => SealDto(me, to, new NoteDto { K = kind, F = from, T = sent });
+        => SealDto(me, to, new NoteDto { K = kind, F = from, T = sent, J = NewNoteNonce() });
 
     static string SealDto(FriendIdentity me, Friend to, NoteDto dto)
     {
@@ -477,18 +494,21 @@ public static class FriendNotes
                 "react" when Guid.TryParseExact(dto.I, "N", out _) && (dto.M == null || ChatReaction.Clean(ChatText.FromNote(dto.M)) != null)
                     => new FriendNote(FriendNoteKind.Reaction, from, dto.T, Text: dto.M == null ? null : ChatReaction.Clean(ChatText.FromNote(dto.M)), MessageId: dto.I),
                 "device" when OwnDevice.IsId(dto.D) => new FriendNote(FriendNoteKind.Device, from, dto.T, Query: dto.H == true ? true : null),
-                "phone" when OwnDevice.IsId(dto.D) && PhoneStatus.From(dto.Y, dto.V, dto.W, dto.Z, dto.A, ChatText.FromNote(dto.M)) is { } phone
-                    => new FriendNote(FriendNoteKind.Phone, from, dto.T, Phone: phone with { Key = PhoneStatus.CleanKey(dto.I) }),
-                _ => null, // a kind from a newer Holm: left unopened, as older ones leave "wave"
+                _ => null, // a kind from a newer or retired Holm: left unopened, as older ones leave "wave"
             };
             if (note != null)
             {
                 senderKey = parts[0];
-                note = note with { Device = OwnDevice.IsId(dto.D) ? dto.D : null, ForDevice = OwnDevice.IsId(dto.N) ? dto.N : null };
+                note = note with
+                {
+                    Device = OwnDevice.IsId(dto.D) ? dto.D : null,
+                    ForDevice = OwnDevice.IsId(dto.N) ? dto.N : null,
+                    Nonce = CleanNonce(dto.J),
+                };
             }
             return note;
         }
-        catch (Exception ex) when (ex is CryptographicException or FormatException or JsonException) { return null; }
+        catch (Exception ex) when (ex is CryptographicException or FormatException or JsonException or ArgumentException) { return null; }
     }
 }
 
@@ -498,17 +518,20 @@ public static class FriendNotes
 /// </summary>
 public static class FriendInbox
 {
-    static readonly HttpClient Http = new(new SocketsHttpHandler
-    {
-        ConnectTimeout = TimeSpan.FromSeconds(15),
-        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-    })
+    static readonly HttpMessageInvoker SafeInvoker = new(SecurityGuards.CreateSafeHttpHandler(allowRedirects: false, allowLoopbackWhenTesting: true));
+    static readonly HttpClient Http = new(SecurityGuards.CreateSafeHttpHandler(allowRedirects: false, allowLoopbackWhenTesting: true))
     {
         Timeout = Timeout.InfiniteTimeSpan, // our inbox is one long request; posting has its own token
         DefaultRequestHeaders = { { "User-Agent", "Holm-Friends/1" } },
     };
 
-    static string InboxUrl(string? server, string topic) => $"{FriendIdentity.NormalizeServer(server)}/{Uri.EscapeDataString(topic)}";
+    static string InboxUrl(string? server, string topic)
+    {
+        string normalized = FriendIdentity.NormalizeServer(server);
+        if (!SecurityGuards.IsSafePublicHttpsUri(normalized, allowLoopbackWhenTesting: true))
+            throw new IOException("Refused unsafe inbox server URL.");
+        return $"{normalized}/{Uri.EscapeDataString(topic)}";
+    }
 
     static string Host(string? server)
         => Uri.TryCreate(FriendIdentity.NormalizeServer(server), UriKind.Absolute, out var uri) ? uri.Host : "the server";
@@ -553,21 +576,23 @@ public static class FriendInbox
     }
 
     /// <summary>
-    /// Leaves a sealed invite card at an invite code's inbox, where it waits 12 hours: on the relay, and on ntfy for
-    /// friends whose Holm is older than the relay. Either one is enough.
+    /// Leaves a sealed invite card at an invite code's inbox on Holm's relay, where it waits 12 hours.
+    /// Does not mirror invite cards to third-party ntfy.sh by default (HOLM-SEC-028).
     /// </summary>
-    /// <exception cref="IOException">Neither server took it.</exception>
-    public static async Task PublishInviteAsync(string topic, string card, CancellationToken ct)
-    {
-        var relay = PostToAsync(FriendIdentity.RelayServer, topic, card, true, ct);
-        var legacy = PostToAsync(FriendIdentity.DefaultServer, topic, card, true, ct);
-        await EitherAsync(relay, legacy).ConfigureAwait(false);
-    }
+    /// <exception cref="IOException">The relay didn't take it.</exception>
+    public static Task PublishInviteAsync(string topic, string card, CancellationToken ct)
+        => PostToAsync(FriendIdentity.RelayServer, topic, card, true, ct);
 
-    /// <summary>The invite cards waiting at an invite code's inbox on the relay and on ntfy, newest first.</summary>
-    /// <exception cref="IOException">Neither server could be reached.</exception>
-    public static async Task<List<string>> FetchInviteAsync(string topic, CancellationToken ct)
+    /// <summary>The invite cards waiting at an invite code's inbox on Holm's relay, newest first.</summary>
+    /// <exception cref="IOException">The relay couldn't be reached.</exception>
+    public static async Task<List<string>> FetchInviteAsync(string topic, CancellationToken ct, bool allowLegacyNtfy = false)
     {
+        if (!allowLegacyNtfy)
+        {
+            var relayCards = await FetchInviteFromAsync(FriendIdentity.RelayServer, topic, ct).ConfigureAwait(false);
+            relayCards.Reverse();
+            return relayCards;
+        }
         var relay = FetchInviteFromAsync(FriendIdentity.RelayServer, topic, ct);
         var legacy = FetchInviteFromAsync(FriendIdentity.DefaultServer, topic, ct);
         await EitherAsync(relay, legacy).ConfigureAwait(false);
@@ -658,7 +683,7 @@ public static class FriendInbox
     /// connection. <paramref name="connected"/> runs each time the relay let us in.
     /// </summary>
     public static async Task FollowRelayAsync(string topic, long? since, Func<string, long, string, Task> received, Action<long> handled,
-                                              Action? connected, Action<string>? log, CancellationToken ct)
+                                              Action? connected, Action<string>? log, CancellationToken ct, string? readToken = null)
     {
         var delay = TimeSpan.FromSeconds(2);
         var buffer = new byte[8192];
@@ -670,11 +695,13 @@ public static class FriendInbox
                 ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
                 ws.Options.KeepAliveTimeout = TimeSpan.FromSeconds(30); // a ping without a pong ends the connection
                 ws.Options.SetRequestHeader("User-Agent", "Holm-Friends/1");
+                if (!string.IsNullOrEmpty(readToken))
+                    ws.Options.SetRequestHeader("X-Holm-Read-Token", readToken);
                 string url = Regex.Replace(InboxUrl(FriendIdentity.RelayServer, topic), "^http", "ws") + "/ws" + (since != null ? "?since=" + since : "");
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
                 {
                     timeout.CancelAfter(TimeSpan.FromSeconds(20));
-                    await ws.ConnectAsync(new Uri(url), timeout.Token).ConfigureAwait(false);
+                    await ws.ConnectAsync(new Uri(url), SafeInvoker, timeout.Token).ConfigureAwait(false);
                 }
                 log?.Invoke("Friends inbox connected: " + Host(FriendIdentity.RelayServer));
                 delay = TimeSpan.FromSeconds(2);

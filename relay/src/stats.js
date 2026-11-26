@@ -9,6 +9,40 @@ import PAGE from "./admin.html"; // wrangler bundles .html as text
 
 const DATASET = "holm_relay";
 const FREE = { workerRequests: 100_000, objectRequests: 100_000, rowsWritten: 100_000 };
+const ADMIN_PER_MINUTE = 10;
+const ADMIN_WINDOW_MS = 60_000;
+const adminHits = new Map();
+
+const SECURITY_HEADERS = {
+  "x-frame-options": "DENY",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "cache-control": "no-store",
+};
+
+function randomNonce() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function allowAdminLocal(ip) {
+  const t = Date.now();
+  const cutoff = t - ADMIN_WINDOW_MS;
+  const recent = (adminHits.get(ip) ?? []).filter((ts) => ts > cutoff);
+  if (recent.length >= ADMIN_PER_MINUTE) {
+    adminHits.set(ip, recent);
+    return false;
+  }
+  recent.push(t);
+  adminHits.set(ip, recent);
+  if (adminHits.size > 1024) {
+    for (const [k, v] of adminHits) {
+      if (v.length === 0 || v[v.length - 1] <= cutoff) adminHits.delete(k);
+    }
+    if (adminHits.size > 1024) adminHits.delete(adminHits.keys().next().value);
+  }
+  return true;
+}
 
 /** An inbox as the counts know it: 12 hex characters of its SHA-256, so the counts can't be used to read it. */
 export async function inboxHash(topic) {
@@ -28,11 +62,15 @@ export async function track(env, kind, topic) {
   } catch { /* counting never breaks a note */ }
 }
 
-function sameKey(a, b) {
-  const x = new TextEncoder().encode(a ?? ""), y = new TextEncoder().encode(b ?? "");
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
-  return diff === 0;
+/** Constant-time key comparison via fixed-length SHA-256 digests (no length leak). */
+async function sameKey(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length === 0 || b.length === 0) return false;
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  return crypto.subtle.timingSafeEqual(ha, hb);
 }
 
 async function query(env, sql) {
@@ -41,7 +79,7 @@ async function query(env, sql) {
     headers: { authorization: `Bearer ${env.CF_API_TOKEN}` },
     body: `${sql} FORMAT JSON`,
   });
-  if (!response.ok) throw new Error(`Analytics Engine answered ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  if (!response.ok) throw new Error(`Analytics Engine answered ${response.status}`);
   return (await response.json()).data ?? [];
 }
 
@@ -81,13 +119,36 @@ export async function stats(env) {
 
 /** /admin and /admin/stats, or null for anything else. */
 export async function admin(request, env, path) {
-  if (path === "/admin" || path === "/admin/") return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  if (path === "/admin" || path === "/admin/") {
+    const nonce = randomNonce();
+    const html = PAGE.replace("__NONCE__", nonce);
+    return new Response(html, {
+      headers: {
+        ...SECURITY_HEADERS,
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy":
+          `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; font-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
+      },
+    });
+  }
   if (path !== "/admin/stats") return null;
-  const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-  if (!env.ADMIN_KEY) return json(503, { error: "ADMIN_KEY isn't set: npx wrangler secret put ADMIN_KEY" });
-  const key = (request.headers.get("authorization") ?? "").replace(/^Bearer /, "");
-  if (!sameKey(key, env.ADMIN_KEY)) return json(401, { error: "wrong key" });
-  if (!env.CF_API_TOKEN || !env.ACCOUNT_ID) return json(503, { error: "CF_API_TOKEN or ACCOUNT_ID isn't set" });
+  const json = (status, body) => new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...SECURITY_HEADERS,
+      "content-type": "application/json",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+    },
+  });
+  const ip = request.headers.get("cf-connecting-ip") ?? "local";
+  if ((env.ADMIN_LIMIT && !(await env.ADMIN_LIMIT.limit({ key: ip })).success) || !allowAdminLocal(ip)) {
+    return json(429, { error: "too many requests" });
+  }
+  if (!env.ADMIN_KEY) return json(503, { error: "admin not configured" });
+  const auth = request.headers.get("authorization") ?? "";
+  const key = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!(await sameKey(key, env.ADMIN_KEY))) return json(401, { error: "wrong key" });
+  if (!env.CF_API_TOKEN || !env.ACCOUNT_ID) return json(503, { error: "analytics not configured" });
   try { return json(200, await stats(env)); }
-  catch (e) { return json(502, { error: String(e.message ?? e) }); }
+  catch { return json(502, { error: "analytics unavailable" }); }
 }

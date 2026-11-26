@@ -82,19 +82,20 @@ public sealed class RelayInboxTests : IDisposable
     }
 
     [Fact]
-    public async Task An_invite_goes_to_both_servers_and_one_left_by_an_older_Holm_is_found_on_ntfy()
+    public async Task An_invite_goes_to_the_relay_only_and_legacy_ntfy_lookup_is_opt_in()
     {
         using var lena = FriendIdentity.Create("Lena", null);
         string code = FriendInvite.New(), old = FriendInvite.New();
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         await FriendInbox.PublishInviteAsync(FriendInvite.Topic(code), FriendInvite.Seal(code, lena.FriendCode, now + 600), Net.Timeout());
         Assert.Single(_relay.Posts);
-        Assert.Single(_ntfy.Posts); // for friends whose Holm doesn't know the relay
+        Assert.Empty(_ntfy.Posts); // HOLM-SEC-028: never mirror invite cards to third-party ntfy.sh
 
-        _ntfy.Keep(FriendInvite.Topic(old), FriendInvite.Seal(old, lena.FriendCode, now + 600)); // as Holm 1.17 leaves it
+        _ntfy.Keep(FriendInvite.Topic(old), FriendInvite.Seal(old, lena.FriendCode, now + 600)); // legacy card left on ntfy
         _relay.Status = 503;
-        var cards = await FriendInbox.FetchInviteAsync(FriendInvite.Topic(old), Net.Timeout());
-        Assert.NotNull(FriendInvite.Open(old, Assert.Single(cards), now));
+        await Assert.ThrowsAsync<IOException>(() => FriendInbox.FetchInviteAsync(FriendInvite.Topic(old), Net.Timeout()));
+        var legacyCards = await FriendInbox.FetchInviteAsync(FriendInvite.Topic(old), Net.Timeout(), allowLegacyNtfy: true);
+        Assert.NotNull(FriendInvite.Open(old, Assert.Single(legacyCards), now));
     }
 
     [Fact]

@@ -1,73 +1,57 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using WinNotch.Sharing;
 
 namespace WinNotch.Tests;
 
-/// <summary>Notes between the devices of one account (the phone app, other PCs), which share one identity and inbox.</summary>
+/// <summary>Notes between the devices of one account (PCs signed in to the same account), which share one identity and inbox.</summary>
 public class OwnDevicesTests
 {
     static readonly DateTime T0 = new(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);
-    static readonly string Pc = OwnDevice.NewId(), Phone = OwnDevice.NewId();
+    static readonly string Pc = OwnDevice.NewId(), Laptop = OwnDevice.NewId();
 
     [Fact]
     public void A_device_note_sealed_for_ourselves_opens_with_its_id_and_question()
     {
         using var me = FriendIdentity.Create("Elias", null);
-        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Device, "Pixel 9", 10, Device: Phone, Query: true));
+        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Device, "Work Laptop", 10, Device: Laptop, Query: true));
         var note = FriendNotes.Open(me, text, out string sender);
         Assert.NotNull(note);
         Assert.Equal(FriendNoteKind.Device, note!.Kind);
-        Assert.Equal("Pixel 9", note.From);
-        Assert.Equal(Phone, note.Device);
+        Assert.Equal("Work Laptop", note.From);
+        Assert.Equal(Laptop, note.Device);
         Assert.True(note.Query);
         Assert.Equal(me.PublicKey, sender); // sealed by our own identity: one of our devices
     }
 
     [Fact]
-    public void The_phone_tells_the_pc_what_happens_on_it()
+    public void Legacy_phone_note_is_silently_ignored()
     {
         using var me = FriendIdentity.Create("Elias", null);
-        var status = new PhoneStatus(PhoneStatus.Notification, "Lena", "WhatsApp · See you at 8", 0, true);
-        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: status));
-        var note = FriendNotes.Open(me, text, out _);
-        Assert.Equal(FriendNoteKind.Phone, note!.Kind);
-        Assert.Equal(Phone, note.Device);
-        Assert.Equal(status, note.Phone);
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        // Music that paused says so; a kind this version doesn't know, or no title, leaves the note unopened.
-        var paused = new PhoneStatus(PhoneStatus.Music, "Song", "Artist", 0, false);
-        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: paused));
-        Assert.False(FriendNotes.Open(me, text, out _)!.Phone!.On);
-        Assert.Null(PhoneStatus.From("weather", "Sunny", null, 0, true));
-        Assert.Equal(PhoneStatus.Battery, PhoneStatus.From("battery", "Charged", "100%", 0, true)!.Kind);
-        // Now and then the phone's state, for the phone tool: the battery, charging, the song.
-        var state = PhoneStatus.From("status", "87%", "Golden Hour · Holm Demo", 0, false)!;
-        Assert.Equal(("87%", "Golden Hour · Holm Demo", false), (state.Title, state.Detail, state.On));
+        string minimal = FriendNotes.SealKind(me, me.AsFriend(), "phone", "Old Phone", now);
+        Assert.Null(FriendNotes.Open(me, minimal, out _));
 
-        // Its connections travel along as JSON and read as words; anything else in there is left out.
-        var full = new PhoneStatus(PhoneStatus.Status, "87%", null, 0, true, "{\"net\":\"wifi\",\"vpn\":true,\"bt\":\"AirPods 80%\",\"dnd\":true}");
-        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: full));
-        var back = FriendNotes.Open(me, text, out _)!.Phone!;
-        Assert.Equal(new[] { "Wi-Fi", "VPN", "AirPods 80%", "Do Not Disturb" }, back.Connections());
-        Assert.Empty(new PhoneStatus(PhoneStatus.Status, "87%", null, 0, true, "not json").Connections());
+        // Full legacy "phone" payload carrying a valid device id and status fields must still open as null without throwing.
+        byte[] plain = Encoding.UTF8.GetBytes(
+            $$"""{"K":"phone","F":"Old Phone","T":{{now}},"D":"{{Laptop}}","Y":"notification","V":"Lena","W":"WhatsApp · Hi","Z":0,"A":true,"I":"0|com.whatsapp|1"}""");
+        byte[] sharedKey = me.Key.DeriveKeyFromHash(me.Key.PublicKey, HashAlgorithmName.SHA256, "WinNotch friends v1"u8.ToArray(), null);
+        byte[] sealedNote = new byte[12 + 16 + plain.Length];
+        RandomNumberGenerator.Fill(sealedNote.AsSpan(0, 12));
+        using (var aes = new AesGcm(sharedKey, 16))
+            aes.Encrypt(sealedNote.AsSpan(0, 12), plain, sealedNote.AsSpan(28), sealedNote.AsSpan(12, 16), Encoding.UTF8.GetBytes(me.Topic));
+        string fullLegacy = FriendNotes.Prefix + me.PublicKey + " " + FriendIdentity.Base64Url(sealedNote);
 
-        // A notification carries its key (the PC can close it on the phone); a PC's "close" is never read as a status.
-        var message = new PhoneStatus(PhoneStatus.Notification, "Lena", "WhatsApp · Hi", 0, true, Key: "0|com.whatsapp|1|null|10");
-        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "Pixel 9", 10, Device: Phone, Phone: message));
-        Assert.Equal("0|com.whatsapp|1|null|10", FriendNotes.Open(me, text, out _)!.Phone!.Key);
-        var close = new PhoneStatus(PhoneStatus.Dismiss, "dismiss", null, 0, true, Key: "0|com.whatsapp|1|null|10");
-        text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Phone, "PC", 10, Device: Pc, ForDevice: Phone, Phone: close));
-        Assert.Null(FriendNotes.Open(me, text, out _));
-        Assert.Null(PhoneStatus.CleanKey(new string('k', 400)));
-        Assert.Null(PhoneStatus.From(PhoneStatus.Call, "  ", null, 0, true));
-        Assert.Equal(80, PhoneStatus.From(PhoneStatus.Call, new string('a', 200), null, 0, true)!.Title.Length);
+        Assert.Null(FriendNotes.Open(me, fullLegacy, out _));
     }
 
     [Fact]
     public void A_device_note_without_a_valid_id_is_left_unopened()
     {
         using var me = FriendIdentity.Create("Elias", null);
-        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Device, "Pixel 9", 10, Device: "not-an-id"));
+        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Device, "Work Laptop", 10, Device: "not-an-id"));
         Assert.Null(FriendNotes.Open(me, text, out _));
     }
 
@@ -76,11 +60,11 @@ public class OwnDevicesTests
     {
         using var me = FriendIdentity.Create("Elias", null);
         var secret = ShareCode.NewSecret();
-        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Files, "Pixel 9", 10, Secret: secret, Device: Phone, ForDevice: Pc));
+        string text = FriendNotes.Seal(me, me.AsFriend(), new FriendNote(FriendNoteKind.Files, "Work Laptop", 10, Secret: secret, Device: Laptop, ForDevice: Pc));
         var note = FriendNotes.Open(me, text, out _)!;
         Assert.Equal(FriendNoteKind.Files, note.Kind);
         Assert.Equal(secret, note.Secret);
-        Assert.Equal(Phone, note.Device);
+        Assert.Equal(Laptop, note.Device);
         Assert.Equal(Pc, note.ForDevice);
     }
 
@@ -99,27 +83,27 @@ public class OwnDevicesTests
     public void Devices_count_while_they_spoke_lately()
     {
         var devices = new OwnDevices();
-        Assert.True(devices.Saw(Phone, "Pixel 9", T0));
-        Assert.False(devices.Saw(Phone, "Pixel 9", T0.AddMinutes(1))); // nothing new to show
-        Assert.True(devices.Saw(Phone, "Lena's Pixel", T0.AddMinutes(2))); // a new name is
+        Assert.True(devices.Saw(Laptop, "Work Laptop", T0));
+        Assert.False(devices.Saw(Laptop, "Work Laptop", T0.AddMinutes(1))); // nothing new to show
+        Assert.True(devices.Saw(Laptop, "Studio Laptop", T0.AddMinutes(2))); // a new name is
         Assert.Single(devices.Recent(T0.AddMinutes(5)));
         Assert.Empty(devices.Recent(T0.AddMinutes(2) + OwnDevices.Fresh));
-        Assert.False(devices.Saw("nope", "Pixel 9", T0));
+        Assert.False(devices.Saw("nope", "Work Laptop", T0));
     }
 
     [Fact]
     public void The_same_device_under_a_new_id_replaces_the_old_one()
     {
-        // The phone app after an update: same name, new id. The old one would stay as a device that never answers.
+        // A PC after a reinstall: same name, new id. The old one would stay as a device that never answers.
         var devices = new OwnDevices();
-        devices.Saw(Phone, "Pixel 9", T0);
+        devices.Saw(Laptop, "Work Laptop", T0);
         devices.Saw(Pc, "Office PC", T0);
         string updated = Guid.NewGuid().ToString("N");
-        Assert.True(devices.Saw(updated, "pixel 9", T0.AddMinutes(1)));
+        Assert.True(devices.Saw(updated, "work laptop", T0.AddMinutes(1)));
         var now = devices.Recent(T0.AddMinutes(2));
         Assert.Equal(2, now.Count);
         Assert.Contains(now, d => d.Id == updated);
-        Assert.DoesNotContain(now, d => d.Id == Phone);
+        Assert.DoesNotContain(now, d => d.Id == Laptop);
     }
 
     [Fact]
@@ -128,8 +112,8 @@ public class OwnDevicesTests
         var devices = new OwnDevices();
         devices.Saw(Pc, "  Office\u0007PC  ", T0);
         Assert.Equal("OfficePC", devices.Find(Pc)!.Name);
-        devices.Saw(Phone, "\u0001", T0);
-        Assert.Equal("Holm", devices.Find(Phone)!.Name);
+        devices.Saw(Laptop, "\u0001", T0);
+        Assert.Equal("Holm", devices.Find(Laptop)!.Name);
         devices.Forget(Pc);
         Assert.Null(devices.Find(Pc));
     }

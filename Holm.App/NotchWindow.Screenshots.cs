@@ -104,11 +104,11 @@ public sealed partial class NotchWindow
         if (image == null) return;
         try
         {
-            string folder = Path.Combine(Path.GetTempPath(), "Holm", "Screenshots");
-            Directory.CreateDirectory(folder);
+            string folder = SecurityGuards.GetPrivateTempDirectory("Screenshots");
             ForgetOldShots(folder);
-            string path = Path.Combine(folder, $"Screenshot {DateTime.Now:yyyy-MM-dd HHmmss}.png");
-            using (var file = File.Create(path)) image.Save(file, new PngBitmapEncoderOptions());
+            string path;
+            using (var file = SecurityGuards.CreatePrivateTempFile(folder, ".png", out path, prefix: $"Screenshot {DateTime.Now:yyyy-MM-dd HHmmss}-"))
+                image.Save(file, new PngBitmapEncoderOptions());
             ShowScreenshot(path, saved: false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)

@@ -122,43 +122,50 @@ public static class ChatGif
     /// <summary>The longest link a GIF message may have.</summary>
     public const int MaxUrl = 600;
 
-    /// <summary>The link as it may travel: https, no spaces or control characters, not too long; null otherwise.</summary>
+    static readonly HashSet<string> TrustedHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "media.giphy.com", "media0.giphy.com", "media1.giphy.com", "media2.giphy.com", "media3.giphy.com", "media4.giphy.com",
+        "i.giphy.com",
+        "media.tenor.com", "c.tenor.com", "media1.tenor.com", "media2.tenor.com",
+    };
+
+    /// <summary>True if <paramref name="host"/> is an allowlisted GIPHY or Tenor GIF CDN host (HOLM-SEC-008).</summary>
+    public static bool IsTrustedHost(string? host) => !string.IsNullOrEmpty(host) && TrustedHosts.Contains(host.TrimEnd('.'));
+
+    /// <summary>The link as it may travel: https on a trusted GIF CDN host, no spaces or control characters, not too long; null otherwise.</summary>
     public static string? Clean(string? url)
     {
         if (url == null) return null;
         string text = url.Trim();
         if (text.Length is 0 or > MaxUrl || text.Any(c => char.IsControl(c) || char.IsWhiteSpace(c))) return null;
-        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.HostNameType != UriHostNameType.Dns) return null;
-        if (!string.IsNullOrEmpty(uri.UserInfo) || IsLocal(uri.Host)) return null;
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.HostNameType != UriHostNameType.Dns || !uri.IsDefaultPort) return null;
+        if (!string.IsNullOrEmpty(uri.UserInfo) || !IsTrustedHost(uri.Host)) return null;
         return uri.AbsoluteUri;
     }
 
     /// <summary>
-    /// Whether a typed or pasted text is a link to a GIF, so it goes as one: a link ending in .gif, or a page on
-    /// GIPHY or Tenor (turned into the link of the picture where that is possible).
+    /// Whether a typed or pasted text is a link to a GIF on GIPHY or Tenor (turned into the CDN link of the picture
+    /// where that is possible). Arbitrary third-party hosts are rejected to prevent SSRF and IP disclosure.
     /// </summary>
     public static string? FromTyped(string? text)
     {
-        if (Clean(text) is not { } url) return null;
-        var uri = new Uri(url);
+        if (text == null) return null;
+        string trimmed = text.Trim();
+        if (trimmed.Length is 0 or > MaxUrl || trimmed.Any(c => char.IsControl(c) || char.IsWhiteSpace(c))) return null;
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.HostNameType != UriHostNameType.Dns || !uri.IsDefaultPort) return null;
+        if (!string.IsNullOrEmpty(uri.UserInfo)) return null;
         string host = uri.Host.ToLowerInvariant();
         string path = uri.AbsolutePath;
-        if (path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)) return url;
         // giphy.com/gifs/some-words-ID  or  giphy.com/gifs/ID  →  the picture itself
         if (host is "giphy.com" or "www.giphy.com" && path.StartsWith("/gifs/", StringComparison.Ordinal))
         {
             string last = path.TrimEnd('/').Split('/')[^1];
             string id = last.Contains('-') ? last[(last.LastIndexOf('-') + 1)..] : last;
-            if (id.Length is > 4 and < 40 && id.All(char.IsLetterOrDigit)) return $"https://media.giphy.com/media/{id}/giphy.gif";
+            if (id.Length is > 4 and < 40 && id.All(char.IsLetterOrDigit)) return Clean($"https://media.giphy.com/media/{id}/giphy.gif");
+            return null;
         }
-        if (host is "media.giphy.com" or "i.giphy.com" || host.EndsWith(".giphy.com") && path.Contains("/media/")) return url;
-        if (host is "media.tenor.com" or "c.tenor.com") return url;
-        return null;
+        return Clean(trimmed);
     }
-
-    static bool IsLocal(string host)
-        => host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
-           || host.EndsWith(".lan", StringComparison.OrdinalIgnoreCase) || !host.Contains('.');
 }
 
 public enum ChatState { Sending, Sent, Failed, Received }
@@ -196,6 +203,7 @@ public sealed class ChatStore
     {
         _path = path;
         if (path == null || !File.Exists(path)) return;
+        SecurityGuards.SetPrivatePermissions(path);
         try { _data = JsonSerializer.Deserialize<Data>(File.ReadAllText(path), Json) ?? new Data(); }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -274,10 +282,10 @@ public sealed class ChatStore
         if (_path == null || AppSettings.ReadOnly) return;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            string temp = _path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(_data, Json));
-            File.Move(temp, _path, overwrite: true);
+            string? dir = Path.GetDirectoryName(_path);
+            if (!string.IsNullOrEmpty(dir) && string.Equals(Path.GetFullPath(dir), Path.GetFullPath(Diag.Folder), StringComparison.OrdinalIgnoreCase))
+                SecurityGuards.EnsurePrivateDirectory(dir);
+            SecurityGuards.WritePrivateFile(_path, JsonSerializer.Serialize(_data, Json));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

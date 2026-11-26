@@ -13,7 +13,7 @@ namespace WinNotch;
 /// </summary>
 internal static class FolderPack
 {
-    public static string TempFolder => Path.Combine(Path.GetTempPath(), "Holm", "Beam");
+    public static string TempFolder => SecurityGuards.GetPrivateTempDirectory("Beam");
 
     /// <summary>"Holiday photos.zip" for C:\…\Holiday photos, "E.zip" for a drive; "(2)" and on if taken.</summary>
     public static string ZipPathFor(string folder, string tempFolder)
@@ -59,14 +59,15 @@ internal static class FolderPack
     /// </summary>
     public static (string Zip, int Skipped) Pack(string folder, string tempFolder, IProgress<double>? progress, CancellationToken ct)
     {
-        Directory.CreateDirectory(tempFolder);
+        SecurityGuards.EnsurePrivateDirectory(tempFolder);
         string zipPath = ZipPathFor(folder, tempFolder);
         var files = FilesOf(folder);
         long total = Math.Max(1, files.Sum(f => SafeLength(f.Path))), done = 0;
         int skipped = 0;
         try
         {
-            using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+            using var zipStream = SecurityGuards.OpenNewPrivateFile(zipPath);
+            using var zip = new ZipArchive(zipStream, ZipArchiveMode.Create);
             if (files.Count == 0) zip.CreateEntry(new DirectoryInfo(folder).Name + "/"); // an empty folder stays a folder
             foreach (var (path, entry) in files)
             {

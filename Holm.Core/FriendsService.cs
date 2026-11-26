@@ -36,6 +36,9 @@ internal sealed partial class FriendsService
     const long FreshSeconds = 30;
     /// <summary>A "something waits for you" note is answered this long after it was left.</summary>
     const long WaitingSeconds = 24 * 60 * 60;
+    /// <summary>Bounded UTC clock skew allowed when validating authenticated <see cref="FriendNote.Sent"/> timestamps.</summary>
+    const long MaxClockSkewSeconds = 300;
+    const int MaxSeenEntries = 500;
 
     readonly AppSettings _settings;
     /// <summary>Runs on the UI thread (the WPF app: its Dispatcher, see FriendsService.Wpf.cs).</summary>
@@ -75,8 +78,6 @@ internal sealed partial class FriendsService
     public event Action? ListChanged;
     /// <summary>Another device of this account came, left or got a new name (UI thread).</summary>
     public event Action? OwnDevicesChanged;
-    /// <summary>Our phone says what's happening on it, for the notch. On the UI thread.</summary>
-    public event Action<OwnDevice, PhoneStatus>? PhoneStatusReceived;
     /// <summary>A chat message from a friend: its id, text and when it was sent (Unix time; UI thread).</summary>
     public event Action<Friend, string, string, long>? ChatReceived;
 
@@ -124,13 +125,15 @@ internal sealed partial class FriendsService
     {
         _settings = settings;
         _ui = ui;
-        // An inbox on this computer came from a test, not from you: nothing else reaches it. Holm's relay instead.
-        if (!AllowLoopbackServers && IsLoopbackServer(_settings.FriendsServer))
+        // An inbox on this computer or an unsafe server URL: nothing else reaches it. Holm's relay instead.
+        if (_settings.FriendsServer != null
+            && ((!AllowLoopbackServers && IsLoopbackServer(_settings.FriendsServer))
+                || !SecurityGuards.IsSafePublicHttpsUri(FriendIdentity.NormalizeServer(_settings.FriendsServer), allowLoopbackWhenTesting: true)))
         {
             _settings.FriendsServer = null;
             _settings.FriendsRelay = true;
             _settings.Save();
-            Diag.Log("Friends: the inbox server was on this computer; back to Holm's relay");
+            Diag.Log("Friends: the inbox server was unsafe or local; back to Holm's relay");
         }
         int removed = RemoveDuplicateFriendCards(_settings.Friends);
         if (removed > 0)
@@ -185,6 +188,24 @@ internal sealed partial class FriendsService
         _settings.Save();
         InvitesChanged?.Invoke();
         return invite;
+    }
+
+    /// <summary>Revokes an active invite code locally so future requests carrying its proof are not auto-accepted.</summary>
+    public bool RevokeInvite(string code)
+    {
+        if (_settings.FriendInvites.RemoveAll(i => string.Equals(i.Code, code, StringComparison.OrdinalIgnoreCase)) == 0) return false;
+        _settings.Save();
+        InvitesChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>Revokes all active invite codes locally.</summary>
+    public void RevokeAllInvites()
+    {
+        if (_settings.FriendInvites.Count == 0) return;
+        _settings.FriendInvites.Clear();
+        _settings.Save();
+        InvitesChanged?.Invoke();
     }
 
     /// <summary>
@@ -367,7 +388,9 @@ internal sealed partial class FriendsService
         }
         finally { CryptographicOperations.ZeroMemory(pkcs8); }
         _settings.FriendsTopic = identity.Topic;
-        if (!AllowLoopbackServers && IsLoopbackServer(identity.Server))
+        if (identity.Server != null
+            && ((!AllowLoopbackServers && IsLoopbackServer(identity.Server))
+                || !SecurityGuards.IsSafePublicHttpsUri(FriendIdentity.NormalizeServer(identity.Server), allowLoopbackWhenTesting: true)))
         {
             _settings.FriendsServer = null;
             _settings.FriendsRelay = true;
@@ -457,39 +480,9 @@ internal sealed partial class FriendsService
     }
 
     /// <summary>
-    /// Says in our inbox that this device runs, for the account's other devices; with <paramref name="query"/> it asks
+    /// Says in our inbox that this device runs, for the account's other PCs; with <paramref name="query"/> it asks
     /// them to say so too. Live only: the server passes it on and doesn't keep it.
     /// </summary>
-    /// <summary>Clears a notification on our phone (closed in the phone tool): a note for that phone only.</summary>
-    public void DismissOnPhone(OwnDevice phone, string key)
-    {
-        if (PhoneStatus.CleanKey(key) is not { } clean) return;
-        TellPhone(phone, new PhoneStatus(PhoneStatus.Dismiss, "dismiss", null, 0, true, Key: clean));
-    }
-
-    /// <summary>The phone's player plays, pauses, skips (<see cref="PhoneStatus.MusicControls"/>), from the phone tool.</summary>
-    public void ControlPhoneMusic(OwnDevice phone, string what)
-    {
-        if (Array.IndexOf(PhoneStatus.MusicControls, what) < 0) return;
-        TellPhone(phone, new PhoneStatus(PhoneStatus.Control, what, null, 0, true));
-    }
-
-    /// <summary>A note for that phone only, in the account's own inbox.</summary>
-    void TellPhone(OwnDevice phone, PhoneStatus status)
-    {
-        if (_follow == null || Me is not { } me) return;
-        string text = FriendNotes.Seal(me, OwnCard(me, phone.Name),
-            new FriendNote(FriendNoteKind.Phone, DeviceName(), Now, Device: DeviceId, ForDevice: phone.Id, Phone: status));
-        _ = Task.Run(async () =>
-        {
-            try { await FriendInbox.PostAsync(OwnCard(me, phone.Name), text, CancellationToken.None, keep: false); }
-            catch (IOException ex) { Diag.Log("Friends: couldn't reach our own inbox: " + ex.Message); }
-        });
-    }
-
-    /// <summary>Asks the account's other devices to say they are there (the phone tool, opened without a phone).</summary>
-    public void AskForDevices() => AnnounceDevice(query: true);
-
     void AnnounceDevice(bool query)
     {
         if (_follow == null || Me is not { } me) return;
@@ -501,24 +494,19 @@ internal sealed partial class FriendsService
         });
     }
 
-    /// <summary>A note sealed by our own identity: from another device of this account, or our own coming back.</summary>
+    /// <summary>A note sealed by our own identity: from another PC of this account, or our own coming back.</summary>
     void HandleOwn(FriendIdentity me, FriendNote note, long age)
     {
         if (note.Device is not { } id || id == DeviceId) return;
         switch (note.Kind)
         {
-            case FriendNoteKind.Device when age <= FreshSeconds:
+            case FriendNoteKind.Device when age <= FreshSeconds && IsTimestampFresh(note.Sent, FreshSeconds):
                 if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
                 if (note.Query == true) AnnounceDevice(query: false);
                 break;
-            case FriendNoteKind.Phone when age <= 60 && note.Phone is { } status:
-                // News only while it's news: a call from minutes ago, read when Holm starts, isn't.
-                if (_devices.Saw(id, note.From, DateTime.UtcNow)) OwnDevicesChanged?.Invoke();
-                PhoneStatusReceived?.Invoke(_devices.Find(id) ?? new OwnDevice(id, note.From, DateTime.UtcNow), status);
-                break;
             case FriendNoteKind.Files when note.ForDevice != DeviceId:
                 break; // for another of our devices
-            case FriendNoteKind.Files when age > Patience.TotalSeconds:
+            case FriendNoteKind.Files when age > Patience.TotalSeconds || !IsTimestampFresh(note.Sent, (long)Patience.TotalSeconds):
                 Diag.Log("Friends: another device of ours wanted to send files while Holm wasn't running");
                 break;
             case FriendNoteKind.Files:
@@ -660,8 +648,12 @@ internal sealed partial class FriendsService
         }
     }
 
+    static bool HasSafeServer(Friend card)
+        => card.Server == null || SecurityGuards.IsSafePublicHttpsUri(FriendIdentity.NormalizeServer(card.Server), allowLoopbackWhenTesting: true);
+
     void UpdateFriendCard(Friend existing, Friend card)
     {
+        if (!HasSafeServer(card)) return;
         int at = _settings.Friends.IndexOf(existing);
         if (at < 0) return;
         card.AddedByRequestId ??= existing.AddedByRequestId;
@@ -781,7 +773,7 @@ internal sealed partial class FriendsService
             _ = Task.Run(() => FriendInbox.FollowRelayAsync(me.Topic, _settings.FriendsRelaySince ?? Now, received,
                 time => _ = _ui(() => { if (_follow == cts) { _settings.FriendsRelaySince = time; _settings.Save(); } }),
                 () => _ = _ui(() => { if (_follow == cts) MoveToRelay(); }),
-                Diag.Log, cts.Token));
+                Diag.Log, cts.Token, me.RelayReadToken));
         SyncProfiles();
         AnnounceDevice(query: true);
     }
@@ -827,7 +819,7 @@ internal sealed partial class FriendsService
         if (_follow == null || Me is not { } me) return; // their answers come to our inbox, which we only follow while Beam is on
         foreach (var friend in _settings.Friends.Take(max))
             if (_presence.ShouldAsk(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Ping);
-        // The account's other devices too (the phone app, other PCs), at most once a minute.
+        // The account's other devices too (other PCs), at most once a minute.
         if (_presence.ShouldAsk(me.PublicKey, DateTime.UtcNow)) AnnounceDevice(query: true);
     }
 
@@ -851,19 +843,48 @@ internal sealed partial class FriendsService
         if (_presence.Saw(friend.Key, DateTime.UtcNow)) FriendOnline?.Invoke(friend);
     }
 
+    static bool IsTimestampFresh(long sent, long maxAgeSeconds)
+    {
+        long now = Now;
+        return sent >= now - maxAgeSeconds - MaxClockSkewSeconds && sent <= now + MaxClockSkewSeconds;
+    }
+
+    static string ReplayKeyFor(FriendNote note, string rawText)
+        => note.Nonce != null
+            ? "n:" + note.Nonce
+            : "h:" + Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawText)))[..24];
+
+    bool RememberSeen(string key)
+    {
+        if (_settings.FriendsSeen.Contains(key)) return false;
+        _settings.FriendsSeen.Add(key);
+        if (_settings.FriendsSeen.Count > MaxSeenEntries)
+            _settings.FriendsSeen.RemoveRange(0, _settings.FriendsSeen.Count - MaxSeenEntries);
+        return true;
+    }
+
     void Handle(string id, long age, string text)
     {
         if (_me is not { } me) return;
-        // Catching up after a reconnect can repeat the last note.
-        if (_settings.FriendsSeen.Contains(id)) return;
-        _settings.FriendsSeen.Add(id);
-        if (_settings.FriendsSeen.Count > 200) _settings.FriendsSeen.RemoveRange(0, _settings.FriendsSeen.Count - 200);
+        age = Math.Max(0, age);
+        // Catching up after a reconnect can repeat the last note by server id.
+        if (!RememberSeen(id)) return;
 
         if (FriendNotes.Open(me, text, out string sender) is not { } note)
         {
             Diag.Log("Friends: a note that isn't for us");
             return;
         }
+
+        // Replay protection across servers and restarts using authenticated note nonce or ciphertext digest (HOLM-SEC-006).
+        string replayKey = ReplayKeyFor(note, text);
+        if (!RememberSeen(replayKey))
+        {
+            Diag.Log("Friends: ignored replayed note");
+            return;
+        }
+        _settings.Save();
+
         if (sender == me.PublicKey)
         {
             HandleOwn(me, note, age);
@@ -875,24 +896,21 @@ internal sealed partial class FriendsService
             case FriendNoteKind.Files when friend == null:
                 Diag.Log("Friends: someone who isn't a friend wanted to send files");
                 break;
-            case FriendNoteKind.Files when age > Patience.TotalSeconds:
+            case FriendNoteKind.Files when age > Patience.TotalSeconds || !IsTimestampFresh(note.Sent, (long)Patience.TotalSeconds):
                 Diag.Log($"Friends: {friend.Name} wanted to send files while Holm wasn't running");
                 break;
             case FriendNoteKind.Files:
                 FilesOffered?.Invoke(friend, note.Secret!);
                 break;
-            case FriendNoteKind.AddedYou when FriendIdentity.ParseFriendCode(note.Code) is { } card:
+            case FriendNoteKind.AddedYou when FriendIdentity.ParseFriendCode(note.Code) is { } card && HasSafeServer(card):
                 if (friend != null)
                 {
                     // Already friends: keep their name and inbox current.
-                    int at = _settings.Friends.IndexOf(friend);
-                    card.KeepProfileOf(friend);
-                    _settings.Friends[at] = card;
-                    _settings.Save();
+                    UpdateFriendCard(friend, card);
                 }
                 else AddedUs?.Invoke(card);
                 break;
-            case FriendNoteKind.FriendRequest when FriendIdentity.ParseFriendCode(note.Code) is { } card && note.RequestId is { } requestId:
+            case FriendNoteKind.FriendRequest when FriendIdentity.ParseFriendCode(note.Code) is { } card && HasSafeServer(card) && note.RequestId is { } requestId:
                 if (friend != null)
                 {
                     // Repair an older one-sided relationship automatically when the other person requests us.
@@ -903,11 +921,25 @@ internal sealed partial class FriendsService
                 {
                     bool isNew = !_settings.IncomingFriendRequests.Any(p => p.RequestId == requestId && p.Card.Key == sender);
                     if (!isNew) break;
-                    _settings.IncomingFriendRequests.Add(new PendingFriendRequest { Card = card, RequestId = requestId, Sent = Now - age });
+                    long arrival = Now - age;
+                    _settings.IncomingFriendRequests.Add(new PendingFriendRequest { Card = card, RequestId = requestId, Sent = arrival });
                     _settings.Save();
                     InvitesChanged?.Invoke();
-                    if (note.Invite is { } proof && _settings.FriendInvites.Any(i => i.Proof == proof && note.Sent <= i.Expires + 300))
+                    // Enforce arrival time AND authenticated note.Sent against invite expiry so backdated dto.T cannot bypass expiry (HOLM-SEC-006).
+                    // Consume invite on redemption (single-use, HOLM-SEC-028).
+                    OwnInvite? matched = note.Invite is { } proof
+                        ? _settings.FriendInvites.FirstOrDefault(i => i.Proof == proof
+                            && arrival <= i.Expires + 300
+                            && note.Sent <= i.Expires + 300
+                            && Math.Abs(note.Sent - arrival) <= 600)
+                        : null;
+                    if (matched != null)
+                    {
+                        _settings.FriendInvites.Remove(matched);
+                        _settings.Save();
+                        InvitesChanged?.Invoke();
                         _ = AcceptInviteAsync(card, requestId);
+                    }
                     else FriendRequested?.Invoke(card, requestId);
                 }
                 break;
@@ -941,7 +973,7 @@ internal sealed partial class FriendsService
             case FriendNoteKind.RemovedYou:
                 Diag.Log("Friends: ignored a removal note from someone who isn't a friend");
                 break;
-            case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds:
+            case FriendNoteKind.Ping or FriendNoteKind.Here when friend == null || age > FreshSeconds || !IsTimestampFresh(note.Sent, FreshSeconds):
                 break; // strangers don't learn whether we're online; old ones came while Holm wasn't running
             case FriendNoteKind.Ping:
                 Took(friend, note.Activity, note.Trophies);
@@ -952,20 +984,20 @@ internal sealed partial class FriendsService
                 Took(friend, note.Activity, note.Trophies);
                 SawOnline(friend);
                 break;
-            case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds:
+            case FriendNoteKind.Waiting when friend == null || age > WaitingSeconds || !IsTimestampFresh(note.Sent, WaitingSeconds):
                 break; // the inbox server keeps notes for about 12 hours anyway
             case FriendNoteKind.Waiting:
                 // They have something for us and will send it once they hear we're here.
                 if (age <= FreshSeconds) SawOnline(friend);
                 if (_presence.ShouldAnswer(friend.Key, DateTime.UtcNow)) Tell(me, friend, FriendNoteKind.Here);
                 break;
-            case FriendNoteKind.Wave when friend == null || age > WaveLimit.FreshSeconds:
+            case FriendNoteKind.Wave when friend == null || age > WaveLimit.FreshSeconds || !IsTimestampFresh(note.Sent, WaveLimit.FreshSeconds):
                 break; // strangers can't wave; an old wave came while Holm wasn't running
             case FriendNoteKind.Wave:
                 SawOnline(friend);
                 if (_settings.Waves && _wavesIn.Allow(friend.Key, DateTime.UtcNow)) Waved?.Invoke(friend);
                 break;
-            case FriendNoteKind.Stream when friend == null || age > StreamPatience.TotalSeconds:
+            case FriendNoteKind.Stream when friend == null || age > StreamPatience.TotalSeconds || !IsTimestampFresh(note.Sent, (long)StreamPatience.TotalSeconds):
                 break; // strangers can't stream to us; an old invitation came while Holm wasn't running
             case FriendNoteKind.Stream:
                 SawOnline(friend);

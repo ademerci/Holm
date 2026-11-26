@@ -230,7 +230,7 @@ internal sealed class AppSettings
     /// <summary>Ids of the last notes handled, so catching up never handles one twice.</summary>
     public List<string> FriendsSeen { get; set; } = new();
     /// <summary>
-    /// This PC among the account's devices (Sharing/OwnDevices.cs): made once, never synced, so each PC and phone has
+    /// This PC among the account's devices (Sharing/OwnDevices.cs): made once, never synced, so each PC has
     /// its own and skips its own notes in the shared inbox.
     /// </summary>
     public string? DeviceId { get; set; }
@@ -256,7 +256,13 @@ internal sealed class AppSettings
 
     public static AppSettings Load()
     {
-        try { return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new(); }
+        try
+        {
+            if (Directory.Exists(Diag.Folder)) SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
+            if (!File.Exists(FilePath)) return new();
+            SecurityGuards.SetPrivatePermissions(FilePath);
+            return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new();
+        }
         catch { return new(); }
     }
 
@@ -266,12 +272,10 @@ internal sealed class AppSettings
         lock (SaveGate)
         {
             string path = FilePath;
-            string temp = path + ".tmp";
             try
             {
-                Directory.CreateDirectory(Diag.Folder);
-                File.WriteAllText(temp, JsonSerializer.Serialize(this));
-                File.Move(temp, path, overwrite: true);
+                SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
+                SecurityGuards.WritePrivateFile(path, JsonSerializer.Serialize(this));
             }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
@@ -297,8 +301,9 @@ internal static class FormerName
             string now = Path.Combine(Diag.Folder, "settings.json");
             if (!File.Exists(now) && File.Exists(before))
             {
-                Directory.CreateDirectory(Diag.Folder);
+                SecurityGuards.EnsurePrivateDirectory(Diag.Folder);
                 File.Copy(before, now);
+                SecurityGuards.SetPrivatePermissions(now);
             }
         }
         catch (Exception ex) { Diag.Error(ex); }
@@ -364,8 +369,10 @@ internal static class Diag
     {
         try
         {
-            Directory.CreateDirectory(Folder);
-            File.AppendAllText(Path.Combine(Folder, file), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            SecurityGuards.EnsurePrivateDirectory(Folder);
+            string logPath = Path.Combine(Folder, file);
+            File.AppendAllText(logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            SecurityGuards.SetPrivatePermissions(logPath);
         }
         catch { }
     }

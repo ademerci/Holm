@@ -13,8 +13,7 @@ on:
         required: true
 
 permissions:
-  contents: write
-  actions: write # starts the website build once the release is out
+  contents: read
 
 jobs:
   release:
@@ -30,9 +29,9 @@ jobs:
     env:
       VERSION: ${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: "10.0.x"
 
@@ -85,7 +84,7 @@ jobs:
             tar -czf "assets/Holm-$env:VERSION-linux-x64.tar.gz" -C pkg .
           }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ matrix.rid }}
           path: assets/
@@ -93,17 +92,22 @@ jobs:
   publish:
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write # starts the website build once the release is out
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: release-*
           path: assets
           merge-multiple: true
       # Every release is for Windows and Linux (AGENTS.md): without all three files it is not published.
       - name: Check that both systems are there
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          for f in Holm.exe "Holm-${{ inputs.version }}-win-x64.zip" "Holm-${{ inputs.version }}-linux-x64.tar.gz"; do
+          for f in Holm.exe "Holm-$VERSION-win-x64.zip" "Holm-$VERSION-linux-x64.tar.gz"; do
             test -s "assets/$f" || { echo "::error::assets/$f is missing: a release must hold the Windows and the Linux build"; exit 1; }
           done
           ls -l assets
@@ -114,7 +118,7 @@ jobs:
           ISLAND: ${{ inputs.island }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh release create "v$VERSION" assets/* --target "${{ github.sha }}" --title "Holm $VERSION — $ISLAND" \
+          gh release create "v$VERSION" assets/* --target "$GITHUB_SHA" --title "Holm $VERSION — $ISLAND" \
             --notes-file "publish/release-$VERSION-release-notes.md" --latest
 
       # A release made with this workflow's token doesn't start the Website workflow's "release" trigger (GitHub

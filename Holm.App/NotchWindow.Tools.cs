@@ -22,7 +22,7 @@ namespace Holm.App;
 /// </summary>
 public sealed partial class NotchWindow
 {
-    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai, Beam, Phone }
+    enum Tool { None, Notes, Reminders, Calculator, Clipboard, Mixer, Ai, Beam }
 
     static readonly IBrush ToolLit = Look.InkA(0x29);
 
@@ -127,7 +127,6 @@ public sealed partial class NotchWindow
         _beamToolBtn = ToolButton("Beam", "", Tool.Beam, "Beam: send and receive files");
         _clipboardToolBtn = ToolButton("Clipboard", ClipboardGlyph, Tool.Clipboard, "Clipboard history");
         _mixerToolBtn = ToolButton("Mixer", MixerGlyph, Tool.Mixer, "Volume per app");
-        _phoneToolBtn = ToolButton("Phone", CellPhoneGlyph, Tool.Phone, "Your phone: linked through your Holm account");
         _aiToolBtn = ToolWord("AI", AiUsageIcon(Look.Aero ? Look.Ink : Dim, 14));
         ToolTip.SetTip(_aiToolBtn, "AI usage");
         _aiToolBtn.Click += () => ToggleTool(Tool.Ai);
@@ -220,7 +219,6 @@ public sealed partial class NotchWindow
         _toolPage.Children.Add(BuildMixerPage());
         _toolPage.Children.Add(_aiPage);
         _toolPage.Children.Add(BuildBeamPage());
-        _toolPage.Children.Add(BuildPhoneToolPage());
         Deactivated += (_, _) => OnDeactivated();
         RefreshToolBar();
         return _toolPage;
@@ -236,7 +234,6 @@ public sealed partial class NotchWindow
         (_mixerPage, _mixerToolBtn, Tool.Mixer),
         (_aiPage, _aiToolBtn, Tool.Ai),
         (_beamPage, _beamToolBtn, Tool.Beam),
-        (_phoneToolPage, _phoneToolBtn, Tool.Phone),
     };
 
     /// <summary>Opens a tool's page, or goes back home when it is open already.</summary>
@@ -282,7 +279,6 @@ public sealed partial class NotchWindow
         else if (tool == Tool.Clipboard) ShowClipboardPage();
         else if (tool == Tool.Mixer) ShowMixerPage();
         else if (tool == Tool.Ai) FillAiPage();
-        else if (tool == Tool.Phone) { _phoneLinked.MinHeight = 0; ShowPhoneToolPage(); }
         if (changed && _hovered && _state == NotchState.Expanded)
         {
             if (activePage != null) AnimateToolSwitch(activePage);
@@ -301,8 +297,6 @@ public sealed partial class NotchWindow
         _beamToolBtn.IsVisible = _settings.Beam && !_home.IsToolHidden(HomeLayout.Beam);
         _clipboardToolBtn.IsVisible = _settings.ClipboardHistory && !_home.IsToolHidden(HomeLayout.Clipboard);
         _mixerToolBtn.IsVisible = _settings.AppVolume && !_home.IsToolHidden(HomeLayout.Mixer);
-        // Always there with Beam: without a phone yet, its page says how the phone links.
-        _phoneToolBtn.IsVisible = _settings.Beam && !_home.IsToolHidden(HomeLayout.Phone);
         _aiToolBtn.IsVisible = _settings.AiUsage && _aiUsage.Count > 0 && !_home.IsToolHidden(HomeLayout.Ai);
         _colorPickerBtn.IsVisible = _settings.ColorPicker && !_home.IsToolHidden(HomeLayout.ColorPicker);
         foreach (var (_, button, which) in ToolPages())

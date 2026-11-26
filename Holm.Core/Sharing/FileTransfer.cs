@@ -31,6 +31,10 @@ public static class FileTransfer
 
     /// <summary>A beamed text is at most this big; anything larger is an ordinary file.</summary>
     public const long MaxTextBytes = 1024 * 1024;
+    /// <summary>Maximum wait for the initial Offer frame after handshake.</summary>
+    public static readonly TimeSpan OfferTimeout = TimeSpan.FromSeconds(10);
+    /// <summary>Maximum idle wait for each Data/Done frame during an accepted transfer.</summary>
+    public static readonly TimeSpan FrameIdleTimeout = TimeSpan.FromSeconds(30);
 
     // "Text" came with 1.7. Older Holm skips the field it doesn't know and saves the text as a file in Downloads.
     sealed record OfferDto(string Sender, List<FileDto> Files, bool? Text = null);
@@ -117,7 +121,16 @@ public static class FileTransfer
                                                                   Func<ShareOffer, CancellationToken, Task<bool>> decide,
                                                                   Func<ShareOffer, string> folderFor, IProgress<double>? progress, CancellationToken ct)
     {
-        var first = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+        byte[] first;
+        using (var offerTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            offerTimeout.CancelAfter(OfferTimeout);
+            try { first = await channel.ReceiveAsync(offerTimeout.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                throw new TimeoutException("Timed out waiting for the transfer offer.");
+            }
+        }
         if (first.Length < 2 || first[0] != Offer) throw new InvalidDataException("Expected an offer.");
         var offer = ParseOffer(first.AsSpan(1));
         string folder = folderFor(offer);
@@ -152,12 +165,23 @@ public static class FileTransfer
         catch { Forget(pending); throw; }
         if (!accept) { Forget(pending); return null; }
 
-        // The open read gets the first frame after the answer; the rest are read one by one.
-        Task<byte[]> Next()
+        // The open read gets the first frame after the answer; the rest are read one by one with an idle timeout.
+        async Task<byte[]> NextAsync()
         {
-            var next = pending ?? channel.ReceiveAsync(ct);
-            pending = null;
-            return next;
+            if (pending != null)
+            {
+                var firstRead = pending;
+                pending = null;
+                try { return await firstRead.WaitAsync(FrameIdleTimeout, ct).ConfigureAwait(false); }
+                catch (TimeoutException) { Forget(firstRead); throw; }
+            }
+            using var idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            idle.CancelAfter(FrameIdleTimeout);
+            try { return await channel.ReceiveAsync(idle.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                throw new TimeoutException("Timed out waiting for transfer data.");
+            }
         }
 
         Directory.CreateDirectory(folder);
@@ -175,7 +199,7 @@ public static class FileTransfer
                 {
                     while (remaining > 0)
                     {
-                        var frame = await Next().ConfigureAwait(false);
+                        var frame = await NextAsync().ConfigureAwait(false);
                         if (IsCancellation(frame)) throw new SenderCancelledException();
                         if (frame.Length < 2 || frame[0] != Data) throw new InvalidDataException("Expected file data.");
                         int length = frame.Length - 1;
@@ -191,7 +215,7 @@ public static class FileTransfer
                 current = null;
             }
 
-            var done = await Next().ConfigureAwait(false);
+            var done = await NextAsync().ConfigureAwait(false);
             if (IsCancellation(done)) throw new SenderCancelledException();
             if (done.Length != 1 || done[0] != Done) throw new InvalidDataException("Expected the end of the transfer.");
             await channel.SendAsync(new[] { Received }, ct).ConfigureAwait(false);
@@ -222,8 +246,9 @@ public static class FileTransfer
         long total = 0;
         foreach (var f in dto.Files)
         {
+            if (f.Size < 0 || f.Size > MaxTotalBytes || f.Size > MaxTotalBytes - total)
+                throw new InvalidDataException("Offer too large.");
             total += f.Size;
-            if (total > MaxTotalBytes) throw new InvalidDataException("Offer too large.");
         }
         var files = dto.Files.Select(f => new ShareFile(SafeFileName(f.Name), f.Size)).ToList();
         string sender = Trim(dto.Sender, 64);

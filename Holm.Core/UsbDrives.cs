@@ -72,21 +72,21 @@ internal static class UsbDrives
     [StructLayout(LayoutKind.Sequential)] struct SP_DEVICE_INTERFACE_DATA { public int cbSize; public Guid InterfaceClassGuid; public uint Flags; public IntPtr Reserved; }
     [StructLayout(LayoutKind.Sequential)] struct SP_DEVINFO_DATA { public int cbSize; public Guid ClassGuid; public uint DevInst; public IntPtr Reserved; }
 
-    [DllImport("kernel32.dll")] static extern uint GetLogicalDrives();
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport("kernel32.dll"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern uint GetLogicalDrives();
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
-    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", SetLastError = true), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern bool DeviceIoControl(IntPtr device, uint code, IntPtr input, int inputSize, out STORAGE_DEVICE_NUMBER output, int outputSize, out int returned, IntPtr overlapped);
-    [DllImport("setupapi.dll", SetLastError = true)]
+    [DllImport("setupapi.dll", SetLastError = true), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern IntPtr SetupDiGetClassDevs(ref Guid classGuid, IntPtr enumerator, IntPtr parent, uint flags);
-    [DllImport("setupapi.dll")] static extern bool SetupDiDestroyDeviceInfoList(IntPtr set);
-    [DllImport("setupapi.dll", SetLastError = true)]
+    [DllImport("setupapi.dll"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern bool SetupDiDestroyDeviceInfoList(IntPtr set);
+    [DllImport("setupapi.dll", SetLastError = true), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern bool SetupDiEnumDeviceInterfaces(IntPtr set, IntPtr info, ref Guid classGuid, uint index, ref SP_DEVICE_INTERFACE_DATA data);
-    [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern bool SetupDiGetDeviceInterfaceDetail(IntPtr set, ref SP_DEVICE_INTERFACE_DATA data, IntPtr detail, int detailSize, out int required, ref SP_DEVINFO_DATA info);
-    [DllImport("cfgmgr32.dll")] static extern uint CM_Get_Parent(out uint parent, uint devInst, uint flags);
-    [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("cfgmgr32.dll"), DefaultDllImportSearchPaths(DllImportSearchPath.System32)] static extern uint CM_Get_Parent(out uint parent, uint devInst, uint flags);
+    [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode), DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern uint CM_Request_Device_Eject(uint devInst, out int vetoType, StringBuilder vetoName, int nameLength, uint flags);
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -6,28 +7,32 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Sharing;
 
-// Adding a friend with a short code. Instead of a long friend code to copy, you get an invite code like
-// HOLM-7KQ2X-9XF4M to tell a friend, type into a chat or read out. Everything comes from the code: the inbox on the
+// Adding a friend with an invite code. Instead of a long friend code to copy, you get an invite code like
+// HOLM-7KQ2-X9XF-4M8P-2RTV (16 Crockford Base32 chars = 80 bits of entropy, stretched with PBKDF2-HMAC-SHA256)
+// to tell a friend, type into a chat or read out. Everything comes from the code: the inbox on the
 // server where your friend card waits (sealed with a key from the code, so only someone with the code can read it)
-// and a proof your friend's request carries, so your notch knows they had your code and adds them without asking.
-// The card is kept by the server for 12 hours; a code works for anyone you give it to until then.
+// and a proof your friend's request carries, so your notch knows they had your code.
+// The card is kept by the server for 12 hours.
 
 /// <summary>Short invite codes: their format, what they lead to, and the sealed card behind them.</summary>
 public static class FriendInvite
 {
     /// <summary>Crockford's base32: no I, L, O or U, so a code read out or typed by hand is hard to get wrong.</summary>
     const string Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    /// <summary>Ten characters: 50 random bits.</summary>
-    public const int Length = 10;
+    /// <summary>Sixteen characters: 80 random bits.</summary>
+    public const int Length = 16;
+    /// <summary>PBKDF2-HMAC-SHA256 work factor for invite code key/topic/proof derivation (HOLM-SEC-028).</summary>
+    public const int KdfIterations = 600_000;
     /// <summary>How long a code works: as long as the server keeps the card.</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(12);
     public const string Prefix = "hinv1 ";
 
-    static readonly Regex InText = new(@"(?<![A-Za-z0-9])HOLM[-\s]?([0-9A-Za-z]{5})[-\s]?([0-9A-Za-z]{5})(?![A-Za-z0-9])",
+    static readonly Regex InText = new(@"(?<![A-Za-z0-9])HOLM[-\s]?([0-9A-Za-z]{4})[-\s]?([0-9A-Za-z]{4})[-\s]?([0-9A-Za-z]{4})[-\s]?([0-9A-Za-z]{4})(?![A-Za-z0-9])",
                                        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    static readonly byte[] Salt = Encoding.ASCII.GetBytes("Holm friend invite v1");
+    static readonly byte[] Salt = Encoding.ASCII.GetBytes("Holm friend invite v2");
+    static readonly ConcurrentDictionary<string, byte[]> StretchedCache = new(StringComparer.Ordinal);
 
-    /// <summary>A new code: ten random characters.</summary>
+    /// <summary>A new code: sixteen random characters (80 bits of entropy).</summary>
     public static string New()
     {
         var chars = new char[Length];
@@ -36,20 +41,20 @@ public static class FriendInvite
         return Format(new string(chars));
     }
 
-    /// <summary>"HOLM-" and the ten characters in two groups of five.</summary>
-    public static string Format(string chars) => $"HOLM-{chars[..5]}-{chars[5..]}";
+    /// <summary>"HOLM-" and the sixteen characters in four groups of four.</summary>
+    public static string Format(string chars) => $"HOLM-{chars[..4]}-{chars[4..8]}-{chars[8..12]}-{chars[12..]}";
 
     /// <summary>
-    /// The code in what someone typed or pasted: "HOLM-7KQ2X-9XF4M" anywhere in a message, or just the ten characters
-    /// with or without a dash, in any case. Letters people mix up are read as what they look like (O as 0, I and L as 1).
-    /// Null if there's no valid code.
+    /// The code in what someone typed or pasted: "HOLM-7KQ2-X9XF-4M8P-2RTV" anywhere in a message, or just the
+    /// sixteen characters with or without dashes, in any case. Letters people mix up are read as what they look like
+    /// (O as 0, I and L as 1). Null if there's no valid code.
     /// </summary>
     public static string? Find(string? text)
     {
         if (string.IsNullOrWhiteSpace(text) || text.Length > 10_000) return null;
         var match = InText.Match(text);
         string raw;
-        if (match.Success) raw = match.Groups[1].Value + match.Groups[2].Value;
+        if (match.Success) raw = match.Groups[1].Value + match.Groups[2].Value + match.Groups[3].Value + match.Groups[4].Value;
         else
         {
             // Typed into the Add friend box: just the characters.
@@ -71,8 +76,17 @@ public static class FriendInvite
     public static string? FindInMessage(string? text)
         => text != null && text.Length <= 10_000 && InText.IsMatch(text) ? Find(text) : null;
 
+    static byte[] Stretch(string code)
+    {
+        if (StretchedCache.TryGetValue(code, out var cached)) return cached;
+        byte[] stretched = Rfc2898DeriveBytes.Pbkdf2(Encoding.ASCII.GetBytes(code), Salt, KdfIterations, HashAlgorithmName.SHA256, 32);
+        if (StretchedCache.Count >= 32) StretchedCache.Clear();
+        StretchedCache[code] = stretched;
+        return stretched;
+    }
+
     static byte[] Derive(string code, string purpose, int length)
-        => HKDF.DeriveKey(HashAlgorithmName.SHA256, Encoding.ASCII.GetBytes(code), length, Salt, Encoding.ASCII.GetBytes(purpose));
+        => HKDF.Expand(HashAlgorithmName.SHA256, Stretch(code), length, Encoding.ASCII.GetBytes(purpose));
 
     /// <summary>The server inbox where the card waits: unguessable without the code.</summary>
     public static string Topic(string code)

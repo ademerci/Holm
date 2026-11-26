@@ -263,11 +263,11 @@ internal static class GifDecoder
 internal static class GifCache
 {
     public const int MaxDownload = 10 * 1024 * 1024;
-    const int KeepFiles = 150, KeepDecoded = 24;
+    const int KeepFiles = 150, KeepDecoded = 24, MaxRedirects = 3;
     const long KeepBytes = 96L * 1024 * 1024;
     static readonly SemaphoreSlim Decoding = new(2);
 
-    static readonly HttpClient Http = new(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(10), AllowAutoRedirect = true, MaxAutomaticRedirections = 3 })
+    static readonly HttpClient Http = new(SecurityGuards.CreateSafeHttpHandler(allowRedirects: false))
     {
         Timeout = TimeSpan.FromSeconds(25),
         DefaultRequestHeaders = { { "User-Agent", "Holm-Chat/1" } },
@@ -380,24 +380,47 @@ internal static class GifCache
 
         try
         {
-            using var response = await Http.GetAsync(clean, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode || response.RequestMessage?.RequestUri?.Scheme != Uri.UriSchemeHttps) return null;
-            if (response.Content.Headers.ContentLength > MaxDownload) return null;
-            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var memory = new MemoryStream();
-            var buffer = new byte[81920];
-            int read;
-            while ((read = await stream.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+            HttpResponseMessage? response = null;
+            try
             {
-                memory.Write(buffer, 0, read);
-                if (memory.Length > MaxDownload) return null;
+                string current = clean;
+                for (int hop = 0; hop <= MaxRedirects; hop++)
+                {
+                    if (ChatGif.Clean(current) is not { } hopUrl) return null;
+                    response = await Http.GetAsync(hopUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                    int status = (int)response.StatusCode;
+                    if (status is 301 or 302 or 303 or 307 or 308 && response.Headers.Location is { } location)
+                    {
+                        var nextUri = location.IsAbsoluteUri ? location : new Uri(new Uri(hopUrl), location);
+                        response.Dispose();
+                        response = null;
+                        if (hop == MaxRedirects) return null;
+                        if (ChatGif.Clean(nextUri.AbsoluteUri) is not { } nextClean) return null;
+                        current = nextClean;
+                        continue;
+                    }
+                    break;
+                }
+                if (response == null || !response.IsSuccessStatusCode || response.RequestMessage?.RequestUri?.Scheme != Uri.UriSchemeHttps) return null;
+                if (ChatGif.Clean(response.RequestMessage?.RequestUri?.AbsoluteUri) == null) return null;
+                if (response.Content.Headers.ContentLength > MaxDownload) return null;
+                await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                using var memory = new MemoryStream();
+                var buffer = new byte[81920];
+                int read;
+                while ((read = await stream.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+                {
+                    memory.Write(buffer, 0, read);
+                    if (memory.Length > MaxDownload) return null;
+                }
+                byte[] data = memory.ToArray();
+                if (!GifDecoder.IsGif(data)) return null;
+                Save(file, data);
+                return data;
             }
-            byte[] data = memory.ToArray();
-            if (!GifDecoder.IsGif(data)) return null;
-            Save(file, data);
-            return data;
+            finally { response?.Dispose(); }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidOperationException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidOperationException or UnauthorizedAccessException or UriFormatException)
         {
             Diag.Log("GIF not loaded: " + ex.Message);
             return null;
@@ -409,8 +432,8 @@ internal static class GifCache
         if (AppSettings.ReadOnly) return;
         try
         {
-            Directory.CreateDirectory(Folder);
-            File.WriteAllBytes(file, data);
+            SecurityGuards.EnsurePrivateDirectory(Folder);
+            SecurityGuards.WritePrivateFile(file, data);
             var old = new DirectoryInfo(Folder).GetFiles("*.gif").OrderByDescending(f => f.LastWriteTimeUtc).Skip(KeepFiles);
             foreach (var f in old) f.Delete();
         }
@@ -570,7 +593,7 @@ internal static class GifSearch
     public static readonly string BuiltInKey = typeof(GifSearch).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(a => a.Key == "GiphyKey")?.Value?.Trim() ?? "";
 
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(12), DefaultRequestHeaders = { { "User-Agent", "Holm-Chat/1" } } };
+    static readonly HttpClient Http = new(SecurityGuards.CreateSafeHttpHandler(allowRedirects: false)) { Timeout = TimeSpan.FromSeconds(12), DefaultRequestHeaders = { { "User-Agent", "Holm-Chat/1" } } };
 
     public static string? Key(AppSettings settings)
         => !string.IsNullOrWhiteSpace(settings.GifSearchKey) ? settings.GifSearchKey.Trim() : BuiltInKey.Length > 0 ? BuiltInKey : null;

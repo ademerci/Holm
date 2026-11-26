@@ -151,6 +151,8 @@ public sealed class WindowsMediaPlatform : IMediaPlatform
         catch { return null; }
     }
 
+    const int MaxCoverBytes = 8 * 1024 * 1024;
+
     public async Task<byte[]?> ReadCoverAsync()
     {
         try
@@ -158,12 +160,26 @@ public sealed class WindowsMediaPlatform : IMediaPlatform
             var thumbnail = _properties?.Thumbnail;
             if (thumbnail == null) return null;
             using var stream = await thumbnail.OpenReadAsync();
+            if (stream.Size > (ulong)MaxCoverBytes) return null;
             using var input = stream.AsStreamForRead();
-            using var copy = new MemoryStream();
-            await input.CopyToAsync(copy);
-            return copy.Length == 0 ? null : copy.ToArray();
+            return await ReadBoundedAsync(input, MaxCoverBytes).ConfigureAwait(false);
         }
         catch { return null; }
+    }
+
+    static async Task<byte[]?> ReadBoundedAsync(Stream input, int maxBytes)
+    {
+        using var copy = new MemoryStream();
+        var buffer = new byte[16 * 1024];
+        int total = 0;
+        int read;
+        while ((read = await input.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+        {
+            total += read;
+            if (total > maxBytes) return null;
+            copy.Write(buffer, 0, read);
+        }
+        return total == 0 ? null : copy.ToArray();
     }
 
     public async void PlayPause() { try { if (_session != null) await _session.TryTogglePlayPauseAsync(); } catch { } }

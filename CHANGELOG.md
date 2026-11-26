@@ -1,18 +1,22 @@
 # Changelog
 
-## 2.4.0 – unreleased
+## 2.4.0 – 2026-11-26
 
-### Added
+### Removed
 
-- **A phone tab in the open notch.** Next to the clipboard and sound tools: your phone's battery, Wi-Fi or mobile data, VPN, Bluetooth and Do Not Disturb, the song it plays and what came in on it lately. Send it files or the copied text, close a notification here and it goes on the phone too, and play, pause or skip its music.
-- **Your phone links by itself.** Signed in to the same Holm account, the PC and the phone find each other without a friend code. The phone tab says what's missing when they don't: not signed in, or a friend code of the PC's own to choose against the account's.
-- **Holm for Android 1.2.2 to 1.2.11.** Holm in Android's share menu. Compact notifications as tall as the closed notch. Long text rests, then slides to show all of it. The volume with a finger, held volume keys, and sliders for media, ringtone, notifications, alarm and calls in the open notch. Your earbuds as a live activity in 3D (Pixel Buds Pro 2 in their four colours, AirPods 4, Nothing): small beside other activities, and opened, they come out of their case, with each bud's and the case's battery from Google's card. A settings button in the overview, an app muted for 5 minutes from an open notification, and the open notch closes with a swipe sideways. The notch steps aside while the control centre is pulled down.
+- **Holm for Android and phone integration.** Holm for Android and the desktop phone tab and phone-status integration have been discontinued and removed. Browser QR-code phone file transfer and PC-to-PC Holm account sync remain available. Upgrading from 2.3.x cleanly strips legacy phone settings and ignores legacy phone notes without errors.
+
+### Changed
+
+- **Windows and received-file safety.** Locked native DLL searches to System32 and resolved `explorer.exe` via the Windows directory. Received files and downloads now show exact saved filenames and hide one-click *Open* for dangerous executable, script, shortcut, or installer extensions (offering *Show* instead).
+- **Beam LAN and QR phone-transfer hardening.** Unverified LAN peers are marked `(LAN)`, cannot shadow authenticated account devices or be overwritten from another IP, and display a 6-digit verification code (SAS) on both sides alongside offer and idle timeouts. Browser QR phone transfers now enforce approved file-count and byte quotas, client IP pinning, per-IP connection caps, header and write timeouts, and a 30-minute lifetime ceiling.
+- **Stronger friend invites and encrypted messaging.** Friend invite codes now use 80-bit PBKDF2-stretched codes (`HOLM-XXXX-XXXX-XXXX-XXXX`) with single-use redemption, revocation, persistent replay protection, strict NIST P-256 key validation, and public HTTPS inbox URLs without mirroring to `ntfy.sh` by default.
+- **Relay and admin hardening.** Added per-IP and per-topic rate limits, streaming body caps, storage-free empty reads with automatic cleanup alarms, authenticated `wnf-*` inbox reads, non-evicting WebSocket limits, and constant-time rate-limited admin stats with strict security headers.
+- **Media, network, and Linux privacy hardening.** Blocked SSRF to private and non-public IPs across GIF, cover, and relay fetches, bounded bitmap and cover decoding before allocation, moved temporary and state files to private `0700`/`0600` locations, switched Linux notifications to binary D-Bus monitoring, stopped Linux dictation from searching `~/Downloads`, and required SHA-256 verification for Windows Handy downloads.
+- **Least-privilege CI workflows.** Scoped all GitHub Actions workflows to least-privilege permissions and pinned every action to a full commit SHA.
 
 ### Fixed
 
-- **Your phone once.** A phone on the same Wi-Fi and in your account shows once in the share view, not twice (or four times with an emulator).
-- **Closing a message on the phone tab** keeps the notch open; the page no longer shrinks from under the pointer.
-- **Holm for Android:** a send from the PC no longer stays on "Connecting…" on the phone; the same note from both servers counts once; Spotify covers load (also after skipping with headphones); the song bar takes taps and drags; music swiped away comes back with the next song; a screen recording is no longer taken for a stopwatch that keeps counting.
 - **Tests stay out of your settings.** The tests use a folder of their own, and an inbox on this computer (only tests have one) that got into the settings is set back to Holm's relay.
 
 ## 2.3.1 – 2026-11-25

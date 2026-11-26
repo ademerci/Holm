@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -69,7 +70,7 @@ internal sealed class AddFriendPage : HubView
             Foreground = HubTheme.Dim, FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 14),
         });
         var entry = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        _input = HubTheme.Field("HOLM-XXXXX-XXXXX");
+        _input = HubTheme.Field("HOLM-XXXX-XXXX-XXXX-XXXX");
         _input.VerticalContentAlignment = VerticalAlignment.Center;
         _input.FontSize = 16;
         _input.TemplateApplied += (_, e) =>
@@ -199,12 +200,22 @@ internal sealed class AddFriendPage : HubView
         _adding = true;
         RefreshAdd();
         Say("Adding…", HubTheme.Dim);
-        var (ok, message) = await _social.AddByCode(text);
-        _adding = false;
-        Say(message, ok ? HubTheme.Green : HubTheme.Red);
-        if (ok) _input.Text = "";
-        RefreshAdd();
-        Refresh();
+        try
+        {
+            var (ok, message) = await _social.AddByCode(text);
+            Say(message, ok ? HubTheme.Green : HubTheme.Red);
+            if (ok) _input.Text = "";
+        }
+        catch (Exception ex) when (ex is CryptographicException or ArgumentException)
+        {
+            Say("That code isn't valid.", HubTheme.Red);
+        }
+        finally
+        {
+            _adding = false;
+            RefreshAdd();
+            Refresh();
+        }
     }
 
     /// <summary>Requests to answer, and ours still waiting for an answer.</summary>

@@ -198,23 +198,50 @@ public sealed class MediaService
     public void SetShuffle(bool on) => _platform.SetShuffle(on);
     public void SetRepeat(int mode) => _platform.SetRepeat(mode);
 
-    /// <summary>The cover for the notch (160 px wide), its accent colour and its blurred backdrop.</summary>
+    const int MaxArtBytes = 8 * 1024 * 1024;
+    const int MaxArtSide = 8192;
+    const long MaxArtPixels = 32_000_000;
+    const int TargetArtWidth = 160;
+    const int TargetArtMaxSide = 320;
+
+    /// <summary>The cover for the notch (up to 160 px wide), its accent colour and its blurred backdrop.</summary>
     static Cover LoadArt(byte[] bytes)
     {
+        if (bytes == null || bytes.Length == 0 || bytes.Length > MaxArtBytes) return default;
         try
         {
-            using var source = SKBitmap.Decode(bytes);
-            if (source == null || source.Width <= 0 || source.Height <= 0) return default;
+            using var stream = new MemoryStream(bytes, writable: false);
+            using var codec = SKCodec.Create(stream);
+            if (codec == null) return default;
+
+            var info = codec.Info;
+            if (info.Width <= 0 || info.Height <= 0 || info.Width > MaxArtSide || info.Height > MaxArtSide) return default;
+            if ((long)info.Width * info.Height > MaxArtPixels) return default;
+
+            float desiredScale = info.Width > TargetArtWidth ? Math.Min(1f, (float)TargetArtWidth / info.Width) : 1f;
+            var scaledSize = codec.GetScaledDimensions(desiredScale);
+            if (info.Width >= TargetArtWidth && scaledSize.Width < TargetArtWidth)
+                scaledSize = codec.GetScaledDimensions(Math.Min(1f, desiredScale * 2f));
+            if (scaledSize.Width <= 0 || scaledSize.Height <= 0 || scaledSize.Width > MaxArtSide || scaledSize.Height > MaxArtSide
+                || (long)scaledSize.Width * scaledSize.Height > MaxArtPixels)
+                return default;
+
+            var decodeInfo = new SKImageInfo(scaledSize.Width, scaledSize.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using var source = new SKBitmap(decodeInfo);
+            var decodeResult = codec.GetPixels(decodeInfo, source.GetPixels());
+            if (decodeResult is not (SKCodecResult.Success or SKCodecResult.IncompleteInput)) return default;
 
             var backdropPixels = Pixels(source, CoverMath.BackdropSize, CoverMath.BackdropSize);
             double luminance = CoverMath.Backdrop(backdropPixels);
-            var backdrop = FromPixels(backdropPixels, CoverMath.BackdropSize, CoverMath.BackdropSize);
+            var backdrop = FromPixels(backdropPixels, CoverMath.BackdropSize, CoverMath.BackdropSize, AlphaFormat.Opaque);
 
-            int smallHeight = Math.Max(1, (int)Math.Round(16.0 * source.Height / source.Width));
+            int smallHeight = Math.Clamp((int)Math.Round(16.0 * source.Height / source.Width), 1, 64);
             var (r, g, b) = CoverMath.Accent(Pixels(source, 16, smallHeight));
 
-            Bitmap art;
-            using (var stream = new MemoryStream(bytes)) art = Bitmap.DecodeToWidth(stream, 160);
+            double artScale = Math.Min(1.0, Math.Min((double)TargetArtWidth / source.Width, (double)TargetArtMaxSide / source.Height));
+            int artW = Math.Max(1, (int)Math.Round(source.Width * artScale));
+            int artH = Math.Max(1, (int)Math.Round(source.Height * artScale));
+            var art = FromPixels(Pixels(source, artW, artH), artW, artH, AlphaFormat.Premul);
             return new Cover(art, Color.FromRgb(r, g, b), backdrop, CoverMath.ShadeFor(luminance));
         }
         catch { return default; }
@@ -231,9 +258,9 @@ public sealed class MediaService
         return px;
     }
 
-    static WriteableBitmap FromPixels(byte[] px, int width, int height)
+    static WriteableBitmap FromPixels(byte[] px, int width, int height, AlphaFormat alpha)
     {
-        var bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        var bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), PixelFormat.Bgra8888, alpha);
         using var frame = bitmap.Lock();
         for (int y = 0; y < height; y++)
             Marshal.Copy(px, y * width * 4, frame.Address + y * frame.RowBytes, width * 4);

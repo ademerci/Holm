@@ -48,8 +48,6 @@ public sealed partial class NotchWindow
         // Its button shows only while Claude Code or Codex has been used on this computer.
         new(HomeLayout.Ai, "AI usage", AiUsageIcon, () => _settings.AiUsage, DisabledHint: "Turn on AI usage below to use this tool."),
         new(HomeLayout.ColorPicker, "Color picker", (brush, size) => ToolIcon(EyedropperGlyph, brush, size), () => _settings.ColorPicker, () => _settings.ColorPicker = true),
-        new(HomeLayout.Phone, "Your phone", (brush, size) => ToolIcon(CellPhoneGlyph, brush, size), () => _settings.Beam, () => SetBeam(true),
-            DisabledHint: "Sign in to your Holm account here and in the phone app: the phone shows up by itself."),
         new(HomeLayout.Beam, "Beam", (brush, size) => ToolIcon("", brush, size), () => _settings.Beam, () => SetBeam(true)),
     }, StartPageSwitches());
 
@@ -100,7 +98,7 @@ public sealed partial class NotchWindow
         var buttons = new Dictionary<string, Control>
         {
             [HomeLayout.Notes] = _notesToolBtn, [HomeLayout.Reminders] = _remindersToolBtn, [HomeLayout.Calculator] = _calculatorToolBtn,
-            [HomeLayout.Chats] = _chatsToolBtn, [HomeLayout.Beam] = _beamToolBtn, [HomeLayout.Phone] = _phoneToolBtn, [HomeLayout.Clipboard] = _clipboardToolBtn, [HomeLayout.Mixer] = _mixerToolBtn,
+            [HomeLayout.Chats] = _chatsToolBtn, [HomeLayout.Beam] = _beamToolBtn, [HomeLayout.Clipboard] = _clipboardToolBtn, [HomeLayout.Mixer] = _mixerToolBtn,
             [HomeLayout.Ai] = _aiToolBtn, [HomeLayout.ColorPicker] = _colorPickerBtn,
         };
         var wanted = _home.ToolOrder.Select(tool => buttons[tool]).ToList();

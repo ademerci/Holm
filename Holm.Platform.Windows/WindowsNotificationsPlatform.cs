@@ -187,6 +187,8 @@ public sealed class WindowsNotificationsPlatform : INotificationsPlatform
         }
     }
 
+    const int MaxLogoBytes = 8 * 1024 * 1024;
+
     async Task LoadLogoAsync(UserNotification notification, string appId)
     {
         try
@@ -194,10 +196,19 @@ public sealed class WindowsNotificationsPlatform : INotificationsPlatform
             var logo = notification.AppInfo?.DisplayInfo?.GetLogo(new global::Windows.Foundation.Size(64, 64));
             if (logo == null) return;
             using var stream = await logo.OpenReadAsync();
+            if (stream.Size > (ulong)MaxLogoBytes) return;
             using var input = stream.AsStreamForRead();
             using var copy = new MemoryStream();
-            await input.CopyToAsync(copy);
-            if (copy.Length > 0) _logos[appId] = copy.ToArray();
+            var buffer = new byte[16 * 1024];
+            int total = 0;
+            int read;
+            while ((read = await input.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+            {
+                total += read;
+                if (total > MaxLogoBytes) return;
+                copy.Write(buffer, 0, read);
+            }
+            if (total > 0) _logos[appId] = copy.ToArray();
         }
         catch (Exception ex) { Diag.Log("Logo unavailable: " + ex.Message); }
     }
