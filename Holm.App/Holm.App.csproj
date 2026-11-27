@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- The cross-platform rewrite's own version, ahead of the WPF app's (WinNotch.csproj) it is meant to follow. -->
-    <Version>2.4.1</Version>
+    <Version>2.4.2</Version>
     <ReleaseIsland>Brecqhou</ReleaseIsland>
     <!-- The updater installs only an exe whose product name is "Holm" (UpdateService.ValidateExecutable). -->
     <Product>Holm</Product>
@@ -30,6 +30,14 @@
 
   <ItemGroup>
     <AssemblyMetadata Include="ReleaseIsland" Value="$(ReleaseIsland)" />
+  </ItemGroup>
+
+  <!-- With concurrent GC off, .NET's workstation GC drops its 6 MB cap on the gen0 budget and sizes it from the CPU's
+       L3 cache instead, so a big-cache CPU let Holm grow tens of MB of garbage before the first collection. 4 MB keeps
+       gen0 small; Holm keeps only ~11 MB of live objects when idle. Measured idle on the Linux release build under Xvfb:
+       about 8 MB less private memory, no change in idle CPU. -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.Gen0MaxBudget" Value="4194304" />
   </ItemGroup>
 
   <!-- A GIPHY API key for GIF search, built into the app but never into the public source: from -p:GiphyKey=…, the
